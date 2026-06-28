@@ -45,7 +45,7 @@ export default function HomePage() {
               </span>
               <span className="text-base font-medium">
                 {stage.en}{" "}
-                <span className="text-[var(--color-muted-foreground)]">Â· {stage.ta}</span>
+                                                            <span className="text-[var(--color-muted-foreground)]">- {stage.ta}</span>
               </span>
             </div>
           </div>
