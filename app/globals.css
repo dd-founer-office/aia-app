@@ -1,33 +1,37 @@
 @import "tailwindcss";
 
 /*
-  AiA Design Tokens
-  Derived from Visual Constitution v1.0 (philosophy-level spec, no literal
-  hex values were provided -- these are first-pass literal values implementing
-  that philosophy; treat as provisional until confirmed).
-
-  - One primary forest green
-  - Warm off-white background, white cards, warm light gray borders
-  - Colors communicate STATE, not CATEGORY
-    Green = Success, Amber = Pending, Red = Error, Gray = Inactive
-  - No dark mode specified anywhere in the docs -- omitted for now.
+AiA Design Tokens — LOCKED v1
+Source of truth: AiA-Design-System-v1-LOCKED.md
+All values below are final, approved decisions — not provisional.
 */
 :root {
-  --color-background: #faf7f2;
-  --color-card: #ffffff;
-  --color-border: #e8e1d6;
-  --color-foreground: #21271f;
-  --color-muted-foreground: #6f6a5e;
+  --color-background: #F7F3EC;
+  --color-card: #FFFFFF;
+  --color-border: #E3DCCD;
+  --color-foreground: #2B2A26;
+  --color-muted-foreground: #8A8678;
 
-  --color-primary: #2f5d44;
-  --color-primary-foreground: #faf7f2;
+  --color-primary: #2F6B4F;
+  --color-primary-dark: #1F4D38;
+  --color-primary-foreground: #FFFFFF;
 
-  --color-success: #2f5d44;
-  --color-pending: #b07d2c;
-  --color-error: #a8432f;
-  --color-inactive: #9c958a;
+  --color-success: #2F6B4F;
+  --color-pending: #B8862A;
+  --color-error: #B3433B;
+  --color-inactive: #8A8678;
+
+  --color-badge-verified-bg: #EAF1EC;
+  --color-badge-pending-bg: #F6ECDC;
+  --color-badge-error-bg: #F4E4E2;
+  --color-badge-inactive-bg: #EFEDE6;
+
+  --color-skeleton: #EDE8DD;
+  --color-photo-placeholder: #D9D4C6;
 
   --radius-card: 16px;
+  --radius-button: 10px;
+  --radius-photo: 12px;
 }
 
 @theme inline {
@@ -38,5 +42,17 @@
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), serif;
+}
+
+.font-tamil-sans {
+  font-family: var(--font-tamil-sans), sans-serif;
+}
+
+.font-tamil-serif {
+  font-family: var(--font-tamil-serif), serif;
 }
