@@ -1,5 +1,30 @@
 import type { Metadata } from "next";
+import { DM_Serif_Display, DM_Sans, Noto_Serif_Tamil, Noto_Sans_Tamil } from "next/font/google";
 import "./globals.css";
+
+const dmSerifDisplay = DM_Serif_Display({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-display",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-sans",
+});
+
+const notoSerifTamil = Noto_Serif_Tamil({
+  subsets: ["tamil"],
+  weight: "400",
+  variable: "--font-tamil-serif",
+});
+
+const notoSansTamil = Noto_Sans_Tamil({
+  subsets: ["tamil"],
+  weight: ["400", "500"],
+  variable: "--font-tamil-sans",
+});
 
 export const metadata: Metadata = {
   title: "Aram in Action",
@@ -12,7 +37,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html
+      lang="en"
+      className={`h-full antialiased ${dmSans.variable} ${dmSerifDisplay.variable} ${notoSerifTamil.variable} ${notoSansTamil.variable}`}
+    >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
