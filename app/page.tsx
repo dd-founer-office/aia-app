@@ -35,7 +35,7 @@ export default function HomePage() {
         {/* Hero */}
         <section className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">
-            {"\u{1F64F}\u{1F3FB}"} {"\u0BB5\u0BA3\u0B95\u0BCD\u0B95\u0BAE\u0BCD"}, {mockContributor.display_name}
+            {"\u0BB5\u0BA3\u0B95\u0BCD\u0B95\u0BAE\u0BCD"}, {mockContributor.display_name}
           </h1>
           <p className="text-sm text-[var(--color-muted-foreground)]">
             {"\u0B85\u0BB1\u0BAE\u0BCD \u0B9A\u0BC6\u0BAF \u0BAA\u0BB4\u0B95\u0BC1"}
