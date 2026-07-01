@@ -38,7 +38,7 @@ export default function HomePage() {
             {"\u{1F64F}\u{1F3FB}"} {"\u0BB5\u0BA3\u0B95\u0BCD\u0B95\u0BAE\u0BCD"}, {mockContributor.display_name}
           </h1>
           <p className="text-sm text-[var(--color-muted-foreground)]">
-            {"\u0B85\u0BB1\u0BAE\u0BCD \u0BA4\u0BC6\u0BAF \u0BAA\u0BB4\u0B95\u0BC1"}
+            {"\u0B85\u0BB1\u0BAE\u0BCD \u0B9A\u0BC6\u0BAF \u0BAA\u0BB4\u0B95\u0BC1"}
           </p>
           <Card className="mt-4 flex items-center gap-3">
             <span className="text-3xl leading-none" aria-hidden>
