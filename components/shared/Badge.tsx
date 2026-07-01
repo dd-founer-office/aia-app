@@ -1,5 +1,4 @@
-import { Check, Clock, AlertCircle, Minus } from "lucide-react";
-import type { ComponentType, SVGProps } from "react";
+import { Check, Clock, AlertCircle, Minus, type LucideIcon } from "lucide-react";
 
 export type BadgeStatus = "verified" | "pending" | "error" | "inactive";
 
@@ -10,7 +9,7 @@ export interface BadgeProps {
 
 const STATUS_CONFIG: Record<
   BadgeStatus,
-  { Icon: ComponentType<SVGProps<SVGSVGElement>>; bg: string; fg: string }
+  { Icon: LucideIcon; bg: string; fg: string }
 > = {
   verified: { Icon: Check, bg: "var(--color-badge-verified-bg)", fg: "var(--color-primary-dark)" },
   pending: { Icon: Clock, bg: "var(--color-badge-pending-bg)", fg: "var(--color-pending)" },
@@ -20,7 +19,7 @@ const STATUS_CONFIG: Record<
 
 /**
  * Shared Badge primitive — informational only, never interactive
- * (Visual Constitution §8: "Badges: Informational only").
+ *  (Visual Constitution §8: "Badges: Informational only").
  * Icon + label always present per Product Component Library COMP-009
  * Status Badge System. Color communicates state, never cause.
  */
