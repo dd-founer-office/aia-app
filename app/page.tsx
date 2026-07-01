@@ -34,10 +34,12 @@ export default function HomePage() {
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
         {/* Hero */}
         <section className="flex flex-col gap-1">
-          <p className="text-sm text-[var(--color-muted-foreground)]">Welcome back,</p>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {mockContributor.display_name}
+            {"\u{1F64F}\u{1F3FB}"} {"\u0BB5\u0BA3\u0B95\u0BCD\u0B95\u0BAE\u0BCD"}, {mockContributor.display_name}
           </h1>
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            {"\u0B85\u0BB1\u0BAE\u0BCD \u0BA4\u0BC6\u0BAF \u0BAA\u0BB4\u0B95\u0BC1"}
+          </p>
           <Card className="mt-4 flex items-center gap-3">
             <span className="text-3xl leading-none" aria-hidden>
               {stage.emoji}
