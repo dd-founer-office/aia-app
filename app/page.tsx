@@ -1,3 +1,4 @@
+import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
 import {
   mockContributor,
   mockJourney,
@@ -34,7 +35,8 @@ export default function HomePage() {
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
         {/* Hero */}
         <section className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <PrayingHandsIcon className="text-[var(--color-primary)]" />
             {"\u0BB5\u0BA3\u0B95\u0BCD\u0B95\u0BAE\u0BCD"}, {mockContributor.display_name}
           </h1>
           <p className="text-sm text-[var(--color-muted-foreground)]">
