@@ -38,7 +38,7 @@ export default function HomePage() {
           <div className="flex items-start gap-3">
             <PrayingHandsIcon
               className="mt-0.5 shrink-0 text-[var(--color-primary)]"
-              style={{ height: "2.4em", width: "auto" }}
+              style={{ height: "64px", width: "auto" }}
             />
             <div className="flex flex-col">
               <h1 className="text-2xl font-semibold leading-tight tracking-tight">
