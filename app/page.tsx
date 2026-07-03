@@ -12,9 +12,9 @@ import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
+import { JourneyTimeline } from "@/components/home/JourneyTimeline";
 
 export default function HomePage() {
-  const stage = STAGE_LABELS[mockJourney.current_stage];
   const stageIndex = STAGE_ORDER.indexOf(mockJourney.current_stage);
   const nextStageName = STAGE_ORDER[stageIndex + 1];
   const nextStage = nextStageName ? STAGE_LABELS[nextStageName] : null;
@@ -51,20 +51,9 @@ export default function HomePage() {
               </p>
             </div>
           </div>
-          <Card className="mt-4 flex items-center gap-3">
-            <span className="text-3xl leading-none" aria-hidden>
-              {stage.emoji}
-            </span>
-            <div className="flex flex-col">
-              <span className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                Current stage
-              </span>
-              <span className="text-base font-medium">
-                {stage.en}{" "}
-                <span className="text-[var(--color-muted-foreground)]">- {stage.ta}</span>
-              </span>
-            </div>
-          </Card>
+          <div className="mt-4">
+            <JourneyTimeline currentStage={mockJourney.current_stage} />
+          </div>
           <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">
             You&apos;ve shown up for {mockJourney.continuity_month_count} months in a row.
             {nextStage ? ` Keep going to grow toward ${nextStage.en}.` : ""}
