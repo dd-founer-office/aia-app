@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import { STAGE_LABELS, STAGE_ORDER, type StageName } from "@/types";
 import { Card } from "@/components/shared/Card";
 import { VidhaiSeedIcon } from "./icons/VidhaiSeedIcon";
@@ -7,7 +7,7 @@ import { KandruSaplingIcon } from "./icons/KandruSaplingIcon";
 import { MaramTreeIcon } from "./icons/MaramTreeIcon";
 import { VanamForestIcon } from "./icons/VanamForestIcon";
 
-type StageIconComponent = (props: { style?: CSSProperties; className?: string }) => JSX.Element;
+type StageIconComponent = (props: { style?: CSSProperties; className?: string }) => ReactElement;
 
 const STAGE_ICONS: Record<StageName, StageIconComponent> = {
   vidhai: VidhaiSeedIcon,
