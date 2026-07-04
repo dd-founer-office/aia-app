@@ -1,5 +1,5 @@
+import { ShieldCheck, CheckCircle2, Camera, Users } from "lucide-react";
 import { PhotoGallery } from "@/components/shared/PhotoGallery";
-import { Badge } from "@/components/shared/Badge";
 import { Button } from "@/components/shared/Button";
 import { Card } from "@/components/shared/Card";
 
@@ -24,12 +24,20 @@ export interface EvidenceCardProps {
  * Locked" -- CA-010).
  *
  * Trust before excitement, meaning before metrics: story/outcome first,
- * Verified/Executed/Documented badges are subtle, and the CTA is a text
- * link ("View Act →" / "View Shared Act →"), never a filled button, per
- * CA-010: "Use a subtle text CTA. Do not use filled buttons."
+ * Verified/Executed/Documented indicators are subtle, and the CTA is a
+ * text link ("View Act →" / "View Shared Act →"), never a filled button,
+ * per CA-010: "Use a subtle text CTA. Do not use filled buttons."
+ *
+ * Verified/Executed/Documented render with their own distinct Lucide
+ * icons here rather than through the shared Badge primitive (COMP-009):
+ * Badge represents one-of-many dynamic states with a single icon per
+ * status, but these three are fixed, always-co-present facts about an
+ * Act, each with its own meaning (shield / check / camera), matching the
+ * approved CA-010 mockup. Kept subtle per CA-010: "These should remain
+ * subtle. Evidence should come primarily from the photography."
  *
  * Shared Act variant (COMP-005 rules, locked): shows only a "Shared Act
- * of Aram" label and a contributor count. Never contributor names,
+ * of Aram" icon chip and a contributor count. Never contributor names,
  * amounts, or rankings.
  *
  * Cause and district render as plain text, not a colored badge -- Visual
@@ -50,9 +58,16 @@ export function EvidenceCard({
   return (
     <Card className="flex flex-col gap-4">
       {isSharedAct && (
-        <p className="text-xs font-medium text-[var(--color-primary-dark)]">
+        <span
+          className="inline-flex items-center gap-1.5 self-start rounded-full px-2.5 py-1 text-xs font-medium"
+          style={{
+            backgroundColor: "var(--color-badge-verified-bg)",
+            color: "var(--color-primary-dark)",
+          }}
+        >
+          <Users size={13} />
           Shared Act of Aram
-        </p>
+        </span>
       )}
 
       <PhotoGallery
@@ -72,10 +87,28 @@ export function EvidenceCard({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Badge status="verified" label="Verified" />
-        <Badge status="verified" label="Executed" />
-        <Badge status="verified" label="Documented" />
+      <div className="flex flex-wrap gap-4">
+        <span
+          className="inline-flex items-center gap-1 text-xs"
+          style={{ color: "var(--color-primary-dark)" }}
+        >
+          <ShieldCheck size={14} />
+          Verified
+        </span>
+        <span
+          className="inline-flex items-center gap-1 text-xs"
+          style={{ color: "var(--color-primary-dark)" }}
+        >
+          <CheckCircle2 size={14} />
+          Executed
+        </span>
+        <span
+          className="inline-flex items-center gap-1 text-xs"
+          style={{ color: "var(--color-primary-dark)" }}
+        >
+          <Camera size={14} />
+          Documented
+        </span>
       </div>
 
       <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-3">
