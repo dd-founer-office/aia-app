@@ -2,9 +2,6 @@ import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
 import {
   mockContributor,
   mockJourney,
-  mockParticipations,
-  mockParticipationCauses,
-  mockCauses,
   getCurrentMonthParticipation,
 } from "@/lib/mock-data";
 import { STAGE_LABELS, STAGE_ORDER } from "@/types";
@@ -21,14 +18,6 @@ export default function HomePage() {
 
   const currentParticipation = getCurrentMonthParticipation();
   const hasParticipatedThisMonth = currentParticipation?.status === "completed";
-
-  const lastCompleted = mockParticipations.find((p) => p.status === "completed");
-  const lastCompletedCauseNames = lastCompleted
-    ? mockParticipationCauses
-        .filter((pc) => pc.participation_id === lastCompleted.id)
-        .map((pc) => mockCauses.find((c) => c.id === pc.cause_id)?.name)
-        .filter(Boolean)
-    : [];
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
@@ -60,27 +49,21 @@ export default function HomePage() {
           </p>
         </section>
 
-        {/* This Month's Participation */}
-        <Card className="flex flex-col gap-3">
-          <SectionHeader title="This month's participation" />
-
-          {hasParticipatedThisMonth ? (
-            <div className="flex flex-col gap-1">
-              <p className="text-base">You&apos;ve participated this month.</p>
-              {lastCompletedCauseNames.length > 0 && (
-                <p className="text-sm text-[var(--color-muted-foreground)]">
-                  Allocated to {lastCompletedCauseNames.join(", ")}.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <p className="text-base">
-                You haven&apos;t participated this month. Your next Act of Aram is waiting.
-              </p>
-              <Button className="w-full">Begin this month&apos;s participation</Button>
-            </div>
-          )}
+        {/* Next Action */}
+        <Card className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <p className="text-lg font-semibold leading-snug">
+              {hasParticipatedThisMonth
+                ? "You're continuing to show up."
+                : "Your next Act of Aram is waiting."}
+            </p>
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              {hasParticipatedThisMonth
+                ? "Your next opportunity to practice Aram will appear here soon."
+                : "Continue your journey by participating in an Act of Aram this month."}
+            </p>
+          </div>
+          <Button className="w-full">Begin Your Next Act</Button>
         </Card>
 
         {/* Latest Act of Aram -- no backing entity in Sprint 1 schema; empty state */}
