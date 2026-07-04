@@ -2,11 +2,13 @@ import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
 import {
   mockContributor,
   mockJourney,
+  mockLatestAct,
   getCurrentMonthParticipation,
 } from "@/lib/mock-data";
 import { STAGE_LABELS, STAGE_ORDER } from "@/types";
 import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
+import { Badge } from "@/components/shared/Badge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { JourneyTimeline } from "@/components/home/JourneyTimeline";
@@ -66,13 +68,62 @@ export default function HomePage() {
           <Button className="w-full">Begin Your Next Act</Button>
         </Card>
 
-        {/* Latest Act of Aram -- no backing entity in Sprint 1 schema; empty state */}
-        <Card className="flex flex-col gap-2">
-          <SectionHeader title="Latest Act of Aram" />
-          <p className="text-sm text-[var(--color-muted-foreground)]">
-            No Acts of Aram have been published yet. Once your participation is executed and
-            documented, it will appear here.
-          </p>
+        {/* Your Latest Act of Aram -- Evidence Card. mockLatestAct is
+            temporary presentation-only mock data (see lib/mock-data.ts);
+            Act of Aram is not a table in the locked Sprint 1 schema. Swap
+            the ternary's truthy branch for a live query when the real
+            entity ships -- the empty-state branch is left in place for
+            that day. */}
+        <Card className="flex flex-col gap-4">
+          <SectionHeader title="Your Latest Act of Aram" />
+          {mockLatestAct ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mockLatestAct.hero_image_url}
+                alt={`${mockLatestAct.cause} Act of Aram`}
+                className="-mx-5 h-44 w-full rounded-[var(--radius-card)] object-cover"
+              />
+              <div className="flex flex-col gap-1">
+                <p className="text-lg font-semibold leading-snug">{mockLatestAct.cause}</p>
+                <p className="text-sm text-[var(--color-muted-foreground)]">
+                  {mockLatestAct.location}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge status="verified" label="Verified" />
+                <Badge status="verified" label="Executed" />
+                <Badge status="verified" label="Documented" />
+              </div>
+              <p className="text-sm text-[var(--color-foreground)]">
+                {mockLatestAct.impact_summary}
+              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-[var(--color-muted-foreground)]">
+                  {mockLatestAct.completed_date}
+                </p>
+                <Button variant="text">View Act →</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[var(--radius-card)] bg-[var(--color-skeleton)]">
+                <span className="text-sm text-[var(--color-muted-foreground)]">No image yet</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <p className="text-base font-medium">
+                  Your first verified Act of Aram will appear here.
+                </p>
+                <p className="text-sm text-[var(--color-muted-foreground)]">
+                  Once your first Act is completed, you&apos;ll see photos, impact details and
+                  verification here.
+                </p>
+              </div>
+              <Button variant="text" className="self-start">
+                Begin an Act of Aram
+              </Button>
+            </>
+          )}
         </Card>
 
         {/* Shared Acts of Aram -- no backing entity in Sprint 1 schema; empty state */}
