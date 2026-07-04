@@ -159,8 +159,8 @@ export interface MockAct {
   cause: string;
   location: string;
   impact_summary: string;
-  completed_date: string; // display string, e.g. "28 June 2026"
-  completed_date_iso: string; // for sorting, e.g. "2026-06-28"
+  completed_date: string;
+  completed_date_iso: string;
   hero_image_url: string;
   supporting_image_urls: string[];
   is_shared_act?: boolean;
