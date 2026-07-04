@@ -116,3 +116,32 @@ export const mockLatestAct: MockLatestAct = {
   hero_image_url:
     "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&q=80",
 };
+
+// -----------------------------------------------------------------------
+// Presentation-only mock data for the Home "குறள் கூறும் அறம்" section.
+// Mirrors the shape of the future Founder Intelligence Kural Koorum Aram
+// knowledge engine (FI-DB-003, record KKA-001) so the UI can later read
+// live data without a shape change. Content is the approved, Status:
+// Verified KKA-001 record from the Founder Intelligence Knowledge Hub --
+// not invented, not paraphrased. This is not a schema addition: no table,
+// no migration, no Supabase model.
+// -----------------------------------------------------------------------
+export interface MockKuralOfTheDay {
+  kural_id: string; // e.g. "KKA-001"
+  kural_number: number;
+  kural_tamil: string;
+  core_principle: string; // rendered as "Simple Modern Meaning"
+  aram_for_today_title: string;
+  aram_for_today_body: string; // rendered as "Today's Practice"
+}
+
+export const mockKuralOfTheDay: MockKuralOfTheDay = {
+  kural_id: "KKA-001",
+  kural_number: 1,
+  kural_tamil: "அகர முதல எழுத்தெல்லாம் ஆதி\nபகவன் முதற்றே உலகு",
+  core_principle:
+    "Every enduring system begins with a foundation. True understanding starts by recognizing and respecting that foundation.",
+  aram_for_today_title: "Honour Your Roots.",
+  aram_for_today_body:
+    "Every meaningful journey becomes stronger when we understand where we come from. Knowing our roots gives purpose to our future.",
+};
