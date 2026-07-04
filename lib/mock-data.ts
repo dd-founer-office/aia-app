@@ -91,3 +91,28 @@ export function getCurrentMonthParticipation(): Participation | undefined {
   const currentMonth = "2026-06";
   return mockParticipations.find((p) => p.month === currentMonth);
 }
+
+// -----------------------------------------------------------------------
+// Presentation-only mock data for the Home "Your Latest Act of Aram"
+// Evidence Card. Act of Aram is NOT part of the locked six-table Sprint 1
+// schema (see types/index.ts header comment) -- this exists purely for UI
+// and design validation while that entity doesn't exist yet. This is not
+// a schema addition: no table, no migration, no Supabase model. Replace
+// with a live query once Act of Aram ships as a real entity.
+// -----------------------------------------------------------------------
+export interface MockLatestAct {
+  cause: string;
+  location: string;
+  impact_summary: string;
+  completed_date: string; // display string, e.g. "12 June 2026"
+  hero_image_url: string;
+}
+
+export const mockLatestAct: MockLatestAct = {
+  cause: "Education",
+  location: "Tirunelveli, Tamil Nadu",
+  impact_summary: "12 students received school kits.",
+  completed_date: "12 June 2026",
+  hero_image_url:
+    "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&q=80",
+};
