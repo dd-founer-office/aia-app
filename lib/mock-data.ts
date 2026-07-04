@@ -145,3 +145,82 @@ export const mockKuralOfTheDay: MockKuralOfTheDay = {
   aram_for_today_body:
     "Every meaningful journey becomes stronger when we understand where we come from. Knowing our roots gives purpose to our future.",
 };
+// -----------------------------------------------------------------------
+// Presentation-only mock data for the Acts of Aram Feed (CA-010).
+// Act of Aram is NOT part of the locked six-table Sprint 1 schema (see
+// types/index.ts header comment) -- this exists purely for UI and design
+// validation while that entity doesn't exist yet, following the same
+// pattern as MockLatestAct above. Replace with a live query once Act of
+// Aram ships as a real entity. Sorted newest first per CA-010 Feed
+// Ordering Rules (Locked): Publication Date, newest first.
+// -----------------------------------------------------------------------
+export interface MockAct {
+  id: string;
+  cause: string;
+  location: string;
+  impact_summary: string;
+  completed_date: string; // display string, e.g. "28 June 2026"
+  completed_date_iso: string; // for sorting, e.g. "2026-06-28"
+  hero_image_url: string;
+  supporting_image_urls: string[];
+  is_shared_act?: boolean;
+  contributor_count?: number;
+}
+
+export const mockActs: MockAct[] = [
+  {
+    id: "act_1",
+    cause: "Education",
+    location: "Madurai District",
+    impact_summary: "24 students received school kits.",
+    completed_date: "28 June 2026",
+    completed_date_iso: "2026-06-28",
+    hero_image_url:
+      "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=900&q=80",
+    supporting_image_urls: [
+      "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=300&q=80",
+      "https://images.unsplash.com/photo-1497486751825-1233686d5d80?w=300&q=80",
+      "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=300&q=80",
+    ],
+  },
+  {
+    id: "act_2",
+    cause: "Environment",
+    location: "Erode District",
+    impact_summary: "150 native trees were planted.",
+    completed_date: "21 June 2026",
+    completed_date_iso: "2026-06-21",
+    hero_image_url:
+      "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=900&q=80",
+    supporting_image_urls: [
+      "https://images.unsplash.com/photo-1444492417251-9c84a5fa18e0?w=300&q=80",
+      "https://images.unsplash.com/photo-1466692476868-9ee5a3a3e93b?w=300&q=80",
+    ],
+    is_shared_act: true,
+    contributor_count: 43,
+  },
+  {
+    id: "act_3",
+    cause: "Annadhanam",
+    location: "Thanjavur District",
+    impact_summary: "200 meals were served.",
+    completed_date: "14 June 2026",
+    completed_date_iso: "2026-06-14",
+    hero_image_url:
+      "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=900&q=80",
+    supporting_image_urls: [
+      "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&q=80",
+      "https://images.unsplash.com/photo-1591189824332-83f2e5cca2e0?w=300&q=80",
+    ],
+  },
+];
+
+// Feed Ordering Rules (Locked, CA-010): Primary sort = Publication Date,
+// newest first. Never reordered by views, engagement, participation
+// volume, contributor count, or cause popularity.
+export function getActsFeed(): MockAct[] {
+  return [...mockActs].sort(
+    (a, b) =>
+      new Date(b.completed_date_iso).getTime() - new Date(a.completed_date_iso).getTime()
+  );
+}
