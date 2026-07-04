@@ -3,6 +3,7 @@ import {
   mockContributor,
   mockJourney,
   mockLatestAct,
+  mockKuralOfTheDay,
   getCurrentMonthParticipation,
 } from "@/lib/mock-data";
 import { STAGE_LABELS, STAGE_ORDER } from "@/types";
@@ -133,6 +134,32 @@ export default function HomePage() {
             When your participation joins others toward the same Act of Aram, it will be shown
             here.
           </p>
+        </Card>
+
+        {/* குறள் கூறும் அறம் -- Kural Koorum Aram. mockKuralOfTheDay is
+            temporary presentation-only mock data mirroring the future
+            Founder Intelligence knowledge-engine record shape (FI-DB-003,
+            KKA-001). Swap for a live query when that engine is connected;
+            no UI change should be needed. */}
+        <Card className="flex flex-col gap-5">
+          <SectionHeader title={"\u0B95\u0BC1\u0BB1\u0BB3\u0BCD \u0B95\u0BC2\u0BB1\u0BC1\u0BAE\u0BCD \u0B85\u0BB1\u0BAE\u0BCD"} />
+          <p className="font-tamil-serif whitespace-pre-line py-2 text-center text-2xl leading-relaxed text-[var(--color-foreground)]">
+            {mockKuralOfTheDay.kural_tamil}
+          </p>
+          <p className="text-sm leading-relaxed text-[var(--color-foreground)]">
+            {mockKuralOfTheDay.core_principle}
+          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-[var(--color-foreground)]">
+              {mockKuralOfTheDay.aram_for_today_title}
+            </p>
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              {mockKuralOfTheDay.aram_for_today_body}
+            </p>
+          </div>
+          <Button variant="text" className="self-start">
+            Practice this Kural →
+          </Button>
         </Card>
       </main>
 
