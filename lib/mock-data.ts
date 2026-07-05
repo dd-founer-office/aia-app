@@ -146,23 +146,34 @@ export const mockKuralOfTheDay: MockKuralOfTheDay = {
     "Every meaningful journey becomes stronger when we understand where we come from. Knowing our roots gives purpose to our future.",
 };
 // -----------------------------------------------------------------------
-// Presentation-only mock data for the Acts of Aram Feed (CA-010).
-// Act of Aram is NOT part of the locked six-table Sprint 1 schema (see
-// types/index.ts header comment) -- this exists purely for UI and design
-// validation while that entity doesn't exist yet, following the same
-// pattern as MockLatestAct above. Replace with a live query once Act of
-// Aram ships as a real entity. Sorted newest first per CA-010 Feed
-// Ordering Rules (Locked): Publication Date, newest first.
+// Presentation-only mock data for the Acts of Aram Feed (CA-010) and the
+// minimal CA-011 Act of Aram Detail build. Act of Aram is NOT part of the
+// locked six-table Sprint 1 schema (see types/index.ts header comment) --
+// this exists purely for UI and design validation while that entity
+// doesn't exist yet. Geo fields (latitude/longitude/place_name) are also
+// NOT in the locked "Act of Aram" entity (06. Data Architecture) -- added
+// here as mock-only fields per explicit direction, not a schema change.
+// Replace all of this with live queries once Act of Aram ships as a real
+// entity. Sorted newest first per CA-010 Feed Ordering Rules (Locked):
+// Publication Date, newest first.
 // -----------------------------------------------------------------------
 export interface MockAct {
   id: string;
   cause: string;
-  location: string;
+  place_name: string; // town/village-level, e.g. "Keelavasal, Madurai" -- not the district
+  latitude: number;
+  longitude: number;
   impact_summary: string;
+  supporting_copy: string;
   completed_date: string;
   completed_date_iso: string;
   hero_image_url: string;
   supporting_image_urls: string[];
+  beneficiary_count: number;
+  story_situation: string;
+  story_action: string;
+  story_outcome: string;
+  reflection: string;
   is_shared_act?: boolean;
   contributor_count?: number;
 }
@@ -171,8 +182,11 @@ export const mockActs: MockAct[] = [
   {
     id: "act_1",
     cause: "Education",
-    location: "Madurai District",
+    place_name: "Keelavasal, Madurai",
+    latitude: 9.9252,
+    longitude: 78.1198,
     impact_summary: "24 students received school kits.",
+    supporting_copy: "Every child deserves the tools to learn.",
     completed_date: "28 June 2026",
     completed_date_iso: "2026-06-28",
     hero_image_url:
@@ -182,12 +196,23 @@ export const mockActs: MockAct[] = [
       "https://images.unsplash.com/photo-1497486751825-1233686d5d80?w=300&q=80",
       "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=300&q=80",
     ],
+    beneficiary_count: 24,
+    story_situation:
+      "Many children in Keelavasal were attending school without basic supplies.",
+    story_action:
+      "AiA partnered with a local school to distribute complete school kits.",
+    story_outcome:
+      "24 students now have the materials they need for the school year.",
+    reflection: "A small kit can be the difference between falling behind and keeping pace.",
   },
   {
     id: "act_2",
     cause: "Environment",
-    location: "Erode District",
+    place_name: "Bhavani, Erode",
+    latitude: 11.4467,
+    longitude: 77.6839,
     impact_summary: "150 native trees were planted.",
+    supporting_copy: "Every tree planted today shapes tomorrow's air.",
     completed_date: "21 June 2026",
     completed_date_iso: "2026-06-21",
     hero_image_url:
@@ -196,14 +221,24 @@ export const mockActs: MockAct[] = [
       "https://images.unsplash.com/photo-1444492417251-9c84a5fa18e0?w=300&q=80",
       "https://images.unsplash.com/photo-1466692476868-9ee5a3a3e93b?w=300&q=80",
     ],
+    beneficiary_count: 120,
+    story_situation: "The hillside near Bhavani had lost much of its native tree cover.",
+    story_action:
+      "43 contributors came together to fund and plant native saplings with a local partner.",
+    story_outcome:
+      "150 native trees now stand, restoring shade and habitat for the community.",
+    reflection: "Continuity isn't just personal -- forests need it too.",
     is_shared_act: true,
     contributor_count: 43,
   },
   {
     id: "act_3",
     cause: "Annadhanam",
-    location: "Thanjavur District",
+    place_name: "Kumbakonam, Thanjavur",
+    latitude: 10.9601,
+    longitude: 79.3788,
     impact_summary: "200 meals were served.",
+    supporting_copy: "A shared meal is Aram in its simplest form.",
     completed_date: "14 June 2026",
     completed_date_iso: "2026-06-14",
     hero_image_url:
@@ -212,6 +247,11 @@ export const mockActs: MockAct[] = [
       "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&q=80",
       "https://images.unsplash.com/photo-1591189824332-83f2e5cca2e0?w=300&q=80",
     ],
+    beneficiary_count: 200,
+    story_situation: "Families near the Kumbakonam temple often go without a warm meal.",
+    story_action: "AiA's partner organized and served a community meal for a full day.",
+    story_outcome: "200 meals were served, offering nourishment and dignity.",
+    reflection: "Aram is often this simple: making sure no one goes hungry today.",
   },
 ];
 
@@ -223,4 +263,8 @@ export function getActsFeed(): MockAct[] {
     (a, b) =>
       new Date(b.completed_date_iso).getTime() - new Date(a.completed_date_iso).getTime()
   );
+}
+
+export function getActById(id: string): MockAct | undefined {
+  return mockActs.find((act) => act.id === id);
 }
