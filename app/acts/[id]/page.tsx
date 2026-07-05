@@ -96,7 +96,7 @@ export default async function ActDetailPage({
           />
         </div>
 
-        
+        <a
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
