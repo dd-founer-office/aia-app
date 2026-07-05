@@ -1,62 +1,51 @@
-import { ShieldCheck, CheckCircle2, Camera, Users } from "lucide-react";
-import { PhotoGallery } from "@/components/shared/PhotoGallery";
-import { Button } from "@/components/shared/Button";
+import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { Card } from "@/components/shared/Card";
 
 export interface EvidenceCardProps {
+  actId: string;
   heroImage: string;
-  supportingImages?: string[];
-  cause: string;
-  location: string;
-  impactSummary: string;
+  supportingImageCount?: number;
+  category: string;
+  placeName: string;
   completedDate: string;
+  headline: string;
+  supportingCopy?: string;
   isSharedAct?: boolean;
   contributorCount?: number;
-  onView?: () => void;
 }
 
 /**
- * COMP-004 -- Evidence Card (canonical).
- * Per the Product Component Library update (locked): this is the single
- * card used everywhere an Act of Aram is shown -- CA-009 Home, CA-010 Acts
- * Feed, CA-011 Act Detail, CA-012 Journey, CA-013 Profile. No alternate
- * card design, no campaign/promotional variant ("Act Card Consistency,
- * Locked" -- CA-010).
+ * COMP-004 -- Evidence Card (canonical), refined per "AiA Acts Feed --
+ * Final UI Refinement" direction.
  *
- * Trust before excitement, meaning before metrics: story/outcome first,
- * Verified/Executed/Documented indicators are subtle, and the CTA is a
- * text link ("View Act →" / "View Shared Act →"), never a filled button,
- * per CA-010: "Use a subtle text CTA. Do not use filled buttons."
+ * The hero photo carries the story; everything else quietly supports it.
+ * Trust (Verified/Executed/Documented) no longer renders here -- it now
+ * lives entirely on CA-011 Act of Aram Detail's locked "Verification
+ * Summary" section, which already covers this. Supporting thumbnails are
+ * replaced by a photo-count badge; the full evidence gallery lives on
+ * CA-011, not inline on the feed. Both the location pill and the hero
+ * image link to CA-011 for this act. "View on Map" (Google Maps via
+ * stored lat/long) lives on CA-011 -- the feed never shows coordinates.
  *
- * Verified/Executed/Documented render with their own distinct Lucide
- * icons here rather than through the shared Badge primitive (COMP-009):
- * Badge represents one-of-many dynamic states with a single icon per
- * status, but these three are fixed, always-co-present facts about an
- * Act, each with its own meaning (shield / check / camera), matching the
- * approved CA-010 mockup. Kept subtle per CA-010: "These should remain
- * subtle. Evidence should come primarily from the photography."
- *
- * Shared Act variant (COMP-005 rules, locked): shows only a "Shared Act
- * of Aram" icon chip and a contributor count. Never contributor names,
- * amounts, or rankings.
- *
- * Cause and district render as plain text, not a colored badge -- Visual
- * Constitution §3/§8: "Colours communicate STATE, not CATEGORY" /
- * "Colours represent status, never cause."
+ * Cause renders as a small uppercase eyebrow, not a colored badge --
+ * still Visual Constitution §8 ("colours represent status, never
+ * cause"): muted green text, no pill background.
  */
 export function EvidenceCard({
+  actId,
   heroImage,
-  supportingImages = [],
-  cause,
-  location,
-  impactSummary,
+  supportingImageCount = 0,
+  category,
+  placeName,
   completedDate,
+  headline,
+  supportingCopy,
   isSharedAct = false,
   contributorCount,
-  onView,
 }: EvidenceCardProps) {
   return (
-    <Card className="flex flex-col gap-4">
+    <Card className="flex flex-col gap-5">
       {isSharedAct && (
         <span
           className="inline-flex items-center gap-1.5 self-start rounded-full px-2.5 py-1 text-xs font-medium"
@@ -65,21 +54,51 @@ export function EvidenceCard({
             color: "var(--color-primary-dark)",
           }}
         >
-          <Users size={13} />
           Shared Act of Aram
         </span>
       )}
 
-      <PhotoGallery
-        images={[heroImage, ...supportingImages]}
-        altPrefix={`${cause} Act of Aram`}
-      />
+      <Link href={`/acts/${actId}`} className="relative block">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={heroImage}
+          alt={headline}
+          className="h-[260px] w-full rounded-[var(--radius-photo)] object-cover"
+        />
 
-      <div className="flex flex-col gap-1">
-        <p className="text-sm text-[var(--color-muted-foreground)]">
-          {cause} · {location}
+        {supportingImageCount > 0 && (
+          <span
+            className="absolute right-3 top-3 flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-xs font-medium text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+          >
+            +{supportingImageCount}
+          </span>
+        )}
+
+        <span
+          className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-white"
+          style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+        >
+          <MapPin size={12} />
+          {placeName}
+          <span className="opacity-70">·</span>
+          {completedDate}
+        </span>
+      </Link>
+
+      <div className="flex flex-col gap-2.5">
+        <p
+          className="text-xs font-medium uppercase"
+          style={{ color: "var(--color-primary-dark)", letterSpacing: "0.06em" }}
+        >
+          {category}
         </p>
-        <p className="text-lg font-semibold leading-snug">{impactSummary}</p>
+        <p className="text-lg font-semibold leading-snug">{headline}</p>
+        {supportingCopy && (
+          <p className="text-sm leading-relaxed text-[var(--color-muted-foreground)]">
+            {supportingCopy}
+          </p>
+        )}
         {isSharedAct && contributorCount ? (
           <p className="text-sm text-[var(--color-muted-foreground)]">
             {contributorCount} contributors participated together
@@ -87,35 +106,14 @@ export function EvidenceCard({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-4">
-        <span
-          className="inline-flex items-center gap-1 text-xs"
+      <div className="flex justify-end">
+        <Link
+          href={`/acts/${actId}`}
+          className="text-sm font-medium"
           style={{ color: "var(--color-primary-dark)" }}
         >
-          <ShieldCheck size={14} />
-          Verified
-        </span>
-        <span
-          className="inline-flex items-center gap-1 text-xs"
-          style={{ color: "var(--color-primary-dark)" }}
-        >
-          <CheckCircle2 size={14} />
-          Executed
-        </span>
-        <span
-          className="inline-flex items-center gap-1 text-xs"
-          style={{ color: "var(--color-primary-dark)" }}
-        >
-          <Camera size={14} />
-          Documented
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-3">
-        <p className="text-sm text-[var(--color-muted-foreground)]">{completedDate}</p>
-        <Button variant="text" onClick={onView}>
           {isSharedAct ? "View Shared Act →" : "View Act →"}
-        </Button>
+        </Link>
       </div>
     </Card>
   );
