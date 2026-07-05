@@ -175,7 +175,7 @@ export default async function ActDetailPage({
             <p className="text-sm font-medium">Documents</p>
             <div className="flex flex-col gap-2">
               {act.documents.map((doc) => (
-                
+                <a
                   key={doc.label}
                   href={doc.url}
                   className="text-sm font-medium"
