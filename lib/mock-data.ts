@@ -174,7 +174,7 @@ export interface MockAct {
   hero_image_url: string;
   supporting_image_urls: string[];
   impact_bullets: string[];
-  timeline: { label: string; date: string }[];
+  timeline: { label: string; date: string; description: string }[];
   verification: {
     captured_by: string;
     verified_by: string;
