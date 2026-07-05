@@ -83,4 +83,90 @@ export default async function ActDetailPage({
 
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium">Location</p>
-            <p className="text-sm text-
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              {act.town}
+              <br />
+              {act.district}
+              <br />
+              {act.state}
+            </p>
+            <iframe src={mapEmbedUrl} className="h-40 w-full rounded-[var(--radius-photo)] border-0" loading="lazy" title="Location map" />
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium" style={{ color: "var(--color-primary-dark)" }}>
+              Open in Google Maps →
+            </a>
+          </div>
+
+          <div className="flex flex-col gap-5">
+            <p className="text-sm font-medium">Timeline</p>
+            <div className="flex flex-col">
+              {NATURE_TIMELINE.map((step, i) => (
+                <div key={step.label} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <span className="text-lg leading-none">{step.icon}</span>
+                    {i < NATURE_TIMELINE.length - 1 && (
+                      <span className="mt-1 w-px flex-1" style={{ backgroundColor: "var(--color-border)" }} />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-0.5 pb-5">
+                    <p className="text-sm font-medium">{step.label}</p>
+                    <p className="text-sm text-[var(--color-muted-foreground)]">{step.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-medium">Verification Record</p>
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center justify-between">
+                <p className="text-[var(--color-muted-foreground)]">Captured by</p>
+                <p>{act.verification.captured_by}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[var(--color-muted-foreground)]">Verified by</p>
+                <p>{act.verification.verified_by}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[var(--color-muted-foreground)]">Timestamp</p>
+                <p>{act.verification.timestamp}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[var(--color-muted-foreground)]">GPS Verified</p>
+                <p>{act.verification.gps_verified ? "Yes" : "No"}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[var(--color-muted-foreground)]">Evidence Count</p>
+                <p>{act.supporting_image_urls.length + 1}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[var(--color-muted-foreground)]">Partner Organisation</p>
+                <p>{act.verification.partner_organisation}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-medium">Records</p>
+            <div className="flex flex-col gap-2">
+              {act.documents.map((doc) => (
+                <a key={doc.label} href={doc.url} className="text-sm font-medium" style={{ color: "var(--color-primary-dark)" }}>
+                  {doc.label}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <p className="text-sm font-medium">குறள் கூறும் அறம்</p>
+            <p className="whitespace-pre-line text-base leading-relaxed">{mockKuralOfTheDay.kural_tamil}</p>
+            <p className="text-sm text-[var(--color-muted-foreground)]">{mockKuralOfTheDay.core_principle}</p>
+            <p className="text-sm italic leading-relaxed">{mockKuralOfTheDay.aram_for_today_body}</p>
+          </div>
+        </div>
+      </main>
+
+      <BottomNavigation active="acts" />
+    </div>
+  );
+}
