@@ -59,6 +59,7 @@ export function EvidenceViewer({
   const [entered, setEntered] = useState(false);
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pinchStart = useRef<{ dist: number; scale: number } | null>(null);
   const panStart = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
 
@@ -166,10 +167,22 @@ export function EvidenceViewer({
     }
   }
 
-  function handleDoubleClick() {
+function handleDoubleClick() {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+    }
     if (current.kind !== "photo") return;
     setScale((s) => (s > 1 ? 1 : 2));
     setTranslate({ x: 0, y: 0 });
+  }
+
+  function handleClick() {
+    if (clickTimer.current) return;
+    clickTimer.current = setTimeout(() => {
+      setMetadataVisible((v) => !v);
+      clickTimer.current = null;
+    }, 220);
   }
 
   return (
@@ -195,7 +208,8 @@ export function EvidenceViewer({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onDoubleClick={handleDoubleClick}
+       onDoubleClick={handleDoubleClick}
+        onClick={handleClick}
       >
         <div
           className="flex h-full w-full items-center justify-center transition-transform duration-300 ease-out"
