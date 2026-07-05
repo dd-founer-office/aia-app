@@ -147,20 +147,24 @@ export const mockKuralOfTheDay: MockKuralOfTheDay = {
 };
 // -----------------------------------------------------------------------
 // Presentation-only mock data for the Acts of Aram Feed (CA-010) and the
-// minimal CA-011 Act of Aram Detail build. Act of Aram is NOT part of the
+// CA-011 Act of Aram Detail polish pass. Act of Aram is NOT part of the
 // locked six-table Sprint 1 schema (see types/index.ts header comment) --
 // this exists purely for UI and design validation while that entity
-// doesn't exist yet. Geo fields (latitude/longitude/place_name) are also
-// NOT in the locked "Act of Aram" entity (06. Data Architecture) -- added
-// here as mock-only fields per explicit direction, not a schema change.
-// Replace all of this with live queries once Act of Aram ships as a real
-// entity. Sorted newest first per CA-010 Feed Ordering Rules (Locked):
-// Publication Date, newest first.
+// doesn't exist yet. Geo fields, timeline, verification record, and
+// documents are all mock-only, added per explicit direction, not schema
+// changes. Documents contain 2 mock entries per act (explicitly approved,
+// since the "no placeholder" rule blocks fabricating real business
+// records but this is presentation-only UI validation) -- swap for real
+// file URLs once documents exist. Sorted newest first per CA-010 Feed
+// Ordering Rules (Locked): Publication Date, newest first.
 // -----------------------------------------------------------------------
 export interface MockAct {
   id: string;
   cause: string;
-  place_name: string; // town/village-level, e.g. "Keelavasal, Madurai" -- not the district
+  place_name: string;
+  town: string;
+  district: string;
+  state: string;
   latitude: number;
   longitude: number;
   impact_summary: string;
@@ -169,6 +173,16 @@ export interface MockAct {
   completed_date_iso: string;
   hero_image_url: string;
   supporting_image_urls: string[];
+  impact_bullets: string[];
+  timeline: { label: string; date: string }[];
+  verification: {
+    captured_by: string;
+    verified_by: string;
+    timestamp: string;
+    gps_verified: boolean;
+    partner_organisation: string;
+  };
+  documents: { label: string; url: string }[];
   beneficiary_count: number;
   story_situation: string;
   story_action: string;
@@ -183,9 +197,12 @@ export const mockActs: MockAct[] = [
     id: "act_1",
     cause: "Education",
     place_name: "Keelavasal, Madurai",
+    town: "Keelavasal",
+    district: "Madurai",
+    state: "Tamil Nadu",
     latitude: 9.9252,
     longitude: 78.1198,
-    impact_summary: "24 students received school kits.",
+    impact_summary: "24 Students Received School Kits",
     supporting_copy: "Every child deserves the tools to learn.",
     completed_date: "28 June 2026",
     completed_date_iso: "2026-06-28",
@@ -195,6 +212,30 @@ export const mockActs: MockAct[] = [
       "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=300&q=80",
       "https://images.unsplash.com/photo-1497486751825-1233686d5d80?w=300&q=80",
       "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=300&q=80",
+    ],
+    impact_bullets: [
+      "24 children received school kits.",
+      "1 government school supported.",
+      "5 volunteers participated.",
+    ],
+    timeline: [
+      { label: "Initiative Planned", date: "10 June 2026" },
+      { label: "Materials Prepared", date: "18 June 2026" },
+      { label: "Executed On-site", date: "26 June 2026" },
+      { label: "Evidence Captured", date: "26 June 2026" },
+      { label: "Verified", date: "27 June 2026" },
+      { label: "Published", date: "28 June 2026" },
+    ],
+    verification: {
+      captured_by: "Field Partner Team",
+      verified_by: "AiA Verification Desk",
+      timestamp: "28 June 2026, 10:42 AM",
+      gps_verified: true,
+      partner_organisation: "Vidhai Foundation",
+    },
+    documents: [
+      { label: "Tax Invoice (PDF)", url: "#" },
+      { label: "Payment Receipt (PDF)", url: "#" },
     ],
     beneficiary_count: 24,
     story_situation:
@@ -209,9 +250,12 @@ export const mockActs: MockAct[] = [
     id: "act_2",
     cause: "Environment",
     place_name: "Bhavani, Erode",
+    town: "Bhavani",
+    district: "Erode",
+    state: "Tamil Nadu",
     latitude: 11.4467,
     longitude: 77.6839,
-    impact_summary: "150 native trees were planted.",
+    impact_summary: "150 Native Trees Were Planted",
     supporting_copy: "Every tree planted today shapes tomorrow's air.",
     completed_date: "21 June 2026",
     completed_date_iso: "2026-06-21",
@@ -220,6 +264,30 @@ export const mockActs: MockAct[] = [
     supporting_image_urls: [
       "https://images.unsplash.com/photo-1444492417251-9c84a5fa18e0?w=300&q=80",
       "https://images.unsplash.com/photo-1466692476868-9ee5a3a3e93b?w=300&q=80",
+    ],
+    impact_bullets: [
+      "150 native trees were planted.",
+      "1 hillside restoration site supported.",
+      "43 contributors participated together.",
+    ],
+    timeline: [
+      { label: "Initiative Planned", date: "2 June 2026" },
+      { label: "Materials Prepared", date: "10 June 2026" },
+      { label: "Executed On-site", date: "19 June 2026" },
+      { label: "Evidence Captured", date: "19 June 2026" },
+      { label: "Verified", date: "20 June 2026" },
+      { label: "Published", date: "21 June 2026" },
+    ],
+    verification: {
+      captured_by: "Field Partner Team",
+      verified_by: "AiA Verification Desk",
+      timestamp: "21 June 2026, 9:15 AM",
+      gps_verified: true,
+      partner_organisation: "Pachai Trust",
+    },
+    documents: [
+      { label: "Tax Invoice (PDF)", url: "#" },
+      { label: "Payment Receipt (PDF)", url: "#" },
     ],
     beneficiary_count: 120,
     story_situation: "The hillside near Bhavani had lost much of its native tree cover.",
@@ -235,9 +303,12 @@ export const mockActs: MockAct[] = [
     id: "act_3",
     cause: "Annadhanam",
     place_name: "Kumbakonam, Thanjavur",
+    town: "Kumbakonam",
+    district: "Thanjavur",
+    state: "Tamil Nadu",
     latitude: 10.9601,
     longitude: 79.3788,
-    impact_summary: "200 meals were served.",
+    impact_summary: "200 Meals Were Served",
     supporting_copy: "A shared meal is Aram in its simplest form.",
     completed_date: "14 June 2026",
     completed_date_iso: "2026-06-14",
@@ -246,6 +317,30 @@ export const mockActs: MockAct[] = [
     supporting_image_urls: [
       "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&q=80",
       "https://images.unsplash.com/photo-1591189824332-83f2e5cca2e0?w=300&q=80",
+    ],
+    impact_bullets: [
+      "200 meals were served.",
+      "1 temple community supported.",
+      "8 volunteers participated.",
+    ],
+    timeline: [
+      { label: "Initiative Planned", date: "28 May 2026" },
+      { label: "Materials Prepared", date: "6 June 2026" },
+      { label: "Executed On-site", date: "13 June 2026" },
+      { label: "Evidence Captured", date: "13 June 2026" },
+      { label: "Verified", date: "14 June 2026" },
+      { label: "Published", date: "14 June 2026" },
+    ],
+    verification: {
+      captured_by: "Field Partner Team",
+      verified_by: "AiA Verification Desk",
+      timestamp: "14 June 2026, 6:30 PM",
+      gps_verified: true,
+      partner_organisation: "Annam Trust",
+    },
+    documents: [
+      { label: "Tax Invoice (PDF)", url: "#" },
+      { label: "Payment Receipt (PDF)", url: "#" },
     ],
     beneficiary_count: 200,
     story_situation: "Families near the Kumbakonam temple often go without a warm meal.",
