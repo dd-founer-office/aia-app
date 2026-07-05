@@ -4,32 +4,32 @@ import { Button } from "@/components/shared/Button";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
 
 /**
- * CA-010 -- Acts of Aram Feed.
- * Implements the approved editorial mockup exactly (Locked v1.1 direction):
- * no Featured Impact section, no cause filter chips, no subtitle -- the
- * newest completed Act leads the feed naturally. Mock data only; Supabase
- * integration is out of scope for this screen per Sprint 1 sequencing.
+ * CA-010 -- Acts of Aram Feed. Refined per "AiA Acts Feed -- Final UI
+ * Refinement" direction: hero-forward, whitespace over icons, trust
+ * discovery moved to CA-011.
  */
 export default function ActsPage() {
   const acts = getActsFeed();
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 pb-28 pt-10">
         <h1 className="text-2xl font-semibold leading-tight tracking-tight">Acts</h1>
 
         {acts.length > 0 ? (
           <>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-8">
               {acts.map((act) => (
                 <EvidenceCard
                   key={act.id}
+                  actId={act.id}
                   heroImage={act.hero_image_url}
-                  supportingImages={act.supporting_image_urls}
-                  cause={act.cause}
-                  location={act.location}
-                  impactSummary={act.impact_summary}
+                  supportingImageCount={act.supporting_image_urls.length}
+                  category={act.cause}
+                  placeName={act.place_name}
                   completedDate={act.completed_date}
+                  headline={act.impact_summary}
+                  supportingCopy={act.supporting_copy}
                   isSharedAct={act.is_shared_act}
                   contributorCount={act.contributor_count}
                 />
