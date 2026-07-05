@@ -1,169 +1,59 @@
-import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
-import {
-  mockContributor,
-  mockJourney,
-  mockLatestAct,
-  mockKuralOfTheDay,
-  getCurrentMonthParticipation,
-} from "@/lib/mock-data";
-import { STAGE_LABELS, STAGE_ORDER } from "@/types";
-import { Card } from "@/components/shared/Card";
+import { getActsFeed } from "@/lib/mock-data";
+import { EvidenceCard } from "@/components/shared/EvidenceCard";
 import { Button } from "@/components/shared/Button";
-import { Badge } from "@/components/shared/Badge";
-import { SectionHeader } from "@/components/shared/SectionHeader";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
-import { JourneyTimeline } from "@/components/home/JourneyTimeline";
 
-export default function HomePage() {
-  const stageIndex = STAGE_ORDER.indexOf(mockJourney.current_stage);
-  const nextStageName = STAGE_ORDER[stageIndex + 1];
-  const nextStage = nextStageName ? STAGE_LABELS[nextStageName] : null;
-
-  const currentParticipation = getCurrentMonthParticipation();
-  const hasParticipatedThisMonth = currentParticipation?.status === "completed";
+/**
+ * CA-010 -- Acts of Aram Feed. Refined per "AiA Acts Feed -- Final UI
+ * Refinement" direction: hero-forward, whitespace over icons, trust
+ * discovery moved to CA-011.
+ */
+export default function ActsPage() {
+  const acts = getActsFeed();
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
-        {/* Hero */}
-        <section className="flex flex-col gap-1">
-          <div className="flex items-start gap-3">
-            <PrayingHandsIcon
-              className="mt-0.5 shrink-0 text-[var(--color-primary)]"
-              style={{ height: "64px", width: "auto" }}
-            />
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-semibold leading-tight tracking-tight">
-                {"\u0BB5\u0BA3\u0B95\u0BCD\u0B95\u0BAE\u0BCD"},
-                <br />
-                {mockContributor.display_name}
-              </h1>
-              <p className="mt-1.5 text-sm text-[var(--color-muted-foreground)]">
-                {"\u0B85\u0BB1\u0BAE\u0BCD \u0B9A\u0BC6\u0BAF \u0BAA\u0BB4\u0B95\u0BC1"}
-              </p>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 pb-28 pt-10">
+        <h1 className="text-2xl font-semibold leading-tight tracking-tight">Acts</h1>
+
+        {acts.length > 0 ? (
+          <>
+            <div className="flex flex-col gap-8">
+              {acts.map((act) => (
+                <EvidenceCard
+                  key={act.id}
+                  actId={act.id}
+                  heroImage={act.hero_image_url}
+                  supportingImageCount={act.supporting_image_urls.length}
+                  category={act.cause}
+                  placeName={act.place_name}
+                  completedDate={act.completed_date}
+                  headline={act.impact_summary}
+                  supportingCopy={act.supporting_copy}
+                  isSharedAct={act.is_shared_act}
+                  contributorCount={act.contributor_count}
+                />
+              ))}
             </div>
-          </div>
-          <div className="mt-4">
-            <JourneyTimeline currentStage={mockJourney.current_stage} />
-          </div>
-          <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">
-            You&apos;ve shown up for {mockJourney.continuity_month_count} months in a row.
-            {nextStage ? ` Keep going to grow toward ${nextStage.en}.` : ""}
-          </p>
-        </section>
-
-        {/* Next Action */}
-        <Card className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <p className="text-lg font-semibold leading-snug">
-              {hasParticipatedThisMonth
-                ? "You're continuing to show up."
-                : "Your next Act of Aram is waiting."}
-            </p>
+            <Button variant="secondary" className="self-center">
+              View More Acts
+            </Button>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-2 pt-16 text-center">
+            <p className="text-base font-medium">Verified Acts of Aram will appear here.</p>
             <p className="text-sm text-[var(--color-muted-foreground)]">
-              {hasParticipatedThisMonth
-                ? "Your next opportunity to practice Aram will appear here soon."
-                : "Continue your journey by participating in an Act of Aram this month."}
+              As Acts are completed and documented, they will become part of this growing record
+              of Aram.
             </p>
+            <Button variant="text" className="mt-2">
+              Begin an Act of Aram →
+            </Button>
           </div>
-          <Button className="w-full">Begin Your Next Act</Button>
-        </Card>
-
-        {/* Your Latest Act of Aram -- Evidence Card. mockLatestAct is
-            temporary presentation-only mock data (see lib/mock-data.ts);
-            Act of Aram is not a table in the locked Sprint 1 schema. Swap
-            the ternary's truthy branch for a live query when the real
-            entity ships -- the empty-state branch is left in place for
-            that day. */}
-        <Card className="flex flex-col gap-4">
-          <SectionHeader title="Your Latest Act of Aram" />
-          {mockLatestAct ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={mockLatestAct.hero_image_url}
-                alt={`${mockLatestAct.cause} Act of Aram`}
-                className="-mx-5 h-44 w-full rounded-[var(--radius-card)] object-cover"
-              />
-              <div className="flex flex-col gap-1">
-                <p className="text-lg font-semibold leading-snug">{mockLatestAct.cause}</p>
-                <p className="text-sm text-[var(--color-muted-foreground)]">
-                  {mockLatestAct.location}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge status="verified" label="Verified" />
-                <Badge status="verified" label="Executed" />
-                <Badge status="verified" label="Documented" />
-              </div>
-              <p className="text-sm text-[var(--color-foreground)]">
-                {mockLatestAct.impact_summary}
-              </p>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[var(--color-muted-foreground)]">
-                  {mockLatestAct.completed_date}
-                </p>
-                <Button variant="text">View Act →</Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[var(--radius-card)] bg-[var(--color-skeleton)]">
-                <span className="text-sm text-[var(--color-muted-foreground)]">No image yet</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <p className="text-base font-medium">
-                  Your first verified Act of Aram will appear here.
-                </p>
-                <p className="text-sm text-[var(--color-muted-foreground)]">
-                  Once your first Act is completed, you&apos;ll see photos, impact details and
-                  verification here.
-                </p>
-              </div>
-              <Button variant="text" className="self-start">
-                Begin an Act of Aram
-              </Button>
-            </>
-          )}
-        </Card>
-
-        {/* Shared Acts of Aram -- no backing entity in Sprint 1 schema; empty state */}
-        <Card className="flex flex-col gap-2">
-          <SectionHeader title="Shared Acts of Aram" />
-          <p className="text-sm text-[var(--color-muted-foreground)]">
-            When your participation joins others toward the same Act of Aram, it will be shown
-            here.
-          </p>
-        </Card>
-
-        {/* குறள் கூறும் அறம் -- Kural Koorum Aram. mockKuralOfTheDay is
-            temporary presentation-only mock data mirroring the future
-            Founder Intelligence knowledge-engine record shape (FI-DB-003,
-            KKA-001). Swap for a live query when that engine is connected;
-            no UI change should be needed. */}
-        <Card className="flex flex-col gap-5">
-          <SectionHeader title={"\u0B95\u0BC1\u0BB1\u0BB3\u0BCD \u0B95\u0BC2\u0BB1\u0BC1\u0BAE\u0BCD \u0B85\u0BB1\u0BAE\u0BCD"} />
-          <p className="font-tamil-serif whitespace-pre-line py-2 text-center text-2xl leading-relaxed text-[var(--color-foreground)]">
-            {mockKuralOfTheDay.kural_tamil}
-          </p>
-          <p className="text-sm leading-relaxed text-[var(--color-foreground)]">
-            {mockKuralOfTheDay.core_principle}
-          </p>
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium text-[var(--color-foreground)]">
-              {mockKuralOfTheDay.aram_for_today_title}
-            </p>
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              {mockKuralOfTheDay.aram_for_today_body}
-            </p>
-          </div>
-          <Button variant="text" className="self-start">
-            Practice this Kural →
-          </Button>
-        </Card>
+        )}
       </main>
 
-      <BottomNavigation active="home" />
+      <BottomNavigation active="acts" />
     </div>
   );
 }
