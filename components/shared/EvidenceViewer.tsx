@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, MapPin, Play } from "lucide-react";
+import { X, MapPin, Play, ChevronLeft, ChevronRight } from "lucide-react";
 
 export type EvidenceMediaKind = "photo" | "video";
 
@@ -244,6 +244,28 @@ export function EvidenceViewer({
             </button>
           )}
         </div>
+        {index > 0 && (
+          <button
+            type="button"
+            onClick={() => setIndex((i) => Math.max(i - 1, 0))}
+            className="absolute left-2 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-white [@media(hover:hover)]:flex"
+            style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+            aria-label="Previous evidence"
+          >
+            <ChevronLeft size={22} />
+          </button>
+        )}
+        {index < media.length - 1 && (
+          <button
+            type="button"
+            onClick={() => setIndex((i) => Math.min(i + 1, media.length - 1))}
+            className="absolute right-2 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-white [@media(hover:hover)]:flex"
+            style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+            aria-label="Next evidence"
+          >
+            <ChevronRight size={22} />
+          </button>
+        )}
 
         {metadataVisible && (
           <button
