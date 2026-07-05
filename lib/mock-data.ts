@@ -218,13 +218,12 @@ export const mockActs: MockAct[] = [
       "1 government school supported.",
       "5 volunteers participated.",
     ],
-    timeline: [
-      { label: "Initiative Planned", date: "10 June 2026" },
-      { label: "Materials Prepared", date: "18 June 2026" },
-      { label: "Executed On-site", date: "26 June 2026" },
-      { label: "Evidence Captured", date: "26 June 2026" },
-      { label: "Verified", date: "27 June 2026" },
-      { label: "Published", date: "28 June 2026" },
+  timeline: [
+      { label: "Planned", date: "10 Jun 2026", description: "Initiative approved by AiA" },
+      { label: "Prepared", date: "18 Jun 2026", description: "Materials arranged" },
+      { label: "Executed", date: "26 Jun 2026", description: "Act completed successfully on site" },
+      { label: "Verified", date: "27 Jun 2026", description: "Evidence reviewed and GPS verified" },
+      { label: "Published", date: "28 Jun 2026", description: "Officially published in AiA" },
     ],
     verification: {
       captured_by: "Field Partner Team",
@@ -270,13 +269,12 @@ export const mockActs: MockAct[] = [
       "1 hillside restoration site supported.",
       "43 contributors participated together.",
     ],
-    timeline: [
-      { label: "Initiative Planned", date: "2 June 2026" },
-      { label: "Materials Prepared", date: "10 June 2026" },
-      { label: "Executed On-site", date: "19 June 2026" },
-      { label: "Evidence Captured", date: "19 June 2026" },
-      { label: "Verified", date: "20 June 2026" },
-      { label: "Published", date: "21 June 2026" },
+ timeline: [
+      { label: "Planned", date: "2 Jun 2026", description: "Initiative approved by AiA" },
+      { label: "Prepared", date: "10 Jun 2026", description: "Materials arranged" },
+      { label: "Executed", date: "19 Jun 2026", description: "Act completed successfully on site" },
+      { label: "Verified", date: "20 Jun 2026", description: "Evidence reviewed and GPS verified" },
+      { label: "Published", date: "21 Jun 2026", description: "Officially published in AiA" },
     ],
     verification: {
       captured_by: "Field Partner Team",
@@ -323,13 +321,12 @@ export const mockActs: MockAct[] = [
       "1 temple community supported.",
       "8 volunteers participated.",
     ],
-    timeline: [
-      { label: "Initiative Planned", date: "28 May 2026" },
-      { label: "Materials Prepared", date: "6 June 2026" },
-      { label: "Executed On-site", date: "13 June 2026" },
-      { label: "Evidence Captured", date: "13 June 2026" },
-      { label: "Verified", date: "14 June 2026" },
-      { label: "Published", date: "14 June 2026" },
+timeline: [
+      { label: "Planned", date: "28 May 2026", description: "Initiative approved by AiA" },
+      { label: "Prepared", date: "6 Jun 2026", description: "Materials arranged" },
+      { label: "Executed", date: "13 Jun 2026", description: "Act completed successfully on site" },
+      { label: "Verified", date: "14 Jun 2026", description: "Evidence reviewed and GPS verified" },
+      { label: "Published", date: "14 Jun 2026", description: "Officially published in AiA" },
     ],
     verification: {
       captured_by: "Field Partner Team",
