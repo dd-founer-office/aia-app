@@ -15,48 +15,46 @@ export interface BottomNavigationProps {
   active: NavTab;
 }
 
-const LEFT_TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
+const TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
   { id: "home", Icon: HomeIcon, href: "/" },
   { id: "acts", Icon: LayoutList, href: "/acts" },
-];
-
-const RIGHT_TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
+  { id: "practice", Icon: HomeIcon, href: "/practice" }, // rendered separately as the floating button
   { id: "heritage", Icon: InfinityIcon, href: "/heritage" },
   { id: "profile", Icon: UserIcon, href: null },
 ];
 
 /**
  * Sprint 5.2 — Shell UI exploration branch (UI-only, reversible).
- * Docked (non-floating) notched bottom bar. Only the center Practice
- * button floats, seated in a cutout carved into the bar's top edge.
+ * Docked (non-floating) notched bottom bar with a true 5-column grid so
+ * icon spacing is symmetric. Only the center Practice button floats,
+ * seated in a cutout carved into the bar's top edge.
  * NOTE: no-label treatment still deviates from Visual Constitution §9
  * ("Labels always visible") — flagged previously, proceeding per
  * explicit direction.
  */
 export function BottomNavigation({ active }: BottomNavigationProps) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 flex justify-center bg-[var(--color-card)] pb-[env(safe-area-inset-bottom)]">
+    // Transparent wrapper — critical so the SVG notch cutout actually
+    // reveals the page background instead of matching card-white.
+    <nav className="fixed inset-x-0 bottom-0 z-50 flex justify-center bg-transparent pb-[env(safe-area-inset-bottom)]">
       <div className="relative w-full max-w-md">
         {/* Notched bar background */}
         <svg viewBox="0 0 400 64" preserveAspectRatio="none" className="block h-16 w-full">
           <path
-            d="M0 20 C0 8.954 8.954 0 20 0 H160 C170 0 172 24 200 24 C228 24 230 0 240 0 H380 C391.046 0 400 8.954 400 20 V64 H0 V20 Z"
+            d="M0 20 C0 8.954 8.954 0 20 0 H150 C165 0 168 26 200 26 C232 26 235 0 250 0 H380 C391.046 0 400 8.954 400 20 V64 H0 V20 Z"
             fill="var(--color-card)"
           />
         </svg>
 
-        {/* Side icons */}
-        <div className="absolute inset-0 flex items-end justify-between px-8 pb-3">
-          <div className="flex items-end gap-8">
-            {LEFT_TABS.map(({ id, Icon, href }) => (
+        {/* Icon row — true 5-column grid, center column reserved for notch */}
+        <div className="absolute inset-x-0 bottom-3 grid grid-cols-5 items-end px-2">
+          {TABS.map(({ id, Icon, href }) =>
+            id === "practice" ? (
+              <div key={id} />
+            ) : (
               <NavItem key={id} id={id} Icon={Icon} href={href} isActive={id === active} />
-            ))}
-          </div>
-          <div className="flex items-end gap-8">
-            {RIGHT_TABS.map(({ id, Icon, href }) => (
-              <NavItem key={id} id={id} Icon={Icon} href={href} isActive={id === active} />
-            ))}
-          </div>
+            )
+          )}
         </div>
 
         {/* Floating center button — Practice */}
@@ -105,10 +103,12 @@ function NavItem({
     </div>
   );
   return href ? (
-    <Link href={href} aria-label={id}>
+    <Link href={href} aria-label={id} className="flex justify-center">
       {content}
     </Link>
   ) : (
-    <div aria-disabled="true">{content}</div>
+    <div aria-disabled="true" className="flex justify-center">
+      {content}
+    </div>
   );
 }
