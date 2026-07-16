@@ -79,7 +79,7 @@ export function BottomNavigation({ active }: BottomNavigationProps) {
           <img
             src="/brand/aia-kolam-mark.png"
             alt="AiA"
-            className="h-[80%] w-[80%]"
+            className="h-[50%] w-[50%]"
             style={{ filter: "brightness(0) invert(1)" }}
           />
         </Link>
