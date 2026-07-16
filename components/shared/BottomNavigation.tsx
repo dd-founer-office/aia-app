@@ -38,13 +38,16 @@ export function BottomNavigation({ active }: BottomNavigationProps) {
     // reveals the page background instead of matching card-white.
     <nav className="fixed inset-x-0 bottom-0 z-50 flex justify-center bg-transparent pb-[env(safe-area-inset-bottom)]">
       <div className="relative w-full max-w-md">
-       {/* Notched bar background — true semicircular arc, radius-matched
-            to the floating button (32px radius + 6px moat = 38px) so the
-            gap around the button is even on every side, not just angled
-            cuts on the two sides. */}
+       {/* Notched bar background — smooth scalloped cutout built from
+            two mirrored cubic Béziers (not a true arc). A circular arc's
+            tangent is vertical where it meets the flat edge, which reads
+            as a visible kink; these Béziers are tuned for horizontal
+            tangent at both the flat-edge junctions and the bottom-center
+            join, giving one continuous flowing curve around the button,
+            matching the reference exactly. */}
         <svg viewBox="0 0 400 64" preserveAspectRatio="none" className="block h-16 w-full">
           <path
-            d="M0 20 C0 8.954 8.954 0 20 0 H162 A38 38 0 0 1 238 0 H380 C391.046 0 400 8.954 400 20 V64 H0 V20 Z"
+            d="M0 20 C0 8.954 8.954 0 20 0 H162 C182 0 180 38 200 38 C220 38 218 0 238 0 H380 C391.046 0 400 8.954 400 20 V64 H0 V20 Z"
             fill="var(--color-card)"
           />
         </svg>
