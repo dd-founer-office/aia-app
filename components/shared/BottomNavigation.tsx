@@ -69,7 +69,7 @@ export function BottomNavigation({ active }: BottomNavigationProps) {
           style={{
             left: "50%",
             top: "36%",
-            width: "17.78%",
+            width: "14.22%",
             aspectRatio: "1 / 1",
             transform: "translate(-50%, -50%)",
             boxShadow: "0 3px 8px rgba(0,0,0,0.18)",
