@@ -60,7 +60,7 @@ export function BottomNavigation({ active }: BottomNavigationProps) {
           href="/practice"
           aria-label="practice"
           className="absolute left-1/2 top-9 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--color-primary)] transition-transform duration-[180ms] ease-out active:scale-90"
-          style={{ boxShadow: "0 6px 16px rgba(0,0,0,0.20)" }}
+          style={{ boxShadow: "0 3px 8px rgba(0,0,0,0.18)" }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
