@@ -360,3 +360,62 @@ export function getActsFeed(): MockAct[] {
 export function getActById(id: string): MockAct | undefined {
   return mockActs.find((act) => act.id === id);
 }
+
+// -----------------------------------------------------------------------
+// Presentation-only mock data for CA-013 Profile. Two fields below are
+// NOT part of the locked six-table Sprint 1 schema and have no home yet:
+//   - country: Profile Header (Locked) requires a "Country" display; the
+//     `users` table has no country column. Flagging for Sprint 1 schema
+//     review -- likely a `users.country` addition.
+//   - longest_continuity_month_count / published_acts_count: both require
+//     the Continuity Engine and a real Act of Aram entity, neither of
+//     which exist yet (Sprint 1 backend not started). Mocked here only so
+//     Participation Summary can be visually validated; replace with real
+//     queries once the Continuity Engine + Act of Aram ship.
+// -----------------------------------------------------------------------
+export interface MockProfileMeta {
+  country: string;
+  longest_continuity_month_count: number;
+  published_acts_count: number;
+}
+
+export const mockProfileMeta: MockProfileMeta = {
+  country: "United Arab Emirates",
+  longest_continuity_month_count: 3,
+  published_acts_count: 2,
+};
+
+// Expressions of Aram (CA-013 §4, Locked): cause distribution by
+// participation COUNT, never contribution amount.
+export function getCauseDistribution(): {
+  cause: Cause;
+  count: number;
+  percentage: number;
+}[] {
+  const total = mockParticipationCauses.length;
+  return mockCauses.map((cause) => {
+    const count = mockParticipationCauses.filter((pc) => pc.cause_id === cause.id).length;
+    return {
+      cause,
+      count,
+      percentage: total === 0 ? 0 : Math.round((count / total) * 100),
+    };
+  });
+}
+
+// Practice Snapshot "lifetime acts": count of completed participations.
+// Distinct from published_acts_count above -- this counts the
+// contributor's own participations, not published Act of Aram records.
+export function getLifetimeActsCount(): number {
+  return mockParticipations.filter((p) => p.status === "completed").length;
+}
+
+// First participation date (Participation Summary, Locked): earliest
+// completed participation's created_at, or null if the contributor has
+// never completed one (drives the CA-013 empty state).
+export function getFirstParticipationDate(): string | null {
+  const completed = mockParticipations
+    .filter((p) => p.status === "completed")
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  return completed[0]?.created_at ?? null;
+}
