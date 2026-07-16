@@ -26,29 +26,30 @@ const RIGHT_TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
 ];
 
 // True semicircle notch, center on the flat edge, radius 35 (32 button +
-// 3px gap). sweep-flag=0 is required here — sweep=1 draws the WRONG half
-// of the circle (bulges upward/fills in) rather than cutting a downward
-// notch; verified numerically before shipping this time.
+// 3px gap). sweep-flag=0 draws the correct downward cutout.
 const NOTCH_PATH =
   "M0,56 C0,44.954 8.954,36 20,36 H145 A35,35 0 0 0 215,36 H340 C351.046,36 360,44.954 360,56 V100 H0 V56 Z";
 
 /**
  * Sprint 5.2 — Shell UI exploration branch (UI-only, reversible).
- * Fixed/docked (non-floating) notched bottom bar; only the center button
- * floats, centered exactly on the flat edge with a filleted semicircular cut.
- * NOTE: no-label treatment still deviates from Visual Constitution §9
- * ("Labels always visible") — flagged previously, proceeding per
- * explicit direction.
+ * Container uses a locked CSS aspect-ratio (360:100, matching the SVG
+ * viewBox exactly) so the bar scales UNIFORMLY on every screen width —
+ * previously width="100%" + fixed height stretched the circle into an
+ * ellipse on phones wider than 360px. Button/icon positioning use
+ * percentages so they scale in lockstep with the bar, not fixed px.
  */
 export function BottomNavigation({ active }: BottomNavigationProps) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 flex justify-center bg-transparent pb-[env(safe-area-inset-bottom)]">
-      <div className="relative w-full max-w-md" style={{ height: 100 }}>
-        <svg width="100%" height="100" viewBox="0 0 360 100" preserveAspectRatio="none" className="absolute inset-0 block">
+      <div className="relative w-full max-w-md" style={{ aspectRatio: "360 / 100" }}>
+        <svg width="100%" height="100%" viewBox="0 0 360 100" className="absolute inset-0 block">
           <path d={NOTCH_PATH} fill="var(--color-card)" />
         </svg>
 
-        <div className="absolute inset-x-0 bottom-[14px] grid grid-cols-5 items-end px-2">
+        <div
+          className="absolute inset-x-0 grid grid-cols-5 items-end px-2"
+          style={{ bottom: "14%" }}
+        >
           {LEFT_TABS.map(({ id, Icon, href }) => (
             <NavItem key={id} id={id} Icon={Icon} href={href} isActive={id === active} />
           ))}
@@ -61,14 +62,21 @@ export function BottomNavigation({ active }: BottomNavigationProps) {
         <Link
           href="/practice"
           aria-label="practice"
-          className="absolute left-1/2 top-9 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--color-primary)] transition-transform duration-[180ms] ease-out active:scale-90"
-          style={{ boxShadow: "0 3px 8px rgba(0,0,0,0.18)" }}
+          className="absolute flex items-center justify-center rounded-full bg-[var(--color-primary)] transition-transform duration-[180ms] ease-out active:scale-90"
+          style={{
+            left: "50%",
+            top: "36%",
+            width: "17.78%",
+            aspectRatio: "1 / 1",
+            transform: "translate(-50%, -50%)",
+            boxShadow: "0 3px 8px rgba(0,0,0,0.18)",
+          }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/brand/aia-kolam-mark.png"
             alt="AiA"
-            className="h-8 w-8"
+            className="h-[40%] w-[40%]"
             style={{ filter: "brightness(0) invert(1)" }}
           />
         </Link>
