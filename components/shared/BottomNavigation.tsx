@@ -25,12 +25,12 @@ const RIGHT_TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
   { id: "profile", Icon: UserIcon, href: null },
 ];
 
-// True semicircle notch (radius 35 = 32 button + 3px stable gap) with a
-// small 6px fillet at each junction so the flat-edge-to-arc transition is
-// mathematically tangent (no hard corner), computed via exact circle
-// tangency geometry.
+// True semicircle notch, center on the flat edge, radius 35 (32 button +
+// 3px gap). sweep-flag=0 is required here — sweep=1 draws the WRONG half
+// of the circle (bulges upward/fills in) rather than cutting a downward
+// notch; verified numerically before shipping this time.
 const NOTCH_PATH =
-  "M0,56 C0,44.954 8.954,36 20,36 H139.44 A6,6 0 0 1 145.38,30.88 A35,35 0 0 1 214.62,30.88 A6,6 0 0 1 220.56,36 H340 C351.046,36 360,44.954 360,56 V100 H0 V56 Z";
+  "M0,56 C0,44.954 8.954,36 20,36 H145 A35,35 0 0 0 215,36 H340 C351.046,36 360,44.954 360,56 V100 H0 V56 Z";
 
 /**
  * Sprint 5.2 — Shell UI exploration branch (UI-only, reversible).
