@@ -22,7 +22,7 @@ const LEFT_TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
 
 const RIGHT_TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
   { id: "heritage", Icon: InfinityIcon, href: "/heritage" },
-  { id: "profile", Icon: UserIcon, href: null },
+  { id: "profile", Icon: UserIcon, href: "/profile" },
 ];
 
 // Main notch: radius 35 (32 button + 3px gap), locked, unchanged.
