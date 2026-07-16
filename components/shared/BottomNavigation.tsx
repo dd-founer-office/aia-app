@@ -26,7 +26,7 @@ const RIGHT_TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
 ];
 
 // True semicircle notch: button (r=32) centered exactly on the bar's flat
-// edge, cut radius 34 (gap halved to 2px). Single SVG arc command.
+// edge, cut radius 32 (gap halved to 2px). Single SVG arc command.
 const NOTCH_PATH =
   "M0,56 C0,44.954 8.954,36 20,36 H147 A33,33 0 0 1 213,36 H340 C351.046,36 360,44.954 360,56 V100 H0 V56 Z";
 
