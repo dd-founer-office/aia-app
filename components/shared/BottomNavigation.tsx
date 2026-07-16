@@ -25,15 +25,17 @@ const RIGHT_TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
   { id: "profile", Icon: UserIcon, href: null },
 ];
 
-// True semicircle notch: button (r=32) centered exactly on the bar's flat
-// edge, cut radius 32 (gap halved to 2px). Single SVG arc command.
+// True semicircle notch (radius 35 = 32 button + 3px stable gap) with a
+// small 6px fillet at each junction so the flat-edge-to-arc transition is
+// mathematically tangent (no hard corner), computed via exact circle
+// tangency geometry.
 const NOTCH_PATH =
-  "M0,56 C0,44.954 8.954,36 20,36 H147 A33,33 0 0 1 213,36 H340 C351.046,36 360,44.954 360,56 V100 H0 V56 Z";
+  "M0,56 C0,44.954 8.954,36 20,36 H139.44 A6,6 0 0 1 145.38,30.88 A35,35 0 0 1 214.62,30.88 A6,6 0 0 1 220.56,36 H340 C351.046,36 360,44.954 360,56 V100 H0 V56 Z";
 
 /**
  * Sprint 5.2 — Shell UI exploration branch (UI-only, reversible).
  * Fixed/docked (non-floating) notched bottom bar; only the center button
- * floats, centered exactly on the flat edge with a true semicircular cut.
+ * floats, centered exactly on the flat edge with a filleted semicircular cut.
  * NOTE: no-label treatment still deviates from Visual Constitution §9
  * ("Labels always visible") — flagged previously, proceeding per
  * explicit direction.
@@ -91,3 +93,18 @@ function NavItem({
       <Icon
         size={22}
         strokeWidth={2}
+        className={isActive ? "text-[var(--color-primary)]" : "text-[var(--color-inactive)]"}
+      />
+      <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-[var(--color-primary)]" : "bg-transparent"}`} />
+    </div>
+  );
+  return href ? (
+    <Link href={href} aria-label={id} className="flex justify-center">
+      {content}
+    </Link>
+  ) : (
+    <div aria-disabled="true" className="flex justify-center">
+      {content}
+    </div>
+  );
+}
