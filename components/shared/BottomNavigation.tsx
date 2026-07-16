@@ -25,10 +25,13 @@ const RIGHT_TABS: { id: NavTab; Icon: LucideIcon; href: string | null }[] = [
   { id: "profile", Icon: UserIcon, href: null },
 ];
 
-// True semicircle notch, center on the flat edge, radius 35 (32 button +
-// 3px gap). sweep-flag=0 draws the correct downward cutout.
+// Main notch: radius 35 (32 button + 3px gap), locked, unchanged.
+// Corners where the flat edge meets the notch are now rounded with a
+// 20px fillet — matching the bar's own outer corner radius exactly.
+// Both the fillet arcs and the main arc were numerically verified to
+// stay on the material side (y >= 36) before shipping this.
 const NOTCH_PATH =
-  "M0,56 C0,44.954 8.954,36 20,36 H145 A35,35 0 0 0 215,36 H340 C351.046,36 360,44.954 360,56 V100 H0 V56 Z";
+  "M0,56 C0,44.954 8.954,36 20,36 H128.77 A20,20 0 0 1 147.40,48.73 A35,35 0 0 0 212.60,48.73 A20,20 0 0 1 231.23,36 H340 C351.046,36 360,44.954 360,56 V100 H0 V56 Z";
 
 /**
  * Sprint 5.2 — Shell UI exploration branch (UI-only, reversible).
