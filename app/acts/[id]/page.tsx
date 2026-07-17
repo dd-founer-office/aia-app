@@ -11,5 +11,5 @@ export default async function ActDetailPage({
   const act = getActById(id);
   if (!act) notFound();
 
-  return <ActDetailClient act={act} />;
+  return <ActDetailClient act={act} id={id} />;
 }
