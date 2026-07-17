@@ -1,35 +1,58 @@
 @import "tailwindcss";
 
+/*
+AiA Design Tokens — LOCKED v1
+Source of truth: AiA-Design-System-v1-LOCKED.md
+All values below are final, approved decisions — not provisional.
+*/
 :root {
-  /* AiA Visual Constitution v1.0 — locked design tokens */
-  --color-aia-primary: #2f6b4f; /* Forest green — success / primary CTA */
-  --color-aia-background: #f7f3ec; /* Warm off-white */
-  --color-aia-card: #ffffff;
-  --color-aia-border: #e3dccd; /* Warm light gray */
-  --color-aia-text-primary: #1f2420;
-  --color-aia-text-secondary: #5b6660;
-  --color-aia-text-muted: #8b9088;
-  --color-aia-amber: #b5772e; /* Pending / validation tone — never "error red" for an incomplete choice */
+  --color-background: #F7F3EC;
+  --color-card: #FFFFFF;
+  --color-border: #E3DCCD;
+  --color-foreground: #2B2A26;
+  --color-muted-foreground: #8A8678;
 
-  --font-display: var(--font-dm-serif-display);
-  --font-body: var(--font-dm-sans);
+  --color-primary: #2F6B4F;
+  --color-primary-dark: #1F4D38;
+  --color-primary-foreground: #FFFFFF;
+
+  --color-success: #2F6B4F;
+  --color-pending: #B8862A;
+  --color-error: #B3433B;
+  --color-inactive: #8A8678;
+
+  --color-badge-verified-bg: #EAF1EC;
+  --color-badge-pending-bg: #F6ECDC;
+  --color-badge-error-bg: #F4E4E2;
+  --color-badge-inactive-bg: #EFEDE6;
+
+  --color-skeleton: #EDE8DD;
+  --color-photo-placeholder: #D9D4C6;
+
+  --radius-card: 16px;
+  --radius-button: 10px;
+  --radius-photo: 12px;
 }
 
 @theme inline {
-  --color-background: var(--color-aia-background);
-  --color-foreground: var(--color-aia-text-primary);
-  --color-primary: var(--color-aia-primary);
-  --color-card: var(--color-aia-card);
-  --color-border: var(--color-aia-border);
-  --color-text-secondary: var(--color-aia-text-secondary);
-  --color-text-muted: var(--color-aia-text-muted);
-  --color-amber: var(--color-aia-amber);
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
 }
 
 body {
-  background: var(--color-aia-background);
-  color: var(--color-aia-text-primary);
-  font-family: var(--font-body), sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), serif;
+}
+
+.font-tamil-sans {
+  font-family: var(--font-tamil-sans), sans-serif;
+}
+
+.font-tamil-serif {
+  font-family: var(--font-tamil-serif), serif;
 }
