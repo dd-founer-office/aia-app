@@ -1,25 +1,34 @@
 import type { Metadata } from "next";
-import { DM_Serif_Display, DM_Sans } from "next/font/google";
+import { DM_Serif_Display, DM_Sans, Noto_Serif_Tamil, Noto_Sans_Tamil } from "next/font/google";
 import "./globals.css";
 
-// AiA Frontend Architecture v1.0 §"Fonts": DM Serif Display (display/wordmark)
-// + DM Sans (body/UI). Tamil variants (Noto Serif/Sans Tamil) are wired the
-// same way when Tamil-script content is present; omitted here since this
-// screen's locked copy is English-only (CA-014A).
 const dmSerifDisplay = DM_Serif_Display({
-  variable: "--font-dm-serif-display",
-  weight: "400",
   subsets: ["latin"],
+  weight: "400",
+  variable: "--font-display",
 });
 
 const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-sans",
+});
+
+const notoSerifTamil = Noto_Serif_Tamil({
+  subsets: ["tamil"],
+  weight: "400",
+  variable: "--font-tamil-serif",
+});
+
+const notoSansTamil = Noto_Sans_Tamil({
+  subsets: ["tamil"],
+  weight: ["400", "500"],
+  variable: "--font-tamil-sans",
 });
 
 export const metadata: Metadata = {
-  title: "AiA — Aram in Action",
-  description: "Help people practise Aram through verified acts of impact.",
+  title: "Aram in Action",
+  description: "Help people live Aram through verified acts of impact.",
 };
 
 export default function RootLayout({
@@ -30,11 +39,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSerifDisplay.variable} ${dmSans.variable} h-full antialiased`}
+      className={`h-full antialiased ${dmSans.variable} ${dmSerifDisplay.variable} ${notoSerifTamil.variable} ${notoSansTamil.variable}`}
     >
-      <body className="min-h-full flex flex-col bg-(--color-aia-background)">
-        {children}
-      </body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }
