@@ -1,3 +1,6 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
 import {
   mockContributor,
@@ -15,6 +18,7 @@ import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { JourneyTimeline } from "@/components/home/JourneyTimeline";
 
 export default function HomePage() {
+  const router = useRouter();
   const stageIndex = STAGE_ORDER.indexOf(mockJourney.current_stage);
   const nextStageName = STAGE_ORDER[stageIndex + 1];
   const nextStage = nextStageName ? STAGE_LABELS[nextStageName] : null;
@@ -66,7 +70,12 @@ export default function HomePage() {
                 : "Continue your journey by participating in an Act of Aram this month."}
             </p>
           </div>
-          <Button className="w-full">Begin Your Next Act</Button>
+          <Button
+            className="w-full"
+            onClick={() => router.push("/participate/causes")}
+          >
+            Begin Your Next Act
+          </Button>
         </Card>
 
         {/* Your Latest Act of Aram -- Evidence Card. mockLatestAct is
