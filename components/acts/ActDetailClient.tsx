@@ -58,7 +58,7 @@ export function ActDetailClient({ act, id }: { act: MockAct; id: string }) {
             (no overlap yet, so the full photo shows), corner-edged on
             both sides. Because the photo above is sticky, scrolling the
             page moves this sheet up and over the pinned photo. */}
-        <div className="relative z-10 flex flex-1 flex-col gap-8 rounded-t-[28px] bg-[var(--color-card)] px-5 pt-6">
+        <div className="relative z-10 flex flex-1 flex-col gap-8 rounded-t-[28px] bg-[var(--color-background)] px-5 pt-6">
           <div className="flex flex-col gap-3">
             <p className="text-xl font-semibold leading-snug">{act.impact_summary}</p>
             <ExpandableText lines={5}>
