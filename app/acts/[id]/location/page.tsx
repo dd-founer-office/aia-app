@@ -34,7 +34,7 @@ export default async function ActLocationPage({
             loading="lazy"
             title="Location map"
           />
-          
+          <a
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
