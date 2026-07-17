@@ -214,7 +214,7 @@ export function ActDetailClient({ act }: { act: MockAct }) {
               loading="lazy"
               title="Location map"
             />
-            
+            <a
               href={mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
