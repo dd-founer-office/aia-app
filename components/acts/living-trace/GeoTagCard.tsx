@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ShieldCheck, MapPin, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, User } from "lucide-react";
 import { MapEmbed } from "./MapEmbed";
 import type { EvidenceTraceItem } from "./types";
 
@@ -12,16 +12,12 @@ export interface GeoTagCardProps {
 }
 
 /**
- * Geo-tag trust card -- replaces the earlier avatar bar. Essentials
- * only, per explicit scoping discussion: map thumbnail, location, date
- * & time, GPS coordinates, captured by, verification status. Deliberately
- * excludes weather/country-flag/watermark-settings fields from the GPS
- * Map Camera reference -- those serve photo-stamp generation, not trust
- * here.
+ * Geo-tag trust card. Verified/Pending chip removed per explicit
+ * direction -- it was showing up everywhere and cluttering the view.
+ * Verification data still lives on the item for later use if needed.
  *
  * Student/Family items (privacy -- "never expose precise child
- * location") show no map thumbnail and no coordinates, matching the
- * same rule the earlier Trust Card enforced.
+ * location") show no map thumbnail and no coordinates.
  */
 export function GeoTagCard({ item, onExpand, onPrev, onNext }: GeoTagCardProps) {
   const { trust } = item;
@@ -69,27 +65,9 @@ export function GeoTagCard({ item, onExpand, onPrev, onNext }: GeoTagCardProps) 
         )}
 
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="flex items-start justify-between gap-2">
-            <p className="truncate text-sm font-semibold">
-              {isMapKind ? trust.locationLabel : trust.infoValue}
-            </p>
-            <span
-              className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-              style={{
-                color:
-                  trust.verificationStatus === "verified"
-                    ? "var(--color-success)"
-                    : "var(--color-pending)",
-                backgroundColor:
-                  trust.verificationStatus === "verified"
-                    ? "var(--color-badge-verified-bg)"
-                    : "var(--color-badge-pending-bg)",
-              }}
-            >
-              <ShieldCheck size={11} />
-              {trust.verificationStatus === "verified" ? "Verified" : "Pending"}
-            </span>
-          </div>
+          <p className="truncate text-sm font-semibold">
+            {isMapKind ? trust.locationLabel : trust.infoValue}
+          </p>
           <p className="text-xs text-[var(--color-muted-foreground)]">
             {item.captureDate} · {item.captureTime}
           </p>
