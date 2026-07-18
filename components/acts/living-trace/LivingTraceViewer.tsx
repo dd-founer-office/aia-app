@@ -13,12 +13,17 @@ const CARD_H = 420;
 const STEP_X = 190;
 const STEP_ROTATE = 14;
 
+function wrappedOffset(i: number, active: number, length: number) {
+  let diff = i - active;
+  if (diff > length / 2) diff -= length;
+  if (diff < -length / 2) diff += length;
+  return diff;
+}
+
 /**
- * 3D coverflow-style card stack, per reference image: active card
- * centered and sharp, adjacent cards receded/scaled/rotated but still
- * fully opaque (no blur/glassmorphism, per explicit direction -- the
- * Visual Constitution's "no glassmorphism" rule stays intact even
- * though the depth/perspective concept is adopted).
+ * 3D coverflow-style card stack, per reference image. Loops infinitely
+ * ("rotation basis") -- swiping/paging past either end wraps around,
+ * per explicit direction. Opaque cards only, no blur/glassmorphism.
  */
 export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
   const items = getEvidenceTrace(act.id);
@@ -30,7 +35,8 @@ export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
   const wheelLock = useRef(false);
 
   function goTo(i: number) {
-    setActiveIndex(Math.max(0, Math.min(i, items.length - 1)));
+    const n = items.length;
+    setActiveIndex(((i % n) + n) % n);
   }
 
   useEffect(() => {
@@ -91,7 +97,7 @@ export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
         onTouchEnd={handleTouchEnd}
       >
         {items.map((item, i) => {
-          const offset = i - activeIndex;
+          const offset = wrappedOffset(i, activeIndex, items.length);
           const abs = Math.abs(offset);
           if (abs > 2) return null;
           const scale = abs === 0 ? 1 : abs === 1 ? 0.85 : 0.7;
@@ -122,8 +128,6 @@ export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
         item={current}
         onPrev={() => goTo(activeIndex - 1)}
         onNext={() => goTo(activeIndex + 1)}
-        canPrev={activeIndex > 0}
-        canNext={activeIndex < items.length - 1}
         onExpand={() =>
           current.trust.lat !== undefined && current.trust.lng !== undefined
             ? setMapOpen({ lat: current.trust.lat, lng: current.trust.lng, label: current.trust.locationLabel })
