@@ -8,20 +8,14 @@ export interface AvatarBarProps {
   onExpand: () => void;
   onPrev: () => void;
   onNext: () => void;
-  canPrev: boolean;
-  canNext: boolean;
 }
 
 /**
  * Bottom "captured by" bar -- replaces the floating Trust Card per
- * explicit reference (avatar + name + prev/next in one floating
- * capsule). Solid card background, no glass/blur. Colour stays
- * status-only (the small verified check), never category, per Visual
- * Constitution §8. Center tap expands the full map for map-kind trust
- * data; disabled (no-op) for info-kind (school/support-partner privacy
- * cases), since there's no location to reveal.
+ * explicit reference. Solid card background, no glass/blur. Loops
+ * infinitely alongside the card stack, so prev/next are always active.
  */
-export function AvatarBar({ item, onExpand, onPrev, onNext, canPrev, canNext }: AvatarBarProps) {
+export function AvatarBar({ item, onExpand, onPrev, onNext }: AvatarBarProps) {
   const { trust } = item;
   const subtitle = trust.kind === "map" ? trust.locationLabel : trust.infoValue;
   const expandable = trust.kind === "map";
@@ -31,9 +25,8 @@ export function AvatarBar({ item, onExpand, onPrev, onNext, canPrev, canNext }: 
       <button
         type="button"
         onClick={onPrev}
-        disabled={!canPrev}
         aria-label="Previous evidence"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] disabled:opacity-30"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)]"
       >
         <ChevronLeft size={16} />
       </button>
@@ -63,9 +56,8 @@ export function AvatarBar({ item, onExpand, onPrev, onNext, canPrev, canNext }: 
       <button
         type="button"
         onClick={onNext}
-        disabled={!canNext}
         aria-label="Next evidence"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] disabled:opacity-30"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)]"
       >
         <ChevronRight size={16} />
       </button>
