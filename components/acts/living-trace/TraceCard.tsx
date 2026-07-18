@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCw, ShieldCheck, User, Smartphone, MapPin, Maximize2, Play } from "lucide-react";
+import { RotateCw, User, Smartphone, MapPin, Maximize2, Play } from "lucide-react";
 import type { EvidenceTraceItem } from "./types";
 
 export interface TraceCardProps {
@@ -11,13 +11,11 @@ export interface TraceCardProps {
 }
 
 /**
- * Two-sided Evidence Card (Living Trace Constitution §2). Front restyled
- * per reference: photo up top with an "Expand" pill overlay, caption
- * block below using the act's own `reflection` line as the quote (no
- * new mock field needed -- every act already carries one). Video items
- * show a play-button overlay and duration badge on the front. Solid
- * card background only -- no glass/blur. Flip still uses only the
- * approved 300ms token.
+ * Two-sided Evidence Card (Living Trace Constitution §2). Verified/
+ * Pending chip removed from the front per explicit direction -- it was
+ * showing up everywhere and cluttering the view. Verification data
+ * still lives on the item (trust.verificationStatus) for later use if
+ * needed; just no longer rendered as a badge here.
  */
 export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
   const [flipped, setFlipped] = useState(false);
@@ -65,13 +63,6 @@ export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
             >
               <Maximize2 size={12} />
               Expand
-            </span>
-            <span
-              className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full px-2 py-1 text-xs text-white"
-              style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
-            >
-              <ShieldCheck size={12} />
-              {item.trust.verificationStatus === "verified" ? "Verified" : "Pending"}
             </span>
             {item.mediaKind === "video" && item.durationLabel && (
               <span
