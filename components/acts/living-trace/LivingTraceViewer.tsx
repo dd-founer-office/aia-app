@@ -1,62 +1,74 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { MockAct } from "@/lib/mock-data";
 import { getEvidenceTrace } from "@/lib/living-trace-mock";
 import { TraceCard } from "./TraceCard";
-import { TrustCard } from "./TrustCard";
+import { AvatarBar } from "./AvatarBar";
 import { FullPhotoViewer } from "./FullPhotoViewer";
 import { FullMapView } from "./FullMapView";
 
+const CARD_W = 248;
+const CARD_H = 420;
+const STEP_X = 190;
+const STEP_ROTATE = 14;
+
+/**
+ * 3D coverflow-style card stack, per reference image: active card
+ * centered and sharp, adjacent cards receded/scaled/rotated but still
+ * fully opaque (no blur/glassmorphism, per explicit direction -- the
+ * Visual Constitution's "no glassmorphism" rule stays intact even
+ * though the depth/perspective concept is adopted).
+ */
 export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
   const items = getEvidenceTrace(act.id);
   const [activeIndex, setActiveIndex] = useState(0);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState<{ lat: number; lng: number; label: string } | null>(null);
 
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const wheelLock = useRef(false);
 
-  // Card Stack navigation (Living Trace Constitution -- horizontally
-  // navigated collection, active card centered, adjacent cards peek).
-  // Implemented on native CSS scroll-snap: swipe, trackpad, and
-  // arrow-key nav all work through the browser's own scroll handling,
-  // rather than hand-rolled transform math -- a documented adaptation
-  // since the Visual Constitution's motion tokens don't cover native
-  // scroll physics.
-  function scrollToIndex(i: number) {
-    const clamped = Math.max(0, Math.min(i, items.length - 1));
-    cardRefs.current[clamped]?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-    setActiveIndex(clamped);
+  function goTo(i: number) {
+    setActiveIndex(Math.max(0, Math.min(i, items.length - 1)));
   }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (photoOpen || mapOpen) return;
-      if (e.key === "ArrowLeft") scrollToIndex(activeIndex - 1);
-      if (e.key === "ArrowRight") scrollToIndex(activeIndex + 1);
+      if (e.key === "ArrowLeft") goTo(activeIndex - 1);
+      if (e.key === "ArrowRight") goTo(activeIndex + 1);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, photoOpen, mapOpen]);
 
-  function handleScroll() {
-    const track = trackRef.current;
-    if (!track) return;
-    const center = track.scrollLeft + track.clientWidth / 2;
-    let closest = 0;
-    let closestDist = Infinity;
-    cardRefs.current.forEach((el, i) => {
-      if (!el) return;
-      const dist = Math.abs(el.offsetLeft + el.clientWidth / 2 - center);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closest = i;
-      }
-    });
-    setActiveIndex(closest);
+  function handleWheel(e: React.WheelEvent) {
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return;
+    if (wheelLock.current) return;
+    if (e.deltaX > 20) {
+      goTo(activeIndex + 1);
+      wheelLock.current = true;
+      setTimeout(() => (wheelLock.current = false), 350);
+    } else if (e.deltaX < -20) {
+      goTo(activeIndex - 1);
+      wheelLock.current = true;
+      setTimeout(() => (wheelLock.current = false), 350);
+    }
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (!touchStart.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.current.x;
+    touchStart.current = null;
+    if (dx < -50) goTo(activeIndex + 1);
+    else if (dx > 50) goTo(activeIndex - 1);
   }
 
   if (items.length === 0) {
@@ -67,58 +79,68 @@ export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
     );
   }
 
+  const current = items[activeIndex];
+
   return (
-    <div className="flex flex-col gap-3 pt-6">
-      <div className="flex items-center justify-between px-5">
-        <span className="text-sm text-[var(--color-muted-foreground)]" aria-live="polite">
-          {activeIndex + 1} / {items.length}
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => scrollToIndex(activeIndex - 1)}
-            disabled={activeIndex === 0}
-            aria-label="Previous evidence"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-border)] disabled:opacity-30"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollToIndex(activeIndex + 1)}
-            disabled={activeIndex === items.length - 1}
-            aria-label="Next evidence"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-border)] disabled:opacity-30"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
+    <div className="flex flex-col gap-5 pt-6">
+      <div
+        className="relative mx-auto w-full"
+        style={{ height: CARD_H, perspective: "1200px" }}
+        onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {items.map((item, i) => {
+          const offset = i - activeIndex;
+          const abs = Math.abs(offset);
+          if (abs > 2) return null;
+          const scale = abs === 0 ? 1 : abs === 1 ? 0.85 : 0.7;
+          const opacity = abs === 0 ? 1 : abs === 1 ? 0.55 : 0.28;
+          const rotate = offset === 0 ? 0 : offset > 0 ? -STEP_ROTATE : STEP_ROTATE;
+          const translateX = offset * STEP_X;
+          return (
+            <div
+              key={item.id}
+              className="absolute left-1/2 top-0 transition-all duration-300 ease-out"
+              style={{
+                width: CARD_W,
+                height: CARD_H,
+                marginLeft: -CARD_W / 2,
+                transform: `translateX(${translateX}px) scale(${scale}) rotateY(${rotate}deg)`,
+                opacity,
+                zIndex: 10 - abs,
+                pointerEvents: abs === 0 ? "auto" : "none",
+              }}
+            >
+              <TraceCard item={item} reflection={act.reflection} onOpenPhoto={() => setPhotoOpen(true)} />
+            </div>
+          );
+        })}
       </div>
 
-      <div
-        ref={trackRef}
-        onScroll={handleScroll}
-        className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-[6%] pb-2"
-      >
-        {items.map((item, i) => (
-          <div
-            key={item.id}
-            ref={(el) => {
-              cardRefs.current[i] = el;
+      <AvatarBar
+        item={current}
+        onPrev={() => goTo(activeIndex - 1)}
+        onNext={() => goTo(activeIndex + 1)}
+        canPrev={activeIndex > 0}
+        canNext={activeIndex < items.length - 1}
+        onExpand={() =>
+          current.trust.lat !== undefined && current.trust.lng !== undefined
+            ? setMapOpen({ lat: current.trust.lat, lng: current.trust.lng, label: current.trust.locationLabel })
+            : undefined
+        }
+      />
+
+      <div className="flex items-center justify-center gap-1.5">
+        {items.map((_, i) => (
+          <span
+            key={i}
+            className="h-1.5 rounded-full transition-all duration-300 ease-out"
+            style={{
+              width: i === activeIndex ? 16 : 6,
+              backgroundColor: i === activeIndex ? "var(--color-primary)" : "var(--color-border)",
             }}
-            className="w-[88%] shrink-0 snap-center transition-opacity duration-300 ease-out"
-            style={{ opacity: i === activeIndex ? 1 : 0.55 }}
-          >
-            <TraceCard item={item} onOpenPhoto={() => { setActiveIndex(i); setPhotoOpen(true); }} />
-            <TrustCard
-              item={item}
-              onExpandMap={() =>
-                item.trust.lat !== undefined && item.trust.lng !== undefined
-                  ? setMapOpen({ lat: item.trust.lat, lng: item.trust.lng, label: item.trust.locationLabel })
-                  : undefined
-              }
-            />
-          </div>
+          />
         ))}
       </div>
 
