@@ -20,11 +20,6 @@ function wrappedOffset(i: number, active: number, length: number) {
   return diff;
 }
 
-/**
- * 3D coverflow-style card stack, per reference image. Loops infinitely
- * ("rotation basis") -- swiping/paging past either end wraps around,
- * per explicit direction. Opaque cards only, no blur/glassmorphism.
- */
 export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
   const items = getEvidenceTrace(act.id);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -118,13 +113,13 @@ export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
                 pointerEvents: abs === 0 ? "auto" : "none",
               }}
             >
-              <TraceCard item={item} reflection={act.reflection} onOpenPhoto={() => setPhotoOpen(true)} />
+              <TraceCard item={item} isActive={abs === 0} onOpenPhoto={() => setPhotoOpen(true)} />
             </div>
           );
         })}
       </div>
 
-     <GeoTagCard
+      <GeoTagCard
         item={current}
         onPrev={() => goTo(activeIndex - 1)}
         onNext={() => goTo(activeIndex + 1)}
