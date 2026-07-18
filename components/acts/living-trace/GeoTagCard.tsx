@@ -12,16 +12,15 @@ export interface GeoTagCardProps {
 }
 
 /**
- * Geo-tag trust card. Verified/Pending chip removed per explicit
- * direction -- it was showing up everywhere and cluttering the view.
- * Verification data still lives on the item for later use if needed.
- *
- * Student/Family items (privacy -- "never expose precise child
- * location") show no map thumbnail and no coordinates.
+ * Geo-tag trust card. No raw lat/lng shown here either, per the same
+ * "people trust places, not coordinate strings" principle applied to
+ * the flip card -- extended here for consistency across the viewer.
  */
 export function GeoTagCard({ item, onExpand, onPrev, onNext }: GeoTagCardProps) {
   const { trust } = item;
   const isMapKind = trust.kind === "map";
+  const title = isMapKind ? item.landmark ?? trust.locationLabel : trust.infoValue;
+  const subtitle = isMapKind ? trust.locationLabel : undefined;
 
   return (
     <div className="relative mx-auto w-[88%]">
@@ -65,17 +64,11 @@ export function GeoTagCard({ item, onExpand, onPrev, onNext }: GeoTagCardProps) 
         )}
 
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <p className="truncate text-sm font-semibold">
-            {isMapKind ? trust.locationLabel : trust.infoValue}
-          </p>
+          <p className="truncate text-sm font-semibold">{title}</p>
+          {subtitle && <p className="truncate text-xs text-[var(--color-muted-foreground)]">{subtitle}</p>}
           <p className="text-xs text-[var(--color-muted-foreground)]">
             {item.captureDate} · {item.captureTime}
           </p>
-          {isMapKind && (
-            <p className="text-xs text-[var(--color-muted-foreground)]">
-              {item.gpsLat.toFixed(4)}, {item.gpsLng.toFixed(4)}
-            </p>
-          )}
           <p className="flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
             <User size={11} />
             {item.capturedBy}
