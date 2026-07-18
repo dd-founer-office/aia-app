@@ -10,46 +10,54 @@ export interface TraceCardProps {
   onOpenPhoto: () => void;
 }
 
-const HINT_KEY = "aia_living_trace_flip_hint_shown";
+const HINT_KEY = "aia_living_trace_sheet_hint_shown";
+const SHEET_COLLAPSED = 168;
+const SHEET_EXPANDED = 288;
 
 /**
- * Two-sided Evidence Card, Sprint 1A refinement.
+ * Evidence Card, Sprint 1A pull-sheet refinement. Replaces the earlier
+ * flip interaction entirely -- no rotateY, no corner affordance.
  *
- * Front answers "what moment am I witnessing" -- a momentTitle, date,
- * divider, and one factual narrative sentence. No generic "Execution
- * Evidence" label, no inspirational quote.
+ * The photo is a full-bleed background, same "pinned photo, sheet
+ * slides over it" language as CA-011 Act Detail's hero. The bottom
+ * sheet rests collapsed showing the Moment (title, date, narrative);
+ * tapping it (via a small pull-handle) expands it upward over the
+ * photo to reveal the same trimmed provenance set as before (Captured
+ * By, Location, GPS Accuracy, Approved By/On). Tap-to-toggle rather
+ * than drag, since a vertical drag would conflict with the stack's
+ * horizontal swipe navigation.
  *
- * Back answers "why should I trust this photograph" -- captured
- * date/time, captured by, a human-readable place (never raw lat/lng),
- * approved by/on. No heading, no device info.
+ * Sheet auto-collapses when the card leaves the active/center position
+ * (see effect below), so cards never carry an open sheet into the
+ * peeked side positions.
  *
- * No rotate icon anywhere. A subtle curled-corner affordance (bottom
- * right on the front, bottom left on the back) signals the card can be
- * turned over; tapping the caption/back area flips it, like a physical
- * photograph. On first use only, the corner gently lifts and settles
- * after ~1.6s of idle time to teach the interaction, using only the
- * existing 300ms motion token -- never shown again once the user flips
- * a card.
+ * First-time only: the sheet nudges up ~10px and settles after ~1.6s
+ * idle, using only the existing 300ms token -- no bounce, no pulse.
+ * Never shown again once the user opens a sheet.
  */
 export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
-  const [flipped, setFlipped] = useState(false);
-  const [hintLifted, setHintLifted] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [hintNudged, setHintNudged] = useState(false);
 
   useEffect(() => {
-    if (!isActive || flipped) return;
+    if (!isActive) setExpanded(false);
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!isActive || expanded) return;
     if (typeof window === "undefined") return;
     if (window.localStorage.getItem(HINT_KEY)) return;
 
-    const liftTimer = setTimeout(() => setHintLifted(true), 1600);
-    const settleTimer = setTimeout(() => setHintLifted(false), 2000);
+    const nudgeTimer = setTimeout(() => setHintNudged(true), 1600);
+    const settleTimer = setTimeout(() => setHintNudged(false), 2000);
     return () => {
-      clearTimeout(liftTimer);
+      clearTimeout(nudgeTimer);
       clearTimeout(settleTimer);
     };
-  }, [isActive, flipped]);
+  }, [isActive, expanded]);
 
-  function flip(next: boolean) {
-    setFlipped(next);
+  function toggleSheet() {
+    setExpanded((v) => !v);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(HINT_KEY, "1");
     }
@@ -57,140 +65,103 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
 
   const locationLine1 = item.trust.kind === "map" ? item.landmark : item.trust.infoValue;
   const locationLine2 = item.trust.kind === "map" ? item.trust.locationLabel : undefined;
+  const sheetHeight = expanded ? SHEET_EXPANDED : SHEET_COLLAPSED;
+  const nudgeOffset = hintNudged ? 10 : 0;
 
   return (
-    <div className="relative h-full w-full" style={{ perspective: "1200px" }}>
-      <div
-        className="relative h-full w-full transition-transform duration-300 ease-out"
-        style={{
-          transformStyle: "preserve-3d",
-          transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
-        }}
+    <div className="relative h-full w-full overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)]">
+      {/* Pinned photo, full-bleed background */}
+      <button
+        type="button"
+        onClick={onOpenPhoto}
+        className="absolute inset-0 z-0"
+        aria-label={item.mediaKind === "video" ? "Play evidence video" : "Open full photo"}
       >
-        {/* Front */}
-        <div
-          className="absolute inset-0 flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)]"
-          style={{ backfaceVisibility: "hidden" }}
-        >
-          <button
-            type="button"
-            onClick={onOpenPhoto}
-            className="relative h-[58%] w-full shrink-0"
-            aria-label={item.mediaKind === "video" ? "Play evidence video" : "Open full photo"}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={item.photoUrl}
-              alt={item.momentTitle}
-              className="h-full w-full object-cover"
-              draggable={false}
-            />
-            {item.mediaKind === "video" && (
-              <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-                <span
-                  className="flex h-12 w-12 items-center justify-center rounded-full"
-                  style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-                >
-                  <Play size={22} color="#fff" />
-                </span>
-              </span>
-            )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={item.photoUrl}
+          alt={item.momentTitle}
+          className="h-full w-full object-cover"
+          draggable={false}
+        />
+        {item.mediaKind === "video" && (
+          <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
             <span
-              className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-white"
-              style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+              className="flex h-12 w-12 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             >
-              <Maximize2 size={12} />
-              Expand
+              <Play size={22} color="#fff" />
             </span>
-            {item.mediaKind === "video" && item.durationLabel && (
-              <span
-                className="absolute bottom-3 right-3 rounded-md px-2 py-1 text-xs text-white"
-                style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
-              >
-                {item.durationLabel}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => flip(true)}
-            className="relative flex flex-1 flex-col gap-2 px-4 py-3 text-left"
-            aria-label="Turn photograph over"
+          </span>
+        )}
+        <span
+          className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-white"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+        >
+          <Maximize2 size={12} />
+          Expand
+        </span>
+        {item.mediaKind === "video" && item.durationLabel && (
+          <span
+            className="absolute bottom-3 right-3 rounded-md px-2 py-1 text-xs text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
           >
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-base font-semibold leading-snug">{item.momentTitle}</p>
-              <span className="shrink-0 text-xs text-[var(--color-muted-foreground)]">
-                {item.captureDate}
-              </span>
+            {item.durationLabel}
+          </span>
+        )}
+      </button>
+
+      {/* Sheet -- slides up over the pinned photo, same visual language
+          as CA-011's hero-photo-behind-sheet pattern */}
+      <button
+        type="button"
+        onClick={toggleSheet}
+        className="absolute bottom-0 left-0 right-0 z-10 flex flex-col overflow-hidden rounded-t-[28px] bg-[var(--color-card)] px-5 pb-5 pt-3 text-left transition-all duration-300 ease-out"
+        style={{ height: sheetHeight, transform: `translateY(-${nudgeOffset}px)` }}
+        aria-expanded={expanded}
+        aria-label={expanded ? "Collapse capture details" : "Reveal capture details"}
+      >
+        <span className="mx-auto mb-3 h-1 w-9 shrink-0 rounded-full bg-[var(--color-border)]" />
+
+        <div className="flex shrink-0 items-start justify-between gap-2">
+          <p className="text-base font-semibold leading-snug">{item.momentTitle}</p>
+          <span className="shrink-0 text-xs text-[var(--color-muted-foreground)]">{item.captureDate}</span>
+        </div>
+        <div className="my-2 h-px w-full shrink-0 bg-[var(--color-border)]" />
+        <p className="shrink-0 text-sm leading-relaxed text-[var(--color-foreground)]">{item.narrative}</p>
+
+        {expanded && (
+          <div className="mt-3 flex flex-col gap-3 overflow-y-auto">
+            <div className="h-px w-full bg-[var(--color-border)]" />
+            <div className="flex flex-col gap-1">
+              <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                <User size={12} /> Captured By
+              </p>
+              <p className="text-sm">{item.capturedBy}</p>
             </div>
             <div className="h-px w-full bg-[var(--color-border)]" />
-            <p className="text-sm leading-relaxed text-[var(--color-foreground)]">{item.narrative}</p>
-
-            {/* Curled corner flip affordance -- no icon, no text */}
-            <div className="pointer-events-none absolute bottom-0 right-0 h-8 w-8 overflow-hidden">
-              <div
-                className="absolute bottom-0 right-0 h-11 w-11 origin-bottom-right transition-transform duration-300 ease-out"
-                style={{
-                  background: "linear-gradient(135deg, transparent 50%, var(--color-border) 50%)",
-                  transform: hintLifted ? "rotate(-10deg) translate(-2px, -2px)" : "rotate(0deg)",
-                }}
-              />
+            <div className="flex flex-col gap-1">
+              <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                <MapPin size={12} /> Location
+              </p>
+              {locationLine1 && <p className="text-sm">{locationLine1}</p>}
+              {locationLine2 && <p className="text-sm">{locationLine2}</p>}
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                GPS Accuracy ±{item.gpsAccuracyMeters}m
+              </p>
             </div>
-          </button>
-        </div>
-
-        {/* Back */}
-        <button
-          type="button"
-          onClick={() => flip(false)}
-          className="absolute inset-0 flex flex-col justify-center gap-5 overflow-y-auto rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] px-5 py-6 text-left"
-          style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-          aria-label="Turn photograph back over"
-        >
-          <div className="flex flex-col gap-1">
-            <p className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Captured</p>
-            <p className="text-sm">
-              {item.captureDate} · {item.captureTime}
-            </p>
+            <div className="h-px w-full bg-[var(--color-border)]" />
+            <div className="flex flex-col gap-1">
+              <p className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Approved By</p>
+              <p className="text-sm">{item.approvedBy}</p>
+              <p className="mt-1 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                Approved On
+              </p>
+              <p className="text-sm">{item.approvedDate}</p>
+            </div>
           </div>
-          <div className="h-px w-full bg-[var(--color-border)]" />
-
-          <div className="flex flex-col gap-1">
-            <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
-              <User size={12} /> Captured By
-            </p>
-            <p className="text-sm">{item.capturedBy}</p>
-          </div>
-          <div className="h-px w-full bg-[var(--color-border)]" />
-
-          <div className="flex flex-col gap-1">
-            <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
-              <MapPin size={12} /> Location
-            </p>
-            {locationLine1 && <p className="text-sm">{locationLine1}</p>}
-            {locationLine2 && <p className="text-sm">{locationLine2}</p>}
-            <p className="text-xs text-[var(--color-muted-foreground)]">
-              GPS Accuracy ±{item.gpsAccuracyMeters}m
-            </p>
-          </div>
-          <div className="h-px w-full bg-[var(--color-border)]" />
-
-          <div className="flex flex-col gap-1">
-            <p className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Approved By</p>
-            <p className="text-sm">{item.approvedBy}</p>
-            <p className="mt-1 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Approved On</p>
-            <p className="text-sm">{item.approvedDate}</p>
-          </div>
-
-          <div className="pointer-events-none absolute bottom-0 left-0 h-8 w-8 overflow-hidden">
-            <div
-              className="absolute bottom-0 left-0 h-11 w-11"
-              style={{ background: "linear-gradient(-135deg, transparent 50%, var(--color-border) 50%)" }}
-            />
-          </div>
-        </button>
-      </div>
+        )}
+      </button>
     </div>
   );
 }
