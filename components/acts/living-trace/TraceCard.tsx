@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCw, ShieldCheck, User, Smartphone, MapPin, Maximize2 } from "lucide-react";
+import { RotateCw, ShieldCheck, User, Smartphone, MapPin, Maximize2, Play } from "lucide-react";
 import type { EvidenceTraceItem } from "./types";
 
 export interface TraceCardProps {
@@ -14,10 +14,10 @@ export interface TraceCardProps {
  * Two-sided Evidence Card (Living Trace Constitution §2). Front restyled
  * per reference: photo up top with an "Expand" pill overlay, caption
  * block below using the act's own `reflection` line as the quote (no
- * new mock field needed -- every act already carries one). Solid card
- * background only -- no glass/blur, per explicit direction to keep the
- * Visual Constitution's no-glassmorphism rule intact. Flip still uses
- * only the approved 300ms token.
+ * new mock field needed -- every act already carries one). Video items
+ * show a play-button overlay and duration badge on the front. Solid
+ * card background only -- no glass/blur. Flip still uses only the
+ * approved 300ms token.
  */
 export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
   const [flipped, setFlipped] = useState(false);
@@ -40,7 +40,7 @@ export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
             type="button"
             onClick={onOpenPhoto}
             className="relative h-[58%] w-full shrink-0"
-            aria-label="Open full photo"
+            aria-label={item.mediaKind === "video" ? "Play evidence video" : "Open full photo"}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -49,6 +49,16 @@ export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
               className="h-full w-full object-cover"
               draggable={false}
             />
+            {item.mediaKind === "video" && (
+              <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+                <span
+                  className="flex h-12 w-12 items-center justify-center rounded-full"
+                  style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                >
+                  <Play size={22} color="#fff" />
+                </span>
+              </span>
+            )}
             <span
               className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
@@ -63,6 +73,14 @@ export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
               <ShieldCheck size={12} />
               {item.trust.verificationStatus === "verified" ? "Verified" : "Pending"}
             </span>
+            {item.mediaKind === "video" && item.durationLabel && (
+              <span
+                className="absolute bottom-3 right-3 rounded-md px-2 py-1 text-xs text-white"
+                style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+              >
+                {item.durationLabel}
+              </span>
+            )}
           </button>
 
           <button
