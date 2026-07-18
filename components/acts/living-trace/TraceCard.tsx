@@ -1,24 +1,62 @@
 "use client";
 
-import { useState } from "react";
-import { RotateCw, User, Smartphone, MapPin, Maximize2, Play } from "lucide-react";
+import { useEffect, useState } from "react";
+import { User, MapPin, Maximize2, Play } from "lucide-react";
 import type { EvidenceTraceItem } from "./types";
 
 export interface TraceCardProps {
   item: EvidenceTraceItem;
-  reflection: string;
+  isActive: boolean;
   onOpenPhoto: () => void;
 }
 
+const HINT_KEY = "aia_living_trace_flip_hint_shown";
+
 /**
- * Two-sided Evidence Card (Living Trace Constitution §2). Verified/
- * Pending chip removed from the front per explicit direction -- it was
- * showing up everywhere and cluttering the view. Verification data
- * still lives on the item (trust.verificationStatus) for later use if
- * needed; just no longer rendered as a badge here.
+ * Two-sided Evidence Card, Sprint 1A refinement.
+ *
+ * Front answers "what moment am I witnessing" -- a momentTitle, date,
+ * divider, and one factual narrative sentence. No generic "Execution
+ * Evidence" label, no inspirational quote.
+ *
+ * Back answers "why should I trust this photograph" -- captured
+ * date/time, captured by, a human-readable place (never raw lat/lng),
+ * approved by/on. No heading, no device info.
+ *
+ * No rotate icon anywhere. A subtle curled-corner affordance (bottom
+ * right on the front, bottom left on the back) signals the card can be
+ * turned over; tapping the caption/back area flips it, like a physical
+ * photograph. On first use only, the corner gently lifts and settles
+ * after ~1.6s of idle time to teach the interaction, using only the
+ * existing 300ms motion token -- never shown again once the user flips
+ * a card.
  */
-export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
+export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
   const [flipped, setFlipped] = useState(false);
+  const [hintLifted, setHintLifted] = useState(false);
+
+  useEffect(() => {
+    if (!isActive || flipped) return;
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem(HINT_KEY)) return;
+
+    const liftTimer = setTimeout(() => setHintLifted(true), 1600);
+    const settleTimer = setTimeout(() => setHintLifted(false), 2000);
+    return () => {
+      clearTimeout(liftTimer);
+      clearTimeout(settleTimer);
+    };
+  }, [isActive, flipped]);
+
+  function flip(next: boolean) {
+    setFlipped(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(HINT_KEY, "1");
+    }
+  }
+
+  const locationLine1 = item.trust.kind === "map" ? item.landmark : item.trust.infoValue;
+  const locationLine2 = item.trust.kind === "map" ? item.trust.locationLabel : undefined;
 
   return (
     <div className="relative h-full w-full" style={{ perspective: "1200px" }}>
@@ -43,7 +81,7 @@ export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.photoUrl}
-              alt={item.proofTypeLabel}
+              alt={item.momentTitle}
               className="h-full w-full object-cover"
               draggable={false}
             />
@@ -76,87 +114,82 @@ export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
 
           <button
             type="button"
-            onClick={() => setFlipped(true)}
-            aria-label="Flip card to see capture details"
-            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-white"
-            style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+            onClick={() => flip(true)}
+            className="relative flex flex-1 flex-col gap-2 px-4 py-3 text-left"
+            aria-label="Turn photograph over"
           >
-            <RotateCw size={15} />
-          </button>
-
-          <div className="flex flex-1 flex-col gap-1.5 px-4 py-3">
             <div className="flex items-start justify-between gap-2">
-              <p className="text-base font-semibold leading-snug">{item.proofTypeLabel}</p>
+              <p className="text-base font-semibold leading-snug">{item.momentTitle}</p>
               <span className="shrink-0 text-xs text-[var(--color-muted-foreground)]">
                 {item.captureDate}
               </span>
             </div>
-            <p className="text-sm italic leading-snug">&ldquo;{reflection}&rdquo;</p>
-            <p className="mt-auto flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
-              <MapPin size={12} />
-              GPS Accuracy: ±{item.gpsAccuracyMeters}m
-            </p>
-          </div>
+            <div className="h-px w-full bg-[var(--color-border)]" />
+            <p className="text-sm leading-relaxed text-[var(--color-foreground)]">{item.narrative}</p>
+
+            {/* Curled corner flip affordance -- no icon, no text */}
+            <div className="pointer-events-none absolute bottom-0 right-0 h-8 w-8 overflow-hidden">
+              <div
+                className="absolute bottom-0 right-0 h-11 w-11 origin-bottom-right transition-transform duration-300 ease-out"
+                style={{
+                  background: "linear-gradient(135deg, transparent 50%, var(--color-border) 50%)",
+                  transform: hintLifted ? "rotate(-10deg) translate(-2px, -2px)" : "rotate(0deg)",
+                }}
+              />
+            </div>
+          </button>
         </div>
 
         {/* Back */}
-        <div
-          className="absolute inset-0 flex flex-col gap-4 overflow-y-auto rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-5"
+        <button
+          type="button"
+          onClick={() => flip(false)}
+          className="absolute inset-0 flex flex-col justify-center gap-5 overflow-y-auto rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] px-5 py-6 text-left"
           style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+          aria-label="Turn photograph back over"
         >
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold">{item.proofTypeLabel}</p>
-            <button
-              type="button"
-              onClick={() => setFlipped(false)}
-              aria-label="Flip card back to photo"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-border)]"
-            >
-              <RotateCw size={15} />
-            </button>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Captured</p>
+            <p className="text-sm">
+              {item.captureDate} · {item.captureTime}
+            </p>
+          </div>
+          <div className="h-px w-full bg-[var(--color-border)]" />
+
+          <div className="flex flex-col gap-1">
+            <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
+              <User size={12} /> Captured By
+            </p>
+            <p className="text-sm">{item.capturedBy}</p>
+          </div>
+          <div className="h-px w-full bg-[var(--color-border)]" />
+
+          <div className="flex flex-col gap-1">
+            <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
+              <MapPin size={12} /> Location
+            </p>
+            {locationLine1 && <p className="text-sm">{locationLine1}</p>}
+            {locationLine2 && <p className="text-sm">{locationLine2}</p>}
+            <p className="text-xs text-[var(--color-muted-foreground)]">
+              GPS Accuracy ±{item.gpsAccuracyMeters}m
+            </p>
+          </div>
+          <div className="h-px w-full bg-[var(--color-border)]" />
+
+          <div className="flex flex-col gap-1">
+            <p className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Approved By</p>
+            <p className="text-sm">{item.approvedBy}</p>
+            <p className="mt-1 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Approved On</p>
+            <p className="text-sm">{item.approvedDate}</p>
           </div>
 
-          <div className="flex flex-col gap-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--color-muted-foreground)]">Captured</span>
-              <span>
-                {item.captureDate} · {item.captureTime}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
-                <User size={13} /> Captured By
-              </span>
-              <span>{item.capturedBy}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
-                <MapPin size={13} /> GPS
-              </span>
-              <span>
-                {item.gpsLat.toFixed(4)}, {item.gpsLng.toFixed(4)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--color-muted-foreground)]">GPS Accuracy</span>
-              <span>±{item.gpsAccuracyMeters}m</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
-                <Smartphone size={13} /> Device
-              </span>
-              <span>{item.device}</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between border-t border-[var(--color-border)] pt-3">
-              <span className="text-[var(--color-muted-foreground)]">Approved By</span>
-              <span>{item.approvedBy}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--color-muted-foreground)]">Approved On</span>
-              <span>{item.approvedDate}</span>
-            </div>
+          <div className="pointer-events-none absolute bottom-0 left-0 h-8 w-8 overflow-hidden">
+            <div
+              className="absolute bottom-0 left-0 h-11 w-11"
+              style={{ background: "linear-gradient(-135deg, transparent 50%, var(--color-border) 50%)" }}
+            />
           </div>
-        </div>
+        </button>
       </div>
     </div>
   );
