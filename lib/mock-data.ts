@@ -345,6 +345,107 @@ timeline: [
     story_outcome: "200 meals were served, offering nourishment and dignity.",
     reflection: "Aram is often this simple: making sure no one goes hungry today.",
   },
+  {
+    id: "act_4",
+    cause: "Annadhanam",
+    place_name: "Srirangam, Tiruchirappalli",
+    town: "Srirangam",
+    district: "Tiruchirappalli",
+    state: "Tamil Nadu",
+    latitude: 10.8624,
+    longitude: 78.6928,
+    impact_summary: "Annual Temple Ritual Sponsored",
+    supporting_copy: "Preserving sacred tradition for the next generation.",
+    completed_date: "15 July 2025",
+    completed_date_iso: "2025-07-15",
+    hero_image_url:
+      "https://images.unsplash.com/photo-1548013146-72479768bada?w=900&q=80",
+    supporting_image_urls: [
+      "https://images.unsplash.com/photo-1609948543911-e4e1f0c3b8f2?w=300&q=80",
+      "https://images.unsplash.com/photo-1621996659490-3403f484ca6a?w=300&q=80",
+    ],
+    impact_bullets: [
+      "1 temple ritual fully sponsored.",
+      "3 priests supported for the ceremony.",
+      "A community tradition preserved for the next generation.",
+    ],
+    timeline: [
+      { label: "Planned", date: "1 Jul 2025", description: "Initiative approved by AiA" },
+      { label: "Prepared", date: "8 Jul 2025", description: "Materials arranged" },
+      { label: "Executed", date: "15 Jul 2025", description: "Act completed successfully on site" },
+      { label: "Verified", date: "15 Jul 2025", description: "Evidence reviewed and GPS verified" },
+      { label: "Published", date: "16 Jul 2025", description: "Officially published in AiA" },
+    ],
+    verification: {
+      captured_by: "Field Partner Team",
+      verified_by: "AiA Verification Desk",
+      timestamp: "15 July 2025, 7:00 AM",
+      gps_verified: true,
+      partner_organisation: "Kovil Paniyam Trust",
+    },
+    documents: [
+      { label: "Tax Invoice (PDF)", url: "#" },
+      { label: "Payment Receipt (PDF)", url: "#" },
+    ],
+    beneficiary_count: 400,
+    story_situation:
+      "The temple's ritual, performed once every twelve years, needed sponsorship to proceed on schedule.",
+    story_action:
+      "AiA coordinated with the temple trust to fully sponsor the ceremony's materials and priests.",
+    story_outcome:
+      "The ritual was completed on the auspicious date, preserving an unbroken tradition for the community.",
+    reflection: "Continuity of Aram sometimes looks like continuity of ritual itself.",
+  },
+  {
+    id: "act_5",
+    cause: "Medical",
+    place_name: "Sivakasi, Virudhunagar",
+    town: "Sivakasi",
+    district: "Virudhunagar",
+    state: "Tamil Nadu",
+    latitude: 9.4517,
+    longitude: 77.7987,
+    impact_summary: "A Family's Medical Emergency Was Supported",
+    supporting_copy: "Standing with a family when it mattered most.",
+    completed_date: "10 November 2025",
+    completed_date_iso: "2025-11-10",
+    hero_image_url:
+      "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=900&q=80",
+    supporting_image_urls: [
+      "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=300&q=80",
+    ],
+    impact_bullets: [
+      "1 family received emergency medical support.",
+      "1 surgery cost fully covered.",
+      "4 family members supported through recovery.",
+    ],
+    timeline: [
+      { label: "Planned", date: "3 Nov 2025", description: "Initiative approved by AiA" },
+      { label: "Prepared", date: "6 Nov 2025", description: "Support arranged with hospital" },
+      { label: "Executed", date: "10 Nov 2025", description: "Act completed successfully" },
+      { label: "Verified", date: "10 Nov 2025", description: "Evidence reviewed and verified" },
+      { label: "Published", date: "11 Nov 2025", description: "Officially published in AiA" },
+    ],
+    verification: {
+      captured_by: "Field Partner Team",
+      verified_by: "AiA Verification Desk",
+      timestamp: "10 November 2025, 2:15 PM",
+      gps_verified: true,
+      partner_organisation: "Nalam Health Trust",
+    },
+    documents: [
+      { label: "Tax Invoice (PDF)", url: "#" },
+      { label: "Payment Receipt (PDF)", url: "#" },
+    ],
+    beneficiary_count: 4,
+    story_situation:
+      "A family in Sivakasi faced a medical emergency they could not afford to treat.",
+    story_action:
+      "AiA's partner covered the surgery and follow-up care costs directly with the hospital.",
+    story_outcome:
+      "The family member recovered fully, and the family avoided debt during a crisis.",
+    reflection: "Sometimes Aram means simply making sure a family doesn't face a crisis alone.",
+  },
 ];
 
 // Feed Ordering Rules (Locked, CA-010): Primary sort = Publication Date,
