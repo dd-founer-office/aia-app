@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { MockAct } from "@/lib/mock-data";
 import { getEvidenceTrace } from "@/lib/living-trace-mock";
 import { TraceCard } from "./TraceCard";
-import { AvatarBar } from "./AvatarBar";
+import { GeoTagCard } from "./GeoTagCard";
 import { FullPhotoViewer } from "./FullPhotoViewer";
 import { FullMapView } from "./FullMapView";
 
@@ -124,7 +124,7 @@ export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
         })}
       </div>
 
-      <AvatarBar
+     <GeoTagCard
         item={current}
         onPrev={() => goTo(activeIndex - 1)}
         onNext={() => goTo(activeIndex + 1)}
