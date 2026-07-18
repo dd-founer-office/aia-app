@@ -33,7 +33,7 @@ export function MapEmbed({
         title={`Map of ${locationLabel}`}
       />
       {!compact && (
-        
+        <a
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
