@@ -10,18 +10,13 @@ export interface FullPhotoViewerProps {
   onClose: () => void;
 }
 
-/**
- * Full Photo (Living Trace Constitution §6). Loops infinitely, matching
- * the card stack's rotation behavior. Video items show a poster + play
- * button, then play inline with native controls -- same pattern as the
- * original EvidenceViewer v2.0 had, rebuilt here for the new item shape.
- */
 export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewerProps) {
   const [index, setIndex] = useState(initialIndex);
   const [metadataVisible, setMetadataVisible] = useState(false);
   const [playing, setPlaying] = useState(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const current = items[index];
+  const locationLine = current.trust.kind === "map" ? current.landmark : current.trust.infoValue;
 
   function goTo(i: number) {
     const n = items.length;
@@ -103,12 +98,12 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
                 setPlaying(true);
               }}
               className="relative flex max-h-full max-w-full items-center justify-center"
-              aria-label={`Play evidence video ${index + 1} of ${items.length}`}
+              aria-label={`Play ${current.momentTitle}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={current.photoUrl}
-                alt={current.proofTypeLabel}
+                alt={current.momentTitle}
                 className="max-h-full max-w-full select-none object-contain"
                 draggable={false}
               />
@@ -132,7 +127,7 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={current.photoUrl}
-            alt={current.proofTypeLabel}
+            alt={current.momentTitle}
             className="max-h-full max-w-full select-none object-contain transition-opacity duration-300 ease-out"
             draggable={false}
           />
@@ -168,11 +163,13 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
             className="absolute bottom-4 left-4 flex flex-col gap-0.5 rounded-xl px-3 py-2 text-left text-white transition-opacity duration-200 ease-out"
             style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(6px)" }}
           >
-            <span className="text-xs font-medium">{current.proofTypeLabel}</span>
-            <span className="flex items-center gap-1.5 text-xs">
-              <MapPin size={12} />
-              {current.trust.locationLabel}
-            </span>
+            <span className="text-xs font-medium">{current.momentTitle}</span>
+            {locationLine && (
+              <span className="flex items-center gap-1.5 text-xs">
+                <MapPin size={12} />
+                {locationLine}
+              </span>
+            )}
             <span className="text-xs text-white/70">
               {current.captureDate} · {current.captureTime}
             </span>
