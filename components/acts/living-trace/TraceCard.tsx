@@ -1,24 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCw, ShieldCheck, User, Smartphone, MapPin } from "lucide-react";
+import { RotateCw, ShieldCheck, User, Smartphone, MapPin, Maximize2 } from "lucide-react";
 import type { EvidenceTraceItem } from "./types";
 
 export interface TraceCardProps {
   item: EvidenceTraceItem;
+  reflection: string;
   onOpenPhoto: () => void;
 }
 
 /**
- * Two-sided Evidence Card (Living Trace Constitution §2). One photo,
- * one truth -- each card is a single piece of evidence, never a grouped
- * gallery. Flip uses the approved 300ms token only.
+ * Two-sided Evidence Card (Living Trace Constitution §2). Front restyled
+ * per reference: photo up top with an "Expand" pill overlay, caption
+ * block below using the act's own `reflection` line as the quote (no
+ * new mock field needed -- every act already carries one). Solid card
+ * background only -- no glass/blur, per explicit direction to keep the
+ * Visual Constitution's no-glassmorphism rule intact. Flip still uses
+ * only the approved 300ms token.
  */
-export function TraceCard({ item, onOpenPhoto }: TraceCardProps) {
+export function TraceCard({ item, reflection, onOpenPhoto }: TraceCardProps) {
   const [flipped, setFlipped] = useState(false);
 
   return (
-    <div className="relative h-[440px] w-full" style={{ perspective: "1200px" }}>
+    <div className="relative h-full w-full" style={{ perspective: "1200px" }}>
       <div
         className="relative h-full w-full transition-transform duration-300 ease-out"
         style={{
@@ -28,20 +33,37 @@ export function TraceCard({ item, onOpenPhoto }: TraceCardProps) {
       >
         {/* Front */}
         <div
-          className="absolute inset-0 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)]"
+          className="absolute inset-0 flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)]"
           style={{ backfaceVisibility: "hidden" }}
         >
-          <button type="button" onClick={onOpenPhoto} className="block h-full w-full" aria-label="Open full photo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.photoUrl} alt={item.proofTypeLabel} className="h-full w-full object-cover" draggable={false} />
-          </button>
-
-          <span
-            className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium text-white"
-            style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          <button
+            type="button"
+            onClick={onOpenPhoto}
+            className="relative h-[58%] w-full shrink-0"
+            aria-label="Open full photo"
           >
-            {item.proofTypeLabel}
-          </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.photoUrl}
+              alt={item.proofTypeLabel}
+              className="h-full w-full object-cover"
+              draggable={false}
+            />
+            <span
+              className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+            >
+              <Maximize2 size={12} />
+              Expand
+            </span>
+            <span
+              className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full px-2 py-1 text-xs text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+            >
+              <ShieldCheck size={12} />
+              {item.trust.verificationStatus === "verified" ? "Verified" : "Pending"}
+            </span>
+          </button>
 
           <button
             type="button"
@@ -53,13 +75,19 @@ export function TraceCard({ item, onOpenPhoto }: TraceCardProps) {
             <RotateCw size={15} />
           </button>
 
-          <span
-            className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full px-2 py-1 text-xs text-white"
-            style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
-          >
-            <ShieldCheck size={12} />
-            {item.trust.verificationStatus === "verified" ? "Verified" : "Pending"}
-          </span>
+          <div className="flex flex-1 flex-col gap-1.5 px-4 py-3">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-base font-semibold leading-snug">{item.proofTypeLabel}</p>
+              <span className="shrink-0 text-xs text-[var(--color-muted-foreground)]">
+                {item.captureDate}
+              </span>
+            </div>
+            <p className="text-sm italic leading-snug">&ldquo;{reflection}&rdquo;</p>
+            <p className="mt-auto flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
+              <MapPin size={12} />
+              GPS Accuracy: ±{item.gpsAccuracyMeters}m
+            </p>
+          </div>
         </div>
 
         {/* Back */}
@@ -82,7 +110,9 @@ export function TraceCard({ item, onOpenPhoto }: TraceCardProps) {
           <div className="flex flex-col gap-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-[var(--color-muted-foreground)]">Captured</span>
-              <span>{item.captureDate} · {item.captureTime}</span>
+              <span>
+                {item.captureDate} · {item.captureTime}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
