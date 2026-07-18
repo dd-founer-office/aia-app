@@ -1,4 +1,5 @@
 export type EvidenceCategory = "tree" | "temple" | "annadhanam" | "student" | "family";
+export type EvidenceMediaKind = "photo" | "video";
 
 /**
  * Adaptive Trust Card data (Living Trace Constitution §4).
@@ -21,9 +22,12 @@ export interface EvidenceTraceItem {
   id: string;
   actId: string;
   category: EvidenceCategory;
+  mediaKind: EvidenceMediaKind;
+  photoUrl: string; // photo: the image itself; video: poster frame
+  videoUrl?: string; // required when mediaKind === "video"
+  durationLabel?: string; // e.g. "0:14", video only
   proofType: "execution" | "living_update";
   proofTypeLabel: string;
-  photoUrl: string;
   captureDate: string;
   captureDateIso: string;
   captureTime: string;
