@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, MapPin, Maximize2, Play } from "lucide-react";
+import { User, MapPin, Play } from "lucide-react";
 import type { EvidenceTraceItem } from "./types";
 
 export interface TraceCardProps {
@@ -10,34 +10,28 @@ export interface TraceCardProps {
   onOpenPhoto: () => void;
 }
 
-const HINT_KEY = "aia_living_trace_sheet_hint_shown";
 const SHEET_COLLAPSED = 168;
-const SHEET_EXPANDED = 288;
+const NUDGE_INTERVAL = 3800;
 
 /**
- * Evidence Card, Sprint 1A pull-sheet refinement. Replaces the earlier
- * flip interaction entirely -- no rotateY, no corner affordance.
+ * Evidence Card, Sprint 1A pull-sheet refinement (round 2).
  *
- * The photo is a full-bleed background, same "pinned photo, sheet
- * slides over it" language as CA-011 Act Detail's hero. The bottom
- * sheet rests collapsed showing the Moment (title, date, narrative);
- * tapping it (via a small pull-handle) expands it upward over the
- * photo to reveal the same trimmed provenance set as before (Captured
- * By, Location, GPS Accuracy, Approved By/On). Tap-to-toggle rather
- * than drag, since a vertical drag would conflict with the stack's
- * horizontal swipe navigation.
+ * Photo is a full-bleed background (tap it directly to open Full
+ * Photo -- no separate "Expand" chip cluttering the image now).
  *
- * Sheet auto-collapses when the card leaves the active/center position
- * (see effect below), so cards never carry an open sheet into the
- * peeked side positions.
+ * The sheet rests collapsed over the bottom of the photo, showing the
+ * Moment (title, date, narrative). Tapping it expands it to fully
+ * cover the card (height: 100%, no internal scroll -- the trimmed
+ * provenance set was sized to fit that space without scrolling).
  *
- * First-time only: the sheet nudges up ~10px and settles after ~1.6s
- * idle, using only the existing 300ms token -- no bounce, no pulse.
- * Never shown again once the user opens a sheet.
+ * While collapsed and active, the sheet gives a small recurring nudge
+ * (translateY, duration-300 ease-out only -- no bounce/spring) to
+ * invite tapping, rather than a one-time onboarding hint. Pauses the
+ * moment the card is expanded or no longer active/centered.
  */
 export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [hintNudged, setHintNudged] = useState(false);
+  const [nudged, setNudged] = useState(false);
 
   useEffect(() => {
     if (!isActive) setExpanded(false);
@@ -45,28 +39,15 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
 
   useEffect(() => {
     if (!isActive || expanded) return;
-    if (typeof window === "undefined") return;
-    if (window.localStorage.getItem(HINT_KEY)) return;
-
-    const nudgeTimer = setTimeout(() => setHintNudged(true), 1600);
-    const settleTimer = setTimeout(() => setHintNudged(false), 2000);
-    return () => {
-      clearTimeout(nudgeTimer);
-      clearTimeout(settleTimer);
-    };
+    const interval = setInterval(() => {
+      setNudged(true);
+      setTimeout(() => setNudged(false), 400);
+    }, NUDGE_INTERVAL);
+    return () => clearInterval(interval);
   }, [isActive, expanded]);
-
-  function toggleSheet() {
-    setExpanded((v) => !v);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(HINT_KEY, "1");
-    }
-  }
 
   const locationLine1 = item.trust.kind === "map" ? item.landmark : item.trust.infoValue;
   const locationLine2 = item.trust.kind === "map" ? item.trust.locationLabel : undefined;
-  const sheetHeight = expanded ? SHEET_EXPANDED : SHEET_COLLAPSED;
-  const nudgeOffset = hintNudged ? 10 : 0;
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)]">
@@ -94,13 +75,6 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
             </span>
           </span>
         )}
-        <span
-          className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-white"
-          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
-        >
-          <Maximize2 size={12} />
-          Expand
-        </span>
         {item.mediaKind === "video" && item.durationLabel && (
           <span
             className="absolute bottom-3 right-3 rounded-md px-2 py-1 text-xs text-white"
@@ -115,9 +89,12 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
           as CA-011's hero-photo-behind-sheet pattern */}
       <button
         type="button"
-        onClick={toggleSheet}
-        className="absolute bottom-0 left-0 right-0 z-10 flex flex-col overflow-hidden rounded-t-[28px] bg-[var(--color-card)] px-5 pb-5 pt-3 text-left transition-all duration-300 ease-out"
-        style={{ height: sheetHeight, transform: `translateY(-${nudgeOffset}px)` }}
+        onClick={() => setExpanded((v) => !v)}
+        className="absolute bottom-0 left-0 right-0 z-10 flex flex-col rounded-t-[28px] bg-[var(--color-card)] px-5 pb-5 pt-3 text-left transition-all duration-300 ease-out"
+        style={{
+          height: expanded ? "100%" : SHEET_COLLAPSED,
+          transform: nudged ? "translateY(-10px)" : "translateY(0)",
+        }}
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse capture details" : "Reveal capture details"}
       >
@@ -131,16 +108,16 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
         <p className="shrink-0 text-sm leading-relaxed text-[var(--color-foreground)]">{item.narrative}</p>
 
         {expanded && (
-          <div className="mt-3 flex flex-col gap-3 overflow-y-auto">
+          <div className="mt-3 flex flex-col gap-2.5">
             <div className="h-px w-full bg-[var(--color-border)]" />
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
                 <User size={12} /> Captured By
               </p>
               <p className="text-sm">{item.capturedBy}</p>
             </div>
             <div className="h-px w-full bg-[var(--color-border)]" />
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
                 <MapPin size={12} /> Location
               </p>
@@ -151,7 +128,7 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
               </p>
             </div>
             <div className="h-px w-full bg-[var(--color-border)]" />
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <p className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Approved By</p>
               <p className="text-sm">{item.approvedBy}</p>
               <p className="mt-1 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
