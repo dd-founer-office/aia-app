@@ -1,5 +1,14 @@
 import type { MockAct } from "@/lib/mock-data";
-import type { EvidenceMediaItem } from "@/components/shared/EvidenceViewer";
+
+export interface EvidenceMediaItem {
+  kind: "photo" | "video";
+  url: string;
+  posterUrl?: string;
+  durationLabel?: string;
+  width?: number;
+  height?: number;
+  alt?: string;
+}
 
 // Test-only sample video, added per explicit instruction in an earlier
 // task ("add one sample video so the interaction can be tested") -- not a
