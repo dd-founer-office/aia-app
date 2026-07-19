@@ -48,7 +48,13 @@ export interface PublishedActSummary {
 
 export async function getPublishedActSummary(missionId: string): Promise<PublishedActSummary | null> {
   const supabase = getSupabasePublicClient();
-  if (!supabase) return null;
+  if (!supabase) {
+    console.error('[published-acts] Supabase client is null — env vars missing.', {
+      hasUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      hasAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    });
+    return null;
+  }
 
   const { data: mission, error: missionError } = await supabase
     .from('missions')
