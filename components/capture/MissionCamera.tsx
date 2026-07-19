@@ -227,25 +227,37 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
     setReviewFrame(null);
   }
 
-  async function handleSubmit() {
+async function handleSubmit() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const formData = new FormData();
-      const metadata = captured.map((item) => ({
-        captureTime: item.capturedAtIso,
-        gpsLat: item.gpsLat,
-        gpsLng: item.gpsLng,
-        gpsAccuracyMeters: item.gpsAccuracyMeters,
-      }));
+      const supabase = getSupabasePublicClient();
+      if (!supabase) throw new Error("Supabase is not configured.");
 
-      for (const item of captured) {
+      const items = [];
+      for (let i = 0; i < captured.length; i++) {
+        const item = captured[i];
         const blob = await fetch(item.blobUrl).then((r) => r.blob());
-        formData.append("evidence", blob, item.mediaKind === "video" ? "clip.webm" : "photo.jpg");
-      }
-      formData.append("metadata", JSON.stringify(metadata));
+        const ext = item.mediaKind === "video" ? "webm" : "jpg";
+        const path = `${missionId}/${i + 1}-${Date.now()}.${ext}`;
 
-      await submitMissionEvidenceAction(missionId, formData);
+        const { error: uploadError } = await supabase.storage
+          .from("mission-evidence")
+          .upload(path, blob, { contentType: blob.type });
+        if (uploadError) throw new Error(uploadError.message);
+
+        const { data: publicUrlData } = supabase.storage.from("mission-evidence").getPublicUrl(path);
+
+        items.push({
+          photoUrl: publicUrlData.publicUrl,
+          captureTime: item.capturedAtIso,
+          gpsLat: item.gpsLat,
+          gpsLng: item.gpsLng,
+          gpsAccuracyMeters: item.gpsAccuracyMeters,
+        });
+      }
+
+      await submitMissionEvidenceAction(missionId, items);
       setSubmitted(true);
     } catch {
       setSubmitError("Submission failed. Check your connection and try again.");
