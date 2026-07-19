@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { MockAct } from "@/lib/mock-data";
-import { getEvidenceTrace } from "@/lib/living-trace-mock";
+import type { EvidenceTraceItem } from "./types";
 import { TraceCard } from "./TraceCard";
 import { GeoTagCard } from "./GeoTagCard";
 import { FullPhotoViewer } from "./FullPhotoViewer";
@@ -20,8 +19,7 @@ function wrappedOffset(i: number, active: number, length: number) {
   return diff;
 }
 
-export function LivingTraceViewer({ act }: { act: MockAct; id: string }) {
-  const items = getEvidenceTrace(act.id);
+export function LivingTraceViewer({ items }: { items: EvidenceTraceItem[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState<{ lat: number; lng: number; label: string } | null>(null);
