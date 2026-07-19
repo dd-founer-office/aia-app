@@ -4,16 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { MissionHeader } from "./MissionHeader";
-import { MissionGuidanceCard } from "./MissionGuidanceCard";
+import { CaptureProgressDots } from "./CaptureProgressDots";
+import { EvidenceChecklist } from "./EvidenceChecklist";
 import { CaptureQualityIndicator } from "./CaptureQualityIndicator";
 import { SmartCoachingOverlay } from "./SmartCoachingOverlay";
 import { MissionMetadataCollector } from "./MissionMetadataCollector";
 import { MissionCameraControls } from "./MissionCameraControls";
 import { CaptureReview } from "./CaptureReview";
+import { BottomSheet } from "@/components/shared/BottomSheet";
 import { useCameraStream } from "@/hooks/useCameraStream";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDeviceOrientation } from "@/hooks/useDeviceOrientation";
-import { analyzeFrame, scoreCQI } from "@/lib/capture-quality";
+import { analyzeFrame, estimateMotion, scoreCQI } from "@/lib/capture-quality";
 import { getMissionTemplate } from "@/lib/mission-templates";
 import type { CQIReading, CapturedEvidence, EvidenceRequirement } from "@/types/mission-camera";
 
@@ -38,6 +40,7 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
   const [recording, setRecording] = useState(false);
   const [recordCountdown, setRecordCountdown] = useState<number | null>(null);
   const [focusRing, setFocusRing] = useState<{ x: number; y: number } | null>(null);
+  const [checklistOpen, setChecklistOpen] = useState(false);
 
   const {
     videoRef,
@@ -56,6 +59,7 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
   const orientation = useDeviceOrientation();
 
   const analysisCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const prevGrayRef = useRef<Float32Array | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const pinchStartDistRef = useRef<number | null>(null);
   const pinchStartZoomRef = useRef(1);
@@ -64,7 +68,6 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
   const completedCount = requirements.filter((r) => r.status === "complete").length;
   const missionComplete = template ? completedCount === template.requirements.length : false;
 
-  // Continuous Capture Quality Intelligence sampling.
   useEffect(() => {
     if (!ready || reviewFrame) return;
     const canvas = analysisCanvasRef.current;
@@ -78,12 +81,28 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
       canvas.width = ANALYSIS_SAMPLE_SIZE;
       canvas.height = ANALYSIS_SAMPLE_SIZE;
       ctx.drawImage(video, 0, 0, ANALYSIS_SAMPLE_SIZE, ANALYSIS_SAMPLE_SIZE);
-      const { brightness, sharpness } = analyzeFrame(ctx, ANALYSIS_SAMPLE_SIZE, ANALYSIS_SAMPLE_SIZE);
-      setCqi(scoreCQI({ brightness, sharpness, gpsAvailable: geo.available, timestampAvailable: true }));
+      const analysis = analyzeFrame(ctx, ANALYSIS_SAMPLE_SIZE, ANALYSIS_SAMPLE_SIZE);
+      const motion = estimateMotion(prevGrayRef.current, analysis.gray);
+      prevGrayRef.current = analysis.gray;
+
+      setCqi(
+        scoreCQI({
+          brightness: analysis.brightness,
+          sharpness: analysis.sharpness,
+          centerBrightness: analysis.centerBrightness,
+          edgeBrightness: analysis.edgeBrightness,
+          contrast: analysis.contrast,
+          motion,
+          tiltDegrees: orientation.supported ? orientation.tiltDegrees : null,
+          gpsAvailable: geo.available,
+          gpsAccuracyMeters: geo.accuracyMeters,
+          timestampAvailable: true,
+        })
+      );
     }, 600);
 
     return () => clearInterval(interval);
-  }, [ready, reviewFrame, geo.available, videoRef]);
+  }, [ready, reviewFrame, geo.available, geo.accuracyMeters, orientation.supported, orientation.tiltDegrees, videoRef]);
 
   function handleZoomSelect(value: number) {
     setZoom(value);
@@ -254,12 +273,15 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
         )}
 
         {orientation.supported && (
-          <div className="pointer-events-none absolute left-1/2 top-1/2 w-24 -translate-x-1/2 -translate-y-1/2">
+          <div
+            className="pointer-events-none absolute left-1/2 top-14 -translate-x-1/2 transition-opacity duration-300 ease-out"
+            style={{ opacity: Math.abs(orientation.tiltDegrees) > 4 ? 1 : 0 }}
+          >
             <div
-              className="h-[2px] w-full transition-transform duration-300 ease-out"
+              className="h-[2px] w-8 rounded-full transition-transform duration-300 ease-out"
               style={{
                 transform: `rotate(${orientation.tiltDegrees}deg)`,
-                backgroundColor: Math.abs(orientation.tiltDegrees) < 2 ? "var(--color-success)" : "rgba(255,255,255,0.6)",
+                backgroundColor: Math.abs(orientation.tiltDegrees) < 2 ? "var(--color-success)" : "rgba(255,255,255,0.85)",
               }}
             />
           </div>
@@ -325,9 +347,15 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
         />
       )}
 
-      {!reviewFrame && !recording && activeRequirement && (
-        <MissionGuidanceCard missionName={template.name} requirements={requirements} />
+      {!reviewFrame && !recording && (
+        <CaptureProgressDots requirements={requirements} onOpenChecklist={() => setChecklistOpen(true)} />
       )}
+
+      <BottomSheet open={checklistOpen} onClose={() => setChecklistOpen(false)}>
+        <p className="mb-1 text-xs text-[var(--color-muted-foreground)]">Current Mission</p>
+        <p className="mb-3 font-display text-base text-[var(--color-foreground)]">{template.name}</p>
+        <EvidenceChecklist requirements={requirements} />
+      </BottomSheet>
     </div>
   );
 }
