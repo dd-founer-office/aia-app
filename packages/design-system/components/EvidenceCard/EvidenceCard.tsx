@@ -150,7 +150,7 @@ export function EvidenceCard({
 
       {(href || onClick) && (
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          
+          <a
             href={href}
             onClick={onClick}
             style={{ fontSize: "14px", fontWeight: 500, color: colors.primaryDark, cursor: "pointer" }}
