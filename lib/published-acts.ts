@@ -56,14 +56,17 @@ export async function getPublishedActSummary(missionId: string): Promise<Publish
     return null;
   }
 
-  const { data: mission, error: missionError } = await supabase
+ const { data: mission, error: missionError } = await supabase
     .from('missions')
     .select('*')
     .eq('id', missionId)
     .eq('status', 'published')
     .maybeSingle();
 
-  if (missionError || !mission) return null;
+  if (missionError || !mission) {
+    console.error('[published-acts] mission lookup failed', { missionId, missionError, found: Boolean(mission) });
+    return null;
+  }
 
   const { data: publication, error: pubError } = await supabase
     .from('mission_publications')
