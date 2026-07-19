@@ -180,3 +180,66 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
     };
   });
 }
+export interface PublishedActFeedItem extends PublishedActSummary {
+  missionDateIso: string;
+  evidenceCount: number;
+}
+
+export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
+  const supabase = getSupabasePublicClient();
+  if (!supabase) return [];
+
+  const { data: missions } = await supabase
+    .from('missions')
+    .select('*')
+    .eq('status', 'published')
+    .order('mission_date', { ascending: false });
+
+  if (!missions || missions.length === 0) return [];
+
+  const missionIds = missions.map((m) => m.id as string);
+
+  const { data: publications } = await supabase
+    .from('mission_publications')
+    .select('*')
+    .in('mission_id', missionIds);
+
+  const { data: evidenceRows } = await supabase
+    .from('evidence')
+    .select('id, mission_id, photo_url')
+    .in('mission_id', missionIds);
+
+  const publicationByMission = new Map((publications ?? []).map((p) => [p.mission_id as string, p]));
+  const evidenceCountByMission = new Map<string, number>();
+  const photoByEvidenceId = new Map<string, string>();
+  for (const row of evidenceRows ?? []) {
+    const key = row.mission_id as string;
+    evidenceCountByMission.set(key, (evidenceCountByMission.get(key) ?? 0) + 1);
+    photoByEvidenceId.set(row.id as string, row.photo_url as string);
+  }
+
+  const items: PublishedActFeedItem[] = [];
+  for (const mission of missions) {
+    const publication = publicationByMission.get(mission.id as string);
+    if (!publication) continue;
+
+    const heroImageUrl = publication.featured_evidence_id
+      ? (photoByEvidenceId.get(publication.featured_evidence_id as string) ?? null)
+      : null;
+
+    items.push({
+      id: mission.id as string,
+      cause: mission.cause as string,
+      title: publication.title as string,
+      description: publication.description as string,
+      organization: mission.organization as string,
+      missionDate: formatDisplayDate(mission.mission_date as string),
+      missionDateIso: mission.mission_date as string,
+      landmark: publication.landmark as string | null,
+      heroImageUrl,
+      evidenceCount: evidenceCountByMission.get(mission.id as string) ?? 0,
+    });
+  }
+
+  return items;
+}
