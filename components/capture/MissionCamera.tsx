@@ -16,21 +16,22 @@ import { useCameraStream } from "@/hooks/useCameraStream";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDeviceOrientation } from "@/hooks/useDeviceOrientation";
 import { analyzeFrame, estimateMotion, scoreCQI } from "@/lib/capture-quality";
-import { getMissionTemplate } from "@/lib/mission-templates";
-import type { CQIReading, CapturedEvidence, EvidenceRequirement } from "@/types/mission-camera";
+import { submitMissionEvidenceAction } from "@/lib/capture-actions";
+import type { CQIReading, CapturedEvidence, EvidenceRequirement, MissionTemplate } from "@/types/mission-camera";
 
 interface MissionCameraProps {
   missionId: string;
+  missionName: string;
+  template: MissionTemplate;
 }
 
 const ANALYSIS_SAMPLE_SIZE = 64;
 
-export function MissionCamera({ missionId }: MissionCameraProps) {
+export function MissionCamera({ missionId, missionName, template }: MissionCameraProps) {
   const router = useRouter();
-  const template = getMissionTemplate(missionId);
 
   const [requirements, setRequirements] = useState<EvidenceRequirement[]>(() =>
-    template ? template.requirements.map((r, i) => ({ ...r, status: i === 0 ? "active" : "pending" })) : []
+    template.requirements.map((r, i) => ({ ...r, status: i === 0 ? "active" : "pending" }))
   );
   const [captured, setCaptured] = useState<CapturedEvidence[]>([]);
   const [gridOn, setGridOn] = useState(true);
@@ -42,6 +43,9 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
   const [focusRing, setFocusRing] = useState<{ x: number; y: number } | null>(null);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [tiltDegrees, setTiltDegrees] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     videoRef,
@@ -65,10 +69,6 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
   const pinchStartDistRef = useRef<number | null>(null);
   const pinchStartZoomRef = useRef(1);
 
-  // Fast-changing sensor values live in refs, not effect deps -- device
-  // orientation fires far faster than the CQI sample rate. Putting it in
-  // the analysis effect's dependency array was tearing the interval down
-  // before it could ever complete a cycle, leaving cqi permanently null.
   const orientationRef = useRef({ supported: false, tiltDegrees: 0 });
   const geoRef = useRef({ available: false, accuracyMeters: null as number | null });
 
@@ -83,7 +83,7 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
 
   const activeRequirement = requirements.find((r) => r.status === "active") ?? null;
   const completedCount = requirements.filter((r) => r.status === "complete").length;
-  const missionComplete = template ? completedCount === template.requirements.length : false;
+  const missionComplete = completedCount === template.requirements.length;
 
   useEffect(() => {
     if (!ready || reviewFrame) return;
@@ -171,8 +171,8 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
     const mimeType = MediaRecorder.isTypeSupported("video/webm")
       ? "video/webm"
       : MediaRecorder.isTypeSupported("video/mp4")
-      ? "video/mp4"
-      : "";
+        ? "video/mp4"
+        : "";
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     chunksRef.current = [];
     recorder.ondataavailable = (e) => {
@@ -227,29 +227,63 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
     setReviewFrame(null);
   }
 
-  if (!template) {
-    return (
-      <div className="flex h-dvh items-center justify-center bg-black px-6 text-center text-white">
-        <p>Unknown mission. Check the mission ID and try again.</p>
-      </div>
-    );
+  async function handleSubmit() {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const formData = new FormData();
+      const metadata = captured.map((item) => ({
+        captureTime: item.capturedAtIso,
+        gpsLat: item.gpsLat,
+        gpsLng: item.gpsLng,
+        gpsAccuracyMeters: item.gpsAccuracyMeters,
+      }));
+
+      for (const item of captured) {
+        const blob = await fetch(item.blobUrl).then((r) => r.blob());
+        formData.append("evidence", blob, item.mediaKind === "video" ? "clip.webm" : "photo.jpg");
+      }
+      formData.append("metadata", JSON.stringify(metadata));
+
+      await submitMissionEvidenceAction(missionId, formData);
+      setSubmitted(true);
+    } catch {
+      setSubmitError("Submission failed. Check your connection and try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (missionComplete) {
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-[var(--color-background)] px-6 text-center">
-        <p className="font-display text-xl text-[var(--color-foreground)]">Mission Complete</p>
-        <p className="max-w-xs text-sm text-[var(--color-muted-foreground)]">
-          {captured.length} pieces of evidence captured for {template.name}. They&apos;re ready to move into the Living
-          Trace once submitted for review.
+        <p className="font-display text-xl text-[var(--color-foreground)]">
+          {submitted ? "Submitted for Review" : "Mission Complete"}
         </p>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="mt-2 rounded-[var(--radius-button)] bg-[var(--color-primary)] px-5 py-3 text-sm font-medium text-[var(--color-primary-foreground)]"
-        >
-          Done
-        </button>
+        <p className="max-w-xs text-sm text-[var(--color-muted-foreground)]">
+          {submitted
+            ? `${captured.length} pieces of evidence have been submitted for ${missionName} and are now pending review.`
+            : `${captured.length} pieces of evidence captured for ${missionName}. Submit them for review to move into the Living Trace.`}
+        </p>
+        {submitError && <p className="text-sm text-[var(--color-error)]">{submitError}</p>}
+        {submitted ? (
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="mt-2 rounded-[var(--radius-button)] bg-[var(--color-primary)] px-5 py-3 text-sm font-medium text-[var(--color-primary-foreground)]"
+          >
+            Done
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="mt-2 rounded-[var(--radius-button)] bg-[var(--color-primary)] px-5 py-3 text-sm font-medium text-[var(--color-primary-foreground)] disabled:opacity-60"
+          >
+            {submitting ? "Submitting…" : "Submit for Review"}
+          </button>
+        )}
       </div>
     );
   }
@@ -273,7 +307,7 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
         />
 
         <div className="absolute left-0 right-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/50 to-transparent pb-6 pt-2">
-          <MissionHeader missionName={template.name} />
+          <MissionHeader missionName={missionName} />
           <button
             type="button"
             onClick={() => router.back()}
@@ -373,7 +407,7 @@ export function MissionCamera({ missionId }: MissionCameraProps) {
 
       <BottomSheet open={checklistOpen} onClose={() => setChecklistOpen(false)}>
         <p className="mb-1 text-xs text-[var(--color-muted-foreground)]">Current Mission</p>
-        <p className="mb-3 font-display text-base text-[var(--color-foreground)]">{template.name}</p>
+        <p className="mb-3 font-display text-base text-[var(--color-foreground)]">{missionName}</p>
         <EvidenceChecklist requirements={requirements} />
       </BottomSheet>
     </div>
