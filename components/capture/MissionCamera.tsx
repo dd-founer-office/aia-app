@@ -38,7 +38,7 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
   const [gridOn, setGridOn] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [cqi, setCqi] = useState<CQIReading | null>(null);
-  const [reviewFrame, setReviewFrame] = useState<{ url: string; kind: "photo" | "video" } | null>(null);
+  const [reviewFrame, setReviewFrame] = useState<{ url: string; kind: "photo" | "video"; posterUrl?: string } | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordCountdown, setRecordCountdown] = useState<number | null>(null);
   const [focusRing, setFocusRing] = useState<{ x: number; y: number } | null>(null);
@@ -86,8 +86,8 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
   const completedCount = requirements.filter((r) => r.status === "complete").length;
   const missionComplete = completedCount === template.requirements.length;
 
-  useEffect(() => {
-    if (!ready || reviewFrame) return;
+ useEffect(() => {
+    if (!ready || reviewFrame || recording) return;
     const canvas = analysisCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -123,7 +123,7 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
     }, 600);
 
     return () => clearInterval(interval);
-  }, [ready, reviewFrame, videoRef]);
+}, [ready, reviewFrame, recording, videoRef]);
 
   function handleZoomSelect(value: number) {
     setZoom(value);
@@ -166,8 +166,11 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
       return;
     }
 
-    const stream = getStream();
+   const stream = getStream();
     if (!stream || recording) return;
+
+    const posterFrame = captureFrame();
+    const posterUrl = posterFrame ? posterFrame.canvas.toDataURL("image/jpeg", 0.85) : undefined;
 
     const mimeType = MediaRecorder.isTypeSupported("video/webm")
       ? "video/webm"
@@ -179,9 +182,9 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
-    recorder.onstop = () => {
+ recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: mimeType || "video/webm" });
-      setReviewFrame({ url: URL.createObjectURL(blob), kind: "video" });
+      setReviewFrame({ url: URL.createObjectURL(blob), kind: "video", posterUrl });
       setRecording(false);
       setRecordCountdown(null);
     };
@@ -205,10 +208,11 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
   function handleAccept() {
     if (!activeRequirement || !reviewFrame || !cqi) return;
 
-    const evidence: CapturedEvidence = {
+   const evidence: CapturedEvidence = {
       requirementId: activeRequirement.id,
       mediaKind: activeRequirement.kind,
       blobUrl: reviewFrame.url,
+      posterBlobUrl: reviewFrame.posterUrl,
       capturedAtIso: new Date().toISOString(),
       gpsLat: geo.lat,
       gpsLng: geo.lng,
@@ -238,19 +242,33 @@ async function handleSubmit() {
       const items = [];
       for (let i = 0; i < captured.length; i++) {
         const item = captured[i];
-        const blob = await fetch(item.blobUrl).then((r) => r.blob());
-        const ext = item.mediaKind === "video" ? "webm" : "jpg";
-        const path = `${missionId}/${i + 1}-${Date.now()}.${ext}`;
+        const isVideo = item.mediaKind === "video";
 
-        const { error: uploadError } = await supabase.storage
+        const posterSourceUrl = isVideo ? (item.posterBlobUrl ?? item.blobUrl) : item.blobUrl;
+        const posterBlob = await fetch(posterSourceUrl).then((r) => r.blob());
+        const posterPath = `${missionId}/${i + 1}-${Date.now()}-poster.jpg`;
+        const { error: posterError } = await supabase.storage
           .from("mission-evidence")
-          .upload(path, blob, { contentType: blob.type });
-        if (uploadError) throw new Error(uploadError.message);
+          .upload(posterPath, posterBlob, { contentType: "image/jpeg" });
+        if (posterError) throw new Error(posterError.message);
+        const { data: posterUrlData } = supabase.storage.from("mission-evidence").getPublicUrl(posterPath);
 
-        const { data: publicUrlData } = supabase.storage.from("mission-evidence").getPublicUrl(path);
+        let videoUrl: string | null = null;
+        if (isVideo) {
+          const videoBlob = await fetch(item.blobUrl).then((r) => r.blob());
+          const videoPath = `${missionId}/${i + 1}-${Date.now()}.webm`;
+          const { error: videoError } = await supabase.storage
+            .from("mission-evidence")
+            .upload(videoPath, videoBlob, { contentType: videoBlob.type || "video/webm" });
+          if (videoError) throw new Error(videoError.message);
+          const { data: videoUrlData } = supabase.storage.from("mission-evidence").getPublicUrl(videoPath);
+          videoUrl = videoUrlData.publicUrl;
+        }
 
         items.push({
-          photoUrl: publicUrlData.publicUrl,
+          photoUrl: posterUrlData.publicUrl,
+          videoUrl,
+          mediaKind: item.mediaKind,
           captureTime: item.capturedAtIso,
           gpsLat: item.gpsLat,
           gpsLng: item.gpsLng,
