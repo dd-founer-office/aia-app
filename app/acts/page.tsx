@@ -4,6 +4,8 @@ import { EvidenceCard } from "@/components/shared/EvidenceCard";
 import { Button } from "@/components/shared/Button";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
 
+export const dynamic = "force-dynamic";
+
 interface FeedItem {
   id: string;
   heroImage: string;
