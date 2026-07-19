@@ -4,3 +4,7 @@ export * from "./Badge/Badge";
 export * from "./Chip/Chip";
 export * from "./ProgressIndicator/ProgressIndicator";
 export * from "./PhotoGallery/PhotoGallery";
+export * from "./IconBadge/IconBadge";
+export * from "./ListRow/ListRow";
+export * from "./Skeleton/Skeleton";
+export * from "./ScreenHeader/ScreenHeader";
