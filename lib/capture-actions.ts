@@ -3,13 +3,14 @@
 import { getSupabaseServiceClient } from '@/lib/supabase/service';
 
 interface EvidenceMeta {
+  photoUrl: string;
   captureTime: string;
   gpsLat: number | null;
   gpsLng: number | null;
   gpsAccuracyMeters: number | null;
 }
 
-export async function submitMissionEvidenceAction(missionId: string, formData: FormData): Promise<void> {
+export async function submitMissionEvidenceAction(missionId: string, items: EvidenceMeta[]): Promise<void> {
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
     throw new Error('Supabase is not configured on this deployment.');
@@ -25,39 +26,18 @@ export async function submitMissionEvidenceAction(missionId: string, formData: F
     throw new Error('Mission not found.');
   }
 
-  const files = formData.getAll('evidence') as File[];
-  const metadataRaw = formData.get('metadata');
-  const metadata: EvidenceMeta[] = metadataRaw ? JSON.parse(metadataRaw as string) : [];
+  const rows = items.map((item, index) => ({
+    mission_id: missionId,
+    photo_url: item.photoUrl,
+    capture_time: item.captureTime,
+    capture_order: index + 1,
+    gps_lat: item.gpsLat,
+    gps_lng: item.gpsLng,
+    gps_accuracy_meters: item.gpsAccuracyMeters,
+  }));
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const meta = metadata[i];
-    const isVideo = file.type.startsWith('video/');
-    const ext = isVideo ? 'webm' : 'jpg';
-    const path = `${missionId}/${i + 1}-${Date.now()}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('mission-evidence')
-      .upload(path, file, { contentType: file.type, upsert: false });
-
-    if (uploadError) {
-      throw new Error(`Failed to upload evidence ${i + 1}: ${uploadError.message}`);
-    }
-
-    const { data: publicUrlData } = supabase.storage.from('mission-evidence').getPublicUrl(path);
-
-    const { error: insertError } = await supabase.from('evidence').insert({
-      mission_id: missionId,
-      photo_url: publicUrlData.publicUrl,
-      capture_time: meta?.captureTime ?? new Date().toISOString(),
-      capture_order: i + 1,
-      gps_lat: meta?.gpsLat ?? null,
-      gps_lng: meta?.gpsLng ?? null,
-      gps_accuracy_meters: meta?.gpsAccuracyMeters ?? null,
-    });
-
-    if (insertError) {
-      throw new Error(`Failed to save evidence ${i + 1}: ${insertError.message}`);
-    }
+  const { error: insertError } = await supabase.from('evidence').insert(rows);
+  if (insertError) {
+    throw new Error(`Failed to save evidence: ${insertError.message}`);
   }
 }
