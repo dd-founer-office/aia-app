@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, MapPin, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { X, ChevronLeft, MapPin } from "lucide-react";
+import { useHorizontalSwipe } from "./useHorizontalSwipe";
 import type { EvidenceTraceItem } from "./types";
 
 export interface FullPhotoViewerProps {
@@ -10,13 +11,16 @@ export interface FullPhotoViewerProps {
   onClose: () => void;
 }
 
+const PHOTO_DURATION_MS = 5000;
+
 export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewerProps) {
   const [index, setIndex] = useState(initialIndex);
-  const [metadataVisible, setMetadataVisible] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const [paused, setPaused] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const current = items[index];
-  const locationLine = current.trust.kind === "map" ? current.landmark : current.trust.infoValue;
+  const isMapKind = current.trust.kind === "map";
+  const locationLine = isMapKind ? (current.address ?? current.landmark) : current.trust.infoValue;
 
   function goTo(i: number) {
     const n = items.length;
@@ -24,7 +28,8 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
   }
 
   useEffect(() => {
-    setPlaying(false);
+    setProgress(0);
+    setPaused(false);
   }, [index]);
 
   useEffect(() => {
@@ -38,143 +43,134 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
-  function handleTouchStart(e: React.TouchEvent) {
-    const t = e.touches[0];
-    touchStart.current = { x: t.clientX, y: t.clientY };
-  }
+  // Story-style auto-advance for photos; videos advance via onEnded instead.
+  useEffect(() => {
+    if (current.mediaKind !== "photo" || paused) return;
+    const start = Date.now();
+    const tick = window.setInterval(() => {
+      const elapsed = Date.now() - start;
+      const pct = Math.min(elapsed / PHOTO_DURATION_MS, 1);
+      setProgress(pct);
+      if (pct >= 1) {
+        window.clearInterval(tick);
+        goTo(index + 1);
+      }
+    }, 50);
+    return () => window.clearInterval(tick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, current.mediaKind, paused]);
 
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (!touchStart.current) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStart.current.x;
-    const dy = t.clientY - touchStart.current.y;
-    touchStart.current = null;
+  const swipeRef = useHorizontalSwipe<HTMLDivElement>({
+    onSwipeLeft: () => goTo(index + 1),
+    onSwipeRight: () => goTo(index - 1),
+  });
 
-    const SWIPE = 50;
-    const TAP = 10;
-
-    if (Math.abs(dx) < TAP && Math.abs(dy) < TAP) {
-      setMetadataVisible((v) => !v);
-      return;
+  function handleZoneTap(zone: "prev" | "next" | "center") {
+    if (zone === "prev") return goTo(index - 1);
+    if (zone === "next") return goTo(index + 1);
+    if (current.mediaKind === "video" && videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play();
+        setPaused(false);
+      } else {
+        videoRef.current.pause();
+        setPaused(true);
+      }
+    } else {
+      setPaused((p) => !p);
     }
-    if (dx < -SWIPE) goTo(index + 1);
-    else if (dx > SWIPE) goTo(index - 1);
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black" role="dialog" aria-modal="true" aria-label="Full photo view">
-      <div className="z-10 flex items-center justify-between px-4 pt-4">
-        <button type="button" onClick={onClose} className="flex items-center gap-1 text-sm text-white/90" aria-label="Close photo viewer">
-          <X size={20} />
-          Close
-        </button>
-        <span className="text-sm text-white/70" aria-live="polite">
-          {index + 1} / {items.length}
-        </span>
+    <div
+      ref={swipeRef}
+      className="fixed inset-0 z-50 flex flex-col bg-black"
+      style={{ touchAction: "pan-y" }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Full screen evidence view"
+    >
+      <div className="z-20 flex gap-1 px-3 pt-3">
+        {items.map((_, i) => (
+          <div key={i} className="h-1 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.3)" }}>
+            <div
+              className="h-full rounded-full bg-white"
+              style={{
+                width: i < index ? "100%" : i === index ? `${progress * 100}%` : "0%",
+                transition: i === index ? "width 50ms linear" : undefined,
+              }}
+            />
+          </div>
+        ))}
       </div>
 
-      <div
-        className="relative flex flex-1 items-center justify-center"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onClick={() => current.mediaKind === "photo" && setMetadataVisible((v) => !v)}
-      >
+      <div className="z-20 flex items-center justify-between px-3 pt-3">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Back"
+          className="flex h-9 w-9 items-center justify-center rounded-full"
+          style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+        >
+          <ChevronLeft size={20} color="#fff" />
+        </button>
+        <span className="text-xs text-white/70" aria-live="polite">
+          {index + 1} / {items.length}
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="flex h-9 w-9 items-center justify-center rounded-full"
+          style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+        >
+          <X size={18} color="#fff" />
+        </button>
+      </div>
+
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         {current.mediaKind === "video" ? (
-          playing ? (
-            // eslint-disable-next-line jsx-a11y/media-has-caption
-            <video
-              src={current.videoUrl}
-              autoPlay
-              controls
-              playsInline
-              className="max-h-full max-w-full"
-              onEnded={() => setPlaying(false)}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setPlaying(true);
-              }}
-              className="relative flex max-h-full max-w-full items-center justify-center"
-              aria-label={`Play ${current.momentTitle}`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={current.photoUrl}
-                alt={current.momentTitle}
-                className="max-h-full max-w-full select-none object-contain"
-                draggable={false}
-              />
-              <span
-                className="absolute flex h-16 w-16 items-center justify-center rounded-full"
-                style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-              >
-                <Play size={28} color="#fff" />
-              </span>
-              {current.durationLabel && (
-                <span
-                  className="absolute bottom-3 right-3 rounded-md px-2 py-1 text-xs text-white"
-                  style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-                >
-                  {current.durationLabel}
-                </span>
-              )}
-            </button>
-          )
+          // eslint-disable-next-line jsx-a11y/media-has-caption
+          <video
+            ref={videoRef}
+            key={current.id}
+            src={current.videoUrl}
+            autoPlay
+            playsInline
+            className="h-full w-full object-contain"
+            onEnded={() => goTo(index + 1)}
+          />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={current.photoUrl}
             alt={current.momentTitle}
-            className="max-h-full max-w-full select-none object-contain transition-opacity duration-300 ease-out"
+            className="h-full w-full select-none object-contain transition-opacity duration-300 ease-out"
             draggable={false}
           />
         )}
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            goTo(index - 1);
-          }}
-          className="absolute left-2 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-white [@media(hover:hover)]:flex"
-          style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
-          aria-label="Previous evidence"
-        >
-          <ChevronLeft size={22} />
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            goTo(index + 1);
-          }}
-          className="absolute right-2 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-white [@media(hover:hover)]:flex"
-          style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
-          aria-label="Next evidence"
-        >
-          <ChevronRight size={22} />
-        </button>
+        <div className="absolute inset-0 z-10 flex">
+          <button type="button" className="h-full w-1/4" aria-label="Previous" onClick={() => handleZoneTap("prev")} />
+          <button type="button" className="h-full w-1/2" aria-label="Pause or play" onClick={() => handleZoneTap("center")} />
+          <button type="button" className="h-full w-1/4" aria-label="Next" onClick={() => handleZoneTap("next")} />
+        </div>
 
-        {metadataVisible && current.mediaKind === "photo" && (
-          <div
-            className="absolute bottom-4 left-4 flex flex-col gap-0.5 rounded-xl px-3 py-2 text-left text-white transition-opacity duration-200 ease-out"
-            style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(6px)" }}
-          >
-            <span className="text-xs font-medium">{current.momentTitle}</span>
-            {locationLine && (
-              <span className="flex items-center gap-1.5 text-xs">
-                <MapPin size={12} />
-                {locationLine}
-              </span>
-            )}
-            <span className="text-xs text-white/70">
-              {current.captureDate} · {current.captureTime}
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 flex flex-col gap-1 px-5 pb-6 pt-10 text-white"
+          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55), transparent)" }}
+        >
+          <span className="text-sm font-semibold">{current.momentTitle}</span>
+          {locationLine && (
+            <span className="flex items-center gap-1.5 text-xs">
+              <MapPin size={12} />
+              {locationLine}
             </span>
-          </div>
-        )}
+          )}
+          <span className="text-xs text-white/70">
+            {current.captureDate} · {current.captureTime}
+          </span>
+        </div>
       </div>
     </div>
   );
