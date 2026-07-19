@@ -8,3 +8,7 @@ export * from "./IconBadge/IconBadge";
 export * from "./ListRow/ListRow";
 export * from "./Skeleton/Skeleton";
 export * from "./ScreenHeader/ScreenHeader";
+export * from "./SectionHeader/SectionHeader";
+export * from "./ExpandableText/ExpandableText";
+export * from "./BottomSheet/BottomSheet";
+export * from "./EvidenceCard/EvidenceCard";
