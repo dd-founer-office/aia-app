@@ -45,8 +45,24 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       { id: "short_video", label: "Short Video", kind: "video", durationSeconds: 15 },
     ],
   },
+  {
+    id: "medical_family_support",
+    name: "Medical Family Support",
+    category: "family",
+    requirements: [
+      { id: "family_assessment", label: "Family Assessment", kind: "photo" },
+      { id: "support_confirmation", label: "Support Confirmation Document", kind: "photo" },
+      { id: "treatment_support", label: "Treatment / Support Provided", kind: "photo" },
+      { id: "family_outcome", label: "Family Recovery / Outcome", kind: "photo" },
+      { id: "closing_video", label: "Closing Video", kind: "video", durationSeconds: 15 },
+    ],
+  },
 ];
 
 export function getMissionTemplate(id: string): MissionTemplate | undefined {
   return MISSION_TEMPLATES.find((m) => m.id === id);
+}
+
+export function getMissionTemplateByCategory(category: string): MissionTemplate | undefined {
+  return MISSION_TEMPLATES.find((m) => m.category === category);
 }
