@@ -17,6 +17,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDeviceOrientation } from "@/hooks/useDeviceOrientation";
 import { analyzeFrame, estimateMotion, scoreCQI } from "@/lib/capture-quality";
 import { submitMissionEvidenceAction } from "@/lib/capture-actions";
+import { getSupabasePublicClient } from "@/lib/supabase/client";
 import type { CQIReading, CapturedEvidence, EvidenceRequirement, MissionTemplate } from "@/types/mission-camera";
 
 interface MissionCameraProps {
