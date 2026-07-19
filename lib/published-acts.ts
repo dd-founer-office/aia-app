@@ -164,6 +164,7 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
       mediaKind,
       photoUrl: row.photo_url as string,
       videoUrl: mediaKind === 'video' ? ((row.video_url as string | null) ?? undefined) : undefined,
+      address: (row.address as string | null) ?? undefined,
       momentTitle: moment?.moment_title ?? 'Evidence Captured',
       narrative: moment?.narrative ?? '',
       captureDate: formatDisplayDate(row.capture_time as string),
