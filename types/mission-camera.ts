@@ -32,6 +32,7 @@ export interface CapturedEvidence {
   requirementId: string;
   mediaKind: "photo" | "video";
   blobUrl: string;
+  posterBlobUrl?: string;
   capturedAtIso: string;
   gpsLat: number | null;
   gpsLng: number | null;
