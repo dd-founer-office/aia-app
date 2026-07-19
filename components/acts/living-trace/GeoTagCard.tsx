@@ -1,79 +1,67 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, MapPin, User } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { MapEmbed } from "./MapEmbed";
 import type { EvidenceTraceItem } from "./types";
 
 export interface GeoTagCardProps {
   item: EvidenceTraceItem;
   onExpand: () => void;
-  onPrev: () => void;
-  onNext: () => void;
+}
+
+function formatCoordinate(value: number, kind: "lat" | "lng"): string {
+  const dir = kind === "lat" ? (value >= 0 ? "N" : "S") : value >= 0 ? "E" : "W";
+  return `${Math.abs(value).toFixed(6)}° ${dir}`;
 }
 
 /**
- * Geo-tag trust card. No raw lat/lng shown here either, per the same
- * "people trust places, not coordinate strings" principle applied to
- * the flip card -- extended here for consistency across the viewer.
+ * Floating info panel below the card stack. Separate small map (tap ->
+ * full Google Maps), plus the exact address, lat/long, and capture
+ * date/time -- all captured automatically by Mission Camera, never
+ * entered manually. No nav arrows here -- those float independently in
+ * LivingTraceViewer now. Privacy rule preserved: map/coords/address only
+ * ever shown for map-kind categories (tree/temple/annadhanam); student/
+ * family evidence shows only the organization name, exactly as before.
  */
-export function GeoTagCard({ item, onExpand, onPrev, onNext }: GeoTagCardProps) {
+export function GeoTagCard({ item, onExpand }: GeoTagCardProps) {
   const { trust } = item;
   const isMapKind = trust.kind === "map";
-  const title = isMapKind ? item.landmark ?? trust.locationLabel : trust.infoValue;
-  const subtitle = isMapKind ? trust.locationLabel : undefined;
+  const hasCoords = isMapKind && trust.lat !== undefined && trust.lng !== undefined;
+  const title = isMapKind ? (item.address ?? item.landmark ?? trust.locationLabel) : trust.infoValue;
 
   return (
-    <div className="relative mx-auto w-[88%]">
-      <button
-        type="button"
-        onClick={onPrev}
-        aria-label="Previous evidence"
-        className="absolute -left-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm"
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <button
-        type="button"
-        onClick={onNext}
-        aria-label="Next evidence"
-        className="absolute -right-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm"
-      >
-        <ChevronRight size={16} />
-      </button>
-
-      <div className="flex gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-        {isMapKind && trust.lat !== undefined && trust.lng !== undefined ? (
-          <button
-            type="button"
-            onClick={onExpand}
-            className="h-16 w-16 shrink-0 overflow-hidden rounded-[var(--radius-photo)]"
-            aria-label="Expand map"
-          >
-            <MapEmbed
-              lat={trust.lat}
-              lng={trust.lng}
-              locationLabel={trust.locationLabel}
-              heightClassName="h-16"
-              compact
-            />
-          </button>
-        ) : (
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--radius-photo)] bg-[var(--color-background)]">
-            <MapPin size={20} className="text-[var(--color-muted-foreground)]" />
-          </div>
-        )}
-
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <p className="truncate text-sm font-semibold">{title}</p>
-          {subtitle && <p className="truncate text-xs text-[var(--color-muted-foreground)]">{subtitle}</p>}
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            {item.captureDate} · {item.captureTime}
-          </p>
-          <p className="flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
-            <User size={11} />
-            {item.capturedBy}
-          </p>
+    <div className="mx-auto flex w-[88%] flex-col gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+      {hasCoords ? (
+        <button
+          type="button"
+          onClick={onExpand}
+          className="h-28 w-full overflow-hidden rounded-[var(--radius-photo)]"
+          aria-label="Open full map"
+        >
+          <MapEmbed
+            lat={trust.lat as number}
+            lng={trust.lng as number}
+            locationLabel={title ?? trust.locationLabel}
+            heightClassName="h-28"
+            compact
+          />
+        </button>
+      ) : (
+        <div className="flex h-28 w-full items-center justify-center rounded-[var(--radius-photo)] bg-[var(--color-background)]">
+          <MapPin size={22} className="text-[var(--color-muted-foreground)]" />
         </div>
+      )}
+
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-semibold leading-snug">{title}</p>
+        {hasCoords && (
+          <p className="font-mono text-xs text-[var(--color-muted-foreground)]">
+            {formatCoordinate(trust.lat as number, "lat")}, {formatCoordinate(trust.lng as number, "lng")}
+          </p>
+        )}
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          {item.captureDate} · {item.captureTime}
+        </p>
       </div>
     </div>
   );
