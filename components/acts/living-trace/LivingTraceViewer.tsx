@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { EvidenceTraceItem } from "./types";
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TraceCard } from "./TraceCard";
 import { GeoTagCard } from "./GeoTagCard";
 import { FullPhotoViewer } from "./FullPhotoViewer";
 import { FullMapView } from "./FullMapView";
+import { useHorizontalSwipe } from "./useHorizontalSwipe";
+import type { EvidenceTraceItem } from "./types";
 
 const CARD_W = 248;
 const CARD_H = 420;
 const STEP_X = 190;
-const STEP_ROTATE = 14;
 
 function wrappedOffset(i: number, active: number, length: number) {
   let diff = i - active;
@@ -23,9 +24,6 @@ export function LivingTraceViewer({ items }: { items: EvidenceTraceItem[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState<{ lat: number; lng: number; label: string } | null>(null);
-
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const wheelLock = useRef(false);
 
   function goTo(i: number) {
     const n = items.length;
@@ -43,32 +41,10 @@ export function LivingTraceViewer({ items }: { items: EvidenceTraceItem[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, photoOpen, mapOpen]);
 
-  function handleWheel(e: React.WheelEvent) {
-    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return;
-    if (wheelLock.current) return;
-    if (e.deltaX > 20) {
-      goTo(activeIndex + 1);
-      wheelLock.current = true;
-      setTimeout(() => (wheelLock.current = false), 350);
-    } else if (e.deltaX < -20) {
-      goTo(activeIndex - 1);
-      wheelLock.current = true;
-      setTimeout(() => (wheelLock.current = false), 350);
-    }
-  }
-
-  function handleTouchStart(e: React.TouchEvent) {
-    const t = e.touches[0];
-    touchStart.current = { x: t.clientX, y: t.clientY };
-  }
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (!touchStart.current) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStart.current.x;
-    touchStart.current = null;
-    if (dx < -50) goTo(activeIndex + 1);
-    else if (dx > 50) goTo(activeIndex - 1);
-  }
+  const swipeRef = useHorizontalSwipe<HTMLDivElement>({
+    onSwipeLeft: () => goTo(activeIndex + 1),
+    onSwipeRight: () => goTo(activeIndex - 1),
+  });
 
   if (items.length === 0) {
     return (
@@ -82,45 +58,56 @@ export function LivingTraceViewer({ items }: { items: EvidenceTraceItem[] }) {
 
   return (
     <div className="flex flex-col gap-5 pt-6">
-      <div
-        className="relative mx-auto w-full"
-        style={{ height: CARD_H, perspective: "1200px" }}
-        onWheel={handleWheel}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        {items.map((item, i) => {
-          const offset = wrappedOffset(i, activeIndex, items.length);
-          const abs = Math.abs(offset);
-          if (abs > 2) return null;
-          const scale = abs === 0 ? 1 : abs === 1 ? 0.85 : 0.7;
-          const opacity = abs === 0 ? 1 : abs === 1 ? 0.55 : 0.28;
-          const rotate = offset === 0 ? 0 : offset > 0 ? -STEP_ROTATE : STEP_ROTATE;
-          const translateX = offset * STEP_X;
-          return (
-            <div
-              key={item.id}
-              className="absolute left-1/2 top-0 transition-all duration-300 ease-out"
-              style={{
-                width: CARD_W,
-                height: CARD_H,
-                marginLeft: -CARD_W / 2,
-                transform: `translateX(${translateX}px) scale(${scale}) rotateY(${rotate}deg)`,
-                opacity,
-                zIndex: 10 - abs,
-                pointerEvents: abs === 0 ? "auto" : "none",
-              }}
-            >
-              <TraceCard item={item} isActive={abs === 0} onOpenPhoto={() => setPhotoOpen(true)} />
-            </div>
-          );
-        })}
+      <div className="relative mx-auto w-full" style={{ height: CARD_H }}>
+        <div ref={swipeRef} className="absolute inset-0" style={{ touchAction: "pan-y" }}>
+          {items.map((item, i) => {
+            const offset = wrappedOffset(i, activeIndex, items.length);
+            const abs = Math.abs(offset);
+            if (abs > 2) return null;
+            const scale = abs === 0 ? 1 : abs === 1 ? 0.85 : 0.7;
+            const opacity = abs === 0 ? 1 : abs === 1 ? 0.55 : 0.28;
+            const translateX = offset * STEP_X;
+            const translateY = abs === 0 ? 0 : 10;
+            return (
+              <div
+                key={item.id}
+                className="absolute left-1/2 top-0 transition-all duration-300 ease-out"
+                style={{
+                  width: CARD_W,
+                  height: CARD_H,
+                  marginLeft: -CARD_W / 2,
+                  transform: `translateX(${translateX}px) translateY(${translateY}px) scale(${scale})`,
+                  opacity,
+                  zIndex: 10 - abs,
+                  pointerEvents: abs === 0 ? "auto" : "none",
+                }}
+              >
+                <TraceCard item={item} isActive={abs === 0} onOpenPhoto={() => setPhotoOpen(true)} />
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => goTo(activeIndex - 1)}
+          aria-label="Previous evidence"
+          className="absolute left-1 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => goTo(activeIndex + 1)}
+          aria-label="Next evidence"
+          className="absolute right-1 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm"
+        >
+          <ChevronRight size={18} />
+        </button>
       </div>
 
       <GeoTagCard
         item={current}
-        onPrev={() => goTo(activeIndex - 1)}
-        onNext={() => goTo(activeIndex + 1)}
         onExpand={() =>
           current.trust.lat !== undefined && current.trust.lng !== undefined
             ? setMapOpen({ lat: current.trust.lat, lng: current.trust.lng, label: current.trust.locationLabel })
