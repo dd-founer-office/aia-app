@@ -4,6 +4,8 @@ import { getSupabaseServiceClient } from '@/lib/supabase/service';
 
 interface EvidenceMeta {
   photoUrl: string;
+  videoUrl: string | null;
+  mediaKind: 'photo' | 'video';
   captureTime: string;
   gpsLat: number | null;
   gpsLng: number | null;
@@ -29,6 +31,8 @@ export async function submitMissionEvidenceAction(missionId: string, items: Evid
   const rows = items.map((item, index) => ({
     mission_id: missionId,
     photo_url: item.photoUrl,
+    video_url: item.videoUrl,
+    media_kind: item.mediaKind,
     capture_time: item.captureTime,
     capture_order: index + 1,
     gps_lat: item.gpsLat,
