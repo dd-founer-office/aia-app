@@ -154,10 +154,16 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
         infoValue: mission.organization,
       };
 
-  return evidence.map((row) => {
+ return evidence.map((row) => {
     const moment = momentsByEvidenceId.get(row.id as string);
+    const mediaKind = (row.media_kind as string) === 'video' ? 'video' : 'photo';
     return {
       id: row.id as string,
+      actId: missionId,
+      category,
+      mediaKind,
+      photoUrl: row.photo_url as string,
+      videoUrl: mediaKind === 'video' ? ((row.video_url as string | null) ?? undefined) : undefined,
       actId: missionId,
       category,
       mediaKind: 'photo',
