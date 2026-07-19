@@ -44,7 +44,7 @@ export interface EvidenceTraceItem {
   // set for info-kind items (Student/Family) -- their back uses
   // trust.infoValue instead, same privacy rule as the Trust Card.
   landmark?: string;
-
+  address?: string;
   gpsLat: number;
   gpsLng: number;
   gpsAccuracyMeters: number;
