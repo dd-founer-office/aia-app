@@ -32,19 +32,19 @@ export function GeoTagCard({ item, onExpand }: GeoTagCardProps) {
         <button
           type="button"
           onClick={onExpand}
-          className="h-24 w-24 shrink-0 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]"
+          className="h-auto w-24 shrink-0 self-stretch overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]"
           aria-label="Open full map"
         >
           <MapEmbed
             lat={trust.lat as number}
             lng={trust.lng as number}
             locationLabel={headline ?? trust.locationLabel}
-            heightClassName="h-24"
+            heightClassName="h-full"
             compact
           />
         </button>
       ) : (
-        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)]">
+        <div className="flex h-auto w-24 shrink-0 self-stretch items-center justify-center rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)]">
           <MapPin size={20} className="text-[var(--color-muted-foreground)]" />
         </div>
       )}
