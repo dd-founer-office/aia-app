@@ -58,7 +58,7 @@ export function LivingTraceViewer({ items }: { items: EvidenceTraceItem[] }) {
 
   return (
     <div className="flex flex-col gap-5 pt-6">
-      <div className="relative mx-auto w-full" style={{ height: CARD_H }}>
+      <div className="relative mx-auto w-full overflow-hidden" style={{ height: CARD_H }}>
         <div ref={swipeRef} className="absolute inset-0" style={{ touchAction: "pan-y" }}>
           {items.map((item, i) => {
             const offset = wrappedOffset(i, activeIndex, items.length);
