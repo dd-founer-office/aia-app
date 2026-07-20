@@ -40,7 +40,15 @@ function formatFullDateTime(iso: string, timeZone: string | null): string {
     return new Date(iso).toUTCString();
   }
 }
-
+function prettifyReviewerName(raw: string): string {
+  if (!raw.includes('@')) return raw; // already a real display name
+  const local = raw.split('@')[0];
+  return local
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 export interface PublishedActSummary {
   id: string;
   cause: string;
@@ -176,7 +184,7 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
       gpsLat: (row.gps_lat as number | null) ?? 0,
       gpsLng: (row.gps_lng as number | null) ?? 0,
       gpsAccuracyMeters: (row.gps_accuracy_meters as number | null) ?? 0,
-      approvedBy: 'AiA Verification Desk',
+      approvedBy: prettifyReviewerName(publication.published_by as string),
       approvedDate,
       trust: buildTrust(row.gps_lat as number | null, row.gps_lng as number | null),
     };
