@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, MapPin, Play } from "lucide-react";
+import { User, Play } from "lucide-react";
 import type { EvidenceTraceItem } from "./types";
 
 export interface TraceCardProps {
@@ -11,23 +11,19 @@ export interface TraceCardProps {
 }
 
 const SHEET_COLLAPSED = 168;
+const SHEET_NUDGE_GROWTH = 10;
 const NUDGE_INTERVAL = 3800;
 
 /**
- * Evidence Card, Sprint 1A pull-sheet refinement (round 2).
+ * Evidence Card. Photo is a full-bleed background (tap it directly to
+ * open Full Photo). The sheet rests collapsed over the bottom of the
+ * photo, showing the Moment (title, date, narrative). Tapping it
+ * expands it to fully cover the card.
  *
- * Photo is a full-bleed background (tap it directly to open Full
- * Photo -- no separate "Expand" chip cluttering the image now).
- *
- * The sheet rests collapsed over the bottom of the photo, showing the
- * Moment (title, date, narrative). Tapping it expands it to fully
- * cover the card (height: 100%, no internal scroll -- the trimmed
- * provenance set was sized to fit that space without scrolling).
- *
- * While collapsed and active, the sheet gives a small recurring nudge
- * (translateY, duration-300 ease-out only -- no bounce/spring) to
- * invite tapping, rather than a one-time onboarding hint. Pauses the
- * moment the card is expanded or no longer active/centered.
+ * Nudge: while collapsed and active, the sheet grows slightly taller
+ * (not translateY) to invite tapping. Growing instead of sliding keeps
+ * the sheet's bottom edge sealed against the card's bottom edge at all
+ * times, so the pinned photo underneath is never exposed mid-animation.
  */
 export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -45,9 +41,6 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
     }, NUDGE_INTERVAL);
     return () => clearInterval(interval);
   }, [isActive, expanded]);
-
-  const locationLine1 = item.trust.kind === "map" ? item.landmark : item.trust.infoValue;
-  const locationLine2 = item.trust.kind === "map" ? item.trust.locationLabel : undefined;
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)]">
@@ -85,15 +78,13 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
         )}
       </button>
 
-      {/* Sheet -- slides up over the pinned photo, same visual language
-          as CA-011's hero-photo-behind-sheet pattern */}
+      {/* Sheet -- slides up over the pinned photo */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="absolute bottom-0 left-0 right-0 z-10 flex flex-col rounded-t-[28px] bg-[var(--color-card)] px-5 pb-5 pt-3 text-left transition-all duration-300 ease-out"
         style={{
-          height: expanded ? "100%" : SHEET_COLLAPSED,
-          transform: nudged ? "translateY(-10px)" : "translateY(0)",
+          height: expanded ? "100%" : nudged ? SHEET_COLLAPSED + SHEET_NUDGE_GROWTH : SHEET_COLLAPSED,
         }}
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse capture details" : "Reveal capture details"}
@@ -115,17 +106,6 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
                 <User size={12} /> Captured By
               </p>
               <p className="text-sm">{item.capturedBy}</p>
-            </div>
-            <div className="h-px w-full bg-[var(--color-border)]" />
-            <div className="flex flex-col gap-0.5">
-              <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                <MapPin size={12} /> Location
-              </p>
-              {locationLine1 && <p className="text-sm">{locationLine1}</p>}
-              {locationLine2 && <p className="text-sm">{locationLine2}</p>}
-              <p className="text-xs text-[var(--color-muted-foreground)]">
-                GPS Accuracy ±{item.gpsAccuracyMeters}m
-              </p>
             </div>
             <div className="h-px w-full bg-[var(--color-border)]" />
             <div className="flex flex-col gap-0.5">
