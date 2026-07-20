@@ -85,7 +85,7 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
     <div
       ref={swipeRef}
       className="fixed inset-0 z-50 flex flex-col bg-black"
-      style={{ touchAction: "pan-y" }}
+      style={{ touchAction: "pan-y", height: "100dvh" }}
       role="dialog"
       aria-modal="true"
       aria-label="Full screen evidence view"
@@ -137,7 +137,7 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
             src={current.videoUrl}
             autoPlay
             playsInline
-            className="h-full w-full object-contain"
+            className="absolute inset-0 h-full w-full object-cover"
             onEnded={() => goTo(index + 1)}
           />
         ) : (
@@ -145,11 +145,9 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
           <img
             src={current.photoUrl}
             alt={current.momentTitle}
-            className="h-full w-full select-none object-contain transition-opacity duration-300 ease-out"
+            className="absolute inset-0 h-full w-full select-none object-cover transition-opacity duration-300 ease-out"
             draggable={false}
           />
-        )}
-
         <div className="absolute inset-0 z-10 flex">
           <button type="button" className="h-full w-1/4" aria-label="Previous" onClick={() => handleZoneTap("prev")} />
           <button type="button" className="h-full w-1/2" aria-label="Pause or play" onClick={() => handleZoneTap("center")} />
