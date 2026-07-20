@@ -148,6 +148,8 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
             className="absolute inset-0 h-full w-full select-none object-cover transition-opacity duration-300 ease-out"
             draggable={false}
           />
+        )}
+
         <div className="absolute inset-0 z-10 flex">
           <button type="button" className="h-full w-1/4" aria-label="Previous" onClick={() => handleZoneTap("prev")} />
           <button type="button" className="h-full w-1/2" aria-label="Pause or play" onClick={() => handleZoneTap("center")} />
