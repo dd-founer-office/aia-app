@@ -265,15 +265,16 @@ async function handleSubmit() {
           videoUrl = videoUrlData.publicUrl;
         }
 
-        items.push({
-          photoUrl: posterUrlData.publicUrl,
-          videoUrl,
-          mediaKind: item.mediaKind,
-          captureTime: item.capturedAtIso,
-          gpsLat: item.gpsLat,
-          gpsLng: item.gpsLng,
-          gpsAccuracyMeters: item.gpsAccuracyMeters,
-        });
+    items.push({
+photoUrl: posterUrlData.publicUrl,
+videoUrl,
+mediaKind: item.mediaKind,
+captureTime: item.capturedAtIso,
+captureTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+gpsLat: item.gpsLat,
+gpsLng: item.gpsLng,
+gpsAccuracyMeters: item.gpsAccuracyMeters,
+});
       }
 
       await submitMissionEvidenceAction(missionId, items);
