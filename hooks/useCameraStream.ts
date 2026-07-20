@@ -26,8 +26,9 @@ export function useCameraStream() {
       stop();
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 1280 } },
-          audio: false,
+          const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: mode, width: { ideal: 1080 }, height: { ideal: 1920 } },
+          audio: true,
         });
         streamRef.current = stream;
         if (videoRef.current) {
