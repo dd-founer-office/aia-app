@@ -1,5 +1,6 @@
 "use client";
 
+import { MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
 import {
@@ -91,18 +92,24 @@ export default function HomePage() {
           <SectionHeader title="Your Latest Act of Aram" />
           {mockLatestAct ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={mockLatestAct.hero_image_url}
-                alt={`${mockLatestAct.cause} Act of Aram`}
-                className="-mx-5 h-44 w-full rounded-[var(--radius-card)] object-cover"
-              />
-              <div className="flex flex-col gap-1">
-                <p className="text-lg font-semibold leading-snug">{mockLatestAct.cause}</p>
-                <p className="text-sm text-[var(--color-muted-foreground)]">
+            <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={mockLatestAct.hero_image_url}
+                  alt={`${mockLatestAct.cause} Act of Aram`}
+                  className="h-[260px] w-full rounded-[var(--radius-photo)] object-cover"
+                />
+                <span
+                  className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-white"
+                  style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+                >
+                  <MapPin size={12} />
                   {mockLatestAct.location}
-                </p>
+                  <span className="opacity-70">·</span>
+                  {mockLatestAct.completed_date}
+                </span>
               </div>
+              <p className="text-lg font-semibold leading-snug">{mockLatestAct.cause}</p>
               <div className="flex flex-wrap gap-2">
                 <Badge status="verified" label="Verified" />
                 <Badge status="verified" label="Executed" />
