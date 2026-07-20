@@ -139,14 +139,22 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
   const approvedDate = formatDisplayDate(publication.published_at);
 
   const trust: TrustCardData = isMapKind
-    ? {
-        kind: 'map',
-        verificationStatus: 'verified',
-        locationLabel: publication.landmark ?? mission.organization,
-        lat: mission.gps_lat ?? undefined,
-        lng: mission.gps_lng ?? undefined,
-      }
-    : {
+ const buildTrust = (evidenceLat: number | null, evidenceLng: number | null): TrustCardData =>
+    isMapKind
+      ? {
+          kind: 'map',
+          verificationStatus: 'verified',
+          locationLabel: publication.landmark ?? mission.organization,
+          lat: evidenceLat ?? undefined,
+          lng: evidenceLng ?? undefined,
+        }
+      : {
+          kind: 'info',
+          verificationStatus: 'verified',
+          locationLabel: publication.landmark ?? mission.organization,
+          infoLabel: category === 'student' ? 'School' : 'Support Partner',
+          infoValue: mission.organization,
+        };
         kind: 'info',
         verificationStatus: 'verified',
         locationLabel: publication.landmark ?? mission.organization,
