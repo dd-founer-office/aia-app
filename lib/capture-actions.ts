@@ -7,6 +7,7 @@ interface EvidenceMeta {
   videoUrl: string | null;
   mediaKind: 'photo' | 'video';
   captureTime: string;
+  captureTimezone: string | null;
   gpsLat: number | null;
   gpsLng: number | null;
   gpsAccuracyMeters: number | null;
@@ -24,7 +25,13 @@ const CAUSE_TO_CATEGORY: Record<string, string> = {
 // for student/family evidence -- nothing to leak if it's never generated.
 const MAP_KIND_CATEGORIES = new Set(['tree', 'temple', 'annadhanam']);
 
-async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+interface GeocodeResult {
+  address: string;
+  placeName: string | null;
+  plusCode: string | null;
+}
+
+async function reverseGeocode(lat: number, lng: number): Promise<GeocodeResult | null> {
   const apiKey = process.env.GOOGLE_MAPS_GEOCODING_API_KEY;
   if (!apiKey) {
     console.error('[geocode] GOOGLE_MAPS_GEOCODING_API_KEY is not set.');
@@ -39,7 +46,23 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
       console.error('[geocode] Geocoding failed', { status: data.status, errorMessage: data.error_message });
       return null;
     }
-    return data.results[0].formatted_address as string;
+
+    const primary = data.results[0];
+    const components: Array<{ long_name: string; types: string[] }> = primary.address_components ?? [];
+    const find = (type: string) => components.find((c) => c.types.includes(type))?.long_name;
+    const locality = find('locality') ?? find('sublocality') ?? find('administrative_area_level_2');
+    const state = find('administrative_area_level_1');
+    const country = find('country');
+    const placeName = [locality, state, country].filter(Boolean).join(', ') || null;
+    const plusCode: string | null = data.plus_code?.compound_code
+      ? (data.plus_code.compound_code as string).split(' ')[0]
+      : null;
+
+    return {
+      address: primary.formatted_address as string,
+      placeName,
+      plusCode,
+    };
   } catch (err) {
     console.error('[geocode] Geocoding request threw', err);
     return null;
@@ -68,8 +91,16 @@ export async function submitMissionEvidenceAction(missionId: string, items: Evid
   const rows = await Promise.all(
     items.map(async (item, index) => {
       let address: string | null = null;
+      let placeName: string | null = null;
+      let plusCode: string | null = null;
+
       if (isMapKind && item.gpsLat !== null && item.gpsLng !== null) {
-        address = await reverseGeocode(item.gpsLat, item.gpsLng);
+        const geocoded = await reverseGeocode(item.gpsLat, item.gpsLng);
+        if (geocoded) {
+          address = geocoded.address;
+          placeName = geocoded.placeName;
+          plusCode = geocoded.plusCode;
+        }
       }
 
       return {
@@ -78,6 +109,9 @@ export async function submitMissionEvidenceAction(missionId: string, items: Evid
         video_url: item.videoUrl,
         media_kind: item.mediaKind,
         address,
+        place_name: placeName,
+        plus_code: plusCode,
+        capture_timezone: item.captureTimezone,
         capture_time: item.captureTime,
         capture_order: index + 1,
         gps_lat: item.gpsLat,
