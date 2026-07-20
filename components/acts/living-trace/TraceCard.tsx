@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Play } from "lucide-react";
+import { MapPin, User, Building2, BadgeCheck, Play } from "lucide-react";
 import type { EvidenceTraceItem } from "./types";
 
 export interface TraceCardProps {
@@ -14,16 +14,38 @@ const SHEET_COLLAPSED = 168;
 const SHEET_NUDGE_GROWTH = 10;
 const NUDGE_INTERVAL = 3800;
 
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function splitPlaceName(placeName: string): { line1: string; line2?: string } {
+  const parts = placeName.split(", ");
+  return { line1: parts[0], line2: parts.slice(1).join(", ") || undefined };
+}
+
+function Avatar({ name }: { name: string }) {
+  return (
+    <span
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+      style={{ backgroundColor: "var(--color-badge-verified-bg)", color: "var(--color-primary-dark)" }}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
 /**
- * Evidence Card. Photo is a full-bleed background (tap it directly to
- * open Full Photo). The sheet rests collapsed over the bottom of the
- * photo, showing the Moment (title, date, narrative). Tapping it
- * expands it to fully cover the card.
- *
- * Nudge: while collapsed and active, the sheet grows slightly taller
- * (not translateY) to invite tapping. Growing instead of sliding keeps
- * the sheet's bottom edge sealed against the card's bottom edge at all
- * times, so the pinned photo underneath is never exposed mid-animation.
+ * Living Trace -- Back Face Constitution v1.0. The back is the Human
+ * Trust Layer: who made this possible, not what a map or timeline
+ * already shows elsewhere. Order: Location -> Field Executive ->
+ * Executing Organization -> Reviewed & Published By. People before
+ * institutions; no coordinates, no map button, no badges/statistics.
  */
 export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -42,9 +64,12 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
     return () => clearInterval(interval);
   }, [isActive, expanded]);
 
+  const isMapKind = item.trust.kind === "map";
+  const place = isMapKind ? (item.placeName ?? item.landmark) : undefined;
+  const placeParts = place ? splitPlaceName(place) : null;
+
   return (
     <div className="relative h-full w-full overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)]">
-      {/* Pinned photo, full-bleed background */}
       <button
         type="button"
         onClick={onOpenPhoto}
@@ -52,12 +77,7 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
         aria-label={item.mediaKind === "video" ? "Play evidence video" : "Open full photo"}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={item.photoUrl}
-          alt={item.momentTitle}
-          className="h-full w-full object-cover"
-          draggable={false}
-        />
+        <img src={item.photoUrl} alt={item.momentTitle} className="h-full w-full object-cover" draggable={false} />
         {item.mediaKind === "video" && (
           <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
             <span
@@ -78,7 +98,6 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
         )}
       </button>
 
-      {/* Sheet -- slides up over the pinned photo */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -99,22 +118,58 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
         <p className="shrink-0 text-sm leading-relaxed text-[var(--color-foreground)]">{item.narrative}</p>
 
         {expanded && (
-          <div className="mt-3 flex flex-col gap-2.5">
+          <div className="mt-3 flex flex-col gap-3">
+            {placeParts && (
+              <>
+                <div className="h-px w-full bg-[var(--color-border)]" />
+                <div className="flex flex-col gap-0.5">
+                  <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                    <MapPin size={12} /> Location
+                  </p>
+                  <p className="text-sm font-medium">{placeParts.line1}</p>
+                  {placeParts.line2 && <p className="text-sm text-[var(--color-muted-foreground)]">{placeParts.line2}</p>}
+                </div>
+              </>
+            )}
+
             <div className="h-px w-full bg-[var(--color-border)]" />
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-1.5">
               <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                <User size={12} /> Captured By
+                <User size={12} /> Field Executive
               </p>
-              <p className="text-sm">{item.capturedBy}</p>
+              <div className="flex items-center gap-2.5">
+                <Avatar name={item.capturedBy} />
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">{item.capturedBy}</p>
+                  <p className="text-xs text-[var(--color-muted-foreground)]">Field Executive</p>
+                </div>
+              </div>
             </div>
+
+            {item.organization && (
+              <>
+                <div className="h-px w-full bg-[var(--color-border)]" />
+                <div className="flex flex-col gap-0.5">
+                  <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                    <Building2 size={12} /> Executing Organization
+                  </p>
+                  <p className="text-sm font-medium">{item.organization}</p>
+                </div>
+              </>
+            )}
+
             <div className="h-px w-full bg-[var(--color-border)]" />
-            <div className="flex flex-col gap-0.5">
-              <p className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Approved By</p>
-              <p className="text-sm">{item.approvedBy}</p>
-              <p className="mt-1 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                Approved On
+            <div className="flex flex-col gap-1.5">
+              <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                <BadgeCheck size={12} /> Reviewed & Published By
               </p>
-              <p className="text-sm">{item.approvedDate}</p>
+              <div className="flex items-center gap-2.5">
+                <Avatar name={item.approvedBy} />
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">{item.approvedBy}</p>
+                  <p className="text-xs text-[var(--color-muted-foreground)]">Documentation Reviewer</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
