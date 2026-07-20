@@ -56,7 +56,7 @@ export async function getPublishedActSummary(missionId: string): Promise<Publish
     return null;
   }
 
- const { data: mission, error: missionError } = await supabase
+  const { data: mission, error: missionError } = await supabase
     .from('missions')
     .select('*')
     .eq('id', missionId)
@@ -138,8 +138,7 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
   const isMapKind = MAP_KIND_CATEGORIES.has(category);
   const approvedDate = formatDisplayDate(publication.published_at);
 
-  const trust: TrustCardData = isMapKind
- const buildTrust = (evidenceLat: number | null, evidenceLng: number | null): TrustCardData =>
+  const buildTrust = (evidenceLat: number | null, evidenceLng: number | null): TrustCardData =>
     isMapKind
       ? {
           kind: 'map',
@@ -155,14 +154,8 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
           infoLabel: category === 'student' ? 'School' : 'Support Partner',
           infoValue: mission.organization,
         };
-        kind: 'info',
-        verificationStatus: 'verified',
-        locationLabel: publication.landmark ?? mission.organization,
-        infoLabel: category === 'student' ? 'School' : 'Support Partner',
-        infoValue: mission.organization,
-      };
 
- return evidence.map((row) => {
+  return evidence.map((row) => {
     const moment = momentsByEvidenceId.get(row.id as string);
     const mediaKind = (row.media_kind as string) === 'video' ? 'video' : 'photo';
     return {
@@ -179,7 +172,7 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
       captureDateIso: row.capture_time as string,
       captureTime: formatDisplayTime(row.capture_time as string),
       capturedBy: mission.field_executive as string,
-      landmark: isMapKind ? publication.landmark ?? undefined : undefined,
+      landmark: isMapKind ? (publication.landmark ?? undefined) : undefined,
       gpsLat: (row.gps_lat as number | null) ?? 0,
       gpsLng: (row.gps_lng as number | null) ?? 0,
       gpsAccuracyMeters: (row.gps_accuracy_meters as number | null) ?? 0,
@@ -189,6 +182,7 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
     };
   });
 }
+
 export interface PublishedActFeedItem extends PublishedActSummary {
   missionDateIso: string;
   evidenceCount: number;
