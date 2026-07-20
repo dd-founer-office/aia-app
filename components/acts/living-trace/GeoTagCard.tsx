@@ -27,41 +27,44 @@ export function GeoTagCard({ item, onExpand }: GeoTagCardProps) {
     : undefined;
 
   return (
-    <div className="mx-auto flex w-[88%] gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-      {hasCoords ? (
+    <div className="mx-auto flex w-[88%] flex-col gap-3">
+      {hasCoords && (
         <button
           type="button"
           onClick={onExpand}
-          className="h-16 w-16 shrink-0 overflow-hidden rounded-[var(--radius-photo)]"
+          className="h-32 w-full overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]"
           aria-label="Open full map"
         >
           <MapEmbed
             lat={trust.lat as number}
             lng={trust.lng as number}
             locationLabel={headline ?? trust.locationLabel}
-            heightClassName="h-16"
+            heightClassName="h-32"
             compact
           />
         </button>
-      ) : (
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--radius-photo)] bg-[var(--color-background)]">
-          <MapPin size={20} className="text-[var(--color-muted-foreground)]" />
-        </div>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="truncate text-sm font-semibold">{headline}</p>
-        {detailLine && (
-          <p className="truncate text-xs text-[var(--color-muted-foreground)]">{detailLine}</p>
+      <div className="flex gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+        {!hasCoords && (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-photo)] bg-[var(--color-background)]">
+            <MapPin size={18} className="text-[var(--color-muted-foreground)]" />
+          </div>
         )}
-        {hasCoords && (
-          <p className="truncate font-mono text-xs text-[var(--color-muted-foreground)]">
-            Lat {formatCoordinate(trust.lat as number, "lat")}, Long {formatCoordinate(trust.lng as number, "lng")}
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="truncate text-sm font-semibold">{headline}</p>
+          {detailLine && (
+            <p className="truncate text-xs text-[var(--color-muted-foreground)]">{detailLine}</p>
+          )}
+          {hasCoords && (
+            <p className="truncate font-mono text-xs text-[var(--color-muted-foreground)]">
+              Lat {formatCoordinate(trust.lat as number, "lat")}, Long {formatCoordinate(trust.lng as number, "lng")}
+            </p>
+          )}
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            {item.captureDateTimeFull ?? `${item.captureDate} · ${item.captureTime}`}
           </p>
-        )}
-        <p className="text-xs text-[var(--color-muted-foreground)]">
-          {item.captureDateTimeFull ?? `${item.captureDate} · ${item.captureTime}`}
-        </p>
+        </div>
       </div>
     </div>
   );
