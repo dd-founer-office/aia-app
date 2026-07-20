@@ -101,7 +101,7 @@ export function TraceCard({ item, isActive, onOpenPhoto }: TraceCardProps) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="absolute bottom-0 left-0 right-0 z-10 flex flex-col rounded-t-[28px] bg-[var(--color-card)] px-5 pb-5 pt-3 text-left transition-all duration-300 ease-out"
+        className="absolute bottom-0 left-0 right-0 z-10 flex flex-col rounded-t-[var(--radius-card)] bg-[var(--color-card)] px-5 pb-5 pt-3 text-left transition-all duration-300 ease-out"
         style={{
           height: expanded ? "100%" : nudged ? SHEET_COLLAPSED + SHEET_NUDGE_GROWTH : SHEET_COLLAPSED,
         }}
