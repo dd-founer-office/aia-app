@@ -158,7 +158,9 @@ export default function HomePage() {
             title={"\u0B95\u0BC1\u0BB1\u0BB3\u0BCD \u0B95\u0BC2\u0BB1\u0BC1\u0BAE\u0BCD \u0B85\u0BB1\u0BAE\u0BCD"}
             titleClassName="font-tamil-sans font-medium"
           />
-          <p className="font-tamil-sans font-normal whitespace-pre-line py-2 text-center text-2xl leading-relaxed text-[var(--color-foreground)]">
+          <p className="font-tamil-sans font-normal whitespace-pre-line py-2 text-center text-base leading-relaxed text-[var(--color-foreground)]">
+            {mockKuralOfTheDay.kural_tamil}
+          </p>
             {mockKuralOfTheDay.kural_tamil}
           </p>
           <p className="text-sm leading-relaxed text-[var(--color-foreground)]">
