@@ -26,15 +26,22 @@ const MAP_KIND_CATEGORIES = new Set(['tree', 'temple', 'annadhanam']);
 
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   const apiKey = process.env.GOOGLE_MAPS_GEOCODING_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.error('[geocode] GOOGLE_MAPS_GEOCODING_API_KEY is not set.');
+    return null;
+  }
 
   try {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
     const res = await fetch(url);
     const data = await res.json();
-    if (data.status !== 'OK' || !data.results?.length) return null;
+    if (data.status !== 'OK' || !data.results?.length) {
+      console.error('[geocode] Geocoding failed', { status: data.status, errorMessage: data.error_message });
+      return null;
+    }
     return data.results[0].formatted_address as string;
-  } catch {
+  } catch (err) {
+    console.error('[geocode] Geocoding request threw', err);
     return null;
   }
 }
