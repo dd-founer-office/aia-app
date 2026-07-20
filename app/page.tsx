@@ -38,11 +38,14 @@ export default function HomePage() {
             />
             <div className="flex flex-col">
               <h1 className="text-2xl font-semibold leading-tight tracking-tight">
-                {"\u0BB5\u0BA3\u0B95\u0BCD\u0B95\u0BAE\u0BCD"},
+                <span className="font-tamil-sans font-medium">
+                  {"\u0BB5\u0BA3\u0B95\u0BCD\u0B95\u0BAE\u0BCD"}
+                </span>
+                ,
                 <br />
                 {mockContributor.display_name}
               </h1>
-              <p className="mt-1.5 text-sm text-[var(--color-muted-foreground)]">
+              <p className="font-tamil-sans font-normal mt-1.5 text-sm text-[var(--color-muted-foreground)]">
                 {"\u0B85\u0BB1\u0BAE\u0BCD \u0B9A\u0BC6\u0BAF \u0BAA\u0BB4\u0B95\u0BC1"}
               </p>
             </div>
@@ -151,8 +154,11 @@ export default function HomePage() {
             KKA-001). Swap for a live query when that engine is connected;
             no UI change should be needed. */}
         <Card className="flex flex-col gap-5">
-          <SectionHeader title={"\u0B95\u0BC1\u0BB1\u0BB3\u0BCD \u0B95\u0BC2\u0BB1\u0BC1\u0BAE\u0BCD \u0B85\u0BB1\u0BAE\u0BCD"} />
-          <p className="font-tamil-serif whitespace-pre-line py-2 text-center text-2xl leading-relaxed text-[var(--color-foreground)]">
+          <SectionHeader
+            title={"\u0B95\u0BC1\u0BB1\u0BB3\u0BCD \u0B95\u0BC2\u0BB1\u0BC1\u0BAE\u0BCD \u0B85\u0BB1\u0BAE\u0BCD"}
+            titleClassName="font-tamil-sans font-medium"
+          />
+          <p className="font-tamil-sans font-normal whitespace-pre-line py-2 text-center text-2xl leading-relaxed text-[var(--color-foreground)]">
             {mockKuralOfTheDay.kural_tamil}
           </p>
           <p className="text-sm leading-relaxed text-[var(--color-foreground)]">
