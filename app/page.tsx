@@ -161,8 +161,7 @@ export default function HomePage() {
           <p className="font-tamil-sans font-normal whitespace-pre-line py-2 text-center text-base leading-relaxed text-[var(--color-foreground)]">
             {mockKuralOfTheDay.kural_tamil}
           </p>
-            {mockKuralOfTheDay.kural_tamil}
-          </p>
+            
           <p className="text-sm leading-relaxed text-[var(--color-foreground)]">
             {mockKuralOfTheDay.core_principle}
           </p>
