@@ -22,7 +22,7 @@ export function MapEmbed({
   compact = false,
 }: MapEmbedProps) {
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-  const mapEmbedUrl = `https://www.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
+  const mapEmbedUrl = `https://www.google.com/maps?q=${lat},${lng}&z=14&t=k&output=embed`;
 
   return (
     <div className="flex flex-col gap-3">
