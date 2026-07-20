@@ -38,6 +38,7 @@ export interface EvidenceTraceItem {
   captureDateIso: string;
   captureTime: string;
   capturedBy: string;
+  organization?: string;
 
   // landmark is the human-readable place shown on the back of the card
   // for map-kind trust data (e.g. "Sri Ranganathaswamy Temple"). Not
