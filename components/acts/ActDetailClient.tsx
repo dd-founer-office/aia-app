@@ -110,8 +110,8 @@ export function ActDetailClient({ act, id }: { act: MockAct; id: string }) {
           </div>
 
           <div className="flex flex-col gap-4">
-            <p className="text-sm font-medium">குறள் கூறும் அறம்</p>
-            <p className="whitespace-pre-line text-base leading-relaxed">
+            <p className="font-tamil-serif font-normal text-sm">குறள் கூறும் அறம்</p>
+            <p className="font-tamil-serif font-normal whitespace-pre-line text-base leading-relaxed">
               {mockKuralOfTheDay.kural_tamil}
             </p>
             <p className="text-sm text-[var(--color-muted-foreground)]">
