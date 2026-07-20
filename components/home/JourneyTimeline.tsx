@@ -84,7 +84,7 @@ export function JourneyTimeline({ currentStage }: JourneyTimelineProps) {
               )}
             </div>
             <div className={`pl-5 pt-1.5 ${isLast ? "" : "pb-10"}`}>
-              <p className="font-tamil-serif text-xl font-normal leading-tight text-[var(--color-foreground)]">
+              <p className="font-tamil-serif text-xl font-semibold leading-tight text-[var(--color-foreground)]">
                 {label.ta}{" "}
                 <span className="font-display font-normal">
                   {"\u2022"} {label.en}
