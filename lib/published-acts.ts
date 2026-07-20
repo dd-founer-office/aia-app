@@ -1,19 +1,6 @@
 import { getSupabasePublicClient } from '@/lib/supabase/client';
 import type { EvidenceCategory, EvidenceTraceItem, TrustCardData } from '@/components/acts/living-trace/types';
 
-// -----------------------------------------------------------------------
-// Real (Supabase-backed) published Acts, sourced from the Mission Review
-// Workflow. Separate from lib/mock-data.ts, which remains the source for
-// the 5 demo Acts. An Act id resolves to a mock Act OR a real published
-// mission, never both -- callers check getActById() first, then fall back
-// here (see app/acts/[id]/page.tsx and .../evidence/page.tsx).
-//
-// Cause -> category mapping (locked, confirmed 2026-07-19): unmapped
-// causes intentionally fall back to "info"-kind display (no map, no
-// precise location) rather than guessing -- protecting location by
-// default is safer than defaulting to a map.
-// -----------------------------------------------------------------------
-
 const CAUSE_TO_CATEGORY: Record<string, EvidenceCategory> = {
   Education: 'student',
   Medical: 'family',
@@ -24,7 +11,7 @@ const CAUSE_TO_CATEGORY: Record<string, EvidenceCategory> = {
 const MAP_KIND_CATEGORIES = new Set<EvidenceCategory>(['tree', 'temple', 'annadhanam']);
 
 function categoryFor(cause: string): EvidenceCategory {
-  return CAUSE_TO_CATEGORY[cause] ?? 'student'; // safest default: info-kind, no map
+  return CAUSE_TO_CATEGORY[cause] ?? 'student';
 }
 
 function formatDisplayDate(iso: string): string {
@@ -33,6 +20,25 @@ function formatDisplayDate(iso: string): string {
 
 function formatDisplayTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function formatFullDateTime(iso: string, timeZone: string | null): string {
+  const tz = timeZone ?? 'UTC';
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: tz,
+      timeZoneName: 'shortOffset',
+    }).format(new Date(iso));
+  } catch {
+    return new Date(iso).toUTCString();
+  }
 }
 
 export interface PublishedActSummary {
@@ -48,13 +54,7 @@ export interface PublishedActSummary {
 
 export async function getPublishedActSummary(missionId: string): Promise<PublishedActSummary | null> {
   const supabase = getSupabasePublicClient();
-  if (!supabase) {
-    console.error('[published-acts] Supabase client is null — env vars missing.', {
-      hasUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
-      hasAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-    });
-    return null;
-  }
+  if (!supabase) return null;
 
   const { data: mission, error: missionError } = await supabase
     .from('missions')
@@ -63,10 +63,7 @@ export async function getPublishedActSummary(missionId: string): Promise<Publish
     .eq('status', 'published')
     .maybeSingle();
 
-  if (missionError || !mission) {
-    console.error('[published-acts] mission lookup failed', { missionId, missionError, found: Boolean(mission) });
-    return null;
-  }
+  if (missionError || !mission) return null;
 
   const { data: publication, error: pubError } = await supabase
     .from('mission_publications')
@@ -123,7 +120,7 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
     .from('evidence')
     .select('*')
     .eq('mission_id', missionId)
-    .order('capture_order', { ascending: false }); // newest first, per Living Trace Constitution §7
+    .order('capture_order', { ascending: false });
 
   if (!evidence || evidence.length === 0) return [];
 
@@ -166,6 +163,9 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
       photoUrl: row.photo_url as string,
       videoUrl: mediaKind === 'video' ? ((row.video_url as string | null) ?? undefined) : undefined,
       address: (row.address as string | null) ?? undefined,
+      placeName: (row.place_name as string | null) ?? undefined,
+      plusCode: (row.plus_code as string | null) ?? undefined,
+      captureDateTimeFull: formatFullDateTime(row.capture_time as string, row.capture_timezone as string | null),
       momentTitle: moment?.moment_title ?? 'Evidence Captured',
       narrative: moment?.narrative ?? '',
       captureDate: formatDisplayDate(row.capture_time as string),
