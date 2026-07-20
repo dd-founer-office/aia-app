@@ -52,7 +52,3 @@ body {
 .font-tamil-sans {
   font-family: var(--font-tamil-sans), sans-serif;
 }
-
-.font-tamil-serif {
-  font-family: var(--font-tamil-serif), serif;
-}
