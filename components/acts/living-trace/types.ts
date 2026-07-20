@@ -45,6 +45,9 @@ export interface EvidenceTraceItem {
   // trust.infoValue instead, same privacy rule as the Trust Card.
   landmark?: string;
   address?: string;
+  placeName?: string;
+  plusCode?: string;
+  captureDateTimeFull?: string;
   gpsLat: number;
   gpsLng: number;
   gpsAccuracyMeters: number;
