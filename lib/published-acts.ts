@@ -185,7 +185,7 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
       gpsAccuracyMeters: (row.gps_accuracy_meters as number | null) ?? 0,
       approvedBy: 'AiA Verification Desk',
       approvedDate,
-      trust,
+      trust: buildTrust(row.gps_lat as number | null, row.gps_lng as number | null),
     };
   });
 }
