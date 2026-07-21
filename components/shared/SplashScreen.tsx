@@ -13,12 +13,14 @@ import { useLayoutEffect, useRef, useState } from "react";
  * node — never split mid-letter — so the browser shapes kerning pairs
  * (e.g. "Ar") correctly in both the compact and expanded states. A
  * clip-path masks the undisclosed portion from the right; the box's
- * width shrinks in lockstep. Both are driven by a single registered
- * custom property (--reveal-w) so they can never drift out of sync.
- * overflow stays `visible` throughout, so baseline alignment follows
- * the text's own baseline rather than falling back to the box's
- * bottom margin edge (the CSS 2.1 rule triggered by overflow:hidden
- * on an inline-block).
+ * width shrinks in lockstep with it. Both values are plain numbers
+ * computed in React and applied as ordinary inline styles with a
+ * standard CSS transition — deliberately NOT using CSS custom
+ * properties or @property, so nothing here depends on newer engine
+ * support. overflow stays `visible` throughout, so baseline alignment
+ * follows the text's own baseline rather than falling back to the
+ * box's bottom margin edge (the CSS 2.1 rule triggered by
+ * overflow:hidden on an inline-block).
  *
  * All color, background, and type values are read from the locked
  * design tokens in globals.css — nothing here is hardcoded.
@@ -29,12 +31,10 @@ import { useLayoutEffect, useRef, useState } from "react";
  * (300ms backdrop dissolve, 250ms wordmark fade).
  *
  * Plays once per browser session. Respects prefers-reduced-motion.
- *
- * NOTE: setup guarded with a `hasRun` ref, not just the sessionStorage
- * flag — React Strict Mode's dev-only double-invoke of effects would
- * otherwise clear the first pass's timers via cleanup, then bail out
- * of the second pass because the flag was already set, leaving the
- * splash permanently stuck on its first frame.
+ * Setup is guarded with a `hasRun` ref (not just the sessionStorage
+ * flag) so React Strict Mode's dev-only double-invoke of effects
+ * can't clear the first pass's timers and then bail out of the
+ * second pass, leaving the splash stuck on its first frame.
  */
 
 const SESSION_KEY = "aia-splash-played";
@@ -82,47 +82,39 @@ function RevealWord({
     }
   }, [text]);
 
+  const currentWidth = measured ? (open ? measured.full : measured.anchor) : 0;
+  const hiddenWidth = measured ? Math.max(measured.full - currentWidth, 0) : 0;
+
   return (
     <span style={{ position: "relative", display: "inline-block" }}>
       {/* Hidden measurement clones — same font context, never painted */}
       <span
         ref={fullRef}
         aria-hidden="true"
-        style={{
-          position: "absolute",
-          visibility: "hidden",
-          whiteSpace: "pre",
-          pointerEvents: "none",
-        }}
+        style={{ position: "absolute", visibility: "hidden", whiteSpace: "pre", pointerEvents: "none" }}
       >
         {text}
       </span>
       <span
         ref={anchorRef}
         aria-hidden="true"
-        style={{
-          position: "absolute",
-          visibility: "hidden",
-          whiteSpace: "pre",
-          pointerEvents: "none",
-        }}
+        style={{ position: "absolute", visibility: "hidden", whiteSpace: "pre", pointerEvents: "none" }}
       >
         {text.charAt(0)}
       </span>
 
       {/* The one real, unsplit text node — clip-path masks it, never the DOM */}
       <span
-        className={`reveal-word${open ? " reveal-word--open" : ""}`}
-        style={
-          measured
-            ? ({
-                "--anchor-w": `${measured.anchor}px`,
-                "--full-w": `${measured.full}px`,
-                "--reveal-w": open ? `${measured.full}px` : `${measured.anchor}px`,
-                color: `var(${colorVar})`,
-              } as React.CSSProperties)
-            : { opacity: 0, color: `var(${colorVar})` }
-        }
+        style={{
+          display: "inline-block",
+          whiteSpace: "pre",
+          verticalAlign: "baseline",
+          color: `var(${colorVar})`,
+          opacity: measured ? 1 : 0,
+          width: `${currentWidth}px`,
+          clipPath: `inset(0 ${hiddenWidth}px 0 0)`,
+          transition: `width ${EXPAND_MS}ms ${EASE}, clip-path ${EXPAND_MS}ms ${EASE}`,
+        }}
       >
         {text}
       </span>
@@ -150,12 +142,9 @@ export default function SplashScreen() {
     const dissolveTotal = BACKDROP_DISSOLVE_MS + WORDMARK_FADE_DELAY_MS + WORDMARK_FADE_MS;
 
     if (reducedMotion) {
-      // Static compact wordmark, brief pause, then the same dissolve exit.
       const tDissolve = 900;
       timers.push(setTimeout(() => setPhase("dissolving"), tDissolve));
-      timers.push(
-        setTimeout(() => setPhase("wordmark-fading"), tDissolve + WORDMARK_FADE_DELAY_MS)
-      );
+      timers.push(setTimeout(() => setPhase("wordmark-fading"), tDissolve + WORDMARK_FADE_DELAY_MS));
       timers.push(setTimeout(() => setMounted(false), tDissolve + dissolveTotal));
       return () => timers.forEach(clearTimeout);
     }
@@ -167,9 +156,7 @@ export default function SplashScreen() {
     timers.push(setTimeout(() => setPhase("expanded"), tExpand));
     timers.push(setTimeout(() => setPhase("compact"), tContract));
     timers.push(setTimeout(() => setPhase("dissolving"), tDissolve));
-    timers.push(
-      setTimeout(() => setPhase("wordmark-fading"), tDissolve + WORDMARK_FADE_DELAY_MS)
-    );
+    timers.push(setTimeout(() => setPhase("wordmark-fading"), tDissolve + WORDMARK_FADE_DELAY_MS));
     timers.push(setTimeout(() => setMounted(false), tDissolve + dissolveTotal));
 
     return () => timers.forEach(clearTimeout);
@@ -182,47 +169,29 @@ export default function SplashScreen() {
   const wordmarkFading = phase === "wordmark-fading";
 
   return (
-    <>
-      {/* One registered custom property, reused (independently) by all three words */}
-      <style>{`
-        @property --reveal-w {
-          syntax: '<length>';
-          inherits: false;
-          initial-value: 0px;
-        }
-        .reveal-word {
-          display: inline-block;
-          white-space: pre;
-          vertical-align: baseline;
-          width: var(--reveal-w);
-          clip-path: inset(0 calc(var(--full-w) - var(--reveal-w)) 0 0);
-          transition: --reveal-w ${EXPAND_MS}ms ${EASE};
-        }
-      `}</style>
+    <div
+      role="status"
+      aria-label="Aram in Action"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--color-background)]"
+      style={{
+        opacity: dissolving ? 0 : 1,
+        transition: `opacity ${BACKDROP_DISSOLVE_MS}ms ease-out`,
+        pointerEvents: dissolving ? "none" : "auto",
+      }}
+    >
       <div
-        role="status"
-        aria-label="Aram in Action"
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--color-background)]"
+        className="font-display select-none flex items-baseline"
         style={{
-          opacity: dissolving ? 0 : 1,
-          transition: `opacity ${BACKDROP_DISSOLVE_MS}ms ease-out`,
-          pointerEvents: dissolving ? "none" : "auto",
+          fontSize: "clamp(2.25rem, 10vw, 3rem)",
+          lineHeight: 1,
+          opacity: wordmarkFading ? 0 : 1,
+          transition: `opacity ${WORDMARK_FADE_MS}ms ease-out`,
         }}
       >
-        <div
-          className="font-display select-none flex items-baseline"
-          style={{
-            fontSize: "clamp(2.25rem, 10vw, 3rem)",
-            lineHeight: 1,
-            opacity: wordmarkFading ? 0 : 1,
-            transition: `opacity ${WORDMARK_FADE_MS}ms ease-out`,
-          }}
-        >
-          {WORDS.map((w) => (
-            <RevealWord key={w.text} text={w.text} colorVar={w.colorVar} open={open} />
-          ))}
-        </div>
+        {WORDS.map((w) => (
+          <RevealWord key={w.text} text={w.text} colorVar={w.colorVar} open={open} />
+        ))}
       </div>
-    </>
+    </div>
   );
 }
