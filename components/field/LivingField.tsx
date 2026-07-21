@@ -8,7 +8,7 @@
  * the kill switch, resize handling, font resolution, and cleanup.
  *
  * Placement contract:
- *  - position: fixed, full viewport, -z-10: the app's background is set on
+ *  - position: fixed, full viewport, -z-50: the app's background is set on
  *    body/html in globals.css and propagates to the document canvas, which
  *    always paints first — so a negative-z fixed element sits above the mint
  *    background but below ALL normal-flow content (cards, text, nav) without
@@ -109,7 +109,7 @@ export default function LivingField() {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 -z-10"
+      className="pointer-events-none fixed inset-0 -z-50"
     />
   );
 }
