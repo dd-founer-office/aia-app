@@ -94,7 +94,11 @@ export interface LivingFieldConfig {
 export const LIVING_FIELD_CONFIG: LivingFieldConfig = {
   enabled: process.env.NEXT_PUBLIC_LIVING_FIELD_ENABLED !== "false",
 
-  intensity: 1.0,
+  // TEMPORARY for review — was 1.0. At 1.0 the field was confirmed rendering
+  // correctly (canvas paints real pixels at the right color) but at alpha
+  // values too low to survive a phone screenshot's compression. Bumped to
+  // 3.5 so it's clearly visible for review; dial back down once confirmed.
+  intensity: 3.5,
 
   colorRGB: [50, 141, 99], // #328D63
 
