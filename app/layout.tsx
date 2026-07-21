@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Serif_Display, DM_Sans, Noto_Sans_Tamil } from "next/font/google";
 import "./globals.css";
+import LivingField from "@/components/field/LivingField";
 
 const dmSerifDisplay = DM_Serif_Display({
   subsets: ["latin"],
@@ -35,7 +36,10 @@ export default function RootLayout({
       lang="en"
       className={`h-full antialiased ${dmSans.variable} ${dmSerifDisplay.variable} ${notoSansTamil.variable}`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <LivingField />
+        {children}
+      </body>
     </html>
   );
 }
