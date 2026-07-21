@@ -145,7 +145,11 @@ function RevealWord({
 
 export default function SplashScreen() {
   const [phase, setPhase] = useState<Phase>("compact");
-  const [mounted, setMounted] = useState(false);
+  // Defaults to true so the splash is present in the server-rendered
+  // HTML itself — otherwise the browser paints Home first (server
+  // output, pre-hydration) and only shows the splash once React
+  // hydrates and this effect runs, causing a brief flash of Home.
+  const [mounted, setMounted] = useState(true);
   const hasRun = useRef(false);
 
   useLayoutEffect(() => {
@@ -153,11 +157,16 @@ export default function SplashScreen() {
     hasRun.current = true;
 
     if (typeof window === "undefined") return;
-    if (window.sessionStorage.getItem(SESSION_KEY)) return;
+
+    if (window.sessionStorage.getItem(SESSION_KEY)) {
+      // Already played this session — hide before the browser paints
+      // this frame, so there's no flash of the splash either.
+      setMounted(false);
+      return;
+    }
     window.sessionStorage.setItem(SESSION_KEY, "1");
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setMounted(true);
 
     const timers: ReturnType<typeof setTimeout>[] = [];
     const dissolveTotal = BACKDROP_DISSOLVE_MS + WORDMARK_FADE_DELAY_MS + WORDMARK_FADE_MS;
