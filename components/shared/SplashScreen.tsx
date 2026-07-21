@@ -29,6 +29,12 @@ import { useLayoutEffect, useRef, useState } from "react";
  * (300ms backdrop dissolve, 250ms wordmark fade).
  *
  * Plays once per browser session. Respects prefers-reduced-motion.
+ *
+ * NOTE: setup guarded with a `hasRun` ref, not just the sessionStorage
+ * flag — React Strict Mode's dev-only double-invoke of effects would
+ * otherwise clear the first pass's timers via cleanup, then bail out
+ * of the second pass because the flag was already set, leaving the
+ * splash permanently stuck on its first frame.
  */
 
 const SESSION_KEY = "aia-splash-played";
@@ -48,9 +54,9 @@ const WORDMARK_FADE_MS = 250;
 
 type Phase = "compact" | "expanded" | "dissolving" | "wordmark-fading";
 
-const WORDS: { text: string; colorVar: "--color-primary" | "--color-foreground" }[] = [
+const WORDS: { text: string; colorVar: "--color-primary" | "--color-muted-foreground" }[] = [
   { text: "Aram ", colorVar: "--color-primary" },
-  { text: "in ", colorVar: "--color-foreground" },
+  { text: "in ", colorVar: "--color-muted-foreground" },
   { text: "Action", colorVar: "--color-primary" },
 ];
 
@@ -127,8 +133,12 @@ function RevealWord({
 export default function SplashScreen() {
   const [phase, setPhase] = useState<Phase>("compact");
   const [mounted, setMounted] = useState(false);
+  const hasRun = useRef(false);
 
   useLayoutEffect(() => {
+    if (hasRun.current) return; // survives React Strict Mode's dev double-invoke
+    hasRun.current = true;
+
     if (typeof window === "undefined") return;
     if (window.sessionStorage.getItem(SESSION_KEY)) return;
     window.sessionStorage.setItem(SESSION_KEY, "1");
