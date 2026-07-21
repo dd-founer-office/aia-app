@@ -70,16 +70,43 @@ function RevealWord({
   open: boolean;
 }) {
   const fullRef = useRef<HTMLSpanElement>(null);
-  const anchorRef = useRef<HTMLSpanElement>(null);
   const [measured, setMeasured] = useState<{ anchor: number; full: number } | null>(null);
 
   useLayoutEffect(() => {
-    if (fullRef.current && anchorRef.current) {
+    let cancelled = false;
+
+    async function measure() {
+      // Wait for the real webfont — measuring against a temporary
+      // fallback font locks in the wrong widths for the whole animation.
+      if (typeof document !== "undefined" && document.fonts?.ready) {
+        try {
+          await document.fonts.ready;
+        } catch {
+          /* proceed with whatever is loaded */
+        }
+      }
+      if (cancelled || !fullRef.current?.firstChild) return;
+
+      const el = fullRef.current;
+      const textNode = el.firstChild as Text;
+
+      // Measure the anchor glyph IN CONTEXT (as shaped/kerned against
+      // its neighbor), not as an isolated character — an isolated "A"
+      // is not necessarily the same width as the "A" inside "Aram".
+      const range = document.createRange();
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, 1);
+
       setMeasured({
-        anchor: anchorRef.current.getBoundingClientRect().width,
-        full: fullRef.current.getBoundingClientRect().width,
+        anchor: range.getBoundingClientRect().width,
+        full: el.getBoundingClientRect().width,
       });
     }
+
+    measure();
+    return () => {
+      cancelled = true;
+    };
   }, [text]);
 
   const currentWidth = measured ? (open ? measured.full : measured.anchor) : 0;
@@ -87,20 +114,13 @@ function RevealWord({
 
   return (
     <span style={{ position: "relative", display: "inline-block" }}>
-      {/* Hidden measurement clones — same font context, never painted */}
+      {/* Hidden measurement clone — same font context, never painted */}
       <span
         ref={fullRef}
         aria-hidden="true"
         style={{ position: "absolute", visibility: "hidden", whiteSpace: "pre", pointerEvents: "none" }}
       >
         {text}
-      </span>
-      <span
-        ref={anchorRef}
-        aria-hidden="true"
-        style={{ position: "absolute", visibility: "hidden", whiteSpace: "pre", pointerEvents: "none" }}
-      >
-        {text.charAt(0)}
       </span>
 
       {/* The one real, unsplit text node — clip-path masks it, never the DOM */}
@@ -113,6 +133,7 @@ function RevealWord({
           opacity: measured ? 1 : 0,
           width: `${currentWidth}px`,
           clipPath: `inset(0 ${hiddenWidth}px 0 0)`,
+          willChange: "width, clip-path",
           transition: `width ${EXPAND_MS}ms ${EASE}, clip-path ${EXPAND_MS}ms ${EASE}`,
         }}
       >
