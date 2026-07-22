@@ -30,6 +30,8 @@
  *   glyph, scriptId      -- Civilization Engine (dealGlyphForStratum, field-layout.ts)
  *   affinity             -- Affinity Engine (affinity-engine.ts)
  *   harmony              -- Harmony Engine (emergent-harmony.ts)
+ *   expression           -- Ambient Expression Bridge (ambient-expression.ts),
+ *                           on demand, not during the normal build pipeline
  *
  * No engine other than the one listed above ever WRITES to its field. Every
  * later engine may READ any earlier engine's fields; no engine reads a field
@@ -40,6 +42,7 @@ import type { FieldStratum } from "./config";
 import type { Glyph } from "./glyphs";
 import type { GlyphAffinity } from "./affinity-types";
 import type { GlyphHarmony } from "./harmony-types";
+import type { GlyphExpression } from "./ambient-expression-types";
 
 export interface FieldCell {
   /** Cell centre in CSS px. Set by Field Engine, refined by Natural
@@ -73,6 +76,14 @@ export interface FieldCell {
    *  same reason `affinity` is; guaranteed present at runtime once the
    *  harmony pass has run (see engine.ts). */
   harmony?: GlyphHarmony;
+  /** Ambient Language Layer bridge: set on demand by
+   *  ambient-expression.ts's applyAmbientExpression() when a semantic word
+   *  request matches this cell's glyph -- NOT set during the normal
+   *  layout-build pipeline, and not guaranteed to ever be set at all. Unlike
+   *  `affinity`/`harmony` (always present once their pass runs), this field
+   *  is absent on almost every cell almost all the time; presence is
+   *  event-driven, not layout-build-driven. */
+  expression?: GlyphExpression;
 }
 
 export interface FieldLayout {
