@@ -20,11 +20,17 @@
  * `applyAffinity()`, between layout generation and rendering — matching the
  * spec's Kernel diagram (Field/Civilization Engine → Affinity Engine →
  * Renderer). It runs once per layout build, never per animation frame.
+ *
+ * Sprint 03C (Emergent Harmony v1.0): `rebuild()` runs one further pass,
+ * `applyEmergentHarmony()`, immediately after `applyAffinity()` -- Harmony
+ * explicitly consumes Affinity's output, so it must run after it. Also
+ * once per layout build, never per animation frame.
  */
 
 import { LIVING_FIELD_CONFIG, type LivingFieldConfig } from "./config";
 import { buildFieldLayout, type FieldLayout } from "./field-layout";
 import { applyAffinity } from "./affinity-engine";
+import { applyEmergentHarmony } from "./emergent-harmony";
 import { renderField } from "./renderer";
 
 export interface LivingFieldEngineOptions {
@@ -111,6 +117,9 @@ export class LivingFieldEngine {
     // Sprint 03A: affinity metadata computed once per layout build, never
     // per frame. Mutates layout.cells in place (see affinity-engine.ts).
     applyAffinity(this.layout.cells);
+    // Sprint 03C: harmony metadata, consuming what affinity just computed.
+    // Also once per layout build, never per frame (see emergent-harmony.ts).
+    applyEmergentHarmony(this.layout.cells);
 
     if (this.running && this.reducedMotion) this.renderStatic();
   }
