@@ -2,7 +2,9 @@
  * Living Field — Configuration
  * ----------------------------------------------------------------------------
  * Single source of truth for every tunable value in the Ambient Letter Field.
- * Build Sprint 01 (Living Language System, Phase 01).
+ * Build Sprint 01 (Living Language System, Phase 01) established the base
+ * rendering system; Build Sprint 02 (Living Civilization Layer v1.0) extends
+ * it with multi-script depth. All Sprint 01 values below are unchanged.
  *
  * Design lineage: Ambient Letter Field Concept v0.6 (locked visual foundation).
  * Preserved identity: single primary green, uniform small letters, diagonal
@@ -14,11 +16,30 @@
  * therefore an order of magnitude lower (Interaction Grammar Rule 3: ambient
  * letters live in the low single-digit opacity band). `intensity` below is the
  * one master knob for tuning this in review.
+ *
+ * Sprint 02 — civilization depth:
+ * Modern Tamil, Tamil-Brahmi, and Vatteluttu are not three separate features;
+ * they are three moments of one continuous civilization. Depth encodes time,
+ * not importance. `civilizationAge` (below) names the overall tuning point;
+ * each stratum's `scriptWeights` is the concrete table currently calibrated
+ * against it. All scripts render through the identical code path in
+ * renderer.ts — same color, same opacity, same size-per-stratum. Only the
+ * letterforms differ.
  */
 
-/** A depth stratum of the field. All strata use the same glyph set in this
- *  sprint (modern Tamil). Different size + opacity creates the sense that the
- *  field extends beyond the visible interface. */
+/** Relative weight of one registered glyph set (see glyphs.ts) within a
+ *  stratum's script mix. Weights are normalised at pick-time, so they don't
+ *  need to sum to 1 — e.g. {35, 65} and {0.35, 0.65} behave identically. */
+export interface ScriptWeight {
+  /** GlyphSet id, as registered in glyphs.ts (e.g. "modern-tamil-247"). */
+  setId: string;
+  weight: number;
+}
+
+/** A depth stratum of the field. Different size + opacity creates the sense
+ *  that the field extends beyond the visible interface; different
+ *  `scriptWeights` per stratum is what makes older writing feel like it
+ *  naturally lives deeper, rather than being scattered at random. */
 export interface FieldStratum {
   /** Identifier for debugging / future inspector overlay. */
   id: string;
@@ -31,6 +52,10 @@ export interface FieldStratum {
   waveAmplitude: number;
   /** Probability weight when assigning cells to strata. */
   weight: number;
+  /** Script mix for this stratum. Omit for 100% modern Tamil (Sprint 01
+   *  behaviour, still the default so existing strata configs remain valid
+   *  without modification). */
+  scriptWeights?: readonly ScriptWeight[];
 }
 
 export interface LivingFieldConfig {
@@ -79,6 +104,15 @@ export interface LivingFieldConfig {
   /** Depth strata, deepest first. */
   strata: readonly FieldStratum[];
 
+  /** Named tuning point for how much of the field's script mix leans
+   *  ancient vs. modern, overall. 0.0 = pure modern Tamil everywhere;
+   *  1.0 = maximally ancient. This is NOT a visual animation and does not
+   *  change at runtime — it's documentation of what the `scriptWeights`
+   *  tables below are currently calibrated against, and the single value a
+   *  future sprint would reference if those tables become a derived
+   *  function instead of hand-set constants. Sprint 02 ships at 0.45. */
+  civilizationAge: number;
+
   /** Minimum ms between canvas repaints. Motion is slow by design; repainting
    *  faster than this burns battery for imperceptible change. RAF-driven, so
    *  frames never jank or tear. */
@@ -121,13 +155,43 @@ export const LIVING_FIELD_CONFIG: LivingFieldConfig = {
   breathPeriodMs: 45000,
   breathAmplitude: 0.08,
 
+  civilizationAge: 0.45,
+
   strata: [
-    // Deepest — small, faint: the field continuing beyond focus.
-    { id: "deep", fontSize: 11, baseOpacity: 0.035, waveAmplitude: 0.018, weight: 0.35 },
-    // Middle — the v0.6 14px identity size carries the field.
-    { id: "mid", fontSize: 14, baseOpacity: 0.05, waveAmplitude: 0.025, weight: 0.45 },
-    // Nearest — slightly larger, still restrained.
-    { id: "near", fontSize: 16, baseOpacity: 0.07, waveAmplitude: 0.032, weight: 0.2 },
+    // Deep — ancient memory. 70% Vatteluttu / 30% Tamil-Brahmi. No modern
+    // Tamil at this depth: this is where the oldest layer lives.
+    {
+      id: "deep",
+      fontSize: 11,
+      baseOpacity: 0.035,
+      waveAmplitude: 0.018,
+      weight: 0.35,
+      scriptWeights: [
+        { setId: "vatteluttu-21", weight: 0.7 },
+        { setId: "tamil-brahmi-24", weight: 0.3 },
+      ],
+    },
+    // Middle — history begins appearing naturally. 65% modern / 35% Brahmi.
+    {
+      id: "mid",
+      fontSize: 14,
+      baseOpacity: 0.05,
+      waveAmplitude: 0.025,
+      weight: 0.45,
+      scriptWeights: [
+        { setId: "modern-tamil-247", weight: 0.65 },
+        { setId: "tamil-brahmi-24", weight: 0.35 },
+      ],
+    },
+    // Near — today's living language. 100% modern Tamil.
+    {
+      id: "near",
+      fontSize: 16,
+      baseOpacity: 0.07,
+      waveAmplitude: 0.032,
+      weight: 0.2,
+      scriptWeights: [{ setId: "modern-tamil-247", weight: 1.0 }],
+    },
   ],
 
   frameIntervalMs: 80,
