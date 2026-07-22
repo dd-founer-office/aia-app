@@ -53,6 +53,16 @@
  * still has no concept of neighborhoods, density, or affinity strength --
  * per the Harmony Engine's contract, it reads exactly one number and does
  * nothing else differently.
+ *
+ * Ambient Language Layer bridge: one more multiplicative layer, sourced
+ * from `cell.expression` (ambient-expression.ts), applied AFTER Optical
+ * Calibration's opacity weight. Exactly 1 (no change) for the overwhelming
+ * majority of cells, which never have an active expression -- this is
+ * event-driven, not present during the normal render cadence. Skipped
+ * entirely on the static (reduced-motion) frame, for the same reason
+ * breathing already is: it's a form of per-frame animation, and the
+ * static frame's `t` is fixed. Still opacity-only -- no size, colour, or
+ * position change from this layer either.
  */
 
 import type { LivingFieldConfig, FieldStratum } from "./config";
@@ -65,6 +75,7 @@ import {
   applyOpticalOpacity,
   applyOpticalSize,
 } from "./optical-calibration";
+import { computeExpressionOpacityMultiplier } from "./ambient-expression";
 
 /** v0.6 diagonal wave, normalised 0..1. */
 export function wavePhase01(
@@ -193,7 +204,19 @@ export function renderField(
         const baseOp = options.static
           ? cellOpacityStatic(cell, config)
           : cellOpacity(cell, t, config);
-        const op = applyOpticalOpacity(baseOp, weight);
+        const opticalOp = applyOpticalOpacity(baseOp, weight);
+        // Ambient Language Layer bridge: exactly 1 (no change) for the
+        // overwhelming majority of cells, which never have an active
+        // expression. Reduced-motion frames intentionally skip this --
+        // `options.static` never reaches here with a live expression
+        // clock, since `t` is fixed at 0 for that frame (see
+        // cellOpacityStatic's own "no breath" comment; the same
+        // reasoning applies to expression, which is equally a form of
+        // per-frame animation).
+        const expressionMultiplier = options.static
+          ? 1
+          : computeExpressionOpacityMultiplier(cell.expression, t);
+        const op = Math.min(1, opticalOp * expressionMultiplier);
 
         ctx.fillStyle = `rgba(${cr},${cg},${cb},${op})`;
         if (cell.glyph.kind === "text") {
