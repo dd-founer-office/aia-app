@@ -25,12 +25,18 @@
  * `applyEmergentHarmony()`, immediately after `applyAffinity()` -- Harmony
  * explicitly consumes Affinity's output, so it must run after it. Also
  * once per layout build, never per animation frame.
+ *
+ * Ambient Language Layer bridge: `expressWord()` is the one new public
+ * method, and the Kernel's ONLY point of contact with that layer. Unlike
+ * the five pipeline stages above, it does not run as part of `rebuild()` --
+ * it's called on demand, whenever an external semantic request arrives.
  */
 
 import { LIVING_FIELD_CONFIG, type LivingFieldConfig } from "./config";
 import { buildFieldLayout, type FieldLayout } from "./field-layout";
 import { applyAffinity } from "./affinity-engine";
 import { applyEmergentHarmony } from "./emergent-harmony";
+import { applyAmbientExpression } from "./ambient-expression";
 import { renderField } from "./renderer";
 
 export interface LivingFieldEngineOptions {
@@ -129,6 +135,25 @@ export class LivingFieldEngine {
   setFontFamily(fontFamily: string): void {
     this.fontFamily = fontFamily;
     if (this.running && this.reducedMotion) this.renderStatic();
+  }
+
+  /**
+   * The Ambient Language Layer's ONLY entry point into the Kernel. Accepts
+   * a list of graphemes (already segmented by the caller -- this method
+   * has no concept of "words" or Tamil script rules, only exact glyph-value
+   * matching) and gives every currently-on-screen cell whose glyph matches
+   * one of them a temporary, bounded opacity boost (ambient-expression.ts).
+   *
+   * Does nothing if no layout exists yet (field not yet built) or if the
+   * kill switch has this engine never started. Returns the number of cells
+   * matched, so a caller can know whether anything will visibly happen --
+   * the Kernel makes no promise that a request will produce ANY visible
+   * effect, by design (see ambient-expression.ts's "best-effort matching"
+   * reasoning).
+   */
+  expressWord(graphemes: readonly string[]): number {
+    if (!this.layout) return 0;
+    return applyAmbientExpression(this.layout.cells, graphemes, performance.now());
   }
 
   /** Stop rendering and release all listeners. Safe to call repeatedly. */
