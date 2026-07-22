@@ -20,6 +20,23 @@
  * completely unaware any of this exists — they still just receive a
  * FieldCell with a resolved `glyph` and paint it.
  *
+ * Sprint 03B (Natural Distribution Engine v1.0): `buildFieldLayout()` is now
+ * an explicit three-stage pipeline instead of one fused loop:
+ *
+ *   1. Field Engine       — generateFieldSlots(): the SAME clustered-scatter
+ *                           grid/gap/stratum logic as before, unchanged,
+ *                           just no longer assigning a glyph yet.
+ *   2. Natural Distribution — applyNaturalDistribution() (natural-
+ *                           distribution.ts): nudges each slot's exact pixel
+ *                           position by a smooth, deterministic amount.
+ *   3. Civilization Engine — dealGlyphForStratum()/buildDealers(): 100%
+ *                           unchanged logic from Sprint 02, just now called
+ *                           as its own explicit stage on the refined slots.
+ *
+ * Affinity (Sprint 03A) is unaffected: it still runs afterward, in
+ * engine.ts, on whatever final cells this file returns — nothing here was
+ * touched to accommodate that, it already treated x/y generically.
+ *
  * Layout is computed once per viewport size (and on rebuild), never per
  * frame — the render loop only modulates opacity.
  */
@@ -27,6 +44,7 @@
 import type { LivingFieldConfig, FieldStratum, ScriptWeight } from "./config";
 import { createGlyphDealer, getGlyphSet, type Glyph } from "./glyphs";
 import type { GlyphAffinity } from "./affinity-types";
+import { applyNaturalDistribution, type FieldSlot } from "./natural-distribution";
 
 export interface FieldCell {
   /** Cell centre in CSS px. */
@@ -109,16 +127,21 @@ function dealGlyphForStratum(
   return deal();
 }
 
-export function buildFieldLayout(
+/**
+ * Field Engine, stage 1: the exact clustered-scatter grid/gap logic that
+ * has been unchanged since Concept v0.6, producing base slot positions and
+ * a depth stratum per slot. No glyph is assigned here -- that's stage 3
+ * (Civilization), run after Natural Distribution refines these positions.
+ */
+function generateFieldSlots(
   width: number,
   height: number,
   config: LivingFieldConfig
-): FieldLayout {
+): FieldSlot[] {
   const cols = Math.ceil(width / config.cellWidth) + 1;
   const rows = Math.ceil(height / config.cellHeight) + 1;
-  const dealers = buildDealers(config.strata);
 
-  const cells: FieldCell[] = [];
+  const slots: FieldSlot[] = [];
 
   for (let r = 0; r < rows; r++) {
     let c = 0;
@@ -127,18 +150,44 @@ export function buildFieldLayout(
       if (c >= cols) break;
       const clusterLen = Math.floor(rand(config.clusterLenMin, config.clusterLenMax));
       for (let i = 0; i < clusterLen && c < cols; i++, c++) {
-        const stratum = weightedPick(config.strata);
-        cells.push({
+        slots.push({
           x: c * config.cellWidth + config.cellWidth / 2,
           y: r * config.cellHeight + config.cellHeight / 2,
           col: c,
           row: r,
-          glyph: dealGlyphForStratum(stratum, dealers),
-          stratum,
+          stratum: weightedPick(config.strata),
         });
       }
     }
   }
+
+  return slots;
+}
+
+export function buildFieldLayout(
+  width: number,
+  height: number,
+  config: LivingFieldConfig
+): FieldLayout {
+  // Stage 1: Field Engine — base positions + stratum, no glyph yet.
+  const slots = generateFieldSlots(width, height, config);
+
+  // Stage 2: Natural Distribution Engine — refine exact pixel placement.
+  // Mutates slot.x/slot.y in place; does not add, remove, or reorder slots,
+  // and has no awareness of scripts, glyphs, or affinity.
+  applyNaturalDistribution(slots, config.cellWidth, config.cellHeight);
+
+  // Stage 3: Civilization Engine — unchanged logic from Sprint 02, now run
+  // as its own explicit stage on the refined slots.
+  const dealers = buildDealers(config.strata);
+  const cells: FieldCell[] = slots.map((slot) => ({
+    x: slot.x,
+    y: slot.y,
+    col: slot.col,
+    row: slot.row,
+    stratum: slot.stratum,
+    glyph: dealGlyphForStratum(slot.stratum, dealers),
+  }));
 
   return { width, height, cells };
 }
