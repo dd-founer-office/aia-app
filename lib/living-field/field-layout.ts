@@ -55,6 +55,13 @@ export interface FieldCell {
   row: number;
   glyph: Glyph;
   stratum: FieldStratum;
+  /** Optical Weight Calibration: which registered glyph set (glyphs.ts)
+   *  this cell's glyph came from. Set by the SAME Civilization Engine
+   *  decision that chose the glyph itself (dealGlyphForStratum) -- not a
+   *  separate classification pass, so it can never drift out of sync with
+   *  what was actually selected. Used only by renderer.ts's optical
+   *  calibration step; does not influence selection, layout, or affinity. */
+  scriptId: string;
   /** Sprint 03A: invisible spatial metadata, populated by
    *  affinity-engine.ts's applyAffinity() as a pass AFTER
    *  buildFieldLayout() returns — not set here. Optional in the type
@@ -109,11 +116,16 @@ function buildDealers(strata: readonly FieldStratum[]): Map<string, () => Glyph>
 }
 
 /** Picks a glyph for one cell in `stratum`: choose a script by weight, then
- *  draw from that script's own dealer for this stratum. */
+ *  draw from that script's own dealer for this stratum. Returns which
+ *  script was chosen alongside the glyph -- SAME selection logic as
+ *  before, byte-identical; this only additionally surfaces information the
+ *  function already computed internally (`chosen.setId`), for the Optical
+ *  Weight Calibration pass to use at render time. Does not change what gets
+ *  selected or with what probability. */
 function dealGlyphForStratum(
   stratum: FieldStratum,
   dealers: Map<string, () => Glyph>
-): Glyph {
+): { glyph: Glyph; scriptId: string } {
   const weights = stratum.scriptWeights ?? DEFAULT_SCRIPT_WEIGHTS;
   const chosen = weightedPick(weights);
   const deal = dealers.get(`${stratum.id}::${chosen.setId}`);
@@ -124,7 +136,7 @@ function dealGlyphForStratum(
       `Living Field: no dealer built for stratum "${stratum.id}" script "${chosen.setId}"`
     );
   }
-  return deal();
+  return { glyph: deal(), scriptId: chosen.setId };
 }
 
 /**
@@ -180,14 +192,18 @@ export function buildFieldLayout(
   // Stage 3: Civilization Engine — unchanged logic from Sprint 02, now run
   // as its own explicit stage on the refined slots.
   const dealers = buildDealers(config.strata);
-  const cells: FieldCell[] = slots.map((slot) => ({
-    x: slot.x,
-    y: slot.y,
-    col: slot.col,
-    row: slot.row,
-    stratum: slot.stratum,
-    glyph: dealGlyphForStratum(slot.stratum, dealers),
-  }));
+  const cells: FieldCell[] = slots.map((slot) => {
+    const { glyph, scriptId } = dealGlyphForStratum(slot.stratum, dealers);
+    return {
+      x: slot.x,
+      y: slot.y,
+      col: slot.col,
+      row: slot.row,
+      stratum: slot.stratum,
+      glyph,
+      scriptId,
+    };
+  });
 
   return { width, height, cells };
 }
