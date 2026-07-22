@@ -1,61 +1,42 @@
 /**
- * Living Civilization — Optical Weight Calibration v1.0
+ * Living Civilization — Optical Weight Calibration
  * ----------------------------------------------------------------------------
- * A visual calibration pass on top of the existing, unchanged Civilization
- * Engine (Sprint 02) — NOT a new pipeline stage, NOT Sprint 03C. Script
- * SELECTION probabilities, weighting, and everything in field-layout.ts's
- * Civilization Engine logic are untouched by this file. This module only
- * decides how prominently an already-chosen script's glyph should render.
+ * STATUS: LOCKED — Living Civilization v1.1
+ *
+ * Optical Weight Calibration v1.0 evaluated three visual presets (A: the
+ * pre-calibration baseline, B: Vatteluttu boosted, C: Vatteluttu + Tamil-
+ * Brahmi boosted) via founder live review on the deployed site. Version C
+ * was selected as the permanent calibration. This file now bakes that
+ * decision in directly — the evaluation mechanism (environment-variable
+ * switching between A/B/C) has been removed; there is exactly one profile,
+ * always active, no configuration required.
+ *
+ * A visual calibration on top of the existing, unchanged Civilization
+ * Engine (Sprint 02) — NOT a new pipeline stage. Script SELECTION
+ * probabilities, weighting, and everything in field-layout.ts's
+ * Civilization Engine logic remain untouched by this file, exactly as
+ * before locking. This module only decides how prominently an
+ * already-chosen script's glyph renders.
  *
  * ---------------------------------------------------------------------------
- * WHY THIS EXISTS
- * ---------------------------------------------------------------------------
- * Opacity and size are currently driven entirely by depth STRATUM, with no
- * awareness of which SCRIPT a glyph belongs to. Vatteluttu and Tamil-Brahmi
- * are hard to discover purely as a side effect of which strata they're
- * statistically more likely to land in (deep/mid), not because of any
- * deliberate visual weighting of the scripts themselves. This module adds
- * that missing per-script weighting, as a multiplier layered on top of the
- * existing stratum-driven opacity/size -- it does not replace or bypass the
- * depth-stratum system, breathing, wave, or affinity math in any way.
- *
- * ---------------------------------------------------------------------------
- * RULE COMPLIANCE (explicit, since several rules are easy to brush against)
+ * RULE COMPLIANCE (unchanged since v1.0, restated for the locked version)
  * ---------------------------------------------------------------------------
  * - No colour changes: colour always comes from config.colorRGB, untouched.
- * - No glow, no animation differences, no interaction: not implemented here
- *   or anywhere this module touches.
- * - No outlines: the spec's Design Principles list "stroke-weight
- *   compensation" as an option, but the Rules section separately forbids
- *   "add outlines." Treating Rules as authoritative: Vatteluttu (rendered as
- *   filled vector paths, not text) gets ONLY opacity + size adjustment here,
- *   nothing stroke- or outline-related. Tamil-Brahmi (rendered as real text
- *   glyphs) may get a font-WEIGHT override, which is a heavier variant of
- *   the same glyph shape via the font's own weight axis -- not a decorative
- *   outline -- and degrades harmlessly to the base weight if the fallback
- *   font the glyph renders in doesn't support the requested weight.
- * - Breathing behaviour is untouched: multipliers apply to the FINAL
+ * - No glow, no animation differences, no interaction.
+ * - No outlines: Vatteluttu (filled vector paths, not text) gets ONLY
+ *   opacity + size adjustment. Tamil-Brahmi (real text glyphs) gets a
+ *   font-WEIGHT override — a heavier variant of the same glyph via the
+ *   font's own weight axis, not a decorative outline — which degrades
+ *   harmlessly to the base weight if the glyph's fallback font doesn't
+ *   support the requested weight.
+ * - Breathing behaviour is untouched: the multiplier applies to the FINAL
  *   opacity value after the existing wave/breath computation, never to the
- *   wave or breath math itself. A script's presence differs; its rhythm
- *   does not.
- *
- * ---------------------------------------------------------------------------
- * ON THE TARGET PERCENTAGES (100% / 80-85% / 65-75%)
- * ---------------------------------------------------------------------------
- * These are explicitly "relative design targets, not mathematical rules,"
- * and there's no perceptual-brightness measurement tool in this pipeline to
- * calculate exact multipliers that would hit them precisely. Presets B and C
- * implement the spec's own instruction literally: each is a single, modest
- * "+10-15% over current appearance" step for one script at a time, not a
- * calculated jump straight to the target zone. Getting the FULL field all
- * the way to 80-85% / 65-75% felt presence may take more than one such step
- * -- that's an outcome for founder visual review to judge, not something
- * this module claims to have already solved in one pass.
+ *   wave or breath math itself.
  */
 
 /** Which registered glyph set (see glyphs.ts) a per-script weight applies
- *  to. Reuses the exact ids already used everywhere else in the Civilization
- *  Engine -- no new taxonomy invented. */
+ *  to. Reuses the exact ids already used everywhere else in the
+ *  Civilization Engine -- no new taxonomy invented. */
 export type ScriptId = "modern-tamil-247" | "tamil-brahmi-24" | "vatteluttu-21";
 
 /** Canonical iteration order, for callers (renderer.ts) that need to loop
@@ -69,20 +50,20 @@ export const SCRIPT_IDS: readonly ScriptId[] = [
 
 export interface ScriptOpticalWeight {
   /** Multiplies the fully-computed (wave+breath+intensity) opacity for
-   *  cells of this script. 1.0 = no change from current behaviour. */
+   *  cells of this script. 1.0 = no adjustment. */
   opacityMultiplier: number;
   /** Multiplies the stratum's font size (text) / path scale (Vatteluttu)
-   *  for cells of this script. 1.0 = no change from current behaviour. */
+   *  for cells of this script. 1.0 = no adjustment. */
   sizeMultiplier: number;
-  /** Optional font-weight override for TEXT glyphs of this script only
-   *  (modern Tamil, Tamil-Brahmi). Never applied to Vatteluttu, which is
-   *  drawn as filled paths, not text -- there is no "weight" to override.
-   *  Falls back to config.fontWeight when omitted. */
+  /** Optional font-weight override for TEXT glyphs of this script only.
+   *  Never applied to Vatteluttu, which is drawn as filled paths, not
+   *  text -- there is no "weight" to override. Falls back to
+   *  config.fontWeight when omitted. */
   fontWeightOverride?: number;
 }
 
 export interface OpticalCalibration {
-  id: "A" | "B" | "C";
+  id: string;
   label: string;
   description: string;
   weights: Record<ScriptId, ScriptOpticalWeight>;
@@ -90,93 +71,36 @@ export interface OpticalCalibration {
 
 const UNCHANGED: ScriptOpticalWeight = { opacityMultiplier: 1, sizeMultiplier: 1 };
 
-/** +12.5% -- the midpoint of the spec's own "+10-15%" instruction for a
- *  single calibration step. */
-const STEP_UP: Pick<ScriptOpticalWeight, "opacityMultiplier" | "sizeMultiplier"> = {
-  opacityMultiplier: 1.125,
-  sizeMultiplier: 1.125,
-};
-
-// ---------------------------------------------------------------------------
-// Version A -- baseline. Every multiplier is exactly 1.0: mathematically
-// identical to current live behaviour. This is the control, not a preset
-// that changes anything.
-// ---------------------------------------------------------------------------
-export const CALIBRATION_A: OpticalCalibration = {
-  id: "A",
-  label: "Baseline (current implementation)",
+/**
+ * LOCKED — Living Civilization v1.1. Selected as "Version C" during
+ * founder review of the three evaluated presets. Vatteluttu and
+ * Tamil-Brahmi both receive a +12.5% opacity/size increase over the
+ * pre-calibration baseline; Tamil-Brahmi additionally renders at font-
+ * weight 500 (vs. the base 400). Modern Tamil is unchanged.
+ */
+export const LIVING_CIVILIZATION_V1_1: OpticalCalibration = {
+  id: "v1.1",
+  label: "Living Civilization v1.1 (locked, formerly Version C)",
   description:
-    "No optical weighting applied. Identical to the field as it renders today -- Modern Tamil dominant, Vatteluttu and Tamil-Brahmi difficult to discover.",
+    "Founder-selected permanent calibration. Vatteluttu and Tamil-Brahmi opacity/size increased ~12.5% over the pre-calibration baseline; Tamil-Brahmi additionally rendered at font-weight 500. Modern Tamil unchanged.",
   weights: {
     "modern-tamil-247": UNCHANGED,
-    "tamil-brahmi-24": UNCHANGED,
-    "vatteluttu-21": UNCHANGED,
+    "tamil-brahmi-24": { opacityMultiplier: 1.125, sizeMultiplier: 1.125, fontWeightOverride: 500 },
+    "vatteluttu-21": { opacityMultiplier: 1.125, sizeMultiplier: 1.125 },
   },
 };
-
-// ---------------------------------------------------------------------------
-// Version B -- Vatteluttu +12.5% opacity and size. Modern Tamil and
-// Tamil-Brahmi untouched, exactly as the spec specifies for this preset.
-// ---------------------------------------------------------------------------
-export const CALIBRATION_B: OpticalCalibration = {
-  id: "B",
-  label: "Vatteluttu +12.5%",
-  description:
-    "Vatteluttu's opacity and size increased ~12.5% over baseline (spec's +10-15% instruction, midpoint). Modern Tamil and Tamil-Brahmi unchanged from Version A.",
-  weights: {
-    "modern-tamil-247": UNCHANGED,
-    "tamil-brahmi-24": UNCHANGED,
-    "vatteluttu-21": { ...STEP_UP },
-  },
-};
-
-// ---------------------------------------------------------------------------
-// Version C -- Tamil-Brahmi +12.5% opacity, size, AND a font-weight bump
-// (combining levers, per the spec's own "avoid changing only one property
-// if a subtler combination produces a better result"). Vatteluttu retained
-// at Version B's level. Modern Tamil unchanged throughout.
-// ---------------------------------------------------------------------------
-export const CALIBRATION_C: OpticalCalibration = {
-  id: "C",
-  label: "Vatteluttu +12.5%, Tamil-Brahmi +12.5% + weight",
-  description:
-    "Builds on Version B: Vatteluttu retained at its Version B level. Tamil-Brahmi's opacity and size increased ~12.5% over baseline AND given a heavier font-weight (500 vs the base 400) as a combined-lever adjustment -- degrades harmlessly to the base weight if the glyph's fallback font doesn't support 500. Modern Tamil unchanged from Version A.",
-  weights: {
-    "modern-tamil-247": UNCHANGED,
-    "tamil-brahmi-24": { ...STEP_UP, fontWeightOverride: 500 },
-    "vatteluttu-21": { ...STEP_UP },
-  },
-};
-
-export const ALL_CALIBRATIONS: readonly OpticalCalibration[] = [
-  CALIBRATION_A,
-  CALIBRATION_B,
-  CALIBRATION_C,
-];
 
 /**
- * Which calibration is actually live. Resolved from
- * NEXT_PUBLIC_OPTICAL_CALIBRATION ("A" | "B" | "C") so the three presets can
- * be reviewed on the deployed site by changing one environment variable and
- * redeploying -- no code edits between variants. Defaults to "A" (baseline,
- * safe) if unset or invalid. Mirrors the existing pattern used for
- * NEXT_PUBLIC_LIVING_FIELD_ENABLED in config.ts.
- *
- * Per the spec's explicit instruction, this module does NOT choose a
- * preferred version on its own -- "A" is the safe default until the founder
- * decides, at which point this env var (or this default) is the one place
- * to change to lock in the chosen calibration as v1.1.
+ * The single active calibration. Always `LIVING_CIVILIZATION_V1_1` — no
+ * environment variable, no runtime branching. Kept as a named export
+ * (rather than having callers import `LIVING_CIVILIZATION_V1_1` directly)
+ * so renderer.ts did not need to change at all when this was locked, and
+ * so a future re-calibration only ever requires changing this one line.
  */
-function resolveActiveCalibration(): OpticalCalibration {
-  const requested = process.env.NEXT_PUBLIC_OPTICAL_CALIBRATION;
-  const found = ALL_CALIBRATIONS.find((c) => c.id === requested);
-  return found ?? CALIBRATION_A;
-}
-
-export const ACTIVE_CALIBRATION: OpticalCalibration = resolveActiveCalibration();
+export const ACTIVE_CALIBRATION: OpticalCalibration = LIVING_CIVILIZATION_V1_1;
 
 /** Weight lookup with a safe fallback to UNCHANGED for any script id not
- *  present in a given calibration (defensive; every calibration above
+ *  present in a given calibration (defensive; the locked calibration
  *  covers all three ids, but this keeps callers simple regardless). */
 export function getScriptWeight(
   calibration: OpticalCalibration,
