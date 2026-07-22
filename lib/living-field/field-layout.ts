@@ -37,51 +37,23 @@
  * engine.ts, on whatever final cells this file returns — nothing here was
  * touched to accommodate that, it already treated x/y generically.
  *
+ * Living Kernel v1.0 architecture hardening: `FieldCell`/`FieldLayout` now
+ * live in field-cell.ts, a neutral shared contract file, and are re-exported
+ * here so no other file's import path needs to change. This file (Field
+ * Engine + Civilization Engine) no longer needs any type-level knowledge of
+ * downstream engines (Affinity, Harmony) at all -- see field-cell.ts for why
+ * that matters.
+ *
  * Layout is computed once per viewport size (and on rebuild), never per
  * frame — the render loop only modulates opacity.
  */
 
 import type { LivingFieldConfig, FieldStratum, ScriptWeight } from "./config";
 import { createGlyphDealer, getGlyphSet, type Glyph } from "./glyphs";
-import type { GlyphAffinity } from "./affinity-types";
-import type { GlyphHarmony } from "./harmony-types";
 import { applyNaturalDistribution, type FieldSlot } from "./natural-distribution";
+import type { FieldCell, FieldLayout } from "./field-cell";
 
-export interface FieldCell {
-  /** Cell centre in CSS px. */
-  x: number;
-  y: number;
-  /** Grid coordinates, used by the diagonal wave phase. */
-  col: number;
-  row: number;
-  glyph: Glyph;
-  stratum: FieldStratum;
-  /** Optical Weight Calibration: which registered glyph set (glyphs.ts)
-   *  this cell's glyph came from. Set by the SAME Civilization Engine
-   *  decision that chose the glyph itself (dealGlyphForStratum) -- not a
-   *  separate classification pass, so it can never drift out of sync with
-   *  what was actually selected. Used only by renderer.ts's optical
-   *  calibration step; does not influence selection, layout, or affinity. */
-  scriptId: string;
-  /** Sprint 03A: invisible spatial metadata, populated by
-   *  affinity-engine.ts's applyAffinity() as a pass AFTER
-   *  buildFieldLayout() returns — not set here. Optional in the type
-   *  because buildFieldLayout() itself doesn't produce it; guaranteed
-   *  present at runtime once the affinity pass has run (see engine.ts). */
-  affinity?: GlyphAffinity;
-  /** Sprint 03C: minimal behavioural metadata, populated by
-   *  emergent-harmony.ts's applyEmergentHarmony() as a pass AFTER affinity
-   *  runs -- not set here. Optional for the same reason `affinity` is:
-   *  buildFieldLayout() doesn't produce it; guaranteed present at runtime
-   *  once the harmony pass has run (see engine.ts). */
-  harmony?: GlyphHarmony;
-}
-
-export interface FieldLayout {
-  width: number;
-  height: number;
-  cells: FieldCell[];
-}
+export type { FieldCell, FieldLayout } from "./field-cell";
 
 const rand = (a: number, b: number): number => Math.random() * (b - a) + a;
 
