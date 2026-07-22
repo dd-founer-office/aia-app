@@ -24,6 +24,14 @@
  * glow, colour, or motion difference by script. This module still has no
  * concept of "civilization" or "which script" — it only knows two glyph
  * *kinds* to paint. That decision already happened in field-layout.ts.
+ *
+ * Sprint 03A (Affinity Engine): the ONLY change in this file. The global
+ * breath sine wave now accepts an optional per-cell phase offset, sourced
+ * from `cell.affinity?.breathingOffset` (defaults to 0 — bit-identical to
+ * Sprint 02 when affinity metadata is absent). This module still has no
+ * concept of neighborhoods, density, or affinity strength — per the
+ * Renderer Contract, it reads exactly one number and does nothing else
+ * differently.
  */
 
 import type { LivingFieldConfig, FieldStratum } from "./config";
@@ -41,16 +49,23 @@ export function wavePhase01(
   return 0.5 + 0.5 * Math.sin(phase);
 }
 
-/** Global breathing multiplier, ~1 ± breathAmplitude. */
-export function breathMultiplier(t: number, config: LivingFieldConfig): number {
-  return 1 + config.breathAmplitude * Math.sin((2 * Math.PI * t) / config.breathPeriodMs);
+/** Global breathing multiplier, ~1 ± breathAmplitude. `phaseOffset` (radians)
+ *  is Sprint 03A's addition: 0 reproduces Sprint 02's single global phase
+ *  exactly; a per-cell offset from `cell.affinity.breathingOffset` makes
+ *  neighborhoods drift subtly out of sync with each other. */
+export function breathMultiplier(
+  t: number,
+  config: LivingFieldConfig,
+  phaseOffset = 0
+): number {
+  return 1 + config.breathAmplitude * Math.sin((2 * Math.PI * t) / config.breathPeriodMs + phaseOffset);
 }
 
 /** Final opacity for one cell at time t. */
 export function cellOpacity(cell: FieldCell, t: number, config: LivingFieldConfig): number {
   const wave = wavePhase01(cell.col, cell.row, t, config);
   const raw = cell.stratum.baseOpacity + cell.stratum.waveAmplitude * wave;
-  return raw * breathMultiplier(t, config) * config.intensity;
+  return raw * breathMultiplier(t, config, cell.affinity?.breathingOffset ?? 0) * config.intensity;
 }
 
 /** Static opacity used for the reduced-motion frame: wave held at midpoint,
