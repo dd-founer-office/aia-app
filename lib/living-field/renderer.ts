@@ -32,11 +32,28 @@
  * concept of neighborhoods, density, or affinity strength — per the
  * Renderer Contract, it reads exactly one number and does nothing else
  * differently.
+ *
+ * Optical Weight Calibration v1.0: this task explicitly asks for
+ * per-script rendering adjustments, unlike Sprints 03A/03B which forbade
+ * touching this file. Each cell's `scriptId` (set by the Civilization
+ * Engine's own selection decision, not re-derived here) looks up a
+ * multiplier from optical-calibration.ts and applies it to the FINAL
+ * opacity (after wave/breath/intensity, so breathing rhythm itself is
+ * untouched) and to the effective font/path size. Colour, motion, and
+ * everything else about how a glyph is drawn stays identical across
+ * scripts -- only presence and size differ, per the calibration's rules.
  */
 
 import type { LivingFieldConfig, FieldStratum } from "./config";
 import type { FieldLayout, FieldCell } from "./field-layout";
 import type { GlyphPath } from "./glyphs";
+import {
+  ACTIVE_CALIBRATION,
+  SCRIPT_IDS,
+  getScriptWeight,
+  applyOpticalOpacity,
+  applyOpticalSize,
+} from "./optical-calibration";
 
 /** v0.6 diagonal wave, normalised 0..1. */
 export function wavePhase01(
@@ -111,8 +128,11 @@ export interface RenderOptions {
 }
 
 /**
- * Paint one frame. Cells are drawn grouped by stratum so ctx.font is set once
- * per stratum instead of once per cell.
+ * Paint one frame. Cells are drawn grouped by (stratum, scriptId) so
+ * ctx.font is set once per group instead of once per cell -- at most
+ * strata.length * SCRIPT_IDS.length font changes per frame (currently 9),
+ * still a small, bounded number, preserving the original "batch by
+ * stratum" performance intent from Sprint 01/02.
  */
 export function renderField(
   ctx: CanvasRenderingContext2D,
@@ -131,23 +151,37 @@ export function renderField(
   ctx.textBaseline = "middle";
 
   for (const stratum of config.strata) {
-    ctx.font = `${config.fontWeight} ${stratum.fontSize}px ${family}`;
-    for (const cell of layout.cells) {
-      if (cell.stratum !== stratum) continue;
-      const op = options.static
-        ? cellOpacityStatic(cell, config)
-        : cellOpacity(cell, t, config);
-      ctx.fillStyle = `rgba(${cr},${cg},${cb},${op})`;
-      if (cell.glyph.kind === "text") {
-        ctx.fillText(cell.glyph.value, cell.x, cell.y);
-      } else {
-        // kind === "path" (Vatteluttu). Same fillStyle/opacity as text
-        // glyphs above -- no script-specific styling, per Sprint 02's
-        // "all scripts render identically" rule.
-        ctx.save();
-        ctx.translate(cell.x, cell.y);
-        drawPathGlyph(ctx, cell.glyph.value, stratum.fontSize);
-        ctx.restore();
+    for (const scriptId of SCRIPT_IDS) {
+      const weight = getScriptWeight(ACTIVE_CALIBRATION, scriptId);
+      const effectiveSize = applyOpticalSize(stratum.fontSize, weight);
+      const effectiveWeight = weight.fontWeightOverride ?? config.fontWeight;
+      // Text glyphs need ctx.font set before fillText; path glyphs (always
+      // Vatteluttu) don't use ctx.font at all, but setting it unconditionally
+      // here is harmless and keeps the loop body simple -- it's simply
+      // unused on those iterations.
+      ctx.font = `${effectiveWeight} ${effectiveSize}px ${family}`;
+
+      for (const cell of layout.cells) {
+        if (cell.stratum !== stratum || cell.scriptId !== scriptId) continue;
+
+        const baseOp = options.static
+          ? cellOpacityStatic(cell, config)
+          : cellOpacity(cell, t, config);
+        const op = applyOpticalOpacity(baseOp, weight);
+
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},${op})`;
+        if (cell.glyph.kind === "text") {
+          ctx.fillText(cell.glyph.value, cell.x, cell.y);
+        } else {
+          // kind === "path" (Vatteluttu). Optical calibration still applies
+          // via `op` (opacity) and `effectiveSize` (path scale) above --
+          // just no stroke/outline, per this module's documented rule
+          // interpretation.
+          ctx.save();
+          ctx.translate(cell.x, cell.y);
+          drawPathGlyph(ctx, cell.glyph.value, effectiveSize);
+          ctx.restore();
+        }
       }
     }
   }
