@@ -42,6 +42,17 @@
  * untouched) and to the effective font/path size. Colour, motion, and
  * everything else about how a glyph is drawn stays identical across
  * scripts -- only presence and size differ, per the calibration's rules.
+ *
+ * Sprint 03C (Emergent Harmony v1.0): the ONLY change in this file.
+ * `breathMultiplier` gains one more optional parameter, an amplitude
+ * scale, sourced from `cell.harmony?.amplitudeInfluence` (defaults to 1 --
+ * bit-identical to Sprint 03A/Optical Calibration behaviour when harmony
+ * metadata is absent). It scales ONLY the existing breath-amplitude term,
+ * never the phase (Affinity's territory), never the base opacity or wave
+ * (Sprint 01's), never colour or size (Optical Calibration's). This module
+ * still has no concept of neighborhoods, density, or affinity strength --
+ * per the Harmony Engine's contract, it reads exactly one number and does
+ * nothing else differently.
  */
 
 import type { LivingFieldConfig, FieldStratum } from "./config";
@@ -69,20 +80,35 @@ export function wavePhase01(
 /** Global breathing multiplier, ~1 ± breathAmplitude. `phaseOffset` (radians)
  *  is Sprint 03A's addition: 0 reproduces Sprint 02's single global phase
  *  exactly; a per-cell offset from `cell.affinity.breathingOffset` makes
- *  neighborhoods drift subtly out of sync with each other. */
+ *  neighborhoods drift subtly out of sync with each other. `amplitudeScale`
+ *  is Sprint 03C's addition: 1 reproduces the exact prior amplitude; a
+ *  per-cell value from `cell.harmony.amplitudeInfluence` lets how DEEP a
+ *  cell's breathing dips vary subtly, independent of phase. */
 export function breathMultiplier(
   t: number,
   config: LivingFieldConfig,
-  phaseOffset = 0
+  phaseOffset = 0,
+  amplitudeScale = 1
 ): number {
-  return 1 + config.breathAmplitude * Math.sin((2 * Math.PI * t) / config.breathPeriodMs + phaseOffset);
+  return (
+    1 +
+    config.breathAmplitude *
+      amplitudeScale *
+      Math.sin((2 * Math.PI * t) / config.breathPeriodMs + phaseOffset)
+  );
 }
 
 /** Final opacity for one cell at time t. */
 export function cellOpacity(cell: FieldCell, t: number, config: LivingFieldConfig): number {
   const wave = wavePhase01(cell.col, cell.row, t, config);
   const raw = cell.stratum.baseOpacity + cell.stratum.waveAmplitude * wave;
-  return raw * breathMultiplier(t, config, cell.affinity?.breathingOffset ?? 0) * config.intensity;
+  const breath = breathMultiplier(
+    t,
+    config,
+    cell.affinity?.breathingOffset ?? 0,
+    cell.harmony?.amplitudeInfluence ?? 1
+  );
+  return raw * breath * config.intensity;
 }
 
 /** Static opacity used for the reduced-motion frame: wave held at midpoint,
