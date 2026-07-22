@@ -15,10 +15,16 @@
  * Framework-agnostic on purpose: the React component (components/field/
  * LivingField.tsx) is a thin binding over this class, so the engine can be
  * reused, tested, or mounted differently without rewriting behaviour.
+ *
+ * Sprint 03A (Affinity Engine): `rebuild()` now runs one extra pass,
+ * `applyAffinity()`, between layout generation and rendering — matching the
+ * spec's Kernel diagram (Field/Civilization Engine → Affinity Engine →
+ * Renderer). It runs once per layout build, never per animation frame.
  */
 
 import { LIVING_FIELD_CONFIG, type LivingFieldConfig } from "./config";
 import { buildFieldLayout, type FieldLayout } from "./field-layout";
+import { applyAffinity } from "./affinity-engine";
 import { renderField } from "./renderer";
 
 export interface LivingFieldEngineOptions {
@@ -102,6 +108,9 @@ export class LivingFieldEngine {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     this.layout = buildFieldLayout(w, h, this.config);
+    // Sprint 03A: affinity metadata computed once per layout build, never
+    // per frame. Mutates layout.cells in place (see affinity-engine.ts).
+    applyAffinity(this.layout.cells);
 
     if (this.running && this.reducedMotion) this.renderStatic();
   }
