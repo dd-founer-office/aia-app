@@ -44,6 +44,7 @@
 import type { LivingFieldConfig, FieldStratum, ScriptWeight } from "./config";
 import { createGlyphDealer, getGlyphSet, type Glyph } from "./glyphs";
 import type { GlyphAffinity } from "./affinity-types";
+import type { GlyphHarmony } from "./harmony-types";
 import { applyNaturalDistribution, type FieldSlot } from "./natural-distribution";
 
 export interface FieldCell {
@@ -68,6 +69,12 @@ export interface FieldCell {
    *  because buildFieldLayout() itself doesn't produce it; guaranteed
    *  present at runtime once the affinity pass has run (see engine.ts). */
   affinity?: GlyphAffinity;
+  /** Sprint 03C: minimal behavioural metadata, populated by
+   *  emergent-harmony.ts's applyEmergentHarmony() as a pass AFTER affinity
+   *  runs -- not set here. Optional for the same reason `affinity` is:
+   *  buildFieldLayout() doesn't produce it; guaranteed present at runtime
+   *  once the harmony pass has run (see engine.ts). */
+  harmony?: GlyphHarmony;
 }
 
 export interface FieldLayout {
