@@ -1,29 +1,39 @@
 /**
  * Living Field — Glyph Sets
  * ----------------------------------------------------------------------------
- * Glyph source for the Ambient Letter Field.
+ * Glyph source registry for the Ambient Letter Field.
  *
- * Build Sprint 01 ships EXACTLY ONE active glyph set: the full 247-letter
- * modern Tamil alphabet (12 uyir + 18 pulli mei + 216 uyirmei + ஃ), generated
- * programmatically exactly as in Concept v0.6.
+ * Build Sprint 02 (Living Civilization Layer v1.0) extends this from a single
+ * active set (Sprint 01: modern Tamil only) to a REGISTRY of independently
+ * addressable script sets. Which sets appear, and in what mix, is now decided
+ * entirely by the glyph-selection layer (field-layout.ts), driven by each
+ * depth stratum's `scriptWeights` (see config.ts). This file only defines
+ * what a script IS -- it has no opinion on when or how often it appears.
+ * That separation is deliberate: the renderer and engine remain completely
+ * unaware that more than one script exists (renderer.ts just draws whatever
+ * Glyph it's handed); civilization decisions live here and in field-layout.ts
+ * only.
  *
- * Heritage scripts (Tamil-Brahmi, Vatteluttu) are FUTURE strata. Per founder
- * direction they are not implemented here in any form — no data, no hidden
- * layers, no placeholders. The GlyphSet interface + registry below are the
- * clean extension points: a future sprint registers additional sets without
- * touching layout, renderer, or engine code.
+ * Three registered sets, three moments of one continuous civilization:
+ *   - modern-tamil-247   Today's living language (unchanged from Sprint 01).
+ *   - tamil-brahmi-24    Real Unicode Brahmi letters (U+11000 block).
+ *   - vatteluttu-21      21 hand-traced letterforms with no Unicode encoding,
+ *                        drawn as filled paths (even-odd fill preserves
+ *                        interior holes) rather than text glyphs.
+ *
+ * All three render through the exact same code path in renderer.ts, at the
+ * same opacity, same color, same size-per-stratum -- per Sprint 02's
+ * "all scripts render identically" rule. Only the letterforms differ.
  */
 
-/** A renderable glyph. Sprint 01 uses text glyphs only. `path` exists as a
- *  typed extension point for scripts with no Unicode encoding (Vatteluttu is
- *  rendered from traced outline paths in the exploration work); no path data
- *  ships in this sprint. */
+/** A renderable glyph. */
 export type Glyph =
   | { kind: "text"; value: string }
   | { kind: "path"; value: GlyphPath };
 
 /** Traced letterform in a 0–10 unit box, drawn with even-odd fill so interior
- *  holes are preserved. Future use only. */
+ *  holes are preserved. Used by scripts with no practical Unicode encoding
+ *  (Vatteluttu in this sprint). */
 export interface GlyphPath {
   outer: ReadonlyArray<readonly [number, number]>;
   holes: ReadonlyArray<ReadonlyArray<readonly [number, number]>>;
@@ -36,7 +46,7 @@ export interface GlyphSet {
 }
 
 // ---------------------------------------------------------------------------
-// Modern Tamil — full 247-letter set (unchanged generation from v0.6)
+// Modern Tamil — full 247-letter set (byte-for-byte unchanged from Sprint 01)
 // ---------------------------------------------------------------------------
 
 const VOWELS = ["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"] as const;
@@ -68,20 +78,89 @@ export const MODERN_TAMIL: GlyphSet = {
 };
 
 // ---------------------------------------------------------------------------
-// Registry — the extension point for future heritage strata.
-// Sprint 01: modern Tamil only. Registering a future set here (e.g. a
-// scholar-reviewed Tamil-Brahmi or traced Vatteluttu set) is the ONLY change
-// needed at this layer; strata in config.ts would then reference set ids.
+// Tamil-Brahmi — 24 real Unicode letters (U+11000 block)
+// ----------------------------------------------------------------------------
+// Renders as tofu/boxes without a Brahmi-capable font installed on the
+// viewer's system (e.g. Noto Sans Brahmi). This is a known, accepted
+// limitation carried over from the original exploration -- no font is added
+// in this sprint (per Sprint 01's font-consistency rule, still in force).
 // ---------------------------------------------------------------------------
 
-export const GLYPH_SETS: readonly GlyphSet[] = [MODERN_TAMIL];
+const BRAHMI_LETTERS: readonly string[] = ['𑀅','𑀆','𑀇','𑀈','𑀉','𑀊','𑀏','𑀐','𑀑','𑀒',
+                   '𑀓','𑀗','𑀘','𑀜','𑀝','𑀡','𑀢','𑀦','𑀧','𑀫','𑀬','𑀭','𑀮','𑀯'];
 
-export const ACTIVE_GLYPH_SET: GlyphSet = MODERN_TAMIL;
+export const TAMIL_BRAHMI: GlyphSet = {
+  id: "tamil-brahmi-24",
+  glyphs: BRAHMI_LETTERS.map((v) => ({ kind: "text", value: v }) as const),
+};
 
 // ---------------------------------------------------------------------------
-// Shuffled-deck dealing (unchanged principle from v0.6): every glyph is
-// guaranteed to appear before any glyph repeats — a plain random pick per
-// cell could not promise that.
+// Vatteluttu — 21 hand-traced letterforms (path glyphs, even-odd fill)
+// ----------------------------------------------------------------------------
+// Contour-extracted outlines in a 0-10 unit box. No Unicode encoding exists
+// for this script, so these are drawn as filled vector paths rather than
+// text. Interior holes (e.g. counters in letterforms) are preserved via
+// even-odd fill, exactly as in the original exploration prototype.
+// ---------------------------------------------------------------------------
+
+const VATTELUTTU_SHAPES: readonly GlyphPath[] = [
+  { outer:[[9.05,9.6],[8.41,8.65],[6.03,9.44],[4.29,9.44],[3.65,9.13],[2.62,8.1],[2.46,7.62],[2.46,6.67],[3.41,4.29],[2.06,4.05],[1.51,3.49],[1.59,1.67],[0.63,1.83],[0.24,1.43],[0.95,0.87],[1.59,0.87],[2.46,1.75],[2.3,3.17],[2.54,3.41],[4.76,3.41],[5.16,3.81],[4.05,4.6],[4.05,5.08],[3.25,6.67],[3.25,7.62],[3.49,8.17],[4.29,8.65],[6.03,8.65],[8.33,7.78],[8.65,4.29],[8.49,2.22],[8.65,0.95],[9.21,0.24],[9.6,0.79],[9.29,2.22],[9.29,7.3],[8.97,8.1],[9.44,9.21],[9.05,9.6]], holes:[] },
+  { outer:[[4.44,7.1],[2.72,7.1],[1.42,6.05],[1.3,4.69],[1.91,2.96],[0.93,1.98],[0.8,0.99],[0.19,0.62],[0.62,0.19],[1.3,0.74],[1.54,1.98],[1.85,2.28],[2.22,2.53],[2.84,2.28],[3.15,2.59],[2.41,3.21],[1.91,4.69],[2.04,6.05],[2.72,6.48],[4.44,6.48],[4.94,6.36],[5.25,6.05],[6.11,4.69],[6.23,3.21],[6.98,0.99],[7.41,0.56],[7.72,0.86],[6.85,3.21],[6.73,4.44],[8.89,4.51],[9.57,5.19],[9.69,6.54],[9.38,6.85],[9.07,6.54],[9.07,5.56],[8.89,5.12],[7.04,5.0],[6.42,5.12],[5.74,6.3],[5.19,6.85],[4.44,7.1]], holes:[] },
+  { outer:[[2.39,5.85],[1.02,5.74],[0.17,4.77],[0.28,4.09],[2.33,2.16],[2.44,1.59],[2.27,1.31],[1.36,0.97],[1.02,1.08],[0.74,0.8],[1.14,0.4],[2.39,0.74],[3.01,1.59],[2.67,2.5],[0.85,4.09],[0.74,4.43],[0.85,5.0],[1.48,5.28],[2.95,5.17],[3.64,4.83],[4.6,3.41],[5.06,1.93],[5.74,0.91],[6.48,0.28],[7.61,0.28],[8.41,0.74],[9.43,0.4],[9.72,0.68],[9.32,1.08],[8.52,1.31],[7.61,0.85],[6.93,0.74],[6.48,0.85],[5.62,1.93],[5.17,3.41],[4.6,4.43],[3.3,5.62],[2.39,5.85]], holes:[] },
+  { outer:[[3.47,7.57],[2.22,7.57],[1.39,7.29],[0.21,5.97],[0.21,4.44],[0.62,3.61],[1.74,2.36],[1.74,1.53],[1.11,1.32],[0.35,0.56],[0.69,0.21],[2.43,1.39],[2.43,2.36],[1.32,3.61],[0.9,4.44],[1.04,6.25],[1.39,6.6],[2.22,6.88],[4.31,6.74],[6.25,5.9],[7.71,4.72],[8.4,3.61],[9.31,2.71],[9.65,3.06],[8.4,4.72],[7.08,6.04],[5.14,7.15],[3.47,7.57]], holes:[] },
+  { outer:[[7.97,7.53],[7.09,7.41],[6.52,6.84],[6.39,6.2],[6.52,5.7],[7.34,4.87],[8.48,4.62],[8.92,4.3],[8.54,2.41],[7.72,1.33],[5.7,0.82],[4.3,0.95],[2.41,1.71],[1.96,2.15],[1.58,2.91],[1.46,4.18],[2.28,4.49],[2.85,5.06],[3.1,5.82],[2.97,6.96],[2.41,7.53],[1.39,7.41],[0.19,6.08],[0.19,4.81],[0.82,4.05],[0.95,2.91],[1.33,2.15],[2.41,1.08],[4.3,0.32],[5.7,0.19],[7.72,0.7],[9.18,2.41],[9.56,4.18],[9.43,4.56],[9.68,4.81],[9.56,6.08],[9.3,6.58],[7.97,7.53]], holes:[[[2.34,6.84],[2.47,5.82],[2.22,5.06],[1.01,4.62],[0.82,4.81],[0.95,6.33],[1.39,6.77],[2.34,6.84]],[[8.04,6.84],[8.8,6.33],[8.99,5.0],[7.59,5.38],[7.15,5.7],[7.15,6.71],[7.47,6.9],[8.04,6.84]]] },
+  { outer:[[5.09,8.51],[3.33,8.51],[2.19,7.37],[2.54,5.26],[4.3,3.51],[3.6,2.11],[2.81,1.32],[1.58,1.32],[0.7,2.37],[0.26,1.93],[1.58,0.44],[2.81,0.44],[4.47,2.11],[4.91,3.07],[7.72,1.32],[9.12,0.79],[9.56,1.23],[8.95,1.84],[7.72,2.19],[5.53,3.51],[6.23,5.09],[6.23,7.37],[5.09,8.51]], holes:[[[5.18,7.54],[5.35,5.09],[5.0,4.04],[4.74,3.95],[3.42,5.26],[3.07,7.37],[3.33,7.63],[5.18,7.54]]] },
+  { outer:[[7.61,6.94],[5.97,6.94],[5.0,5.97],[5.75,2.54],[4.18,1.12],[3.28,0.97],[2.91,2.09],[1.64,3.06],[0.9,3.06],[0.37,2.54],[0.37,1.64],[1.64,0.52],[3.28,0.22],[4.18,0.37],[5.37,1.57],[6.12,1.87],[6.42,1.87],[7.31,0.82],[7.69,1.34],[6.49,2.54],[5.75,5.97],[5.97,6.19],[7.61,6.19],[8.96,5.45],[9.63,5.82],[7.61,6.94]], holes:[[[1.72,2.24],[2.31,1.79],[2.24,1.12],[1.12,1.64],[1.04,2.16],[1.72,2.24]]] },
+  { outer:[[3.91,9.61],[2.66,9.45],[1.48,8.44],[1.17,7.66],[1.17,6.25],[2.11,4.69],[3.91,2.89],[4.92,2.5],[4.45,2.03],[4.3,1.25],[4.06,1.02],[3.12,1.17],[0.62,2.89],[0.23,2.5],[2.81,0.55],[3.75,0.23],[4.38,0.39],[5.08,1.09],[5.31,1.95],[7.03,1.33],[8.28,0.55],[8.75,0.7],[9.14,1.09],[8.75,1.48],[8.28,1.33],[7.03,2.11],[5.7,2.5],[6.17,3.28],[6.17,7.66],[5.86,8.44],[4.84,9.45],[3.91,9.61]], holes:[[[3.98,8.75],[4.84,8.67],[5.39,7.66],[5.55,5.0],[5.39,3.28],[5.16,3.05],[3.91,3.67],[2.27,5.47],[1.95,6.25],[1.95,7.66],[2.27,8.44],[2.66,8.67],[3.98,8.75]]] },
+  { outer:[[5.06,7.6],[4.74,7.27],[5.19,6.82],[5.97,6.82],[7.4,6.43],[8.38,5.71],[8.9,4.68],[9.03,3.77],[8.77,2.34],[7.79,1.36],[6.23,1.23],[6.56,1.95],[6.69,2.99],[6.56,3.9],[5.84,4.74],[4.68,4.87],[3.83,4.16],[3.7,3.51],[3.83,2.86],[4.74,1.17],[4.42,0.97],[2.47,0.84],[1.23,1.43],[0.84,2.08],[0.84,3.25],[1.04,3.44],[1.69,3.44],[2.14,2.99],[2.4,2.21],[2.27,1.95],[2.6,1.62],[3.05,2.21],[2.79,2.99],[1.95,3.96],[1.04,4.09],[0.19,3.25],[0.19,2.08],[1.3,0.71],[2.08,0.32],[4.42,0.32],[5.19,0.84],[5.84,0.84],[6.1,0.58],[7.79,0.71],[9.42,2.34],[9.68,3.77],[9.55,4.68],[9.03,5.71],[7.4,7.08],[5.06,7.6]], holes:[[[5.65,4.16],[5.91,3.9],[6.04,3.25],[5.91,1.95],[5.71,1.49],[5.19,1.49],[4.48,2.86],[4.35,3.51],[4.68,4.22],[5.65,4.16]]] },
+  { outer:[[5.58,7.73],[4.19,7.73],[3.02,7.38],[2.44,7.03],[1.22,5.7],[0.64,4.3],[0.17,1.63],[0.17,0.7],[0.58,0.17],[0.87,0.47],[0.76,1.63],[0.99,3.37],[1.8,5.7],[2.79,6.69],[4.19,7.15],[6.16,7.03],[7.09,6.69],[7.73,6.05],[8.31,5.0],[8.9,2.91],[8.9,1.74],[9.13,1.16],[9.01,0.81],[9.3,0.52],[9.59,0.81],[9.71,1.16],[9.48,1.74],[9.48,2.91],[8.55,5.7],[7.44,7.03],[6.86,7.38],[5.58,7.73]], holes:[] },
+  { outer:[[4.48,9.57],[1.9,9.05],[0.26,8.1],[1.03,7.67],[2.93,8.53],[4.48,8.71],[5.52,8.36],[6.12,7.41],[5.95,5.34],[5.34,4.74],[4.83,4.91],[4.4,4.48],[5.26,3.45],[5.26,1.72],[5.0,1.29],[3.97,1.12],[3.71,2.59],[2.41,3.53],[1.72,3.36],[0.95,2.41],[1.12,1.38],[1.72,0.78],[3.62,0.26],[5.17,0.43],[5.95,1.21],[6.12,3.45],[5.78,4.31],[6.98,5.69],[6.98,7.41],[6.64,8.28],[5.86,9.05],[4.48,9.57]], holes:[[[2.5,2.59],[3.02,2.24],[2.93,1.29],[2.07,1.47],[1.81,1.9],[1.9,2.5],[2.5,2.59]]] },
+  { outer:[[5.76,9.62],[3.03,9.62],[2.27,9.32],[0.83,8.03],[0.23,6.21],[0.23,3.79],[0.61,3.41],[0.98,3.79],[1.14,7.12],[1.59,8.03],[2.27,8.56],[3.03,8.86],[5.76,8.86],[6.97,8.41],[7.65,7.73],[7.95,7.27],[7.95,5.91],[7.65,5.3],[6.97,4.47],[5.45,4.17],[5.08,3.79],[5.45,3.41],[6.82,3.71],[7.5,2.27],[7.35,1.52],[6.67,1.14],[5.3,0.98],[4.92,0.61],[5.3,0.23],[6.67,0.38],[8.11,1.52],[8.26,2.27],[7.5,4.24],[8.71,5.91],[8.71,7.27],[8.41,7.73],[6.97,9.17],[5.76,9.62]], holes:[] },
+  { outer:[[4.0,9.58],[2.17,9.42],[0.92,8.0],[1.08,6.17],[3.42,3.33],[3.92,1.67],[3.5,1.08],[2.5,1.08],[1.17,1.92],[0.67,2.58],[0.25,2.0],[2.5,0.25],[3.83,0.42],[4.58,1.17],[4.75,2.17],[3.92,3.83],[1.92,6.17],[1.75,7.33],[1.92,8.33],[2.5,8.75],[4.0,8.75],[6.17,7.58],[6.75,8.0],[5.83,8.75],[4.0,9.58]], holes:[] },
+  { outer:[[4.76,8.81],[2.22,8.65],[0.4,6.98],[0.24,5.87],[0.56,4.92],[2.3,3.02],[2.94,2.06],[3.1,1.27],[2.86,1.03],[1.59,1.03],[0.63,1.51],[0.24,1.11],[1.11,0.4],[2.86,0.24],[3.89,1.27],[3.73,2.06],[1.67,4.44],[1.03,5.87],[1.19,6.98],[1.9,7.7],[2.86,8.02],[5.56,7.86],[7.46,6.9],[9.21,4.84],[9.6,5.24],[7.46,7.7],[6.03,8.49],[4.76,8.81]], holes:[] },
+  { outer:[[5.56,7.69],[2.78,7.31],[1.39,6.11],[1.2,5.0],[2.31,3.33],[2.31,2.22],[2.04,1.94],[0.74,1.94],[0.28,1.48],[0.74,1.02],[2.04,1.02],[3.24,2.22],[3.24,3.33],[2.31,4.44],[2.13,5.74],[2.78,6.39],[4.44,6.76],[5.56,6.76],[7.04,6.2],[7.69,5.56],[8.43,4.07],[8.61,1.67],[8.15,1.2],[7.59,1.2],[6.76,1.85],[6.39,3.15],[5.74,3.8],[5.28,3.33],[6.2,1.3],[7.59,0.28],[8.52,0.46],[9.35,1.3],[9.54,3.33],[8.43,5.93],[7.04,7.13],[5.56,7.69]], holes:[] },
+  { outer:[[5.31,6.73],[2.84,6.6],[2.35,6.36],[1.42,5.43],[1.3,5.06],[1.42,3.7],[2.04,2.72],[2.9,1.85],[3.15,0.99],[2.22,0.8],[0.49,0.93],[0.19,0.62],[0.49,0.31],[3.83,0.31],[4.14,0.62],[3.77,0.99],[3.52,1.85],[2.28,3.21],[1.91,4.07],[2.04,5.43],[2.84,5.99],[5.68,5.99],[7.16,5.25],[9.14,3.27],[9.38,3.15],[9.69,3.46],[7.16,5.86],[5.31,6.73]], holes:[] },
+  { outer:[[4.35,9.64],[3.84,9.13],[3.84,3.19],[2.75,3.41],[1.3,4.28],[0.58,4.28],[0.22,3.91],[0.58,3.55],[1.3,3.55],[2.75,2.68],[3.62,2.54],[3.99,2.03],[4.28,0.72],[4.78,0.22],[5.14,0.58],[4.42,2.46],[4.71,4.06],[4.57,7.83],[4.71,9.28],[4.35,9.64]], holes:[] },
+  { outer:[[7.69,6.86],[6.41,6.73],[5.45,5.77],[5.06,4.74],[4.81,2.56],[4.42,1.28],[3.59,0.96],[2.31,1.09],[1.79,1.35],[1.09,2.56],[0.96,3.85],[2.05,3.91],[2.88,5.0],[2.88,5.9],[2.63,6.28],[1.79,6.86],[1.15,6.73],[0.19,5.64],[0.45,2.56],[1.09,1.41],[2.31,0.45],[3.59,0.32],[4.36,0.58],[5.06,1.28],[5.45,2.56],[5.71,4.74],[6.09,5.77],[6.41,6.09],[7.69,6.22],[8.65,5.64],[9.04,4.62],[8.91,2.56],[8.53,1.41],[8.01,0.64],[8.33,0.19],[8.91,0.9],[9.55,2.56],[9.68,4.62],[9.04,6.03],[8.59,6.47],[7.69,6.86]], holes:[[[1.86,6.15],[2.24,5.9],[2.12,4.74],[1.92,4.55],[0.9,4.55],[0.96,5.9],[1.41,6.22],[1.86,6.15]]] },
+  { outer:[[5.86,7.07],[2.14,6.93],[1.14,6.64],[0.36,5.86],[0.21,5.0],[2.64,1.86],[2.64,1.14],[2.43,0.93],[1.43,0.93],[0.79,1.29],[0.5,1.0],[1.14,0.36],[2.43,0.21],[3.36,1.14],[3.36,1.86],[3.07,2.43],[0.93,5.0],[1.07,5.86],[2.14,6.21],[5.86,6.36],[7.86,5.93],[8.79,4.57],[8.93,2.43],[9.29,2.07],[9.64,2.43],[9.5,4.57],[9.07,5.43],[7.86,6.64],[5.86,7.07]], holes:[] },
+  { outer:[[7.59,9.57],[3.79,9.4],[2.24,8.88],[1.38,8.36],[0.26,7.07],[0.43,5.52],[1.81,3.1],[3.62,1.12],[5.0,0.26],[5.34,0.26],[7.33,2.59],[9.22,6.72],[9.22,8.62],[8.45,9.4],[7.59,9.57]], holes:[[[7.67,8.62],[8.53,8.28],[8.36,6.72],[7.84,5.34],[5.78,1.55],[5.34,1.12],[4.48,1.29],[3.36,2.24],[1.98,4.14],[1.29,5.52],[1.12,7.07],[1.9,7.84],[3.79,8.53],[7.67,8.62]]] },
+  { outer:[[8.93,9.2],[8.48,8.75],[8.39,3.12],[5.54,3.12],[3.04,2.23],[1.61,2.41],[1.16,3.04],[1.16,4.46],[1.43,4.73],[2.32,4.73],[2.23,3.57],[2.68,3.12],[3.3,3.93],[3.3,4.82],[2.5,5.62],[1.25,5.62],[0.27,4.46],[0.45,2.5],[1.25,1.7],[2.32,1.34],[3.93,1.52],[5.54,2.23],[8.21,2.23],[8.48,0.89],[9.11,0.27],[9.55,0.71],[9.2,1.96],[9.38,8.75],[8.93,9.2]], holes:[] },
+  ];
+
+export const VATTELUTTU: GlyphSet = {
+  id: "vatteluttu-21",
+  glyphs: VATTELUTTU_SHAPES.map((shape) => ({ kind: "path", value: shape }) as const),
+};
+
+// ---------------------------------------------------------------------------
+// Registry — every script the field can draw from, looked up by id.
+// Extending the field with a future script is: define its GlyphSet, add it
+// here. Nothing in field-layout.ts, renderer.ts, or engine.ts changes.
+// ---------------------------------------------------------------------------
+
+export const GLYPH_SETS: readonly GlyphSet[] = [MODERN_TAMIL, TAMIL_BRAHMI, VATTELUTTU];
+
+const GLYPH_SETS_BY_ID: ReadonlyMap<string, GlyphSet> = new Map(
+  GLYPH_SETS.map((set) => [set.id, set])
+);
+
+/** Look up a registered set by id. Throws on an unknown id -- a stratum
+ *  referencing a set that doesn't exist is a configuration error, not a
+ *  runtime condition to silently swallow. */
+export function getGlyphSet(id: string): GlyphSet {
+  const set = GLYPH_SETS_BY_ID.get(id);
+  if (!set) {
+    throw new Error(`Living Field: unknown glyph set id "${id}"`);
+  }
+  return set;
+}
+
+// ---------------------------------------------------------------------------
+// Shuffled-deck dealing (unchanged principle from Sprint 01): every glyph in
+// A set is guaranteed to appear before any glyph from that SAME set repeats.
+// Each stratum gets its own dealer per set it references (see
+// field-layout.ts), so this guarantee holds independently within each
+// stratum/script pairing rather than being pooled globally.
 // ---------------------------------------------------------------------------
 
 function shuffled<T>(arr: readonly T[]): T[] {
@@ -94,8 +173,8 @@ function shuffled<T>(arr: readonly T[]): T[] {
 }
 
 /** Deals glyphs from a shuffled deck without replacement, reshuffling when
- *  exhausted. One dealer per field build. */
-export function createGlyphDealer(set: GlyphSet = ACTIVE_GLYPH_SET): () => Glyph {
+ *  exhausted. One dealer per (stratum, set) pairing. */
+export function createGlyphDealer(set: GlyphSet): () => Glyph {
   let queue = shuffled(set.glyphs);
   return () => {
     if (queue.length === 0) queue = shuffled(set.glyphs);
