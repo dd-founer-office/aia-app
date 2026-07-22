@@ -63,7 +63,12 @@ export default async function ActsPage() {
   const acts = [...mockFeedItems, ...publishedFeedItems].sort((a, b) => b.sortDate - a.sortDate);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
+    // NOTE: bg-[var(--color-background)] intentionally removed from this
+    // root wrapper -- body already carries this exact background color
+    // (globals.css), so this class was a redundant duplicate paint that
+    // silently hid the Living Field's ambient canvas. Same fix as
+    // app/page.tsx (Sprint 01 Foundation Completion). No other change.
+    <div className="flex min-h-screen flex-col">
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 pb-28 pt-10">
         <h1 className="text-2xl font-semibold leading-tight tracking-tight">Acts</h1>
 

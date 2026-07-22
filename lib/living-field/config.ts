@@ -27,6 +27,8 @@
  * letterforms differ.
  */
 
+import { ACTIVE_INTENSITY } from "./intensity-calibration";
+
 /** Relative weight of one registered glyph set (see glyphs.ts) within a
  *  stratum's script mix. Weights are normalised at pick-time, so they don't
  *  need to sum to 1 — e.g. {35, 65} and {0.35, 0.65} behave identically. */
@@ -132,7 +134,14 @@ export const LIVING_FIELD_CONFIG: LivingFieldConfig = {
   // correctly (canvas paints real pixels at the right color) but at alpha
   // values too low to survive a phone screenshot's compression. Bumped to
   // 3.5 so it's clearly visible for review; dial back down once confirmed.
-  intensity: 3.5,
+  // TEMPORARY -- Living Field Foundation Completion v1.0, Part 2. Was a
+  // hardcoded 3.5 (Sprint 01's "make sure you can see it" review value).
+  // Now resolved from intensity-calibration.ts's three founder-review
+  // candidates (A=2.8, B=2.5, C=2.2) via NEXT_PUBLIC_INTENSITY_CANDIDATE.
+  // Once a candidate is selected, replace this with that single number as
+  // a plain literal and delete intensity-calibration.ts -- same pattern as
+  // optical-calibration.ts's evaluation-to-locked transition.
+  intensity: ACTIVE_INTENSITY,
 
   colorRGB: [50, 141, 99], // #328D63
 

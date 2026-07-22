@@ -13,9 +13,15 @@ export default async function ActEvidencePage({
   const { id } = await params;
   const mockAct = getActById(id);
 
+  // NOTE: bg-[var(--color-background)] intentionally removed from both
+  // branches' root wrappers below -- body already carries this exact
+  // background color (globals.css), so this class was a redundant
+  // duplicate paint that silently hid the Living Field's ambient canvas.
+  // Same fix as app/page.tsx (Sprint 01 Foundation Completion). No other
+  // change.
   if (mockAct) {
     return (
-      <div className="flex min-h-screen flex-col bg-[var(--color-background)] pb-16">
+      <div className="flex min-h-screen flex-col pb-16">
         <ActDetailBackHeader actId={id} title="Living Trace" />
         <LivingTraceViewer items={getEvidenceTrace(id)} />
       </div>
@@ -29,7 +35,7 @@ export default async function ActEvidencePage({
   const items = await getPublishedActTrace(id);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-background)] pb-16">
+    <div className="flex min-h-screen flex-col pb-16">
       <ActDetailBackHeader actId={id} title="Living Trace" />
       <LivingTraceViewer items={items} />
     </div>

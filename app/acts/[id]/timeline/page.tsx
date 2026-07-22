@@ -12,8 +12,13 @@ export default async function ActTimelinePage({
   const act = getActById(id);
   if (!act) notFound();
 
+  // NOTE: bg-[var(--color-background)] intentionally removed from this
+  // root wrapper -- body already carries this exact background color
+  // (globals.css), so this class was a redundant duplicate paint that
+  // silently hid the Living Field's ambient canvas. Same fix as
+  // app/page.tsx (Sprint 01 Foundation Completion). No other change.
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-background)] pb-16">
+    <div className="flex min-h-screen flex-col pb-16">
       <ActDetailBackHeader actId={id} title="Timeline" />
       <div className="flex flex-col px-5 pt-6">
         {act.timeline.map((step, i) => (

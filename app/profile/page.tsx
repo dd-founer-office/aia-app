@@ -40,7 +40,12 @@ export default function ProfilePage() {
   const firstParticipationDate = getFirstParticipationDate();
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)] pb-32">
+    // NOTE: bg-[var(--color-background)] intentionally removed from this
+    // root wrapper -- body already carries this exact background color
+    // (globals.css), so this class was a redundant duplicate paint that
+    // silently hid the Living Field's ambient canvas. Same fix as
+    // app/page.tsx (Sprint 01 Foundation Completion). No other change.
+    <div className="min-h-screen pb-32">
       <header className="px-5 pt-6 pb-2">
         <h1 className="font-display text-2xl">Profile</h1>
       </header>

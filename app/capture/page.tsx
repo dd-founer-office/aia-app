@@ -3,9 +3,15 @@ import { MISSION_TEMPLATES } from "@/lib/mission-templates";
 
 // Temporary test harness — not a locked screen. Real entry point (from
 // an Opportunity/Execution flow) is a follow-up decision.
+//
+// NOTE: bg-[var(--color-background)] intentionally removed from this root
+// wrapper -- body already carries this exact background color
+// (globals.css), so this class was a redundant duplicate paint that
+// silently hid the Living Field's ambient canvas. Same fix as app/page.tsx
+// (Sprint 01 Foundation Completion). No other change.
 export default function MissionPickerPage() {
   return (
-    <div className="min-h-dvh bg-[var(--color-background)] px-5 py-8">
+    <div className="min-h-dvh px-5 py-8">
       <p className="mb-1 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
         Mission Camera — Test Harness
       </p>

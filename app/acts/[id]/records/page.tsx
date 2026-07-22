@@ -14,8 +14,13 @@ export default async function ActRecordsPage({
   const act = getActById(id);
   if (!act) notFound();
 
+  // NOTE: bg-[var(--color-background)] intentionally removed from this
+  // root wrapper -- body already carries this exact background color
+  // (globals.css), so this class was a redundant duplicate paint that
+  // silently hid the Living Field's ambient canvas. Same fix as
+  // app/page.tsx (Sprint 01 Foundation Completion). No other change.
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-background)] pb-16">
+    <div className="flex min-h-screen flex-col pb-16">
       <ActDetailBackHeader actId={id} title="Records" />
       <div className="flex flex-col gap-4 px-5 pt-6">
         <Card className="flex flex-col">

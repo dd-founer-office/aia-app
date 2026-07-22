@@ -27,7 +27,16 @@ export default function ChooseCausesPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
+    // NOTE: bg-[var(--color-background)] intentionally removed from this
+    // root wrapper -- body already carries this exact background color
+    // (globals.css), so this class was a redundant duplicate paint that
+    // silently hid the Living Field's ambient canvas. Same fix as
+    // app/page.tsx (Sprint 01 Foundation Completion).
+    //
+    // The STICKY FOOTER below (bottom of this file) INTENTIONALLY KEEPS
+    // its own bg-[var(--color-background)] -- see the comment there. That
+    // is a deliberate exception, not an oversight.
+    <div className="flex min-h-screen flex-col">
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-1 px-5 pt-10">
         <ProgressIndicator current={1} total={VISIBLE_STEP_COUNT} />
         <ScreenHeader
@@ -59,6 +68,13 @@ export default function ChooseCausesPage() {
           </p>
         </div>
 
+        {/* INTENTIONALLY OPAQUE -- Living Field Foundation Completion v1.0,
+            Part 1 exception. This is a sticky CTA bar pinned to the
+            viewport bottom while the cause list scrolls underneath it. If
+            it were transparent, scrolling cause cards (and/or Living Field
+            letters) would visibly slide through/behind the pinned button,
+            which reads as a rendering bug, not atmosphere. Kept opaque for
+            functional legibility during scroll -- not an oversight. */}
         <div className="sticky bottom-0 w-full bg-[var(--color-background)] py-4">
           <Button
             className="w-full disabled:opacity-40 disabled:cursor-not-allowed"
