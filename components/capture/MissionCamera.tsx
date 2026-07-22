@@ -86,7 +86,7 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
   const completedCount = requirements.filter((r) => r.status === "complete").length;
   const missionComplete = completedCount === template.requirements.length;
 
- useEffect(() => {
+  useEffect(() => {
     if (!ready || reviewFrame || recording) return;
     const canvas = analysisCanvasRef.current;
     if (!canvas) return;
@@ -123,7 +123,7 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
     }, 600);
 
     return () => clearInterval(interval);
-}, [ready, reviewFrame, recording, videoRef]);
+  }, [ready, reviewFrame, recording, videoRef]);
 
   function handleZoomSelect(value: number) {
     setZoom(value);
@@ -166,7 +166,7 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
       return;
     }
 
-   const stream = getStream();
+    const stream = getStream();
     if (!stream || recording) return;
 
     const posterFrame = captureFrame();
@@ -175,14 +175,14 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
     const mimeType = MediaRecorder.isTypeSupported("video/webm")
       ? "video/webm"
       : MediaRecorder.isTypeSupported("video/mp4")
-        ? "video/mp4"
-        : "";
+      ? "video/mp4"
+      : "";
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     chunksRef.current = [];
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
- recorder.onstop = () => {
+    recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: mimeType || "video/webm" });
       setReviewFrame({ url: URL.createObjectURL(blob), kind: "video", posterUrl });
       setRecording(false);
@@ -208,7 +208,7 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
   function handleAccept() {
     if (!activeRequirement || !reviewFrame || !cqi) return;
 
-   const evidence: CapturedEvidence = {
+    const evidence: CapturedEvidence = {
       requirementId: activeRequirement.id,
       mediaKind: activeRequirement.kind,
       blobUrl: reviewFrame.url,
@@ -232,7 +232,7 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
     setReviewFrame(null);
   }
 
-async function handleSubmit() {
+  async function handleSubmit() {
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -265,16 +265,16 @@ async function handleSubmit() {
           videoUrl = videoUrlData.publicUrl;
         }
 
-    items.push({
-photoUrl: posterUrlData.publicUrl,
-videoUrl,
-mediaKind: item.mediaKind,
-captureTime: item.capturedAtIso,
-captureTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-gpsLat: item.gpsLat,
-gpsLng: item.gpsLng,
-gpsAccuracyMeters: item.gpsAccuracyMeters,
-});
+        items.push({
+          photoUrl: posterUrlData.publicUrl,
+          videoUrl,
+          mediaKind: item.mediaKind,
+          captureTime: item.capturedAtIso,
+          captureTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          gpsLat: item.gpsLat,
+          gpsLng: item.gpsLng,
+          gpsAccuracyMeters: item.gpsAccuracyMeters,
+        });
       }
 
       await submitMissionEvidenceAction(missionId, items);
@@ -287,8 +287,16 @@ gpsAccuracyMeters: item.gpsAccuracyMeters,
   }
 
   if (missionComplete) {
+    // NOTE: bg-[var(--color-background)] intentionally removed here. This
+    // view fully REPLACES the camera UI (the live camera feed is already
+    // unmounted by this point, not overlaid underneath it), so there is no
+    // functional reason for it to stay opaque -- it's the same pattern as
+    // the app's other full-page states. body already carries this exact
+    // background color (globals.css). No other change. (The live camera
+    // viewfinder further below correctly keeps bg-black -- that's an
+    // unrelated, intentional choice for a video element, not this class.)
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-[var(--color-background)] px-6 text-center">
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="font-display text-xl text-[var(--color-foreground)]">
           {submitted ? "Submitted for Review" : "Mission Complete"}
         </p>

@@ -15,8 +15,18 @@ export function ActDetailClient({ act, id }: { act: MockAct; id: string }) {
   const mediaCount = buildActMedia(act).length;
   const latestStage = act.timeline[act.timeline.length - 1]?.label ?? "";
 
+  // NOTE: bg-[var(--color-background)] intentionally removed from this
+  // OUTER root wrapper only -- body already carries this exact background
+  // color (globals.css), so this class was a redundant duplicate paint
+  // that silently hid the Living Field's ambient canvas. Same fix as
+  // app/page.tsx (Sprint 01 Foundation Completion).
+  //
+  // The INNER "sheet" div below (rounded-t-[28px]) INTENTIONALLY KEEPS its
+  // own bg-[var(--color-background)] -- see the comment there. That is a
+  // deliberate, pre-existing design behaviour (the sheet slides up and
+  // covers the sticky photo above it), not an oversight.
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
+    <div className="flex min-h-screen flex-col">
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col pb-28">
         {/* Photo layer -- sticky, not overlapped at rest. Full photo is
             visible on load; because it's pinned to the top of the
@@ -54,10 +64,16 @@ export function ActDetailClient({ act, id }: { act: MockAct; id: string }) {
           </button>
         </div>
 
-        {/* The Page -- starts exactly at the photo's bottom edge at rest
-            (no overlap yet, so the full photo shows), corner-edged on
-            both sides. Because the photo above is sticky, scrolling the
-            page moves this sheet up and over the pinned photo. */}
+        {/* INTENTIONALLY OPAQUE -- Living Field Foundation Completion v1.0,
+            Part 1 exception. This sheet starts exactly at the photo's
+            bottom edge at rest (no overlap yet, so the full photo shows),
+            corner-edged on both sides. Because the photo above is sticky,
+            scrolling the page moves this sheet up and OVER the pinned
+            photo -- that's the entire point of this element, confirmed by
+            the surrounding comments already in this file. Making it
+            transparent would show the pinned photo bleeding through the
+            sheet's own text content as it scrolls, which would look
+            broken, not atmospheric. Kept opaque deliberately. */}
         <div className="relative z-10 flex flex-1 flex-col gap-8 rounded-t-[28px] bg-[var(--color-background)] px-5 pt-6">
           <div className="flex flex-col gap-3">
             <p className="text-xl font-semibold leading-snug">{act.impact_summary}</p>

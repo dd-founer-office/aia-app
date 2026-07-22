@@ -9,9 +9,15 @@ import type { PublishedActSummary } from "@/lib/published-acts";
 // not collect that data, and inventing it would violate the "no
 // placeholder business content" rule. Expand this only once Ops actually
 // collects those fields.
+//
+// NOTE: bg-[var(--color-background)] intentionally removed from this root
+// wrapper -- body already carries this exact background color
+// (globals.css), so this class was a redundant duplicate paint that
+// silently hid the Living Field's ambient canvas. Same fix as app/page.tsx
+// (Sprint 01 Foundation Completion). No other change.
 export function PublishedActDetail({ act }: { act: PublishedActSummary; id: string }) {
   return (
-    <div className="flex min-h-screen flex-col gap-5 bg-[var(--color-background)] px-5 pb-16 pt-6">
+    <div className="flex min-h-screen flex-col gap-5 px-5 pb-16 pt-6">
       {act.heroImageUrl && (
         <div
           className="w-full overflow-hidden"
