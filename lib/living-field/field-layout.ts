@@ -144,6 +144,30 @@ function dealGlyphForStratum(
  * has been unchanged since Concept v0.6, producing base slot positions and
  * a depth stratum per slot. No glyph is assigned here -- that's stage 3
  * (Civilization), run after Natural Distribution refines these positions.
+ *
+ * BUG FIX (Living Field Foundation Completion v1.0, post-Part-1 follow-up):
+ * every row previously started its scan by skipping a full
+ * `[clusterGapMin, clusterGapMax)` gap BEFORE placing its first cluster --
+ * the same range used for gaps BETWEEN clusters. Since clusterGapMin is 2,
+ * columns 0 and 1 could never be occupied in ANY row, ever, by
+ * construction, not chance. On a wide desktop viewport that's a small
+ * sliver of the width; on a narrow mobile viewport (as few as ~8 columns
+ * total) that same fixed-size gap eats over half the screen -- exactly the
+ * "left edge empty, worse on mobile" behaviour reported after Part 1's
+ * rollout made the field visible everywhere.
+ *
+ * First attempted fix (draw the first gap from `[0, clusterGapMax)`
+ * instead) only partially helped -- averaging 4 columns on an 8-column
+ * mobile screen still eats half the row. The right edge has no equivalent
+ * structural minimum at all (the scan just runs until it can't fit
+ * anymore, landing anywhere from 0 columns of leftover space upward), so
+ * matching that: the first gap in each row is now drawn from a small fixed
+ * `[0, clusterGapMin)` range (0 to 1 columns) -- most rows now start at or
+ * within one column of the left edge, symmetric with how the right edge
+ * already behaved. Every gap BETWEEN clusters is completely unchanged.
+ * Nothing about Natural Distribution, Civilization, or Affinity is
+ * touched -- they still just receive whatever slots this function
+ * produces.
  */
 function generateFieldSlots(
   width: number,
@@ -157,8 +181,13 @@ function generateFieldSlots(
 
   for (let r = 0; r < rows; r++) {
     let c = 0;
+    let isFirstGapInRow = true;
     while (c < cols) {
-      c += Math.floor(rand(config.clusterGapMin, config.clusterGapMax));
+      const gap = isFirstGapInRow
+        ? Math.floor(rand(0, config.clusterGapMin))
+        : Math.floor(rand(config.clusterGapMin, config.clusterGapMax));
+      isFirstGapInRow = false;
+      c += gap;
       if (c >= cols) break;
       const clusterLen = Math.floor(rand(config.clusterLenMin, config.clusterLenMax));
       for (let i = 0; i < clusterLen && c < cols; i++, c++) {
