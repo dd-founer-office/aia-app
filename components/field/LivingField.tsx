@@ -8,7 +8,7 @@
  * the kill switch, resize handling, font resolution, and cleanup.
  *
  * Placement contract:
- *  - position: fixed, full viewport, -z-50: the app's background is set on
+ *  - position: fixed, full viewport, -z-10: the app's background is set on
  *    body/html in globals.css and propagates to the document canvas, which
  *    always paints first — so a negative-z fixed element sits above the mint
  *    background but below ALL normal-flow content (cards, text, nav) without
@@ -30,11 +30,18 @@
  * Font: resolves the app's --font-tamil-sans variable at mount and again once
  * document.fonts settles, so the field always uses the typography already
  * adopted by the application. No new fonts are introduced in this sprint.
+ *
+ * Ambient Language Layer bridge: registers this engine instance as "the
+ * currently active one" on mount, and clears it on unmount, via
+ * engine-registry.ts. This is the ONLY thing that connects this component
+ * to the Ambient Language Layer -- it has no other knowledge of that
+ * layer's existence.
  */
 
 import { useEffect, useRef } from "react";
 import { LIVING_FIELD_CONFIG } from "@/lib/living-field/config";
 import { LivingFieldEngine } from "@/lib/living-field/engine";
+import { setActiveLivingFieldEngine } from "@/lib/living-field/engine-registry";
 
 /** Height delta (px) below which a resize is treated as browser-chrome
  *  movement and ignored, not a real viewport change. */
@@ -61,6 +68,7 @@ export default function LivingField() {
       fontFamily: resolveAppTamilFont(),
     });
     engine.start();
+    setActiveLivingFieldEngine(engine);
 
     // Repaint with the real web font once loading settles (canvas does not
     // reflow automatically the way DOM text does).
@@ -99,6 +107,7 @@ export default function LivingField() {
       fontsCancelled = true;
       clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
+      setActiveLivingFieldEngine(null);
       engine.destroy();
     };
   }, []);
@@ -109,7 +118,7 @@ export default function LivingField() {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 -z-50"
+      className="pointer-events-none fixed inset-0 -z-10"
     />
   );
 }
