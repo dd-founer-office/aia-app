@@ -26,6 +26,7 @@
 
 import type { LivingFieldConfig, FieldStratum, ScriptWeight } from "./config";
 import { createGlyphDealer, getGlyphSet, type Glyph } from "./glyphs";
+import type { GlyphAffinity } from "./affinity-types";
 
 export interface FieldCell {
   /** Cell centre in CSS px. */
@@ -36,6 +37,12 @@ export interface FieldCell {
   row: number;
   glyph: Glyph;
   stratum: FieldStratum;
+  /** Sprint 03A: invisible spatial metadata, populated by
+   *  affinity-engine.ts's applyAffinity() as a pass AFTER
+   *  buildFieldLayout() returns — not set here. Optional in the type
+   *  because buildFieldLayout() itself doesn't produce it; guaranteed
+   *  present at runtime once the affinity pass has run (see engine.ts). */
+  affinity?: GlyphAffinity;
 }
 
 export interface FieldLayout {
