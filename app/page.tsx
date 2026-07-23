@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
@@ -17,6 +18,8 @@ import { Badge } from "@/components/shared/Badge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { JourneyTimeline } from "@/components/home/JourneyTimeline";
+import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
+import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 
 export default function HomePage() {
   const router = useRouter();
@@ -26,6 +29,51 @@ export default function HomePage() {
 
   const currentParticipation = getCurrentMonthParticipation();
   const hasParticipatedThisMonth = currentParticipation?.status === "completed";
+
+  // Ambient Language Layer: fire "homeReady" exactly once per real mount.
+  //
+  // `firedRef` (not state -- this never needs to trigger a re-render) is
+  // what makes this safe under React 18 Strict Mode's development-only
+  // double-invoke of effects. Strict Mode mounts, runs this effect, runs
+  // its cleanup, then runs the effect again on the SAME component
+  // instance -- refs survive that cycle, state along with them would too,
+  // but a ref is the correct minimal tool since nothing here needs to
+  // render differently. Walked through both orderings this needs to
+  // handle correctly:
+  //
+  //   Engine already registered when this effect first runs:
+  //     onLivingFieldEngineReady() calls back synchronously -> firedRef
+  //     flips to true and notifyEvent fires immediately. Strict Mode's
+  //     cleanup then runs (a no-op, since the callback already fired --
+  //     nothing was left pending to unsubscribe). The second effect
+  //     invocation checks firedRef, sees true, and returns immediately
+  //     without subscribing again. No duplicate.
+  //
+  //   Engine not yet registered when this effect first runs:
+  //     The callback is queued (see engine-registry.ts), not fired.
+  //     Strict Mode's cleanup unsubscribes that still-pending callback
+  //     before it can ever fire. The second effect invocation subscribes
+  //     fresh -- this is the ONE standing subscription that will actually
+  //     fire, once, whenever the engine does register. No duplicate, and
+  //     nothing is lost regardless of which order Home's effect and the
+  //     Living Field's own registration effect happen to run in -- that's
+  //     the entire reason onLivingFieldEngineReady is callback-based
+  //     rather than a single synchronous check.
+  //
+  // No timer, no polling, no setTimeout anywhere in this mechanism.
+  const homeReadyFiredRef = useRef(false);
+
+  useEffect(() => {
+    if (homeReadyFiredRef.current) return;
+
+    const unsubscribe = onLivingFieldEngineReady(() => {
+      if (homeReadyFiredRef.current) return;
+      homeReadyFiredRef.current = true;
+      notifyEvent("homeReady");
+    });
+
+    return unsubscribe;
+  }, []);
 
   return (
     // NOTE: bg-[var(--color-background)] intentionally removed from this
