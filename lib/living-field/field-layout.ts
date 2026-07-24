@@ -46,12 +46,60 @@
  *
  * Layout is computed once per viewport size (and on rebuild), never per
  * frame — the render loop only modulates opacity.
+ *
+ * ---------------------------------------------------------------------------
+ * SPRINT 04A (LIVING REGION v1), COMMIT 1: RESERVED SEMANTIC CELLS
+ * ---------------------------------------------------------------------------
+ * `buildFieldLayout()` gains one new, fully OPTIONAL fourth parameter,
+ * `reservedVerse`. When omitted (every current call site — see engine.ts,
+ * unchanged in this commit), this file behaves exactly as it always has:
+ * same slots, same random scatter, same glyph dealing, same output. Nothing
+ * about today's rendered field changes.
+ *
+ * When a caller does supply a ReservedVerseInput (a later commit's job, once
+ * the Home page is wired up), the pipeline gains one new step, run between
+ * Field Engine and the rest:
+ *
+ *   1. Field Engine (unchanged logic) generates the ordinary clustered
+ *      scatter -- EXCEPT it now skips any (col, row) already claimed by the
+ *      reserved verse (see the new `occupied` parameter below), so the two
+ *      never collide.
+ *   2. living-region.ts's reserveVerseSlots() independently computes exactly
+ *      which cells the verse needs (deterministic geometry, not random) and
+ *      what grapheme belongs in each.
+ *   3. Natural Distribution runs TWICE: once on the ordinary slots at the
+ *      field's normal jitter, once on the reserved slots at a much smaller
+ *      override (living-region.ts's positionJitterScale) -- "extremely
+ *      subtle natural variation... never reduce readability."
+ *   4. Civilization Engine deals random glyphs to ordinary slots exactly as
+ *      before; reserved slots get their predetermined grapheme directly,
+ *      never a randomly dealt one, and are tagged with `reservedVerse`
+ *      metadata (field-cell.ts) so a later commit's renderer/interaction
+ *      code can find them.
+ *
+ * Reserved cells are real FieldCells in the same array Civilization Engine
+ * has always produced -- not a parallel list, not an overlay. Affinity and
+ * Harmony (engine.ts) run on the full returned cell array exactly as today,
+ * with no awareness that `reservedVerse` exists at all, so a reserved cell
+ * breathes and waves precisely like its neighbours until a later commit's
+ * interaction layer deliberately changes its opacity.
  */
 
 import type { LivingFieldConfig, FieldStratum, ScriptWeight } from "./config";
 import { createGlyphDealer, getGlyphSet, type Glyph } from "./glyphs";
-import { applyNaturalDistribution, type FieldSlot } from "./natural-distribution";
+import {
+  applyNaturalDistribution,
+  JITTER_FRACTION,
+  type FieldSlot,
+} from "./natural-distribution";
 import type { FieldCell, FieldLayout } from "./field-cell";
+import {
+  LIVING_REGION_CONFIG,
+  deriveLivingRegionRect,
+  reserveVerseSlots,
+  resolveVerseStratum,
+  type ReservedVerseInput,
+} from "./living-region";
 
 export type { FieldCell, FieldLayout } from "./field-cell";
 
@@ -118,6 +166,8 @@ function dealGlyphForStratum(
   return { glyph: deal(), scriptId: chosen.setId };
 }
 
+const EMPTY_OCCUPIED: ReadonlySet<string> = new Set();
+
 /**
  * Field Engine, stage 1: the exact clustered-scatter grid/gap logic that
  * has been unchanged since Concept v0.6, producing base slot positions and
@@ -147,11 +197,22 @@ function dealGlyphForStratum(
  * Nothing about Natural Distribution, Civilization, or Affinity is
  * touched -- they still just receive whatever slots this function
  * produces.
+ *
+ * Sprint 04A (Living Region v1): gains one new, optional `occupied`
+ * parameter -- a set of "col,row" keys the reserved verse has already
+ * claimed (living-region.ts's reserveVerseSlots()). When a cluster's scan
+ * would land on an occupied cell, that single cell is simply skipped (the
+ * cluster continues into the next column exactly as it would have anyway);
+ * nothing about the gap/cluster-length random logic itself changes. When
+ * `occupied` is empty (every call site before this commit, and every call
+ * site in THIS commit too -- see buildFieldLayout()'s doc comment), this is
+ * bit-identical to the prior behaviour.
  */
 function generateFieldSlots(
   width: number,
   height: number,
-  config: LivingFieldConfig
+  config: LivingFieldConfig,
+  occupied: ReadonlySet<string> = EMPTY_OCCUPIED
 ): FieldSlot[] {
   const cols = Math.ceil(width / config.cellWidth) + 1;
   const rows = Math.ceil(height / config.cellHeight) + 1;
@@ -170,6 +231,7 @@ function generateFieldSlots(
       if (c >= cols) break;
       const clusterLen = Math.floor(rand(config.clusterLenMin, config.clusterLenMax));
       for (let i = 0; i < clusterLen && c < cols; i++, c++) {
+        if (occupied.has(`${c},${r}`)) continue;
         slots.push({
           x: c * config.cellWidth + config.cellWidth / 2,
           y: r * config.cellHeight + config.cellHeight / 2,
@@ -187,10 +249,75 @@ function generateFieldSlots(
 export function buildFieldLayout(
   width: number,
   height: number,
-  config: LivingFieldConfig
+  config: LivingFieldConfig,
+  reservedVerse?: ReservedVerseInput
 ): FieldLayout {
-  // Stage 1: Field Engine — base positions + stratum, no glyph yet.
-  const slots = generateFieldSlots(width, height, config);
+  // --- Sprint 04A: Reserved Semantic Cells (fully inert when omitted) -----
+  // Computing this BEFORE the ordinary Field Engine scatter lets that scatter
+  // skip the exact cells the verse needs, so the two passes never collide.
+  let reservedCells: FieldCell[] = [];
+  let occupied: ReadonlySet<string> = EMPTY_OCCUPIED;
+
+  if (reservedVerse) {
+    // LIVING_REGION_CONFIG is imported directly (top of file) rather than
+    // threaded through LivingFieldConfig -- see living-region.ts's header
+    // for why its config is intentionally kept separate from the
+    // founder-locked LIVING_FIELD_CONFIG.
+    const { viewport, typography } = LIVING_REGION_CONFIG;
+    const rect = deriveLivingRegionRect(
+      width,
+      height,
+      viewport,
+      typography,
+      config.cellWidth,
+      config.cellHeight
+    );
+    const reservation = reserveVerseSlots(rect, reservedVerse, typography, config.cellWidth, config.cellHeight);
+    occupied = reservation.occupied;
+
+    const verseStratum = resolveVerseStratum(config.strata, typography);
+    const reservedSlots: (FieldSlot & { glyphValue: string; lineIndex: number; wordIndex: number; order: number })[] =
+      reservation.placements.map((p) => ({
+        x: p.x,
+        y: p.y,
+        col: p.col,
+        row: p.row,
+        stratum: verseStratum,
+        glyphValue: p.glyphValue,
+        lineIndex: p.lineIndex,
+        wordIndex: p.wordIndex,
+        order: p.order,
+      }));
+
+    // Reserved cells get their own, much smaller jitter override -- see
+    // natural-distribution.ts's Sprint 04A addition.
+    applyNaturalDistribution(
+      reservedSlots,
+      config.cellWidth,
+      config.cellHeight,
+      JITTER_FRACTION * typography.positionJitterScale
+    );
+
+    reservedCells = reservedSlots.map((slot) => ({
+      x: slot.x,
+      y: slot.y,
+      col: slot.col,
+      row: slot.row,
+      stratum: slot.stratum,
+      glyph: { kind: "text", value: slot.glyphValue },
+      scriptId: "modern-tamil-247",
+      reservedVerse: {
+        lineIndex: slot.lineIndex,
+        wordIndex: slot.wordIndex,
+        order: slot.order,
+      },
+    }));
+  }
+
+  // Stage 1: Field Engine — base positions + stratum, no glyph yet. Skips
+  // any cell already claimed by the reserved verse above (no-op when
+  // `occupied` is empty, i.e. every call site today).
+  const slots = generateFieldSlots(width, height, config, occupied);
 
   // Stage 2: Natural Distribution Engine — refine exact pixel placement.
   // Mutates slot.x/slot.y in place; does not add, remove, or reorder slots,
@@ -200,7 +327,7 @@ export function buildFieldLayout(
   // Stage 3: Civilization Engine — unchanged logic from Sprint 02, now run
   // as its own explicit stage on the refined slots.
   const dealers = buildDealers(config.strata);
-  const cells: FieldCell[] = slots.map((slot) => {
+  const ordinaryCells: FieldCell[] = slots.map((slot) => {
     const { glyph, scriptId } = dealGlyphForStratum(slot.stratum, dealers);
     return {
       x: slot.x,
@@ -213,5 +340,5 @@ export function buildFieldLayout(
     };
   });
 
-  return { width, height, cells };
+  return { width, height, cells: [...ordinaryCells, ...reservedCells] };
 }
