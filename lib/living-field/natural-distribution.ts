@@ -54,6 +54,21 @@
  * deterministic generation where possible" for this stage specifically --
  * unlike the existing cluster/gap and glyph-dealing logic, which still use
  * Math.random() and are explicitly out of scope to change here.
+ *
+ * ---------------------------------------------------------------------------
+ * LIVING REGION ADDITION (Sprint 04A, Commit 1)
+ * ---------------------------------------------------------------------------
+ * `applyNaturalDistribution()` gains one optional parameter, `jitterFraction`,
+ * defaulting to the exported `JITTER_FRACTION` constant -- bit-identical
+ * behaviour for every existing call site, which omits it. field-layout.ts's
+ * reserved-verse pass calls this function a second time, on just the
+ * reserved slots, with a much smaller override (a fraction of
+ * JITTER_FRACTION itself, per living-region.ts's `positionJitterScale`) so
+ * a revealed verse gets the same "never mechanically rectangular" subtlety
+ * the rest of the field has, without ever risking legibility. The noise
+ * field, hashing, and smoothstep math are completely unchanged -- only
+ * which jitter fraction scales the result is now a parameter instead of
+ * always reading the module constant directly.
  */
 
 import type { FieldStratum } from "./config";
@@ -69,12 +84,13 @@ export interface FieldSlot {
   stratum: FieldStratum;
 }
 
-/** Max nudge as a fraction of the base cell pitch, per axis. Deliberately
- *  gentle -- large enough to break dead-center grid alignment, small enough
- *  that adjacent slots can't be pushed into overlap or read as a deliberate
- *  new shape. Not exposed via config yet -- an internal tuning constant for
- *  03B, same pattern as affinity-engine.ts's internal constants. */
-const JITTER_FRACTION = 0.35;
+/** Max nudge as a fraction of the base cell pitch, per axis, for an ordinary
+ *  field slot. Deliberately gentle -- large enough to break dead-center grid
+ *  alignment, small enough that adjacent slots can't be pushed into overlap
+ *  or read as a deliberate new shape. Exported (Sprint 04A) so a caller can
+ *  derive a smaller override relative to this same baseline, rather than
+ *  hardcoding an unrelated absolute value elsewhere. */
+export const JITTER_FRACTION = 0.35;
 
 /** Noise-field frequency: how quickly the nudge direction/amount changes as
  *  you move across the grid. Lower = broader, smoother drift; higher =
@@ -134,16 +150,22 @@ function valueNoise2D(x: number, y: number): number {
  * freshly generated, unshared array (see field-layout.ts), so this is safe
  * and avoids an unnecessary second allocation.
  *
+ * `jitterFraction` defaults to `JITTER_FRACTION` (Sprint 01-03B behaviour,
+ * bit-identical for every call site that omits it). A caller may override it
+ * for a specific batch of slots -- currently only field-layout.ts's reserved
+ * verse pass does this, with a smaller value.
+ *
  * O(n): one bounded (4-corner) noise sample per axis per slot, no
  * neighbour lookups, no per-frame cost -- runs once per layout build.
  */
 export function applyNaturalDistribution(
   slots: readonly FieldSlot[],
   cellWidth: number,
-  cellHeight: number
+  cellHeight: number,
+  jitterFraction: number = JITTER_FRACTION
 ): void {
-  const maxDx = cellWidth * JITTER_FRACTION;
-  const maxDy = cellHeight * JITTER_FRACTION;
+  const maxDx = cellWidth * jitterFraction;
+  const maxDy = cellHeight * jitterFraction;
 
   for (const slot of slots) {
     const nx = slot.col * NOISE_FREQUENCY;
