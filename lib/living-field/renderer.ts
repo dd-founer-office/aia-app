@@ -63,6 +63,23 @@
  * breathing already is: it's a form of per-frame animation, and the
  * static frame's `t` is fixed. Still opacity-only -- no size, colour, or
  * position change from this layer either.
+ *
+ * Sprint 04A (Living Region v1), Commit 3A: one FINAL multiplicative layer,
+ * sourced from `cell.reservedVerse` + an optional `options.livingRegionState`
+ * (living-region-state.ts). Unlike the Ambient Expression term immediately
+ * above, this one is NOT skipped on the static/reduced-motion frame -- per
+ * explicit direction, the Living Region's interaction must still work under
+ * reduced motion (just without animated interpolation), so its progress
+ * function handles `reducedMotion` internally rather than being bypassed
+ * here. Exactly 1 (no change) for every cell without `reservedVerse`, and
+ * for every cell when `options.livingRegionState` is omitted entirely --
+ * which is every call site as of this commit (see engine.ts, unchanged) --
+ * so this term has zero effect on anything rendered today. Deliberately its
+ * own system, not a reuse of Ambient Expression's rise/hold/fall envelope:
+ * that one is a one-shot pulse fired by an application event; this one is a
+ * sustained, gesture-driven state a person actively holds open. Computed
+ * once per frame per stratum (the peak-multiplier lookup), not once per
+ * cell -- see the top of renderField()'s stratum loop.
  */
 
 import type { LivingFieldConfig, FieldStratum } from "./config";
@@ -76,6 +93,12 @@ import {
   applyOpticalSize,
 } from "./optical-calibration";
 import { computeExpressionOpacityMultiplier } from "./ambient-expression";
+import {
+  computeLivingRegionOpacityMultiplier,
+  computeRevealPeakMultiplier,
+  type LivingRegionState,
+} from "./living-region-state";
+import { LIVING_REGION_CONFIG, resolveVerseStratum } from "./living-region";
 
 /** v0.6 diagonal wave, normalised 0..1. */
 export function wavePhase01(
@@ -162,6 +185,13 @@ export interface RenderOptions {
   fontFamily?: string;
   /** When true, draw the single static frame (prefers-reduced-motion). */
   static?: boolean;
+  /** Sprint 04A, Commit 3A: the current Living Region phase/progress
+   *  (living-region-state.ts), or omitted/null when nothing has ever
+   *  activated one -- every call site as of this commit. Reduced motion is
+   *  conveyed to it via `static` above (the same flag that already means
+   *  "prefers-reduced-motion" everywhere else in this file); there is no
+   *  separate reducedMotion flag on this interface. */
+  livingRegionState?: LivingRegionState | null;
 }
 
 /**
@@ -186,6 +216,17 @@ export function renderField(
   ctx.clearRect(0, 0, layout.width, layout.height);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+
+  // Sprint 04A, Commit 3A: computed ONCE per frame, not once per cell -- the
+  // peak multiplier depends only on the verse's stratum and the field's
+  // global intensity, neither of which vary cell-to-cell. Harmless and
+  // unused when no cell in this layout has `reservedVerse` set (every
+  // layout before a later commit wires up a real reservation).
+  const livingRegionPeakMultiplier = computeRevealPeakMultiplier(
+    resolveVerseStratum(config.strata, LIVING_REGION_CONFIG.typography),
+    config.intensity,
+    LIVING_REGION_CONFIG.opacity
+  );
 
   for (const stratum of config.strata) {
     for (const scriptId of SCRIPT_IDS) {
@@ -216,7 +257,22 @@ export function renderField(
         const expressionMultiplier = options.static
           ? 1
           : computeExpressionOpacityMultiplier(cell.expression, t);
-        const op = Math.min(1, opticalOp * expressionMultiplier);
+        // Sprint 04A, Commit 3A: the final semantic influence, per the
+        // locked pipeline order (...x Ambient Expression x Living Region ->
+        // Final). Unlike expressionMultiplier immediately above, this is
+        // NOT forced to 1 on the static frame -- see this file's header and
+        // living-region-state.ts's own header for why reduced motion still
+        // needs this term to do real work (just without interpolation).
+        const livingRegionMultiplier = computeLivingRegionOpacityMultiplier(
+          cell.reservedVerse !== undefined,
+          options.livingRegionState,
+          t,
+          LIVING_REGION_CONFIG.timings,
+          LIVING_REGION_CONFIG.opacity,
+          livingRegionPeakMultiplier,
+          options.static === true
+        );
+        const op = Math.min(1, opticalOp * expressionMultiplier * livingRegionMultiplier);
 
         ctx.fillStyle = `rgba(${cr},${cg},${cb},${op})`;
         if (cell.glyph.kind === "text") {
