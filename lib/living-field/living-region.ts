@@ -1,60 +1,77 @@
 /**
  * Living Field — Living Region
  * ----------------------------------------------------------------------------
- * Sprint 04A (Living Region v1), Commit 1: Reserved Semantic Cells.
+ * Sprint 04A (Living Region v1), Commit 1A: Localized Semantic Density.
  *
  * Governing principle for this file and everything that grows on top of it:
  *
  *   The Living Region is not a feature layered onto the Living Field.
- *   It is a property of the Living Field itself.
- *
- * This is why this module lives inside lib/living-field/ rather than beside
- * lib/ambient-language/ (a genuine peer, calling INTO the Kernel through one
- * method, per AmbientLanguageLayer.md). The Living Region is not a caller of
- * the Kernel -- it IS part of the Kernel: a capability of layout generation
- * itself, exactly like the Civilization Engine's script/glyph selection.
+ *   It is a natural property of the Living Field itself.
  *
  * ---------------------------------------------------------------------------
- * WHAT THIS COMMIT ADDS
+ * WHY THIS COMMIT REPLACES COMMIT 1's GEOMETRY
  * ---------------------------------------------------------------------------
- * Reserved Semantic Cells: an OPTIONAL capability of buildFieldLayout()
- * (field-layout.ts). When a caller supplies a ReservedVerseInput, a small,
- * deterministic run of cells inside a configured viewport rectangle is
- * seeded with specific graphemes (in reading order, left-aligned lines)
- * instead of the normal random Civilization Engine dealing. Every cell
- * outside that rectangle, and every cell when no input is supplied, is
- * completely unaffected.
+ * Commit 1 assumed one Living Field cell = one Tamil grapheme, using the
+ * ambient field's own 60px cell pitch. Validated against the REAL KKA-001
+ * verse (not a placeholder), that assumption doesn't scale: the longer line
+ * needs ~1,100px of horizontal space at that pitch -- more than an entire
+ * mobile viewport.
  *
- * No caller supplies a ReservedVerseInput yet (engine.ts is unchanged in
- * this commit). The application behaves exactly as it does today. Wiring a
- * real phrase in, and the press-and-hold interaction that reveals it, are
- * later commits in this same sprint, reviewed separately.
+ * This isn't a rendering exception bolted onto the field -- it's the same
+ * kind of thing strata, affinity, and civilization already are: a way the
+ * field's own local character varies from one neighborhood to the next.
+ * Some regions of the field are older (deep stratum). Some are denser
+ * (Living Region). Both are properties of the SAME continuous system, not
+ * a second system layered on top of it.
+ *
+ * Concretely: within a Living Region, cells sit closer together than the
+ * ambient field's normal pitch -- a `reservedCellSpacingFactor` of the
+ * ambient cellWidth, not an independent typography value. Lines still land
+ * on real field rows (vertical rhythm stays tied to the same grid every
+ * other cell uses); only the horizontal advance between letters densifies.
+ * Reserved cells are still real FieldCells, in the same array, rendered by
+ * the exact same renderer.ts code path, at the exact same stratum opacity as
+ * their neighbours -- nothing about HOW a cell renders changes, only how
+ * many of them exist in this one neighbourhood and how close together they
+ * sit.
  *
  * ---------------------------------------------------------------------------
- * WHY THIS MODULE HAS NO OPINION ABOUT TAMIL, KURAL, OR ANY SPECIFIC POEM
+ * OCCUPANCY: FOOTPRINT, NOT PER-CELL
  * ---------------------------------------------------------------------------
- * This module never imports mock-data.ts, never imports anything from
- * lib/ambient-language/, and never segments a raw string itself. It
- * receives an already-segmented ReservedVerseInput -- lines of words of
- * grapheme-cluster strings -- from whichever caller wires it up (a later
- * commit's Home-page bridge, using the same Intl.Segmenter approach
- * lib/ambient-language/ambient-language.ts already established). A future
- * Aathichoodi line, proverb, or a different day's Kural is a new call with
- * new data, never a code change here.
+ * Commit 1 blocked the ambient scatter one exact (col, row) cell at a time.
+ * That doesn't make sense once reserved cells no longer sit on the ambient
+ * grid's own columns. Instead, this commit computes the actual pixel
+ * bounding box the verse's cells occupy (content-sized, not the full
+ * configured rectangle) and the ordinary Field Engine scatter simply never
+ * places a cell whose center falls inside that box, plus a small padding.
+ * Outside that box, and everywhere when no reserved verse is supplied, the
+ * ambient field is completely unaffected.
  *
  * ---------------------------------------------------------------------------
- * CONFIGURATION SHAPE
+ * PRE-REVEAL INDISTINGUISHABILITY (important, and honestly scoped)
  * ---------------------------------------------------------------------------
- * Per explicit direction, every Living Region tuning value lives in ONE
- * place, grouped the way the values are actually used: `viewport` (where the
- * rectangle sits), `typography` (how the verse lays out inside it),
- * `opacity` and `timings` (how the reveal/dismiss interaction behaves).
- * `opacity` and `timings` are not consumed by any code yet -- scaffolded now
- * so later commits add behaviour, not new config surface.
+ * What THIS module can guarantee, and does: every reserved cell uses the
+ * same stratum (and therefore the same baseOpacity/waveAmplitude/font size)
+ * as an ordinary "near" cell, computed by the exact same renderer.ts code --
+ * nothing here introduces a different opacity, colour, or size. The
+ * bounding footprint is sized to the verse's actual content, not a large
+ * fixed block, so the "cleared" area the ambient scatter avoids is as small
+ * as the real text needs.
  *
- * LIVING_FIELD_CONFIG (config.ts) is intentionally left untouched: it is the
- * founder-locked, previously-calibrated general field tuning, and this
- * module is additive to it, not a modification of it.
+ * What THIS module CANNOT guarantee on its own: whether the resulting denser
+ * patch is visually perceptible before interaction is a rendering question,
+ * not a geometry question -- it depends on actual pixels on an actual
+ * screen. That needs a visual check once Commit 3 wires up rendering, not a
+ * computed assertion here. This file's self-check verifies the geometry
+ * (fits, no clipping, correct structure); it cannot verify how it looks.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS MODULE STILL HAS NO OPINION ABOUT TAMIL, KURAL, OR ANY POEM
+ * ---------------------------------------------------------------------------
+ * Unchanged from Commit 1: this module receives an already-segmented
+ * ReservedVerseInput and never imports mock-data.ts or lib/ambient-language/.
+ * A future Aathichoodi line or different day's Kural is new data, never a
+ * code change here.
  */
 
 import type { FieldStratum } from "./config";
@@ -64,12 +81,12 @@ import type { FieldStratum } from "./config";
 // ---------------------------------------------------------------------------
 
 export interface LivingRegionViewportConfig {
-  /** Which side of the viewport the rectangle is anchored to. Locked
-   *  editorial rule: verses read left-aligned, so this stays "left" for
-   *  KKA-style content -- kept as a real option, not a hardcoded assumption,
-   *  since a future reflection type may anchor differently. */
+  /** Which side of the viewport the rectangle is anchored to. */
   horizontalAnchor: "left" | "center" | "right";
-  /** Rectangle width, as a fraction of viewport width (0–1). */
+  /** MAXIMUM available width for the region, as a fraction of viewport width
+   *  (0–1) -- a cap, not the verse's actual footprint. The verse's real
+   *  content-sized footprint (see reserveVerseSlots) must fit inside this;
+   *  reserveVerseSlots warns if it doesn't. */
   width: number;
   /** Rectangle top edge, as a fraction of viewport height (0–1). */
   top: number;
@@ -81,25 +98,47 @@ export interface LivingRegionViewportConfig {
 export interface LivingRegionTypographyConfig {
   /** Locked editorial display rule: word count per line, first line then
    *  second. Documentation only -- the caller's actual ReservedVerseInput is
-   *  what gets placed; this isn't enforced here, since this module has no
-   *  opinion on any specific poem's shape. */
+   *  what gets placed; this module has no opinion on any specific poem's
+   *  shape. */
   wordsPerLine: readonly [number, number];
-  /** Empty grid columns inserted between two words on the same line. */
-  wordGapColumns: number;
-  /** Empty grid rows inserted between line 1 and line 2. */
+  /** Local field density: how much closer together two consecutive reserved
+   *  cells sit, as a fraction of the ambient field's own cellWidth. E.g.
+   *  0.45 means each grapheme advances by 45% of an ordinary cell's width,
+   *  not a full cell -- this is what makes the Living Region a DENSER
+   *  neighbourhood of the same field, rather than a separately-typeset piece
+   *  of text. Tuned empirically against the real KKA-001 verse (see this
+   *  commit's validation notes) to actually fit a mobile viewport. */
+  reservedCellSpacingFactor: number;
+  /** Gap between two words on the same line, as a multiple of the single-
+   *  grapheme advance above (reservedCellSpacingFactor * cellWidth) -- e.g.
+   *  1.8 means a word gap 1.8x a single letter-advance. Expressed relative
+   *  to the local density, not the ambient grid, for the same reason. */
+  wordGapFactor: number;
+  /** Gap between line 1 and line 2, in whole ambient grid ROWS -- vertical
+   *  rhythm stays tied to the same row grid every other cell uses; only
+   *  horizontal letter spacing densifies. */
   lineGapRows: number;
-  /** Empty grid columns/rows kept between the verse and the rectangle's own
-   *  edges -- the verse never touches the boundary the interaction layer
-   *  will later use as its hit-target. */
-  verseInset: { columns: number; rows: number };
-  /** Which config.ts stratum id the verse borrows its font size and script
-   *  weighting from. Always the shallowest/most legible configured stratum --
-   *  a reflection is never rendered at an "ancient" depth. */
+  /** Empty ambient rows kept above (and, mirrored, below) the verse within
+   *  the region -- keeps the verse from touching the region's own vertical
+   *  edges. */
+  verseTopInsetRows: number;
+  /** Padding, in CSS px, added around the verse's own content-sized bounding
+   *  box before computing the footprint the ambient scatter must avoid.
+   *  Small and content-relative, not a fixed large block -- the "cleared"
+   *  area should be no bigger than the real text needs. */
+  footprintPaddingPx: number;
+  /** Which config.ts stratum id the verse borrows its font size, opacity
+   *  formula, and script weighting from -- always the shallowest, most
+   *  legible configured stratum. Reserved cells render through the EXACT
+   *  same renderer.ts opacity pipeline as any other cell of this stratum;
+   *  nothing about opacity/colour/size is special-cased for them. */
   stratumId: string;
-  /** Fraction of the Field's ordinary Natural Distribution jitter (see
-   *  natural-distribution.ts's JITTER_FRACTION) the verse receives.
-   *  Deliberately small -- enough to avoid a mechanically rectangular look,
-   *  never enough to harm legibility. */
+  /** Max natural-variation nudge, as a fraction of the reserved letter
+   *  advance itself (reservedCellSpacingFactor * cellWidth) -- deliberately
+   *  small, enough to avoid a mechanically regular lattice, never enough to
+   *  harm legibility. Scales with local density rather than the ambient
+   *  field's own (much coarser) jitter, since the two operate at different
+   *  pitches. */
   positionJitterScale: number;
 }
 
@@ -107,25 +146,15 @@ export interface LivingRegionTypographyConfig {
  *  Scaffolded now so all Living Region tuning lives in one file from the
  *  start, per explicit direction. */
 export interface LivingRegionOpacityConfig {
-  /** Opacity target when fully revealed (before the stratum's own wave/
-   *  breath modulation). 1.0 would look flat/harsh against the field's
-   *  otherwise very low opacities; kept below 1 on purpose. */
   revealOpacityTarget: number;
-  /** Ceiling on the anticipation phase (0..holdThresholdMs), as a fraction
-   *  of revealOpacityTarget. Deliberately low -- "the field notices your
-   *  attention," not "the verse is loading." */
   anticipationCeilingFraction: number;
 }
 
 /** Not consumed until a later commit. See LivingRegionOpacityConfig comment. */
 export interface LivingRegionTimingConfig {
-  /** Press-and-hold duration required to cross from anticipation to reveal. */
   holdThresholdMs: number;
-  /** Duration of the opacity ramp once the hold threshold is crossed. */
   revealDurationMs: number;
-  /** Duration of the fade back to ambient on dismissal. */
   dismissDurationMs: number;
-  /** Approximate inactivity duration, once revealed, before auto-dismissal. */
   idleDismissMs: number;
 }
 
@@ -139,17 +168,25 @@ export interface LivingRegionConfig {
 export const LIVING_REGION_CONFIG: LivingRegionConfig = {
   viewport: {
     horizontalAnchor: "left",
-    width: 0.58,
+    width: 0.9,
     top: 0.44,
-    horizontalMargin: 0.08,
+    horizontalMargin: 0.06,
   },
   typography: {
     wordsPerLine: [4, 3],
-    wordGapColumns: 1,
+    // Validated (see this commit's validation notes) against the real
+    // KKA-001 verse: fits mobile (375–390px), tablet (768px), and desktop
+    // (1440px) with comfortable margin at these values. Re-validate with
+    // reserved-verse-bridge + this module's own reservation math whenever
+    // either the phrase or these numbers change -- don't assume a new
+    // phrase fits without checking (see living-region.selfcheck.ts).
+    reservedCellSpacingFactor: 0.32,
+    wordGapFactor: 1.35,
     lineGapRows: 1,
-    verseInset: { columns: 1, rows: 1 },
+    verseTopInsetRows: 1,
+    footprintPaddingPx: 10,
     stratumId: "near",
-    positionJitterScale: 0.12,
+    positionJitterScale: 0.16,
   },
   opacity: {
     revealOpacityTarget: 0.92,
@@ -164,7 +201,7 @@ export const LIVING_REGION_CONFIG: LivingRegionConfig = {
 };
 
 // ---------------------------------------------------------------------------
-// Rectangle derivation
+// Rectangle derivation (available space cap, not the verse's real footprint)
 // ---------------------------------------------------------------------------
 
 export interface LivingRegionRect {
@@ -174,11 +211,11 @@ export interface LivingRegionRect {
   height: number;
 }
 
-/** Derives the viewport-space rectangle the Living Region occupies, in CSS
- *  px. Height is DERIVED from typography (line count, gaps, inset) rather
- *  than independently configured, so a future reflection with more lines
- *  never silently clips -- the rectangle always grows to fit what it's
- *  asked to hold. Pure function -- no randomness, no side effects. */
+/** Derives the MAXIMUM viewport-space rectangle available to the Living
+ *  Region, in CSS px -- a cap the actual content-sized footprint
+ *  (reserveVerseSlots) must fit inside, not the footprint itself. Height is
+ *  still derived from typography (line count, gaps, inset), same as
+ *  Commit 1. Pure function -- no randomness, no side effects. */
 export function deriveLivingRegionRect(
   viewportWidth: number,
   viewportHeight: number,
@@ -203,34 +240,25 @@ export function deriveLivingRegionRect(
   const rowSpan =
     lineCount + // one grid row per line
     (lineCount - 1) * typography.lineGapRows + // gaps between lines
-    typography.verseInset.rows * 2; // top + bottom inset
+    typography.verseTopInsetRows * 2; // top + bottom inset
   const height = rowSpan * cellHeight;
 
   return { left, top, width, height };
 }
 
 // ---------------------------------------------------------------------------
-// Reserved Semantic Cells
+// Reserved Semantic Cells — localized density
 // ---------------------------------------------------------------------------
 
-/** One word, already segmented into the same grapheme-cluster units the
- *  field's glyph sets are built from (see lib/ambient-language's
- *  segmentTamilGraphemes for the Intl.Segmenter approach used elsewhere in
- *  the app). This module deliberately doesn't import or duplicate that
- *  logic -- it only ever consumes the result. */
 export type ReservedVerseWord = readonly string[];
 export type ReservedVerseLine = readonly ReservedVerseWord[];
 
 export interface ReservedVerseInput {
-  /** Ordered lines, each an ordered list of words, each word an ordered list
-   *  of grapheme strings. The locked KKA display rule (4 words / 3 words,
-   *  two lines) is enforced by the caller supplying that shape of data, not
-   *  by this module -- this places however many lines/words it's given. */
   lines: readonly ReservedVerseLine[];
 }
 
 /** Permanent per-cell metadata a reserved cell carries once layout build
- *  finishes -- see field-cell.ts's ownership table. */
+ *  finishes -- see field-cell.ts's ownership table. Unchanged from Commit 1. */
 export interface ReservedVerseCellInfo {
   lineIndex: number;
   wordIndex: number;
@@ -240,6 +268,11 @@ export interface ReservedVerseCellInfo {
 export interface ReservedCellPlacement extends ReservedVerseCellInfo {
   x: number;
   y: number;
+  /** Continuous (not necessarily integer) grid-column-equivalent, used only
+   *  so the wave-phase formula (col * wavePhaseCol) varies smoothly across
+   *  a denser patch exactly as it would across ordinary cells -- not used
+   *  for occupancy or any exact-cell matching (that's the footprint's job
+   *  now, not per-cell col/row keys). */
   col: number;
   row: number;
   glyphValue: string;
@@ -247,18 +280,21 @@ export interface ReservedCellPlacement extends ReservedVerseCellInfo {
 
 export interface ReservationResult {
   placements: ReservedCellPlacement[];
-  /** "col,row" keys the ordinary Field Engine scatter must never place a
-   *  random cell into -- see field-layout.ts's generateFieldSlots(). */
-  occupied: ReadonlySet<string>;
+  /** The content-sized pixel footprint the ordinary Field Engine scatter
+   *  must avoid (field-layout.ts's generateFieldSlots) -- null only when
+   *  there are zero placements (e.g. empty input). Sized to the verse's
+   *  actual content plus footprintPaddingPx, NOT the full available
+   *  rectangle -- the "cleared" area is only as large as the real text
+   *  needs. */
+  occupiedFootprint: LivingRegionRect | null;
 }
 
 /**
- * Computes exactly which grid cells host the verse, in reading order, and
- * marks them so the ordinary clustered-scatter never double-occupies them.
- * Pure and deterministic: the same rect + input + metrics always produce the
- * same placements. Has no concept of Math.random(), stratum, opacity, or
- * rendering of any kind -- only which (col, row) cells the verse needs and
- * what glyph belongs in each.
+ * Computes exactly where each grapheme sits, at the Living Region's local
+ * density, in reading order -- and the content-sized pixel footprint the
+ * ambient scatter must avoid. Pure and deterministic: the same rect + input
+ * + metrics always produce the same result. Has no concept of Math.random(),
+ * stratum, opacity, or rendering of any kind.
  */
 export function reserveVerseSlots(
   rect: LivingRegionRect,
@@ -267,57 +303,81 @@ export function reserveVerseSlots(
   cellWidth: number,
   cellHeight: number
 ): ReservationResult {
-  const colStart = Math.floor(rect.left / cellWidth) + typography.verseInset.columns;
-  const colBoundary =
-    Math.ceil((rect.left + rect.width) / cellWidth) - typography.verseInset.columns;
-  const rowStart = Math.floor(rect.top / cellHeight) + typography.verseInset.rows;
+  const spacing = cellWidth * typography.reservedCellSpacingFactor;
+  const wordGap = spacing * typography.wordGapFactor;
+  const rowStart = Math.floor(rect.top / cellHeight) + typography.verseTopInsetRows;
 
   const placements: ReservedCellPlacement[] = [];
-  const occupied = new Set<string>();
   let order = 0;
-  let maxColUsed = colStart;
+  let maxX = rect.left;
+  let minX = rect.left;
+  let minRow = rowStart;
+  let maxRow = rowStart;
 
   input.lines.forEach((line, lineIndex) => {
     const row = rowStart + lineIndex * (1 + typography.lineGapRows);
-    let col = colStart;
+    minRow = Math.min(minRow, row);
+    maxRow = Math.max(maxRow, row);
+    let x = rect.left;
+
     line.forEach((word, wordIndex) => {
-      word.forEach((glyphValue) => {
-        occupied.add(`${col},${row}`);
+      word.forEach((glyphValue, glyphIndex) => {
         placements.push({
-          x: col * cellWidth + cellWidth / 2,
+          x,
           y: row * cellHeight + cellHeight / 2,
-          col,
+          col: x / cellWidth,
           row,
           lineIndex,
           wordIndex,
           order: order++,
           glyphValue,
         });
-        maxColUsed = Math.max(maxColUsed, col);
-        col += 1;
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        // Advance by the intra-word letter pitch between graphemes of the
+        // SAME word only -- the word gap below is the sole spacing between
+        // two words. (Bug fixed post-measurement: an earlier draft advanced
+        // by `spacing` after every grapheme including a word's last one,
+        // then added `wordGap` on top, silently doubling every inter-word
+        // gap and overstating the verse's real footprint.)
+        if (glyphIndex < word.length - 1) x += spacing;
       });
-      col += typography.wordGapColumns;
+      if (wordIndex < line.length - 1) x += wordGap;
     });
   });
 
-  if (maxColUsed >= colBoundary) {
+  if (placements.length === 0) {
+    return { placements, occupiedFootprint: null };
+  }
+
+  const contentWidth = maxX - rect.left + spacing; // + trailing glyph's own width
+  if (contentWidth > rect.width) {
     console.warn(
-      "[Living Region] Reserved verse exceeds the configured rectangle " +
-        "width at this viewport size -- increase livingRegion.viewport.width " +
-        "or shorten the phrase. Placements were still computed; nothing is " +
-        "clipped, but the rectangle used for the interaction hit-target may " +
-        "no longer fully contain the verse."
+      `[Living Region] Reserved verse content (${contentWidth.toFixed(0)}px) exceeds ` +
+        `the available rectangle width (${rect.width.toFixed(0)}px) at this viewport ` +
+        `size -- increase livingRegion.viewport.width, reduce ` +
+        `reservedCellSpacingFactor/wordGapFactor, or shorten the phrase. Placements ` +
+        `were still computed; nothing is clipped, but the region's edge may sit inside ` +
+        `the visible text.`
     );
   }
 
-  return { placements, occupied };
+  const pad = typography.footprintPaddingPx;
+  const occupiedFootprint: LivingRegionRect = {
+    left: minX - spacing / 2 - pad,
+    top: minRow * cellHeight - pad,
+    width: maxX - minX + spacing + pad * 2,
+    height: (maxRow - minRow + 1) * cellHeight + pad * 2,
+  };
+
+  return { placements, occupiedFootprint };
 }
 
 /** Resolves the FieldStratum the verse renders at (always the shallowest,
- *  most-legible configured stratum -- "today's living language"). Exported
- *  so field-layout.ts and the self-check share one lookup. Throws on a
- *  misconfigured stratumId -- same "configuration error, not a runtime
- *  condition to silently swallow" philosophy as glyphs.ts's getGlyphSet(). */
+ *  most-legible configured stratum -- "today's living language"). Unchanged
+ *  from Commit 1. Throws on a misconfigured stratumId -- same "configuration
+ *  error, not a runtime condition to silently swallow" philosophy as
+ *  glyphs.ts's getGlyphSet(). */
 export function resolveVerseStratum(
   strata: readonly FieldStratum[],
   typography: LivingRegionTypographyConfig
@@ -330,4 +390,13 @@ export function resolveVerseStratum(
     );
   }
   return stratum;
+}
+
+/** Point-in-rectangle test used by field-layout.ts's generateFieldSlots() to
+ *  decide whether an ordinary ambient cell would fall inside the Living
+ *  Region's occupied footprint (and so must be skipped). Exported so the
+ *  test itself lives in one place rather than being reimplemented at the
+ *  call site. */
+export function pointInRect(x: number, y: number, r: LivingRegionRect): boolean {
+  return x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height;
 }
