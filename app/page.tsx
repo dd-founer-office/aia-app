@@ -75,6 +75,79 @@ export default function HomePage() {
     return unsubscribe;
   }, []);
 
+  // Living Literature Prelude: let the field recognize "அறம்" -- the theme
+  // Kural Koorum Aram represents, not the specific day's verse text, which
+  // still comes only from mockKuralOfTheDay exactly as before -- shortly
+  // BEFORE the Kural card actually reaches the user's reading position.
+  //
+  // IntersectionObserver, not scroll-position polling or a timer, is the
+  // clean lifecycle tool for "notify me when this element is about to
+  // enter view": it's the browser's own purpose-built primitive for
+  // exactly this question, event-driven rather than polled, and it costs
+  // nothing while the user hasn't scrolled anywhere near the section yet.
+  //
+  // `rootMargin`'s bottom value is set to a generous positive number,
+  // which -- per the spec's own semantics -- EXPANDS the effective
+  // viewport downward before intersection is tested. The practical effect:
+  // the observer fires while the Kural card is still comfortably below
+  // the visible viewport, not when it's actually on screen. Given the
+  // Kernel's expression cycle is 11 seconds total (3s rise, 4s hold, 4s
+  // fall) and ordinary scroll speed, this gives the recognition a real
+  // head start -- typically enough for it to have visibly settled by the
+  // time the card is actually where the user is reading, without ever
+  // literally gating or delaying the card's render (the card is always
+  // present in the DOM; only the FIELD's timing creates the sequence).
+  //
+  // This is inherently a best-effort, typical-case timing choice, not a
+  // hard guarantee -- an unusually fast scroll could reach the card before
+  // the recognition fully dissolves. That's consistent with the Ambient
+  // Language Layer's existing philosophy everywhere else (best-effort
+  // matching, no forced outcomes) rather than a gap specific to this
+  // integration.
+  //
+  // Same Strict-Mode-safe idempotency pattern as the homeReady trigger
+  // above: a ref guard, and the observer is disconnected in cleanup (both
+  // on real unmount and once it has fired) so it can never trigger twice.
+  const kuralSectionRef = useRef<HTMLDivElement | null>(null);
+  const kuralRecognitionFiredRef = useRef(false);
+
+  useEffect(() => {
+    const target = kuralSectionRef.current;
+    if (!target || kuralRecognitionFiredRef.current) return;
+
+    // Holds the onLivingFieldEngineReady unsubscribe function, if/once one
+    // exists -- so effect cleanup can cancel EITHER the IntersectionObserver
+    // (if it hasn't fired yet) OR the still-pending engine-ready
+    // subscription (if intersection already fired but the engine hadn't
+    // registered yet), never leaking a callback for either reason.
+    let engineReadyUnsubscribe: (() => void) | null = null;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        if (kuralRecognitionFiredRef.current) return;
+
+        engineReadyUnsubscribe = onLivingFieldEngineReady(() => {
+          if (kuralRecognitionFiredRef.current) return;
+          kuralRecognitionFiredRef.current = true;
+          notifyEvent("kuralSection", { phrase: "அறம்" });
+        });
+        // The section only ever needs to trigger once -- tear down the
+        // observer immediately rather than waiting for the effect's own
+        // cleanup, so scrolling past and back never re-triggers it.
+        observer.disconnect();
+      },
+      { rootMargin: "0px 0px 600px 0px" }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+      engineReadyUnsubscribe?.();
+    };
+  }, []);
+
   return (
     // NOTE: bg-[var(--color-background)] intentionally removed from this
     // root wrapper. body already carries this exact background color
@@ -214,31 +287,39 @@ export default function HomePage() {
             temporary presentation-only mock data mirroring the future
             Founder Intelligence knowledge-engine record shape (FI-DB-003,
             KKA-001). Swap for a live query when that engine is connected;
-            no UI change should be needed. */}
-        <Card className="flex flex-col gap-5">
-          <SectionHeader
-            title={"\u0B95\u0BC1\u0BB1\u0BB3\u0BCD \u0B95\u0BC2\u0BB1\u0BC1\u0BAE\u0BCD \u0B85\u0BB1\u0BAE\u0BCD"}
-            titleClassName="font-tamil-sans font-medium"
-          />
-          <p className="font-tamil-sans font-normal whitespace-pre-line py-2 text-left text-base leading-relaxed text-[var(--color-foreground)]">
-            {mockKuralOfTheDay.kural_tamil}
-          </p>
+            no UI change should be needed.
 
-          <p className="text-sm leading-relaxed text-[var(--color-foreground)]">
-            {mockKuralOfTheDay.core_principle}
-          </p>
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium text-[var(--color-foreground)]">
-              {mockKuralOfTheDay.aram_for_today_title}
+            Living Literature Prelude: this wrapping div carries the ref the
+            IntersectionObserver above watches. It adds no styling of its
+            own (no className) -- purely a DOM anchor point, since native
+            elements always support refs and the Card component's ref-
+            forwarding wasn't something to assume without verifying it. */}
+        <div ref={kuralSectionRef}>
+          <Card className="flex flex-col gap-5">
+            <SectionHeader
+              title={"\u0B95\u0BC1\u0BB1\u0BB3\u0BCD \u0B95\u0BC2\u0BB1\u0BC1\u0BAE\u0BCD \u0B85\u0BB1\u0BAE\u0BCD"}
+              titleClassName="font-tamil-sans font-medium"
+            />
+            <p className="font-tamil-sans font-normal whitespace-pre-line py-2 text-left text-base leading-relaxed text-[var(--color-foreground)]">
+              {mockKuralOfTheDay.kural_tamil}
             </p>
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              {mockKuralOfTheDay.aram_for_today_body}
+
+            <p className="text-sm leading-relaxed text-[var(--color-foreground)]">
+              {mockKuralOfTheDay.core_principle}
             </p>
-          </div>
-          <Button variant="text" className="self-start">
-            Practice this Kural →
-          </Button>
-        </Card>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-medium text-[var(--color-foreground)]">
+                {mockKuralOfTheDay.aram_for_today_title}
+              </p>
+              <p className="text-sm text-[var(--color-muted-foreground)]">
+                {mockKuralOfTheDay.aram_for_today_body}
+              </p>
+            </div>
+            <Button variant="text" className="self-start">
+              Practice this Kural →
+            </Button>
+          </Card>
+        </div>
       </main>
 
       <BottomNavigation active="home" />
