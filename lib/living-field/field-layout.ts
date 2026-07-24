@@ -48,7 +48,7 @@
  * frame — the render loop only modulates opacity.
  *
  * ---------------------------------------------------------------------------
- * SPRINT 04A (LIVING REGION v1), COMMIT 1: RESERVED SEMANTIC CELLS
+ * SPRINT 04A (LIVING REGION v1), COMMIT 1A: LOCALIZED SEMANTIC DENSITY
  * ---------------------------------------------------------------------------
  * `buildFieldLayout()` gains one new, fully OPTIONAL fourth parameter,
  * `reservedVerse`. When omitted (every current call site — see engine.ts,
@@ -61,16 +61,18 @@
  * Field Engine and the rest:
  *
  *   1. Field Engine (unchanged logic) generates the ordinary clustered
- *      scatter -- EXCEPT it now skips any (col, row) already claimed by the
- *      reserved verse (see the new `occupied` parameter below), so the two
- *      never collide.
+ *      scatter -- EXCEPT it now skips any cell whose centre falls inside
+ *      the reserved verse's pixel footprint (see the new
+ *      `occupiedFootprint` parameter below), so the two never collide.
  *   2. living-region.ts's reserveVerseSlots() independently computes exactly
- *      which cells the verse needs (deterministic geometry, not random) and
- *      what grapheme belongs in each.
+ *      where the verse's cells sit, at the Living Region's own DENSER local
+ *      pitch (not the ambient grid's 60px cells -- see living-region.ts's
+ *      Commit 1A header for why), and what grapheme belongs in each.
  *   3. Natural Distribution runs TWICE: once on the ordinary slots at the
  *      field's normal jitter, once on the reserved slots at a much smaller
- *      override (living-region.ts's positionJitterScale) -- "extremely
- *      subtle natural variation... never reduce readability."
+ *      jitter derived from the Living Region's own local density (not the
+ *      ambient field's) -- "extremely subtle natural variation... never
+ *      reduce readability."
  *   4. Civilization Engine deals random glyphs to ordinary slots exactly as
  *      before; reserved slots get their predetermined grapheme directly,
  *      never a randomly dealt one, and are tagged with `reservedVerse`
@@ -87,18 +89,16 @@
 
 import type { LivingFieldConfig, FieldStratum, ScriptWeight } from "./config";
 import { createGlyphDealer, getGlyphSet, type Glyph } from "./glyphs";
-import {
-  applyNaturalDistribution,
-  JITTER_FRACTION,
-  type FieldSlot,
-} from "./natural-distribution";
+import { applyNaturalDistribution, type FieldSlot } from "./natural-distribution";
 import type { FieldCell, FieldLayout } from "./field-cell";
 import {
   LIVING_REGION_CONFIG,
   deriveLivingRegionRect,
   reserveVerseSlots,
   resolveVerseStratum,
+  pointInRect,
   type ReservedVerseInput,
+  type LivingRegionRect,
 } from "./living-region";
 
 export type { FieldCell, FieldLayout } from "./field-cell";
@@ -166,8 +166,6 @@ function dealGlyphForStratum(
   return { glyph: deal(), scriptId: chosen.setId };
 }
 
-const EMPTY_OCCUPIED: ReadonlySet<string> = new Set();
-
 /**
  * Field Engine, stage 1: the exact clustered-scatter grid/gap logic that
  * has been unchanged since Concept v0.6, producing base slot positions and
@@ -198,21 +196,28 @@ const EMPTY_OCCUPIED: ReadonlySet<string> = new Set();
  * touched -- they still just receive whatever slots this function
  * produces.
  *
- * Sprint 04A (Living Region v1): gains one new, optional `occupied`
- * parameter -- a set of "col,row" keys the reserved verse has already
- * claimed (living-region.ts's reserveVerseSlots()). When a cluster's scan
- * would land on an occupied cell, that single cell is simply skipped (the
- * cluster continues into the next column exactly as it would have anyway);
- * nothing about the gap/cluster-length random logic itself changes. When
- * `occupied` is empty (every call site before this commit, and every call
- * site in THIS commit too -- see buildFieldLayout()'s doc comment), this is
- * bit-identical to the prior behaviour.
+ * Sprint 04A (Living Region v1): gains one new, optional `occupiedFootprint`
+ * parameter -- a content-sized pixel rectangle the reserved verse's denser
+ * lattice occupies (living-region.ts's reserveVerseSlots(), Commit 1A). When
+ * an ordinary scatter cell's centre would fall inside that rectangle, it is
+ * simply skipped (the cluster continues into the next column exactly as it
+ * would have anyway); nothing about the gap/cluster-length random logic
+ * itself changes. When `occupiedFootprint` is null (every call site before
+ * this commit, and every call site in THIS commit too -- see
+ * buildFieldLayout()'s doc comment), this is bit-identical to the prior
+ * behaviour.
+ *
+ * Commit 1A note: this used to take an exact-match `Set<string>` of "col,row"
+ * keys, back when reserved cells sat on the ambient grid's own columns.
+ * Reserved cells now use their own, denser local pitch (see living-region.ts),
+ * so exact-cell matching no longer means anything -- a pixel-space footprint
+ * is the only geometry the two coordinate systems still share.
  */
 function generateFieldSlots(
   width: number,
   height: number,
   config: LivingFieldConfig,
-  occupied: ReadonlySet<string> = EMPTY_OCCUPIED
+  occupiedFootprint: LivingRegionRect | null = null
 ): FieldSlot[] {
   const cols = Math.ceil(width / config.cellWidth) + 1;
   const rows = Math.ceil(height / config.cellHeight) + 1;
@@ -231,10 +236,12 @@ function generateFieldSlots(
       if (c >= cols) break;
       const clusterLen = Math.floor(rand(config.clusterLenMin, config.clusterLenMax));
       for (let i = 0; i < clusterLen && c < cols; i++, c++) {
-        if (occupied.has(`${c},${r}`)) continue;
+        const x = c * config.cellWidth + config.cellWidth / 2;
+        const y = r * config.cellHeight + config.cellHeight / 2;
+        if (occupiedFootprint && pointInRect(x, y, occupiedFootprint)) continue;
         slots.push({
-          x: c * config.cellWidth + config.cellWidth / 2,
-          y: r * config.cellHeight + config.cellHeight / 2,
+          x,
+          y,
           col: c,
           row: r,
           stratum: weightedPick(config.strata),
@@ -254,9 +261,9 @@ export function buildFieldLayout(
 ): FieldLayout {
   // --- Sprint 04A: Reserved Semantic Cells (fully inert when omitted) -----
   // Computing this BEFORE the ordinary Field Engine scatter lets that scatter
-  // skip the exact cells the verse needs, so the two passes never collide.
+  // skip the exact footprint the verse needs, so the two passes never collide.
   let reservedCells: FieldCell[] = [];
-  let occupied: ReadonlySet<string> = EMPTY_OCCUPIED;
+  let occupiedFootprint: LivingRegionRect | null = null;
 
   if (reservedVerse) {
     // LIVING_REGION_CONFIG is imported directly (top of file) rather than
@@ -273,7 +280,7 @@ export function buildFieldLayout(
       config.cellHeight
     );
     const reservation = reserveVerseSlots(rect, reservedVerse, typography, config.cellWidth, config.cellHeight);
-    occupied = reservation.occupied;
+    occupiedFootprint = reservation.occupiedFootprint;
 
     const verseStratum = resolveVerseStratum(config.strata, typography);
     const reservedSlots: (FieldSlot & { glyphValue: string; lineIndex: number; wordIndex: number; order: number })[] =
@@ -289,13 +296,16 @@ export function buildFieldLayout(
         order: p.order,
       }));
 
-    // Reserved cells get their own, much smaller jitter override -- see
-    // natural-distribution.ts's Sprint 04A addition.
+    // Reserved cells get their own, much smaller jitter, expressed relative
+    // to their OWN local pitch (reservedCellSpacingFactor), not the ambient
+    // field's jitter -- the two now operate at different densities, so
+    // there's no shared baseline to scale from. See
+    // typography.positionJitterScale's doc comment in living-region.ts.
     applyNaturalDistribution(
       reservedSlots,
       config.cellWidth,
       config.cellHeight,
-      JITTER_FRACTION * typography.positionJitterScale
+      typography.reservedCellSpacingFactor * typography.positionJitterScale
     );
 
     reservedCells = reservedSlots.map((slot) => ({
@@ -315,9 +325,9 @@ export function buildFieldLayout(
   }
 
   // Stage 1: Field Engine — base positions + stratum, no glyph yet. Skips
-  // any cell already claimed by the reserved verse above (no-op when
-  // `occupied` is empty, i.e. every call site today).
-  const slots = generateFieldSlots(width, height, config, occupied);
+  // any cell whose centre falls inside the reserved verse's footprint above
+  // (no-op when `occupiedFootprint` is null, i.e. every call site today).
+  const slots = generateFieldSlots(width, height, config, occupiedFootprint);
 
   // Stage 2: Natural Distribution Engine — refine exact pixel placement.
   // Mutates slot.x/slot.y in place; does not add, remove, or reorder slots,
