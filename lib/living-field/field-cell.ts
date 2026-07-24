@@ -32,6 +32,10 @@
  *   harmony              -- Harmony Engine (emergent-harmony.ts)
  *   expression           -- Ambient Expression Bridge (ambient-expression.ts),
  *                           on demand, not during the normal build pipeline
+ *   reservedVerse        -- Reserved Semantic Cells (living-region.ts /
+ *                           field-layout.ts), set once at layout build, only
+ *                           on the small set of cells chosen to carry a
+ *                           reserved verse's graphemes -- see below
  *
  * No engine other than the one listed above ever WRITES to its field. Every
  * later engine may READ any earlier engine's fields; no engine reads a field
@@ -43,6 +47,7 @@ import type { Glyph } from "./glyphs";
 import type { GlyphAffinity } from "./affinity-types";
 import type { GlyphHarmony } from "./harmony-types";
 import type { GlyphExpression } from "./ambient-expression-types";
+import type { ReservedVerseCellInfo } from "./living-region";
 
 export interface FieldCell {
   /** Cell centre in CSS px. Set by Field Engine, refined by Natural
@@ -56,7 +61,9 @@ export interface FieldCell {
   row: number;
   /** Set by Field Engine. */
   stratum: FieldStratum;
-  /** Set by Civilization Engine (dealGlyphForStratum, field-layout.ts). */
+  /** Set by Civilization Engine (dealGlyphForStratum, field-layout.ts) for
+   *  ordinary cells; set directly to a reserved verse's grapheme for
+   *  reserved cells (also field-layout.ts, same build pass). */
   glyph: Glyph;
   /** Optical Weight Calibration: which registered glyph set (glyphs.ts)
    *  this cell's glyph came from. Set by the SAME Civilization Engine
@@ -84,6 +91,18 @@ export interface FieldCell {
    *  is absent on almost every cell almost all the time; presence is
    *  event-driven, not layout-build-driven. */
   expression?: GlyphExpression;
+  /** Living Region (Reserved Semantic Cells): set once at layout build, only
+   *  when this cell was chosen to carry one grapheme of a caller-supplied
+   *  reserved verse instead of a randomly dealt glyph (field-layout.ts /
+   *  living-region.ts). Absent on every other cell -- absent on ALL cells
+   *  whenever no reserved verse was supplied to buildFieldLayout() at all.
+   *  Permanent once set, like glyph/scriptId -- never reassigned after
+   *  layout build. Purely descriptive metadata: on its own it changes
+   *  nothing about how this cell renders -- a reserved cell looks and
+   *  behaves exactly like an ordinary cell of the same stratum until a
+   *  later commit's interaction layer reads this field to decide which
+   *  cells to reveal. */
+  reservedVerse?: ReservedVerseCellInfo;
 }
 
 export interface FieldLayout {
