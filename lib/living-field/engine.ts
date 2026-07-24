@@ -45,11 +45,38 @@
  *     components/field/LivingField.tsx, unchanged in this commit),
  *     `this.reservedVerse` stays `null`, so this is `undefined`, and
  *     buildFieldLayout() behaves exactly as it always has.
- *   - No renderer awareness, no opacity computation, no interaction state.
- *     This engine now understands "some cells may carry semantic meaning" --
- *     it does not yet understand what to DO with that fact. That begins in
- *     Commit 3, entirely in renderer.ts and a later interaction layer, not
- *     here.
+ *
+ * Sprint 04A, Commit 3A: renderer.ts (unchanged here) gained the ability to
+ * read an optional `livingRegionState` render option and apply the Living
+ * Region's opacity term -- but nothing yet supplied one.
+ *
+ * Sprint 04A, Commit 3B.1: the engine becomes REACHABLE for that state.
+ * `reportLivingRegionEvent()` is the one new public method -- the page
+ * (a later commit) reports exactly four things (pointerDown, pointerUp,
+ * cancel, dismiss); this engine owns everything else (phase, timers,
+ * progress), via living-region-state.ts's pure functions:
+ *
+ *   - Every render call (both the RAF loop's tick and renderStatic()) now
+ *     passes `this.livingRegionState` through to renderField(), so the
+ *     Living Region opacity term (Commit 3A) actually has something to read.
+ *   - The RAF loop (normal motion) calls advanceLivingRegionState() once
+ *     per frame, right alongside the render call it already makes -- this
+ *     is how time-based transitions (anticipating -> revealed at the hold
+ *     threshold, revealed -> dismissing after the idle timeout, dismissing
+ *     -> idle once the fade completes) happen under normal motion: the
+ *     existing loop already runs every frame, so no separate scheduling
+ *     mechanism is needed there.
+ *   - Reduced motion has no such loop (`renderStatic()` paints exactly once
+ *     per relevant change, not continuously), so time-based transitions
+ *     there are driven by real `setTimeout` calls
+ *     (`scheduleLivingRegionTimers()`), each one firing `advanceLivingRegionState()`
+ *     followed by a single `renderStatic()` repaint, then chaining to
+ *     schedule whatever the NEXT phase's own timer should be.
+ *
+ * Still nothing calls `reportLivingRegionEvent()` or `setReservedVerse()`
+ * with a real reservation as of this commit (see components/field/
+ * LivingField.tsx, unchanged) -- the engine is reachable, not yet reached.
+ * Home page wiring is later commits (3B.2 onward), reviewed separately.
  */
 
 import { LIVING_FIELD_CONFIG, type LivingFieldConfig } from "./config";
@@ -59,6 +86,14 @@ import { applyEmergentHarmony } from "./emergent-harmony";
 import { applyAmbientExpression } from "./ambient-expression";
 import { renderField } from "./renderer";
 import type { ReservedVerseInput } from "./living-region";
+import { LIVING_REGION_CONFIG } from "./living-region";
+import {
+  createLivingRegionState,
+  dispatchLivingRegionEvent,
+  advanceLivingRegionState,
+  type LivingRegionState,
+  type LivingRegionEvent,
+} from "./living-region-state";
 
 export interface LivingFieldEngineOptions {
   /** Resolved application font family for canvas text. */
@@ -86,6 +121,20 @@ export class LivingFieldEngine {
    *  the renderer/interaction layer actually interpret it. */
   private reservedVerse: ReservedVerseInput | null = null;
 
+  /** Sprint 04A, Commit 3B.1: the Reflection Engine's own state -- phase,
+   *  timers, and progress, per living-region-state.ts. Idle by construction
+   *  until something calls reportLivingRegionEvent(); harmless to always
+   *  have one (an idle state has zero rendering effect, per Commit 3A's
+   *  computeLivingRegionOpacityMultiplier). */
+  private livingRegionState: LivingRegionState = createLivingRegionState(performance.now());
+
+  /** Reduced-motion-only: a pending setTimeout scheduled to advance a
+   *  time-based Living Region transition (see scheduleLivingRegionTimers()).
+   *  `null` whenever nothing is scheduled -- under normal motion this stays
+   *  `null` permanently, since the RAF loop advances state every frame
+   *  instead. */
+  private livingRegionTimer: ReturnType<typeof setTimeout> | null = null;
+
   private readonly motionQuery: MediaQueryList | null;
   private readonly onMotionChange = (e: MediaQueryListEvent): void => {
     this.reducedMotion = e.matches;
@@ -96,6 +145,15 @@ export class LivingFieldEngine {
     } else {
       this.startLoop();
     }
+    // Sprint 04A, Commit 3B.1: switching INTO reduced motion means the RAF
+    // loop (which was advancing Living Region state every frame) just
+    // stopped, so any in-progress interaction needs a setTimeout to pick up
+    // where the loop left off. Switching OUT of reduced motion means the
+    // loop is about to resume, so any pending reduced-motion-only timer
+    // must be cleared -- scheduleLivingRegionTimers() does both (it always
+    // clears first, then only re-schedules if `this.reducedMotion` is now
+    // true), so a single call here is correct either direction.
+    this.scheduleLivingRegionTimers();
   };
 
   private readonly onVisibilityChange = (): void => {
@@ -192,6 +250,49 @@ export class LivingFieldEngine {
   }
 
   /**
+   * Sprint 04A, Commit 3B.1. The engine's one point of contact with the
+   * Reflection Engine's event-driven transitions. A caller (a later
+   * commit's Home page, via living-region-bridge.ts) reports exactly one of
+   * the four things that can happen -- "pointerDown" | "pointerUp" |
+   * "cancel" | "dismiss" -- and this method:
+   *
+   *   1. Asks living-region-state.ts's dispatchLivingRegionEvent() what the
+   *      resulting state should be (a pure function -- this method owns
+   *      calling it, not deciding what it returns).
+   *   2. If nothing changed (the event was a no-op for the current phase --
+   *      e.g. releasing the press while already "revealed"), does nothing
+   *      further -- no repaint, no rescheduling.
+   *   3. If something DID change, stores the new state, reschedules any
+   *      reduced-motion timer for whatever phase we're now in, and repaints
+   *      immediately under reduced motion (there's no RAF loop to pick up
+   *      the change on its own next frame the way normal motion does).
+   *
+   * This method has no concept of pointer coordinates, DOM elements, or
+   * which page called it -- exactly the "page reports events, engine owns
+   * everything else" split from explicit direction.
+   */
+  reportLivingRegionEvent(event: LivingRegionEvent): void {
+    const now = performance.now();
+    const { timings, opacity } = LIVING_REGION_CONFIG;
+    const next = dispatchLivingRegionEvent(
+      this.livingRegionState,
+      event,
+      now,
+      timings,
+      opacity,
+      this.reducedMotion
+    );
+    if (next === this.livingRegionState) return;
+
+    this.livingRegionState = next;
+    this.scheduleLivingRegionTimers();
+    if (this.reducedMotion) this.renderStatic();
+    // Normal motion: nothing else to do here -- the RAF loop's own tick
+    // (startLoop(), below) reads this.livingRegionState fresh every frame
+    // and will reflect the change on its very next paint.
+  }
+
+  /**
    * The Ambient Language Layer's ONLY entry point into the Kernel. Accepts
    * a list of graphemes (already segmented by the caller -- this method
    * has no concept of "words" or Tamil script rules, only exact glyph-value
@@ -216,6 +317,10 @@ export class LivingFieldEngine {
     this.stopLoop();
     this.motionQuery?.removeEventListener("change", this.onMotionChange);
     document.removeEventListener("visibilitychange", this.onVisibilityChange);
+    if (this.livingRegionTimer !== null) {
+      clearTimeout(this.livingRegionTimer);
+      this.livingRegionTimer = null;
+    }
   }
 
   // -- internals ------------------------------------------------------------
@@ -226,9 +331,23 @@ export class LivingFieldEngine {
       this.rafId = requestAnimationFrame(tick);
       if (t - this.lastFrameAt < this.config.frameIntervalMs) return;
       this.lastFrameAt = t;
+      // Sprint 04A, Commit 3B.1: normal motion has no separate timer
+      // mechanism -- this loop already runs every frame, so it's also
+      // where time-based Living Region transitions (hold threshold, idle
+      // timeout, dismiss fade completing) happen. Reduced motion's
+      // scheduleLivingRegionTimers() is the equivalent for when this loop
+      // isn't running at all.
+      this.livingRegionState = advanceLivingRegionState(
+        this.livingRegionState,
+        t,
+        LIVING_REGION_CONFIG.timings,
+        LIVING_REGION_CONFIG.opacity,
+        false
+      );
       if (this.layout) {
         renderField(this.ctx, this.layout, t, this.config, {
           fontFamily: this.fontFamily,
+          livingRegionState: this.livingRegionState,
         });
       }
     };
@@ -247,6 +366,69 @@ export class LivingFieldEngine {
     renderField(this.ctx, this.layout, 0, this.config, {
       fontFamily: this.fontFamily,
       static: true,
+      livingRegionState: this.livingRegionState,
     });
+  }
+
+  /**
+   * Reduced-motion-only scheduling for time-based Living Region
+   * transitions. Always clears any previously-pending timer first, then --
+   * only if `this.reducedMotion` is currently true -- schedules exactly one
+   * setTimeout for whatever the CURRENT phase's own next threshold is
+   * (the hold threshold while anticipating, the idle timeout while
+   * revealed, or immediately for dismissing, since
+   * computeLivingRegionProgress() treats dismissal as instantaneous under
+   * reduced motion). When that timer fires, it advances state, repaints
+   * once, and calls itself again to schedule whatever the NEW phase's own
+   * timer should be -- a self-chaining sequence, not a single one-shot.
+   *
+   * Under normal motion this method still runs (called from
+   * reportLivingRegionEvent() and onMotionChange()) but always no-ops after
+   * clearing -- the RAF loop's own per-frame advancement is used instead.
+   */
+  private scheduleLivingRegionTimers(): void {
+    if (this.livingRegionTimer !== null) {
+      clearTimeout(this.livingRegionTimer);
+      this.livingRegionTimer = null;
+    }
+    if (!this.reducedMotion) return;
+
+    const { timings, opacity } = LIVING_REGION_CONFIG;
+    const elapsed = performance.now() - this.livingRegionState.phaseStartedAt;
+
+    let delay: number | null;
+    switch (this.livingRegionState.phase) {
+      case "anticipating":
+        delay = Math.max(0, timings.holdThresholdMs - elapsed);
+        break;
+      case "revealed":
+        delay = Math.max(0, timings.idleDismissMs - elapsed);
+        break;
+      case "dismissing":
+        delay = 0;
+        break;
+      case "idle":
+      default:
+        delay = null;
+        break;
+    }
+    if (delay === null) return;
+
+    this.livingRegionTimer = setTimeout(() => {
+      this.livingRegionTimer = null;
+      const now = performance.now();
+      const next = advanceLivingRegionState(
+        this.livingRegionState,
+        now,
+        timings,
+        opacity,
+        this.reducedMotion
+      );
+      if (next !== this.livingRegionState) {
+        this.livingRegionState = next;
+        this.renderStatic();
+        this.scheduleLivingRegionTimers();
+      }
+    }, delay);
   }
 }
