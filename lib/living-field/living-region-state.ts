@@ -1,293 +1,302 @@
 /**
- * Living Field — Renderer
+ * Living Field — Living Region State
  * ----------------------------------------------------------------------------
- * Pure drawing layer: given a layout, a config, and a timestamp, paint one
- * frame. Holds no state and schedules nothing (that is the engine's job),
- * which keeps the modulation math independently testable.
+ * Sprint 04A (Living Region v1), Commit 3A: Reflection Engine.
  *
- * Two modulations compose here, both on field time (Two Clocks — the field
- * never borrows interface time):
+ * "This is not another Ambient Expression." Ambient Expression
+ * (ambient-expression.ts) is the field whispering: a one-shot, fire-and-
+ * forget rise/hold/fall pulse, triggered by an application event, that
+ * always runs the same envelope to completion regardless of anything the
+ * user does. The Living Region is the field remembering: a SUSTAINED,
+ * gesture-driven state that a person actively holds open, that can be
+ * interrupted, resumed as a partial fade, or held indefinitely until
+ * explicitly dismissed. These are different enough in kind that they get a
+ * separate system, not a reuse of ambient-expression.ts's envelope.
  *
- *  1. Diagonal brightness wave (identity behaviour from v0.6, formula
- *     unchanged): a slow sweep across the grid, amplitude set per stratum.
- *  2. Global breath (Sprint 01): one field-wide sinusoidal swell, ~45s
- *     period, ±8% of current opacity. Deliberately at the threshold of
- *     perception — fog, paper, air; never waves, never particles.
+ * ---------------------------------------------------------------------------
+ * WHAT OWNS WHAT (explicit, per direction)
+ * ---------------------------------------------------------------------------
+ * This module owns: phase, timers (i.e. the logic for WHEN a time-based
+ * transition should happen), transitions, and opacity PROGRESS (0..1, "how
+ * revealed," independent of any stratum's actual opacity numbers).
  *
- * Letters never move, rotate, or scale at runtime. Only opacity breathes.
+ * This module does NOT own: actual wall-clock scheduling (no setTimeout
+ * anywhere here -- see below), which cells are reserved (living-region.ts /
+ * field-cell.ts), or how progress becomes an actual rendered opacity
+ * multiplier for a specific stratum (renderer.ts, using
+ * computeRevealPeakMultiplier below).
  *
- * Sprint 02 (Living Civilization Layer v1.0): this file now draws BOTH
- * glyph kinds — text (modern Tamil, Tamil-Brahmi) and path (Vatteluttu,
- * even-odd fill for interior holes). Per the "all scripts render
- * identically" rule, path glyphs go through the exact same wave/breath/
- * intensity opacity pipeline as text glyphs, at the same fillStyle, with no
- * glow, colour, or motion difference by script. This module still has no
- * concept of "civilization" or "which script" — it only knows two glyph
- * *kinds* to paint. That decision already happened in field-layout.ts.
+ * A page component (a later commit's Home wiring) reports ONLY four things
+ * that happened -- pointerDown, pointerUp, cancel, dismiss -- via
+ * dispatchLivingRegionEvent(). It never touches phase, timers, or opacity
+ * directly. This is what keeps the engine reusable: a future Aathichoodi
+ * line, proverb, or Acts-of-Aram reflection would drive the exact same
+ * state machine with the exact same four events.
  *
- * Sprint 03A (Affinity Engine): the ONLY change in this file. The global
- * breath sine wave now accepts an optional per-cell phase offset, sourced
- * from `cell.affinity?.breathingOffset` (defaults to 0 — bit-identical to
- * Sprint 02 when affinity metadata is absent). This module still has no
- * concept of neighborhoods, density, or affinity strength — per the
- * Renderer Contract, it reads exactly one number and does nothing else
- * differently.
+ * ---------------------------------------------------------------------------
+ * WHY EVERYTHING HERE IS A PURE FUNCTION, NOT A CLASS
+ * ---------------------------------------------------------------------------
+ * Every other pure-computation module in this Kernel (field-layout.ts,
+ * natural-distribution.ts, affinity-engine.ts, emergent-harmony.ts,
+ * ambient-expression.ts) is functions operating on plain data, not a
+ * stateful class -- the only class in the Kernel, LivingFieldEngine
+ * (engine.ts), exists because it genuinely owns a canvas and a RAF loop.
+ * This module has neither. A LivingRegionState is a plain, immutable-in-
+ * spirit value (every function here returns a NEW state rather than
+ * mutating one), and a later commit's engine.ts will own exactly one
+ * instance of it the same way it already owns `this.layout`.
  *
- * Optical Weight Calibration v1.0: this task explicitly asks for
- * per-script rendering adjustments, unlike Sprints 03A/03B which forbade
- * touching this file. Each cell's `scriptId` (set by the Civilization
- * Engine's own selection decision, not re-derived here) looks up a
- * multiplier from optical-calibration.ts and applies it to the FINAL
- * opacity (after wave/breath/intensity, so breathing rhythm itself is
- * untouched) and to the effective font/path size. Colour, motion, and
- * everything else about how a glyph is drawn stays identical across
- * scripts -- only presence and size differ, per the calibration's rules.
+ * ---------------------------------------------------------------------------
+ * "TIMERS" WITHOUT setTimeout
+ * ---------------------------------------------------------------------------
+ * advanceLivingRegionState() is how time-based transitions (anticipating ->
+ * revealed at the hold threshold; revealed -> dismissing after the idle
+ * timeout; dismissing -> idle once the fade completes) actually happen --
+ * but it's a pure function of (state, now), not a scheduled callback. Under
+ * normal motion, a later commit calls this once per animation frame from
+ * the engine's existing RAF loop (engine.ts already runs one; no second
+ * loop is introduced). Under reduced motion, where no RAF loop runs at all,
+ * that later commit uses real setTimeout calls to invoke this function at
+ * the specific moments transitions are expected -- but the TRANSITION LOGIC
+ * itself, tested here, is identical either way. This module never reaches
+ * for wall-clock scheduling itself.
  *
- * Sprint 03C (Emergent Harmony v1.0): the ONLY change in this file.
- * `breathMultiplier` gains one more optional parameter, an amplitude
- * scale, sourced from `cell.harmony?.amplitudeInfluence` (defaults to 1 --
- * bit-identical to Sprint 03A/Optical Calibration behaviour when harmony
- * metadata is absent). It scales ONLY the existing breath-amplitude term,
- * never the phase (Affinity's territory), never the base opacity or wave
- * (Sprint 01's), never colour or size (Optical Calibration's). This module
- * still has no concept of neighborhoods, density, or affinity strength --
- * per the Harmony Engine's contract, it reads exactly one number and does
- * nothing else differently.
- *
- * Ambient Language Layer bridge: one more multiplicative layer, sourced
- * from `cell.expression` (ambient-expression.ts), applied AFTER Optical
- * Calibration's opacity weight. Exactly 1 (no change) for the overwhelming
- * majority of cells, which never have an active expression -- this is
- * event-driven, not present during the normal render cadence. Skipped
- * entirely on the static (reduced-motion) frame, for the same reason
- * breathing already is: it's a form of per-frame animation, and the
- * static frame's `t` is fixed. Still opacity-only -- no size, colour, or
- * position change from this layer either.
- *
- * Sprint 04A (Living Region v1), Commit 3A: one FINAL multiplicative layer,
- * sourced from `cell.reservedVerse` + an optional `options.livingRegionState`
- * (living-region-state.ts). Unlike the Ambient Expression term immediately
- * above, this one is NOT skipped on the static/reduced-motion frame -- per
- * explicit direction, the Living Region's interaction must still work under
- * reduced motion (just without animated interpolation), so its progress
- * function handles `reducedMotion` internally rather than being bypassed
- * here. Exactly 1 (no change) for every cell without `reservedVerse`, and
- * for every cell when `options.livingRegionState` is omitted entirely --
- * which is every call site as of this commit (see engine.ts, unchanged) --
- * so this term has zero effect on anything rendered today. Deliberately its
- * own system, not a reuse of Ambient Expression's rise/hold/fall envelope:
- * that one is a one-shot pulse fired by an application event; this one is a
- * sustained, gesture-driven state a person actively holds open. Computed
- * once per frame per stratum (the peak-multiplier lookup), not once per
- * cell -- see the top of renderField()'s stratum loop.
+ * ---------------------------------------------------------------------------
+ * REDUCED MOTION
+ * ---------------------------------------------------------------------------
+ * Per explicit direction: "anticipation should still exist, but without
+ * animated interpolation... the interaction remains intact, only motion is
+ * reduced." Concretely, every function here takes a `reducedMotion` flag;
+ * when true, computeLivingRegionProgress() returns each phase's TERMINAL
+ * progress value immediately (0 / anticipationCeilingFraction / 1 / 0)
+ * rather than interpolating from elapsed time -- the 700ms hold threshold
+ * and 15s idle timeout still genuinely elapse (advanceLivingRegionState()
+ * still waits for them), only the VISUAL ramp in between is skipped.
  */
 
-import type { LivingFieldConfig, FieldStratum } from "./config";
-import type { FieldLayout, FieldCell } from "./field-layout";
-import type { GlyphPath } from "./glyphs";
-import {
-  ACTIVE_CALIBRATION,
-  SCRIPT_IDS,
-  getScriptWeight,
-  applyOpticalOpacity,
-  applyOpticalSize,
-} from "./optical-calibration";
-import { computeExpressionOpacityMultiplier } from "./ambient-expression";
-import {
-  computeLivingRegionOpacityMultiplier,
-  computeRevealPeakMultiplier,
-  type LivingRegionState,
-} from "./living-region-state";
-import { LIVING_REGION_CONFIG, resolveVerseStratum } from "./living-region";
+import type { FieldStratum } from "./config";
+import type { LivingRegionOpacityConfig, LivingRegionTimingConfig } from "./living-region";
 
-/** v0.6 diagonal wave, normalised 0..1. */
-export function wavePhase01(
-  col: number,
-  row: number,
-  t: number,
-  config: LivingFieldConfig
-): number {
-  const phase = col * config.wavePhaseCol + row * config.wavePhaseRow - t * config.waveSpeed;
-  return 0.5 + 0.5 * Math.sin(phase);
+export type LivingRegionPhase = "idle" | "anticipating" | "revealed" | "dismissing";
+
+export interface LivingRegionState {
+  phase: LivingRegionPhase;
+  /** Timestamp (performance.now()-based, matching the Kernel's own clock --
+   *  the same convention ambient-expression.ts already uses) the CURRENT
+   *  phase began. */
+  phaseStartedAt: number;
+  /** Reveal progress (0..1) carried over from whatever the PREVIOUS phase's
+   *  progress actually was at the moment of this transition -- e.g. if
+   *  dismissal begins during anticipation at 40% of the way to the
+   *  anticipation ceiling, dismissing starts its fade from that same 40%,
+   *  not from a fixed assumption. Deliberately NOT an opacity value -- this
+   *  module has no concept of stratum, intensity, or any rendered number;
+   *  translating progress into an actual opacity multiplier is the
+   *  renderer's job (see computeRevealPeakMultiplier / the composed
+   *  computeLivingRegionOpacityMultiplier below). */
+  progressAtPhaseStart: number;
 }
 
-/** Global breathing multiplier, ~1 ± breathAmplitude. `phaseOffset` (radians)
- *  is Sprint 03A's addition: 0 reproduces Sprint 02's single global phase
- *  exactly; a per-cell offset from `cell.affinity.breathingOffset` makes
- *  neighborhoods drift subtly out of sync with each other. `amplitudeScale`
- *  is Sprint 03C's addition: 1 reproduces the exact prior amplitude; a
- *  per-cell value from `cell.harmony.amplitudeInfluence` lets how DEEP a
- *  cell's breathing dips vary subtly, independent of phase. */
-export function breathMultiplier(
-  t: number,
-  config: LivingFieldConfig,
-  phaseOffset = 0,
-  amplitudeScale = 1
-): number {
-  return (
-    1 +
-    config.breathAmplitude *
-      amplitudeScale *
-      Math.sin((2 * Math.PI * t) / config.breathPeriodMs + phaseOffset)
-  );
+/** The four things a page (or any other caller) may report. Nothing else --
+ *  no phase, no timers, no opacity. See this file's header for why. */
+export type LivingRegionEvent = "pointerDown" | "pointerUp" | "cancel" | "dismiss";
+
+export function createLivingRegionState(now: number): LivingRegionState {
+  return { phase: "idle", phaseStartedAt: now, progressAtPhaseStart: 0 };
 }
 
-/** Final opacity for one cell at time t. */
-export function cellOpacity(cell: FieldCell, t: number, config: LivingFieldConfig): number {
-  const wave = wavePhase01(cell.col, cell.row, t, config);
-  const raw = cell.stratum.baseOpacity + cell.stratum.waveAmplitude * wave;
-  const breath = breathMultiplier(
-    t,
-    config,
-    cell.affinity?.breathingOffset ?? 0,
-    cell.harmony?.amplitudeInfluence ?? 1
-  );
-  return raw * breath * config.intensity;
-}
-
-/** Static opacity used for the reduced-motion frame: wave held at midpoint,
- *  no breath. The field remains alive without noticeable animation. */
-export function cellOpacityStatic(cell: FieldCell, config: LivingFieldConfig): number {
-  return (cell.stratum.baseOpacity + cell.stratum.waveAmplitude * 0.5) * config.intensity;
+function enterPhase(
+  prevState: LivingRegionState,
+  nextPhase: LivingRegionPhase,
+  now: number,
+  timing: LivingRegionTimingConfig,
+  opacity: LivingRegionOpacityConfig,
+  reducedMotion: boolean
+): LivingRegionState {
+  const carriedProgress = computeLivingRegionProgress(prevState, now, timing, opacity, reducedMotion);
+  return { phase: nextPhase, phaseStartedAt: now, progressAtPhaseStart: carriedProgress };
 }
 
 /**
- * Draws a traced letterform (0–10 unit box, even-odd fill so interior holes
- * stay visually open) centred at the canvas origin, scaled to `size` so it
- * reads at the same visual weight as a text glyph at that font size. Caller
- * is expected to have already translated the context to the cell's (x, y).
- * Formula unchanged from Concept v0.6's `drawPathGlyph`.
+ * Applies an immediate, event-driven transition. Any event that doesn't
+ * apply to the current phase is a deliberate no-op, returning the EXACT
+ * SAME state reference (not a new object) -- a caller can cheaply check
+ * `next === prev` to know whether anything actually changed.
+ *
+ * Deliberate transition choices, stated explicitly rather than left
+ * implicit:
+ *  - pointerDown only does anything from "idle". A press while already
+ *    anticipating/revealed/dismissing is a no-op -- there's no second
+ *    concurrent interaction to start.
+ *  - pointerUp/cancel only end anything from "anticipating" (-> dismissing,
+ *    "return smoothly to ambient, reveal nothing" -- the early-release
+ *    path). Releasing the press while "revealed" is a deliberate no-op: per
+ *    the three named dismissal paths (tap outside, scroll away, ~15s idle),
+ *    lifting the finger is NOT one of them -- the reveal is meant to
+ *    persist for reading, not require a continuous hold.
+ *  - "dismiss" (the page's generic signal for tap-outside/scroll-away/idle-
+ *    timeout) ends either "revealed" or "anticipating" (in case a caller
+ *    fires it defensively mid-anticipation, e.g. the user scrolled away
+ *    while still pressing) -> dismissing.
  */
-function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: number): void {
-  ctx.beginPath();
-  shape.outer.forEach((p, i) => {
-    const x = (p[0] / 10 - 0.5) * size;
-    const y = (p[1] / 10 - 0.5) * size;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.closePath();
-  shape.holes.forEach((hole) => {
-    hole.forEach((p, i) => {
-      const x = (p[0] / 10 - 0.5) * size;
-      const y = (p[1] / 10 - 0.5) * size;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.closePath();
-  });
-  ctx.fill("evenodd");
-}
-
-export interface RenderOptions {
-  /** Resolved application font family (from --font-tamil-sans); falls back to
-   *  config.fontFamilyFallback when empty. */
-  fontFamily?: string;
-  /** When true, draw the single static frame (prefers-reduced-motion). */
-  static?: boolean;
-  /** Sprint 04A, Commit 3A: the current Living Region phase/progress
-   *  (living-region-state.ts), or omitted/null when nothing has ever
-   *  activated one -- every call site as of this commit. Reduced motion is
-   *  conveyed to it via `static` above (the same flag that already means
-   *  "prefers-reduced-motion" everywhere else in this file); there is no
-   *  separate reducedMotion flag on this interface. */
-  livingRegionState?: LivingRegionState | null;
-}
-
-/**
- * Paint one frame. Cells are drawn grouped by (stratum, scriptId) so
- * ctx.font is set once per group instead of once per cell -- at most
- * strata.length * SCRIPT_IDS.length font changes per frame (currently 9),
- * still a small, bounded number, preserving the original "batch by
- * stratum" performance intent from Sprint 01/02.
- */
-export function renderField(
-  ctx: CanvasRenderingContext2D,
-  layout: FieldLayout,
-  t: number,
-  config: LivingFieldConfig,
-  options: RenderOptions = {}
-): void {
-  const [cr, cg, cb] = config.colorRGB;
-  const family = options.fontFamily && options.fontFamily.trim().length > 0
-    ? options.fontFamily
-    : config.fontFamilyFallback;
-
-  ctx.clearRect(0, 0, layout.width, layout.height);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  // Sprint 04A, Commit 3A: computed ONCE per frame, not once per cell -- the
-  // peak multiplier depends only on the verse's stratum and the field's
-  // global intensity, neither of which vary cell-to-cell. Harmless and
-  // unused when no cell in this layout has `reservedVerse` set (every
-  // layout before a later commit wires up a real reservation).
-  const livingRegionPeakMultiplier = computeRevealPeakMultiplier(
-    resolveVerseStratum(config.strata, LIVING_REGION_CONFIG.typography),
-    config.intensity,
-    LIVING_REGION_CONFIG.opacity
-  );
-
-  for (const stratum of config.strata) {
-    for (const scriptId of SCRIPT_IDS) {
-      const weight = getScriptWeight(ACTIVE_CALIBRATION, scriptId);
-      const effectiveSize = applyOpticalSize(stratum.fontSize, weight);
-      const effectiveWeight = weight.fontWeightOverride ?? config.fontWeight;
-      // Text glyphs need ctx.font set before fillText; path glyphs (always
-      // Vatteluttu) don't use ctx.font at all, but setting it unconditionally
-      // here is harmless and keeps the loop body simple -- it's simply
-      // unused on those iterations.
-      ctx.font = `${effectiveWeight} ${effectiveSize}px ${family}`;
-
-      for (const cell of layout.cells) {
-        if (cell.stratum !== stratum || cell.scriptId !== scriptId) continue;
-
-        const baseOp = options.static
-          ? cellOpacityStatic(cell, config)
-          : cellOpacity(cell, t, config);
-        const opticalOp = applyOpticalOpacity(baseOp, weight);
-        // Ambient Language Layer bridge: exactly 1 (no change) for the
-        // overwhelming majority of cells, which never have an active
-        // expression. Reduced-motion frames intentionally skip this --
-        // `options.static` never reaches here with a live expression
-        // clock, since `t` is fixed at 0 for that frame (see
-        // cellOpacityStatic's own "no breath" comment; the same
-        // reasoning applies to expression, which is equally a form of
-        // per-frame animation).
-        const expressionMultiplier = options.static
-          ? 1
-          : computeExpressionOpacityMultiplier(cell.expression, t);
-        // Sprint 04A, Commit 3A: the final semantic influence, per the
-        // locked pipeline order (...x Ambient Expression x Living Region ->
-        // Final). Unlike expressionMultiplier immediately above, this is
-        // NOT forced to 1 on the static frame -- see this file's header and
-        // living-region-state.ts's own header for why reduced motion still
-        // needs this term to do real work (just without interpolation).
-        const livingRegionMultiplier = computeLivingRegionOpacityMultiplier(
-          cell.reservedVerse !== undefined,
-          options.livingRegionState,
-          t,
-          LIVING_REGION_CONFIG.timings,
-          LIVING_REGION_CONFIG.opacity,
-          livingRegionPeakMultiplier,
-          options.static === true
-        );
-        const op = Math.min(1, opticalOp * expressionMultiplier * livingRegionMultiplier);
-
-        ctx.fillStyle = `rgba(${cr},${cg},${cb},${op})`;
-        if (cell.glyph.kind === "text") {
-          ctx.fillText(cell.glyph.value, cell.x, cell.y);
-        } else {
-          // kind === "path" (Vatteluttu). Optical calibration still applies
-          // via `op` (opacity) and `effectiveSize` (path scale) above --
-          // just no stroke/outline, per this module's documented rule
-          // interpretation.
-          ctx.save();
-          ctx.translate(cell.x, cell.y);
-          drawPathGlyph(ctx, cell.glyph.value, effectiveSize);
-          ctx.restore();
-        }
+export function dispatchLivingRegionEvent(
+  state: LivingRegionState,
+  event: LivingRegionEvent,
+  now: number,
+  timing: LivingRegionTimingConfig,
+  opacity: LivingRegionOpacityConfig,
+  reducedMotion: boolean
+): LivingRegionState {
+  switch (event) {
+    case "pointerDown":
+      if (state.phase === "idle") {
+        return enterPhase(state, "anticipating", now, timing, opacity, reducedMotion);
       }
+      return state;
+    case "pointerUp":
+    case "cancel":
+      if (state.phase === "anticipating") {
+        return enterPhase(state, "dismissing", now, timing, opacity, reducedMotion);
+      }
+      return state;
+    case "dismiss":
+      if (state.phase === "revealed" || state.phase === "anticipating") {
+        return enterPhase(state, "dismissing", now, timing, opacity, reducedMotion);
+      }
+      return state;
+    default:
+      return state;
+  }
+}
+
+/**
+ * Applies time-based transitions: anticipating -> revealed once the hold
+ * threshold elapses (while still pressed -- no event required, this is the
+ * "the field notices you've stayed" moment), revealed -> dismissing after
+ * the idle timeout, dismissing -> idle once the fade completes. A no-op
+ * (returns the same reference) if no threshold has been crossed.
+ *
+ * Reduced motion still respects every threshold -- only
+ * computeLivingRegionProgress()'s VISUAL interpolation changes, not these
+ * timings. The 700ms press-to-reveal and ~15s idle-to-dismiss durations are
+ * part of the interaction's meaning ("paused long enough"), not merely
+ * animation -- direction is explicit that "the interaction remains intact,
+ * only motion is reduced."
+ */
+export function advanceLivingRegionState(
+  state: LivingRegionState,
+  now: number,
+  timing: LivingRegionTimingConfig,
+  opacity: LivingRegionOpacityConfig,
+  reducedMotion: boolean
+): LivingRegionState {
+  const elapsed = now - state.phaseStartedAt;
+
+  if (state.phase === "anticipating" && elapsed >= timing.holdThresholdMs) {
+    return enterPhase(state, "revealed", now, timing, opacity, reducedMotion);
+  }
+  if (state.phase === "revealed" && elapsed >= timing.idleDismissMs) {
+    return enterPhase(state, "dismissing", now, timing, opacity, reducedMotion);
+  }
+  if (state.phase === "dismissing") {
+    const dismissComplete = reducedMotion || elapsed >= timing.dismissDurationMs;
+    if (dismissComplete) {
+      return enterPhase(state, "idle", now, timing, opacity, reducedMotion);
     }
   }
+  return state;
+}
+
+/**
+ * Reveal progress (0..1) right now -- 0 fully ambient/idle, 1 fully
+ * revealed. Purely a function of phase + elapsed time (or, under reduced
+ * motion, phase alone). Has no concept of any stratum's actual opacity
+ * numbers -- see computeRevealPeakMultiplier for where progress finally
+ * becomes a rendered value.
+ */
+export function computeLivingRegionProgress(
+  state: LivingRegionState,
+  now: number,
+  timing: LivingRegionTimingConfig,
+  opacity: LivingRegionOpacityConfig,
+  reducedMotion: boolean
+): number {
+  const ceiling = opacity.anticipationCeilingFraction;
+
+  switch (state.phase) {
+    case "idle":
+      return 0;
+    case "anticipating": {
+      if (reducedMotion) return ceiling;
+      const elapsed = Math.max(0, now - state.phaseStartedAt);
+      const t = Math.min(1, elapsed / timing.holdThresholdMs);
+      return state.progressAtPhaseStart + t * (ceiling - state.progressAtPhaseStart);
+    }
+    case "revealed": {
+      if (reducedMotion) return 1;
+      const elapsed = Math.max(0, now - state.phaseStartedAt);
+      const t = Math.min(1, elapsed / timing.revealDurationMs);
+      return state.progressAtPhaseStart + t * (1 - state.progressAtPhaseStart);
+    }
+    case "dismissing": {
+      if (reducedMotion) return 0;
+      const elapsed = Math.max(0, now - state.phaseStartedAt);
+      const t = Math.min(1, elapsed / timing.dismissDurationMs);
+      return state.progressAtPhaseStart * (1 - t);
+    }
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Estimates the "typical" (pre-Living-Region) opacity of the verse's own
+ * stratum -- baseOpacity plus half its wave amplitude (matching
+ * renderer.ts's cellOpacityStatic()'s own "wave held at midpoint"
+ * convention), times the field's global intensity multiplier. Used only to
+ * derive how large the Living Region's OWN multiplicative term needs to be
+ * so a typical reserved cell reaches roughly opacity.revealOpacityTarget
+ * when fully revealed.
+ *
+ * This is deliberately an approximation, not an exact per-cell solve:
+ * individual cells will land slightly above or below the target depending
+ * on their own wave/breath phase at the moment of reveal (the renderer's
+ * existing `Math.min(1, ...)` clamp catches anything that overshoots). This
+ * is intentional, not a shortcoming -- even fully revealed, the verse stays
+ * governed by the SAME breathing field every other cell is, rather than
+ * becoming a flattened, static overlay. Computed once per stratum
+ * (renderer.ts calls this once per frame, not once per cell).
+ */
+export function computeRevealPeakMultiplier(
+  stratum: FieldStratum,
+  intensity: number,
+  opacity: LivingRegionOpacityConfig
+): number {
+  const typicalOpacity = (stratum.baseOpacity + stratum.waveAmplitude * 0.5) * intensity;
+  if (typicalOpacity <= 0) return 1;
+  return Math.max(1, opacity.revealOpacityTarget / typicalOpacity);
+}
+
+/**
+ * The renderer's single entry point into this module. Composes progress +
+ * peak multiplier into the actual multiplicative term renderer.ts applies,
+ * per the locked pipeline order: Base x Depth x Wave x Breath x Ambient
+ * Expression x Living Region -> Final. Returns exactly 1 (no effect) for
+ * any cell that isn't part of a reserved verse, or when no Living Region
+ * state is active at all (e.g. every render call before a later commit
+ * ever supplies one) -- bit-identical to omitting this term entirely.
+ */
+export function computeLivingRegionOpacityMultiplier(
+  hasReservedVerse: boolean,
+  state: LivingRegionState | null | undefined,
+  now: number,
+  timing: LivingRegionTimingConfig,
+  opacity: LivingRegionOpacityConfig,
+  peakMultiplier: number,
+  reducedMotion: boolean
+): number {
+  if (!hasReservedVerse || !state) return 1;
+  const progress = computeLivingRegionProgress(state, now, timing, opacity, reducedMotion);
+  if (progress <= 0) return 1;
+  return 1 + progress * (peakMultiplier - 1);
 }
