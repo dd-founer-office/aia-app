@@ -20,6 +20,7 @@ import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { JourneyTimeline } from "@/components/home/JourneyTimeline";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
+import LivingRegionZone from "@/components/field/LivingRegionZone";
 
 export default function HomePage() {
   const router = useRouter();
@@ -320,6 +321,18 @@ export default function HomePage() {
             </Button>
           </Card>
         </div>
+
+        {/* Sprint 04A (Living Region v1), Commit 3B.2: Activation
+            Infrastructure. The Kural card above is untouched -- still the
+            real, rendered experience. This mounts an invisible spacer +
+            viewport observer + fixed interaction rectangle so alignment,
+            touch handling, and scrolling can all be verified for real,
+            without changing anything anyone sees. No verse is set yet
+            (setLivingRegionVerse is never called in this commit), so
+            pressing this zone exercises the Reflection Engine's real state
+            machine but has nothing to reveal. Commit 3B.3 replaces the
+            Kural card above with this zone, wired to the real verse. */}
+        <LivingRegionZone />
       </main>
 
       <BottomNavigation active="home" />
