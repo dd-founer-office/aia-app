@@ -20,6 +20,8 @@ import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { JourneyTimeline } from "@/components/home/JourneyTimeline";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
+import { buildReservedVerseInput } from "@/lib/living-field/reserved-verse-bridge";
+import { setLivingRegionVerse } from "@/lib/living-field/living-region-bridge";
 import LivingRegionZone from "@/components/field/LivingRegionZone";
 
 export default function HomePage() {
@@ -146,6 +148,40 @@ export default function HomePage() {
     return () => {
       observer.disconnect();
       engineReadyUnsubscribe?.();
+    };
+  }, []);
+
+  // Sprint 04A (Living Region v1), Commit 3B.3: sets the real verse into the
+  // Reflection Engine exactly once per real mount, as soon as an engine
+  // exists -- the same Strict-Mode-safe idempotency pattern as the
+  // homeReady/kuralSection effects above (ref guard, not state, since this
+  // never needs to trigger a re-render; unsubscribe in cleanup so a
+  // since-unmounted component can never fire this later).
+  //
+  // Unlike those two, this doesn't wait for the section to scroll near the
+  // viewport -- the reservation needs to exist in the layout as soon as the
+  // engine is ready, since Reserved Semantic Cells are computed at layout
+  // BUILD time (field-layout.ts), not on demand. There is no "too early" for
+  // this call: an idle Living Region with a reservation set is invisible
+  // (Commit 3A), exactly like one with no reservation at all.
+  //
+  // buildReservedVerseInput() is content-agnostic (reserved-verse-bridge.ts)
+  // -- this is the one place that decides WHICH text becomes the reflection.
+  // A future Aathichoodi or proverb page would call the exact same two
+  // functions with different source text, nothing else.
+  const verseSetRef = useRef(false);
+
+  useEffect(() => {
+    if (verseSetRef.current) return;
+
+    const unsubscribe = onLivingFieldEngineReady(() => {
+      if (verseSetRef.current) return;
+      verseSetRef.current = true;
+      setLivingRegionVerse(buildReservedVerseInput(mockKuralOfTheDay.kural_tamil));
+    });
+
+    return () => {
+      unsubscribe();
     };
   }, []);
 
@@ -284,55 +320,22 @@ export default function HomePage() {
           </p>
         </Card>
 
-        {/* குறள் கூறும் அறம் -- Kural Koorum Aram. mockKuralOfTheDay is
-            temporary presentation-only mock data mirroring the future
-            Founder Intelligence knowledge-engine record shape (FI-DB-003,
-            KKA-001). Swap for a live query when that engine is connected;
-            no UI change should be needed.
-
-            Living Literature Prelude: this wrapping div carries the ref the
-            IntersectionObserver above watches. It adds no styling of its
-            own (no className) -- purely a DOM anchor point, since native
-            elements always support refs and the Card component's ref-
-            forwarding wasn't something to assume without verifying it. */}
+        {/* Sprint 04A (Living Region v1), Commit 3B.3: Living Region
+            Replacement. The visible Kural card is gone -- heading,
+            container, verse text, explanation, button, all of it. Nothing
+            replaces it visually; the Living Field simply continues. This
+            wrapping div still carries kuralSectionRef (unchanged from
+            before -- the ambient recognition-pulse IntersectionObserver
+            above still needs a real DOM target to watch) and now also
+            hosts LivingRegionZone (Commit 3B.2's spacer/observer/hit-target,
+            unchanged), which is where the real KKA-001 verse actually lives
+            now -- set once, on mount, by the effect above
+            (buildReservedVerseInput + setLivingRegionVerse). Someone
+            scrolling through without ever pressing should notice nothing
+            missing here -- only a quieter page. */}
         <div ref={kuralSectionRef}>
-          <Card className="flex flex-col gap-5">
-            <SectionHeader
-              title={"\u0B95\u0BC1\u0BB1\u0BB3\u0BCD \u0B95\u0BC2\u0BB1\u0BC1\u0BAE\u0BCD \u0B85\u0BB1\u0BAE\u0BCD"}
-              titleClassName="font-tamil-sans font-medium"
-            />
-            <p className="font-tamil-sans font-normal whitespace-pre-line py-2 text-left text-base leading-relaxed text-[var(--color-foreground)]">
-              {mockKuralOfTheDay.kural_tamil}
-            </p>
-
-            <p className="text-sm leading-relaxed text-[var(--color-foreground)]">
-              {mockKuralOfTheDay.core_principle}
-            </p>
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-medium text-[var(--color-foreground)]">
-                {mockKuralOfTheDay.aram_for_today_title}
-              </p>
-              <p className="text-sm text-[var(--color-muted-foreground)]">
-                {mockKuralOfTheDay.aram_for_today_body}
-              </p>
-            </div>
-            <Button variant="text" className="self-start">
-              Practice this Kural →
-            </Button>
-          </Card>
+          <LivingRegionZone />
         </div>
-
-        {/* Sprint 04A (Living Region v1), Commit 3B.2: Activation
-            Infrastructure. The Kural card above is untouched -- still the
-            real, rendered experience. This mounts an invisible spacer +
-            viewport observer + fixed interaction rectangle so alignment,
-            touch handling, and scrolling can all be verified for real,
-            without changing anything anyone sees. No verse is set yet
-            (setLivingRegionVerse is never called in this commit), so
-            pressing this zone exercises the Reflection Engine's real state
-            machine but has nothing to reveal. Commit 3B.3 replaces the
-            Kural card above with this zone, wired to the real verse. */}
-        <LivingRegionZone />
       </main>
 
       <BottomNavigation active="home" />
