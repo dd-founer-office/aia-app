@@ -19,11 +19,29 @@
  * chaotic swarm with long crossing paths. This is an O(candidates x points)
  * search, but it runs exactly ONCE per story start -- never inside the
  * render loop -- so the cost is a one-time set-up cost, not a per-frame one.
+ * ----------------------------------------------------------------------------
+ * RETIRED FROM ACTIVE USE (v0.2): this file is no longer imported by
+ * story-controller.ts, which now builds exactly four grapheme fragments via
+ * grapheme-source.ts instead of hundreds of mask-paired cells. Left on disk
+ * per explicit direction, not deleted, until the new grammar is visually
+ * accepted. Its own result type is now defined locally (below) rather than
+ * imported from story-bridge-types.ts, since that file's `StoryAssignment`
+ * shape has since been superseded by v0.2's `StoryFragment` -- this keeps
+ * this retired module self-contained and independently compiling rather
+ * than silently coupled to a type it no longer matches.
  */
 
 import type { FieldCell } from "@/lib/living-field/field-cell";
-import type { StoryAssignment } from "@/lib/living-field/story-bridge-types";
 import type { MaskPoint } from "./text-mask";
+
+/** v0.1's own result shape, kept local now that this module is retired. */
+export interface LegacyStoryAssignment {
+  cellIndex: number;
+  homeX: number;
+  homeY: number;
+  targetX: number;
+  targetY: number;
+}
 
 /** Fisher-Yates shuffle of index order 0..length-1. Used to pick which
  *  subset of mask points participates when there are more mask points than
@@ -41,7 +59,7 @@ function shuffledIndices(length: number): number[] {
 export function buildStoryAssignments(
   cells: readonly FieldCell[],
   maskPoints: readonly MaskPoint[]
-): StoryAssignment[] {
+): LegacyStoryAssignment[] {
   if (cells.length === 0 || maskPoints.length === 0) return [];
 
   const count = Math.min(cells.length, maskPoints.length);
@@ -51,7 +69,7 @@ export function buildStoryAssignments(
   // they get claimed, so no cell is ever assigned to more than one target.
   const available = cells.map((cell, index) => ({ index, x: cell.x, y: cell.y }));
 
-  const assignments: StoryAssignment[] = [];
+  const assignments: LegacyStoryAssignment[] = [];
   for (const pointIndex of pointOrder) {
     const point = maskPoints[pointIndex];
 
