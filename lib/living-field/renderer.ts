@@ -95,6 +95,24 @@
  * term, same reasoning as Living Region: not skipped on the static frame,
  * since computeStoryOffset() has its own explicit two-state behaviour for
  * reduced motion (see its own header).
+ *
+ * Living Language Stories v0.2 (grapheme-fragment grammar, superseding
+ * v0.1's silhouette): two more additions, both still exactly as opt-in as
+ * the above.
+ *
+ *   1. computeAmbientDimMultiplier() -- one more multiplicative term in the
+ *      SAME per-cell opacity chain, applied to every ordinary cell
+ *      (participating fragment or not). Returns exactly 1 (no dimming) when
+ *      no story is active. Deliberately subtle (see
+ *      story-bridge-types.ts's AMBIENT_DIM_FACTOR) -- the field must stay
+ *      visibly alive throughout, per explicit direction.
+ *   2. computeStoryOverlay() -- painted in a SEPARATE pass after the normal
+ *      per-cell loop finishes: the hero word (a single, browser-shaped
+ *      fillText of the complete target string) and any PHANTOM fragments
+ *      (graphemes the current layout didn't happen to contain, so they
+ *      fade in only at their target position rather than a fabricated
+ *      ambient origin). Neither is a FieldCell; neither is drawn at all
+ *      when no story is active.
  */
 
 import type { LivingFieldConfig, FieldStratum } from "./config";
@@ -115,6 +133,7 @@ import {
 } from "./living-region-state";
 import { LIVING_REGION_CONFIG, resolveVerseStratum } from "./living-region";
 import { computeStoryOffset } from "./story-bridge";
+import { computeAmbientDimMultiplier, computeStoryOverlay } from "./story-bridge";
 import type { StoryState } from "./story-bridge-types";
 
 /** v0.6 diagonal wave, normalised 0..1. */
@@ -249,6 +268,16 @@ export function renderField(
     LIVING_REGION_CONFIG.opacity
   );
 
+  // Living Language Stories v0.2: identical for every cell this frame, so
+  // computed once here rather than once per cell -- same reasoning as
+  // livingRegionPeakMultiplier immediately above. Exactly 1 (no dimming)
+  // whenever no story is active.
+  const ambientDimMultiplier = computeAmbientDimMultiplier(
+    options.storyState,
+    t,
+    options.static === true
+  );
+
   for (const stratum of config.strata) {
     for (const scriptId of SCRIPT_IDS) {
       const weight = getScriptWeight(ACTIVE_CALIBRATION, scriptId);
@@ -307,7 +336,11 @@ export function renderField(
         );
         const op = Math.min(
           1,
-          opticalOp * expressionMultiplier * livingRegionMultiplier * (storyOffset?.opacityMultiplier ?? 1)
+          opticalOp *
+            expressionMultiplier *
+            livingRegionMultiplier *
+            (storyOffset?.opacityMultiplier ?? 1) *
+            ambientDimMultiplier
         );
         const renderX = cell.x + (storyOffset?.dx ?? 0);
         const renderY = cell.y + (storyOffset?.dy ?? 0);
@@ -327,5 +360,23 @@ export function renderField(
         }
       }
     }
+  }
+
+  // Living Language Stories v0.2: overlay pass, painted AFTER every
+  // ordinary cell so it sits visually on top. Exactly a no-op (zero draw
+  // calls) whenever no story is active -- computeStoryOverlay() returns
+  // `{ hero: null, phantoms: [] }` in that case, same as every other
+  // story-conditional term in this file.
+  const overlay = computeStoryOverlay(options.storyState, t, options.static === true);
+  for (const phantom of overlay.phantoms) {
+    ctx.font = `${phantom.fontWeight} ${phantom.fontSizePx}px ${family}`;
+    ctx.fillStyle = `rgba(${cr},${cg},${cb},${Math.min(1, phantom.opacity)})`;
+    ctx.fillText(phantom.text, phantom.x, phantom.y);
+  }
+  if (overlay.hero) {
+    const hero = overlay.hero;
+    ctx.font = `${hero.fontWeight} ${hero.fontSizePx}px ${family}`;
+    ctx.fillStyle = `rgba(${cr},${cg},${cb},${Math.min(1, hero.opacity)})`;
+    ctx.fillText(hero.text, hero.x, hero.y);
   }
 }
