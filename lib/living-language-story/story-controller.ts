@@ -1,38 +1,39 @@
 /**
- * Living Language Story — Story Controller
+ * Living Language Story — Story Controller (v0.2)
  * ----------------------------------------------------------------------------
- * Owns WHEN a story plays, WHAT text it forms, and WHICH cells participate.
- * Lives entirely outside lib/living-field/ -- it never touches a canvas,
- * never reads or writes FieldCell.x/y directly (only via the engine's own
- * read-only accessors), and never imports ambient-expression.ts or anything
- * else belonging to the Ambient Language Layer.
+ * Owns WHEN a story plays, WHAT text it forms, and WHICH cells/positions
+ * each grapheme fragment uses. Lives entirely outside lib/living-field/ --
+ * never touches a canvas, never reads or writes FieldCell.x/y directly
+ * (only via the engine's own read-only accessors), and never imports
+ * ambient-expression.ts or anything belonging to the Ambient Language
+ * Layer.
+ *
+ * v0.2 CHANGE OF GRAMMAR (superseding v0.1's pixel-mask silhouette): builds
+ * exactly four grapheme fragments via grapheme-source.ts instead of
+ * sampling a text mask and pairing hundreds of cells. text-mask.ts and
+ * glyph-assignment.ts are intentionally left unimported -- not deleted,
+ * per explicit direction, until this new grammar is visually accepted.
  *
  * ---------------------------------------------------------------------------
- * SINGLE ANIMATION CLOCK
+ * SINGLE ANIMATION CLOCK (unchanged principle from v0.1)
  * ---------------------------------------------------------------------------
- * This controller does NOT run a requestAnimationFrame loop of its own, and
- * never competes with LivingFieldEngine's existing render clock. It only
- * calls `engine.setStoryState(...)` a handful of times per story -- once per
- * phase transition (forming -> holding -> returning -> idle), each scheduled
- * with a plain setTimeout against the same fixed durations the Kernel's
- * story-bridge.ts uses for interpolation (story-bridge-types.ts's exported
- * constants -- one source of truth for both). Every frame IN BETWEEN those
- * transitions is painted by the engine's own already-running RAF loop, which
- * reads whatever StoryState is currently installed and asks
- * computeStoryOffset() where things should be at time `t`. There is
- * therefore exactly one animation clock in this system, the same one that
- * already drives wave/breath/expression/living-region.
+ * This controller still does not run a requestAnimationFrame loop of its
+ * own. It only calls `engine.setStoryState(...)` a handful of times per
+ * story -- once per phase transition -- each scheduled with a plain
+ * setTimeout against the same fixed durations story-bridge-types.ts
+ * exports. Every frame IN BETWEEN those transitions is painted by the
+ * engine's own already-running RAF loop, which asks story-bridge.ts's pure
+ * functions where things should be at time `t`.
  *
  * ---------------------------------------------------------------------------
- * LAYOUT-GENERATION SAFETY
+ * LAYOUT-GENERATION SAFETY (unchanged principle from v0.1)
  * ---------------------------------------------------------------------------
- * An assignment is only ever valid for the exact layout generation it was
- * built against. If a resize/DPR/viewport change rebuilds the layout while
- * a story is active, engine.rebuild() has already defensively cleared story
- * state (see engine.ts). This controller additionally checks
- * `engine.getLayoutGenerationId()` before each scheduled transition fires,
- * so a stale timer can never reinstate assignments captured from a layout
- * that no longer exists.
+ * A story's fragments are only ever valid for the exact layout generation
+ * they were built against. engine.rebuild() has already defensively
+ * cleared story state on any resize/DPR/viewport change; this controller
+ * additionally checks engine.getLayoutGenerationId() before each scheduled
+ * transition fires, so a stale timer can never reinstate fragments captured
+ * from a layout that no longer exists.
  */
 
 import type { LivingFieldEngine } from "@/lib/living-field/engine";
@@ -40,22 +41,36 @@ import {
   STORY_FORM_MS,
   STORY_HOLD_MS,
   STORY_RETURN_MS,
-  type StoryAssignment,
+  type StoryFragment,
   type StoryPhase,
+  type StoryState,
 } from "@/lib/living-field/story-bridge-types";
-import { sampleTextMask } from "./text-mask";
-import { buildStoryAssignments } from "./glyph-assignment";
+import { LIVING_FIELD_CONFIG } from "@/lib/living-field/config";
+import {
+  measureGraphemeTargets,
+  segmentGraphemes,
+  selectGraphemeSources,
+} from "./grapheme-source";
 
 export interface StoryControllerOptions {
   fontFamily: string;
-  fontWeight?: number;
-  /** Defaults to 12% of stage height if omitted. */
-  fontSizePx?: number;
-  /** Mask sampling grid spacing, px. Defaults to 6. */
-  sampleSpacingPx?: number;
+  /** Hero word font weight. Defaults to 700. */
+  heroFontWeight?: number;
+  /** Hero word font size, px. Defaults to 12% of the canvas's CSS height. */
+  heroFontSizePx?: number;
 }
 
 export type StoryControllerPhase = StoryPhase | "idle";
+
+/** Representative ambient font size used to size PHANTOM (not-found)
+ *  fragments so they blend with real ones -- the "near" stratum's own
+ *  fontSize, since it's 100% modern Tamil and the stratum a target
+ *  grapheme is most likely to actually be found in. Falls back to the
+ *  first configured stratum if "near" isn't present for some reason. */
+function representativeFragmentFontSizePx(): number {
+  const near = LIVING_FIELD_CONFIG.strata.find((s) => s.id === "near");
+  return (near ?? LIVING_FIELD_CONFIG.strata[0])?.fontSize ?? 16;
+}
 
 export class StoryController {
   private readonly engine: LivingFieldEngine;
@@ -82,10 +97,10 @@ export class StoryController {
 
   /**
    * Cancels any pending phase timers and returns the field to pure ambient
-   * state immediately. Safe to call from any phase, including mid-forming
-   * or mid-returning: because FieldCell.x/y were never mutated in the first
-   * place, clearing story state is always a complete, exact return to
-   * HOME -- there is nothing left to reconcile or restore.
+   * state immediately. Safe to call from any phase: because FieldCell.x/y
+   * were never mutated in the first place, clearing story state is always
+   * a complete, exact return to HOME -- there is nothing left to
+   * reconcile.
    */
   reset(): void {
     this.clearTimers();
@@ -105,35 +120,86 @@ export class StoryController {
     if (!stageSize) return;
 
     const generationId = this.engine.getLayoutGenerationId();
+    const centerX = stageSize.width / 2;
+    const centerY = stageSize.height / 2;
+    const heroFontWeight = this.options.heroFontWeight ?? 700;
+    const heroFontSizePx = this.options.heroFontSizePx ?? Math.round(stageSize.height * 0.12);
 
-    const maskPoints = sampleTextMask(text, stageSize.width, stageSize.height, {
-      fontFamily: this.options.fontFamily,
-      fontWeight: this.options.fontWeight,
-      fontSizePx: this.options.fontSizePx ?? Math.round(stageSize.height * 0.12),
-      sampleSpacingPx: this.options.sampleSpacingPx ?? 6,
-    });
-    if (maskPoints.length === 0) return;
-
-    const assignments = buildStoryAssignments(cells, maskPoints);
-    if (assignments.length === 0) return;
-
-    const assignmentMap = new Map<number, StoryAssignment>(
-      assignments.map((assignment) => [assignment.cellIndex, assignment])
+    const graphemes = segmentGraphemes(text);
+    const targets = measureGraphemeTargets(
+      text,
+      graphemes,
+      this.options.fontFamily,
+      heroFontWeight,
+      heroFontSizePx,
+      centerX,
+      centerY
     );
+    const sources = selectGraphemeSources(cells, graphemes, centerX, centerY);
+
+    const fragments: StoryFragment[] = graphemes.map((grapheme, i) => {
+      const source = sources[i];
+      if (!source.found) {
+        // Per explicit direction: never fabricate an ambient source. Log a
+        // dev-only note so this is visible while testing, without being a
+        // user-facing error -- the field genuinely might not contain this
+        // grapheme at this exact moment (best-effort, same philosophy as
+        // the Ambient Language Layer).
+        console.info(
+          `[living-language-story] grapheme "${grapheme}" not found in current layout -- using fade-in-only fallback, not a fabricated source.`
+        );
+      }
+      return {
+        grapheme,
+        source,
+        targetX: targets[i].x,
+        targetY: targets[i].y,
+      };
+    });
+
+    const fragmentByCellIndex = new Map<number, StoryFragment>();
+    for (const fragment of fragments) {
+      if (fragment.source.found) {
+        fragmentByCellIndex.set(fragment.source.cellIndex, fragment);
+      }
+    }
+
+    const hero = {
+      text,
+      centerX,
+      centerY,
+      fontSizePx: heroFontSizePx,
+      fontWeight: heroFontWeight,
+    };
+    const fragmentFontSizePx = representativeFragmentFontSizePx();
 
     this.activeGenerationId = generationId;
-    this.beginPhase("forming", assignmentMap, generationId);
+    this.beginPhase("forming", fragments, fragmentByCellIndex, hero, fragmentFontSizePx, generationId);
 
     this.timers.push(
       setTimeout(() => {
         if (!this.isStillValid(generationId)) return;
-        this.beginPhase("holding", assignmentMap, generationId);
+        this.beginPhase(
+          "holding",
+          fragments,
+          fragmentByCellIndex,
+          hero,
+          fragmentFontSizePx,
+          generationId
+        );
       }, STORY_FORM_MS)
     );
     this.timers.push(
       setTimeout(() => {
         if (!this.isStillValid(generationId)) return;
-        this.beginPhase("returning", assignmentMap, generationId);
+        this.beginPhase(
+          "returning",
+          fragments,
+          fragmentByCellIndex,
+          hero,
+          fragmentFontSizePx,
+          generationId
+        );
       }, STORY_FORM_MS + STORY_HOLD_MS)
     );
     this.timers.push(
@@ -160,14 +226,20 @@ export class StoryController {
 
   private beginPhase(
     phase: StoryPhase,
-    assignments: ReadonlyMap<number, StoryAssignment>,
+    fragments: readonly StoryFragment[],
+    fragmentByCellIndex: ReadonlyMap<number, StoryFragment>,
+    hero: StoryState["hero"],
+    fragmentFontSizePx: number,
     generationId: number
   ): void {
     this.setPhase(phase);
     this.engine.setStoryState({
       phase,
       phaseStartedAt: performance.now(),
-      assignments,
+      fragments,
+      fragmentByCellIndex,
+      hero,
+      fragmentFontSizePx,
       layoutGenerationId: generationId,
     });
   }
