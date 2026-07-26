@@ -51,7 +51,7 @@ export default function StoryTestPage() {
     const unsubscribe = onLivingFieldEngineReady((engine: LivingFieldEngine) => {
       const controller = new StoryController(engine, {
         fontFamily: resolveTamilFont(),
-        fontWeight: 700,
+        heroFontWeight: 700,
       });
       controller.setOnPhaseChange(setPhase);
       controllerRef.current = controller;
