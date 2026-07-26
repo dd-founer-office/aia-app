@@ -1,92 +1,114 @@
 /**
- * Living Field — Living Language Story Bridge
+ * Living Field — Living Language Story Bridge (v0.2)
  * ----------------------------------------------------------------------------
  * The ONLY thing the outside Living Language Story module touches inside the
  * Kernel's rendering path. It hands the engine a fully-decided StoryState
- * (which cells, which targets, which phase, when the phase started); this
- * module decides HOW to turn that into a per-frame render-time offset. The
- * story module never sees this math and never touches a canvas.
- *
- * ---------------------------------------------------------------------------
- * RESPONSIBILITY SPLIT (mirrors AmbientLanguageLayer.md's own table exactly)
- * ---------------------------------------------------------------------------
- * | Layer                          | Decides                          | Never touches            |
- * |---------------------------------|-----------------------------------|---------------------------|
- * | Living Language Story (outside) | WHEN to play/reset, WHAT text,    | Canvas, cell.x/cell.y,   |
- * |  (lib/living-language-story/)   | text-mask sampling, WHICH home    | rendering of any kind    |
- * |                                  | cells are assigned to WHICH point |                           |
- * | This bridge (Kernel)            | The exact interpolation curve     | Which text, vocabulary,  |
- * |  (story-bridge.ts)               | (progress 0..1) and how progress  | timing/phase-scheduling  |
- * |                                  | becomes a render-time dx/dy/      | decisions, mask sampling |
- * |                                  | opacity multiplier                |                           |
+ * (which graphemes, which sources, which targets, which phase, when the
+ * phase started); this module decides HOW to turn that into per-frame
+ * render-time values -- fragment position/opacity for real cells, and a
+ * separate hero/phantom overlay for everything that isn't a real cell.
  *
  * ---------------------------------------------------------------------------
  * WHY THIS DOES NOT REOPEN SPRINT 03C
  * ---------------------------------------------------------------------------
- * Sprint 03C's absolute rule ("no later [ambient] engine ever moves a
- * glyph") governs the AMBIENT system -- the always-on, never-opted-into
- * background field and its one existing semantic bridge
- * (ambient-expression.ts), which remains untouched by this file and stays
- * opacity-only exactly as before. This bridge is not another ambient
- * engine: it produces zero effect for every cell, on every page, unless a
- * caller has explicitly constructed and installed a StoryState via
- * LivingFieldEngine.setStoryState() -- which only
- * lib/living-language-story/story-controller.ts ever calls, and only from
- * the dedicated, explicitly opt-in /living-language/story-test route (see
- * that module's own header). No FieldCell.x or FieldCell.y is ever written
- * here or anywhere in this pass -- only read, via the `homeX`/`homeY` copy
- * captured once at story start (story-bridge-types.ts).
+ * Same guarantee as v0.1: no FieldCell.x or FieldCell.y is ever written
+ * here. computeStoryOffset() returns an ADDITIVE dx/dy the renderer applies
+ * only at the point of drawing a cell whose home coordinates are read, not
+ * mutated. The hero and phantom overlay glyphs painted by
+ * computeStoryOverlay() are not FieldCells at all -- they are a separate,
+ * explicitly opt-in draw pass that only exists while a caller has installed
+ * a StoryState, which no normal page ever does.
  *
  * ---------------------------------------------------------------------------
- * WHY THIS IS A PURE FUNCTION OF (state, cellIndex, t), NOT A CLASS
+ * SINGLE PROGRESS FUNCTION, MIRRORED FOR FORMING AND RETURNING
  * ---------------------------------------------------------------------------
- * Same reasoning as living-region-state.ts and ambient-expression.ts: no
- * wall-clock scheduling happens here (no setTimeout anywhere in this file).
- * Phase transitions are decided and scheduled entirely by the outside
- * story-controller, which calls setStoryState() at each transition; this
- * module only ever answers "given the state you already decided on, and
- * what time it is right now, where should this one cell render?"
+ * `progressFor()` maps phase+elapsed time to one number, 0..1: 0 means
+ * "fully home/ambient, no story visible," 1 means "fully formed hero, mid
+ * hold." Forming rises 0->1 over STORY_FORM_MS; holding is pinned at 1;
+ * returning FALLS 1->0 over STORY_RETURN_MS. Every other function in this
+ * file (fragment position, fragment opacity, hero opacity, ambient dim) is
+ * a pure function of that ONE progress value -- which means returning is
+ * automatically the exact visual mirror of forming, just fed a decreasing
+ * progress instead of an increasing one, with no separately-authored
+ * "release" animation to keep in sync by hand. This is what guarantees "no
+ * obvious visual cut between story-ended and ambient field": everything is
+ * continuous in progress, including the crossfade window itself.
  */
 
-import type { StoryCellOffset, StoryState } from "./story-bridge-types";
-import { STORY_FORM_MS, STORY_RETURN_MS } from "./story-bridge-types";
+import type {
+  StoryCellOffset,
+  StoryOverlay,
+  StoryOverlayGlyph,
+  StoryState,
+} from "./story-bridge-types";
+import { AMBIENT_DIM_FACTOR, STORY_FORM_MS, STORY_RETURN_MS } from "./story-bridge-types";
 
-/** Duplicated 2-line smoothstep primitive rather than importing
- *  ambient-expression.ts's private one -- the same intentional-duplication
- *  exception LivingKernelArchitecture.md already documents for
- *  natural-distribution.ts / affinity-engine.ts's hash utilities: this
- *  keeps that file's explicit "remains intact, untouched" guarantee literal
- *  (zero new imports into or out of it), for a two-line generic math
- *  primitive that carries no shared domain meaning. */
 function smoothstep(t: number): number {
   const c = t < 0 ? 0 : t > 1 ? 1 : t;
   return c * c * (3 - 2 * c);
 }
 
-/** Opacity multiplier at full formation (progress = 1), applied on top of
- *  whatever opacity the cell would already have -- same multiplicative
- *  composition point as `expression` and `livingRegion`. Deliberately much
- *  larger than Ambient Expression's 1.7x peak: this mode's whole purpose is
- *  a clearly LEGIBLE word, not a barely-discoverable ambient pulse, and the
- *  field's base opacities are low single digits before this multiplier.
- *  Final composed opacity is still clamped to 1 by the renderer, exactly as
- *  every other multiplicative term already is. */
-const TARGET_OPACITY_MULTIPLIER = 8;
+/** 0..1, 0 = fully home/ambient, 1 = fully formed hero. staticFrame
+ *  (reduced motion) collapses straight to one of the two endpoints per
+ *  phase -- no partial interpolation, since a static frame can't show
+ *  motion at all. */
+function progressFor(state: StoryState, t: number, staticFrame: boolean): number {
+  if (staticFrame) {
+    return state.phase === "returning" ? 0 : 1;
+  }
+  const elapsed = Math.max(0, t - state.phaseStartedAt);
+  if (state.phase === "forming") {
+    return smoothstep(Math.min(1, elapsed / STORY_FORM_MS));
+  }
+  if (state.phase === "holding") {
+    return 1;
+  }
+  // "returning"
+  return 1 - smoothstep(Math.min(1, elapsed / STORY_RETURN_MS));
+}
+
+/** Peak opacity multiplier a FOUND fragment cell reaches while gaining
+ *  presence, applied on top of whatever opacity it would already have --
+ *  same multiplicative composition point as `expression`/`livingRegion`.
+ *  Smaller than v0.1's silhouette multiplier (8x): now only four letters
+ *  are gaining presence, not carrying the whole word's legibility alone. */
+const FRAGMENT_PEAK_OPACITY_MULTIPLIER = 6;
+
+/** Fraction of progress spent purely converging/gaining presence before
+ *  the crossfade into hero typography begins. The remaining (1 -
+ *  this fraction) of progress is the crossfade window itself. */
+const CROSSFADE_START = 0.75;
+
+/** 0..1 envelope for a fragment's presence: rises 0->1 over
+ *  [0, CROSSFADE_START] (gaining presence while converging), then falls
+ *  1->0 over [CROSSFADE_START, 1] (crossfading into the hero). Symmetric
+ *  under progress-reversal, which is exactly what makes returning mirror
+ *  forming automatically. */
+function fragmentPresence01(progress: number): number {
+  if (progress <= CROSSFADE_START) {
+    return smoothstep(progress / CROSSFADE_START);
+  }
+  const fadeT = (progress - CROSSFADE_START) / (1 - CROSSFADE_START);
+  return 1 - smoothstep(fadeT);
+}
+
+/** 0..1 envelope for the hero word's own opacity: zero until
+ *  CROSSFADE_START, then rises 0->1 over the crossfade window -- the
+ *  mirror image of fragmentPresence01 during that same window, so the two
+ *  always sum to a stable, non-flickering total presence through the
+ *  crossfade rather than both being dim or both being bright at once. */
+function heroOpacity01(progress: number): number {
+  if (progress <= CROSSFADE_START) return 0;
+  const fadeT = (progress - CROSSFADE_START) / (1 - CROSSFADE_START);
+  return smoothstep(fadeT);
+}
 
 /**
- * Resolves one cell's current position/opacity contribution from Story
- * Mode. Returns `null` -- meaning "render exactly as if Story Mode did not
- * exist" -- whenever there is no active story, or this specific cell was
- * never one of the story's participants. Every caller must treat `null` as
- * "add 0, multiply by 1."
- *
- * `staticFrame` mirrors renderer.ts's existing `options.static` (prefers-
- * reduced-motion): rather than interpolate continuously, it resolves
- * directly to one of exactly two visual states -- fully formed (forming /
- * holding) or fully home (returning) -- since a static frame cannot show
- * motion at all. This is the "restrained transition" the spec calls for
- * under reduced motion, produced by this same pure function rather than a
- * second code path.
+ * Resolves ONE found-fragment cell's current position/opacity
+ * contribution. Returns `null` -- meaning "render exactly as if Story Mode
+ * did not exist" -- whenever there is no active story, or this cell was
+ * never one of the story's found fragments (every cell on every normal
+ * page, always).
  */
 export function computeStoryOffset(
   state: StoryState | null | undefined,
@@ -95,27 +117,86 @@ export function computeStoryOffset(
   staticFrame: boolean
 ): StoryCellOffset | null {
   if (!state) return null;
-  const assignment = state.assignments.get(cellIndex);
-  if (!assignment) return null;
+  const fragment = state.fragmentByCellIndex.get(cellIndex);
+  if (!fragment || fragment.source.found !== true) return null;
 
-  let progress: number; // 0 = at home, 1 = fully at target
-  if (staticFrame) {
-    progress = state.phase === "returning" ? 0 : 1;
-  } else {
-    const elapsed = Math.max(0, t - state.phaseStartedAt);
-    if (state.phase === "forming") {
-      progress = smoothstep(Math.min(1, elapsed / STORY_FORM_MS));
-    } else if (state.phase === "holding") {
-      progress = 1;
-    } else {
-      // "returning"
-      progress = 1 - smoothstep(Math.min(1, elapsed / STORY_RETURN_MS));
-    }
-  }
+  const progress = progressFor(state, t, staticFrame);
+  const presence = fragmentPresence01(progress);
+  // Continues converging through the full progress range (arrives right
+  // around the crossfade point) -- smoothstep(progress) directly, not the
+  // hump envelope, so motion and presence are independent: a fragment
+  // keeps travelling smoothly even as it starts to fade into the hero.
+  const travel = smoothstep(progress);
 
   return {
-    dx: (assignment.targetX - assignment.homeX) * progress,
-    dy: (assignment.targetY - assignment.homeY) * progress,
-    opacityMultiplier: 1 + progress * (TARGET_OPACITY_MULTIPLIER - 1),
+    dx: (fragment.targetX - fragment.source.homeX) * travel,
+    dy: (fragment.targetY - fragment.source.homeY) * travel,
+    opacityMultiplier: 1 + presence * (FRAGMENT_PEAK_OPACITY_MULTIPLIER - 1),
   };
+}
+
+/**
+ * Ambient dimming multiplier for every ORDINARY cell in the field (found
+ * fragments included -- their own large opacityMultiplier from
+ * computeStoryOffset() dominates regardless, so no special-casing is
+ * needed to keep them visible through this). Returns exactly 1 (no
+ * change) whenever there is no active story. Ramps with the same
+ * `progress` every other part of the story uses, so it never cuts
+ * abruptly and always fully relaxes back to 1 by the time Story Mode
+ * clears.
+ */
+export function computeAmbientDimMultiplier(
+  state: StoryState | null | undefined,
+  t: number,
+  staticFrame: boolean
+): number {
+  if (!state) return 1;
+  const progress = progressFor(state, t, staticFrame);
+  return 1 - progress * (1 - AMBIENT_DIM_FACTOR);
+}
+
+/**
+ * Resolves the hero word and any phantom (not-found) fragments for this
+ * frame -- the overlay draw pass, painted by the renderer AFTER its normal
+ * per-cell loop. Returns `{ hero: null, phantoms: [] }` whenever there is
+ * no active story, which every normal page's render call always is.
+ */
+export function computeStoryOverlay(
+  state: StoryState | null | undefined,
+  t: number,
+  staticFrame: boolean
+): StoryOverlay {
+  if (!state) return { hero: null, phantoms: [] };
+
+  const progress = progressFor(state, t, staticFrame);
+  const presence = fragmentPresence01(progress);
+  const heroOp = heroOpacity01(progress);
+
+  const phantoms: StoryOverlayGlyph[] = [];
+  for (const fragment of state.fragments) {
+    if (fragment.source.found) continue; // found fragments are real cells, painted by the per-cell loop
+    if (presence <= 0) continue;
+    phantoms.push({
+      text: fragment.grapheme,
+      x: fragment.targetX,
+      y: fragment.targetY,
+      fontSizePx: state.fragmentFontSizePx,
+      fontWeight: state.hero.fontWeight,
+      opacity: presence,
+    });
+  }
+
+  const hero: StoryOverlayGlyph | null =
+    heroOp > 0
+      ? {
+          text: state.hero.text,
+          x: state.hero.centerX,
+          y: state.hero.centerY,
+          fontSizePx: state.hero.fontSizePx,
+          fontWeight: state.hero.fontWeight,
+          opacity: heroOp,
+        }
+      : null;
+
+  return { hero, phantoms };
 }
