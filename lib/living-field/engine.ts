@@ -77,6 +77,23 @@
  * with a real reservation as of this commit (see components/field/
  * LivingField.tsx, unchanged) -- the engine is reachable, not yet reached.
  * Home page wiring is later commits (3B.2 onward), reviewed separately.
+ *
+ * Living Language Stories v0.1: `setStoryState()` is the one new public
+ * method, mirroring `setReservedVerse()`'s shape exactly -- store what was
+ * given, thread it into rendering, repaint immediately under reduced
+ * motion since there's no RAF loop to pick the change up on its own next
+ * frame otherwise. Three new READ-ONLY accessors (`getLayoutCells()`,
+ * `getLayoutGenerationId()`, `getCanvasCssSize()`) exist purely so the
+ * outside story-controller can build assignments without this class
+ * needing to know what a "story" is, the same way `expressWord()` lets the
+ * Ambient Language Layer act without this class knowing what a "word" is.
+ * `rebuild()` now also increments a generation counter and, if a story is
+ * active, clears it -- a resize/DPR/viewport change invalidates every
+ * captured home/target position, so the safest default is to end whatever
+ * story was in progress rather than let stale assignments render against a
+ * new layout. `components/field/LivingField.tsx` calls none of this new
+ * surface -- every existing page's engine instance has `storyState` at
+ * `null` for its entire lifetime, identical to before this pass.
  */
 
 import { LIVING_FIELD_CONFIG, type LivingFieldConfig } from "./config";
@@ -94,6 +111,8 @@ import {
   type LivingRegionState,
   type LivingRegionEvent,
 } from "./living-region-state";
+import type { FieldCell } from "./field-cell";
+import type { StoryState } from "./story-bridge-types";
 
 export interface LivingFieldEngineOptions {
   /** Resolved application font family for canvas text. */
@@ -134,6 +153,24 @@ export class LivingFieldEngine {
    *  `null` permanently, since the RAF loop advances state every frame
    *  instead. */
   private livingRegionTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Living Language Stories v0.1. `null` unless something has called
+   *  setStoryState() -- every page except the dedicated story-test route,
+   *  for the entire lifetime of this class. Purely stored state, read only
+   *  by renderField(); this class has no opinion about what a "story"
+   *  means, the same way it has no opinion about reservedVerse. */
+  private storyState: StoryState | null = null;
+
+  /** Incremented once per rebuild() call (i.e. once per layout build).
+   *  Lets an external caller confirm a StoryState / assignment set it built
+   *  against a previous layout is still current before acting on it. */
+  private layoutGenerationId = 0;
+
+  /** CSS pixel size of the canvas as of the last rebuild(), captured here
+   *  because the story-controller needs it (to size its offscreen text
+   *  mask to match) without reaching into DOM/style directly. */
+  private cssWidth = 0;
+  private cssHeight = 0;
 
   private readonly motionQuery: MediaQueryList | null;
   private readonly onMotionChange = (e: MediaQueryListEvent): void => {
@@ -205,6 +242,8 @@ export class LivingFieldEngine {
     this.canvas.style.width = `${w}px`;
     this.canvas.style.height = `${h}px`;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.cssWidth = w;
+    this.cssHeight = h;
 
     // Sprint 04A, Commit 2: `this.reservedVerse` is `null` unless something
     // has called setReservedVerse() -- so `?? undefined` here reproduces
@@ -218,6 +257,16 @@ export class LivingFieldEngine {
     // Sprint 03C: harmony metadata, consuming what affinity just computed.
     // Also once per layout build, never per frame (see emergent-harmony.ts).
     applyEmergentHarmony(this.layout.cells);
+
+    // Living Language Stories v0.1: every home/target position any active
+    // story captured belonged to the layout generation that just became
+    // stale. Every existing page has `storyState` at `null` already, so
+    // this is a no-op for them; the story-test route's own controller
+    // additionally guards its scheduled phase timers against the
+    // generation id below, but this clear is the unconditional safety net
+    // regardless of what that controller does.
+    this.layoutGenerationId++;
+    this.storyState = null;
 
     if (this.running && this.reducedMotion) this.renderStatic();
   }
@@ -311,6 +360,46 @@ export class LivingFieldEngine {
     return applyAmbientExpression(this.layout.cells, graphemes, performance.now());
   }
 
+  /**
+   * Living Language Stories v0.1. Stores (or clears, via `null`) the
+   * current story render state, read by renderField() every frame via
+   * story-bridge.ts's computeStoryOffset(). Purely a data setter -- this
+   * method does not decide phases, timing, or assignments; it only stores
+   * what a caller (story-controller.ts, the ONLY caller as of this commit)
+   * already decided, the same shape as setReservedVerse().
+   *
+   * Repaints immediately under reduced motion, since there is no RAF loop
+   * running to pick up the change on its own next frame the way normal
+   * motion's startLoop() tick already will.
+   */
+  setStoryState(state: StoryState | null): void {
+    this.storyState = state;
+    if (this.running && this.reducedMotion) this.renderStatic();
+  }
+
+  /** Read-only. `null` before the first rebuild(); otherwise the current
+   *  layout's cells, in the exact order/indices StoryAssignment.cellIndex
+   *  refers to. The caller must treat this as read-only -- mutating a
+   *  returned cell's x/y would violate Sprint 03C's constitution exactly as
+   *  much as this engine mutating it itself would. */
+  getLayoutCells(): readonly FieldCell[] | null {
+    return this.layout?.cells ?? null;
+  }
+
+  /** Read-only. Increments once per rebuild() call -- lets a caller confirm
+   *  a previously-built assignment set still matches the current layout
+   *  before acting on it. */
+  getLayoutGenerationId(): number {
+    return this.layoutGenerationId;
+  }
+
+  /** Read-only. CSS pixel size of the canvas as of the last rebuild(), or
+   *  `null` before the first one. */
+  getCanvasCssSize(): { width: number; height: number } | null {
+    if (this.cssWidth <= 0 || this.cssHeight <= 0) return null;
+    return { width: this.cssWidth, height: this.cssHeight };
+  }
+
   /** Stop rendering and release all listeners. Safe to call repeatedly. */
   destroy(): void {
     this.running = false;
@@ -348,6 +437,7 @@ export class LivingFieldEngine {
         renderField(this.ctx, this.layout, t, this.config, {
           fontFamily: this.fontFamily,
           livingRegionState: this.livingRegionState,
+          storyState: this.storyState,
         });
       }
     };
@@ -367,6 +457,7 @@ export class LivingFieldEngine {
       fontFamily: this.fontFamily,
       static: true,
       livingRegionState: this.livingRegionState,
+      storyState: this.storyState,
     });
   }
 
