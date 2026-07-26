@@ -80,6 +80,21 @@
  * sustained, gesture-driven state a person actively holds open. Computed
  * once per frame per stratum (the peak-multiplier lookup), not once per
  * cell -- see the top of renderField()'s stratum loop.
+ *
+ * Living Language Stories v0.1: one FINAL, explicitly opt-in term, sourced
+ * from an optional `options.storyState` (story-bridge-types.ts) via
+ * story-bridge.ts's `computeStoryOffset()`. This is the ONLY place in this
+ * file that ever reads a position other than `cell.x`/`cell.y` themselves --
+ * `cell.x`/`cell.y` are still never written anywhere, only read, exactly as
+ * Sprint 03C's constitution requires. `computeStoryOffset()` returns `null`
+ * (added position offset of 0, opacity multiplier of 1) for every cell on
+ * every page that never installs a StoryState -- which, as of this commit,
+ * is every page except the dedicated /living-language/story-test route (see
+ * that route and lib/living-language-story/story-controller.ts, the only
+ * caller of LivingFieldEngine.setStoryState()). Applied after every other
+ * term, same reasoning as Living Region: not skipped on the static frame,
+ * since computeStoryOffset() has its own explicit two-state behaviour for
+ * reduced motion (see its own header).
  */
 
 import type { LivingFieldConfig, FieldStratum } from "./config";
@@ -99,6 +114,8 @@ import {
   type LivingRegionState,
 } from "./living-region-state";
 import { LIVING_REGION_CONFIG, resolveVerseStratum } from "./living-region";
+import { computeStoryOffset } from "./story-bridge";
+import type { StoryState } from "./story-bridge-types";
 
 /** v0.6 diagonal wave, normalised 0..1. */
 export function wavePhase01(
@@ -192,6 +209,10 @@ export interface RenderOptions {
    *  "prefers-reduced-motion" everywhere else in this file); there is no
    *  separate reducedMotion flag on this interface. */
   livingRegionState?: LivingRegionState | null;
+  /** Living Language Stories v0.1: omitted (or `null`) on every page except
+   *  the dedicated /living-language/story-test route -- see this file's
+   *  header. */
+  storyState?: StoryState | null;
 }
 
 /**
@@ -239,7 +260,8 @@ export function renderField(
       // unused on those iterations.
       ctx.font = `${effectiveWeight} ${effectiveSize}px ${family}`;
 
-      for (const cell of layout.cells) {
+      for (let cellIndex = 0; cellIndex < layout.cells.length; cellIndex++) {
+        const cell = layout.cells[cellIndex];
         if (cell.stratum !== stratum || cell.scriptId !== scriptId) continue;
 
         const baseOp = options.static
@@ -272,18 +294,34 @@ export function renderField(
           livingRegionPeakMultiplier,
           options.static === true
         );
-        const op = Math.min(1, opticalOp * expressionMultiplier * livingRegionMultiplier);
+        // Living Language Stories v0.1: `null` on every page that never
+        // installs a story (options.storyState omitted) -- dx/dy default to
+        // 0 and the multiplier to 1, so renderX/renderY below are always
+        // exactly cell.x/cell.y in that case. cell.x/cell.y themselves are
+        // never written to, here or anywhere else -- only read.
+        const storyOffset = computeStoryOffset(
+          options.storyState,
+          cellIndex,
+          t,
+          options.static === true
+        );
+        const op = Math.min(
+          1,
+          opticalOp * expressionMultiplier * livingRegionMultiplier * (storyOffset?.opacityMultiplier ?? 1)
+        );
+        const renderX = cell.x + (storyOffset?.dx ?? 0);
+        const renderY = cell.y + (storyOffset?.dy ?? 0);
 
         ctx.fillStyle = `rgba(${cr},${cg},${cb},${op})`;
         if (cell.glyph.kind === "text") {
-          ctx.fillText(cell.glyph.value, cell.x, cell.y);
+          ctx.fillText(cell.glyph.value, renderX, renderY);
         } else {
           // kind === "path" (Vatteluttu). Optical calibration still applies
           // via `op` (opacity) and `effectiveSize` (path scale) above --
           // just no stroke/outline, per this module's documented rule
           // interpretation.
           ctx.save();
-          ctx.translate(cell.x, cell.y);
+          ctx.translate(renderX, renderY);
           drawPathGlyph(ctx, cell.glyph.value, effectiveSize);
           ctx.restore();
         }
