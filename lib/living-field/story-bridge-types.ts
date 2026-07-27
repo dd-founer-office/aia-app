@@ -1,52 +1,77 @@
 /**
- * Living Field — Living Language Story Bridge Types (v0.2)
+ * Living Field — Living Language Story Bridge Types (v0.3)
  * ----------------------------------------------------------------------------
- * Co-located inside lib/living-field/ for the same reason
- * ambient-expression-types.ts is: the Kernel's renderer needs to know the
- * *shape* of this state to paint it, even though the module that decides
- * WHEN a story plays and WHICH graphemes/cells participate
- * (lib/living-language-story/) lives entirely outside the Kernel.
+ * v0.3 CHANGE OF GRAMMAR (superseding v0.2's grapheme-matching approach,
+ * grapheme-source.ts): a story no longer searches the field for cells whose
+ * EXISTING glyph happens to match a target grapheme. On a real mobile
+ * layout, empirically, all four target graphemes being simultaneously
+ * present was close to a 0% occurrence across independent trials -- so
+ * "found: false" phantom fragments (fading in with no journey at all) were
+ * the COMMON case, not the rare fallback, which is the real root cause of
+ * "only one performer had a convincing journey."
  *
- * v0.2 CHANGE OF GRAMMAR (superseding v0.1's pixel-mask silhouette):
- * a story is now exactly four grapheme FRAGMENTS (வா / ழ் / த் / து for the
- * current proof) converging toward the geometry of the correctly-shaped
- * final word, crossfading into a single hero typography layer at the end
- * of formation -- not hundreds of ambient cells forming a silhouette.
- * text-mask.ts and glyph-assignment.ts (the v0.1 mechanism) are UNUSED by
- * this state shape and are not imported here.
+ * v0.3 instead treats ANY ordinary field cell as eligible to become ANY
+ * performer: Story Mode selects four cells purely on visual choreography
+ * (lib/living-language-story/performer-selection.ts) and gives each a
+ * TEMPORARY semantic identity for the duration of the story. This means
+ * every StoryFragment is now always a real, on-screen cell -- there is no
+ * more "found: false" case, and consequently no more phantom overlay
+ * fragments at all. The only overlay glyph remaining is the hero word
+ * itself, during the brief crossfade window.
  *
  * CONSTITUTIONAL GUARANTEE UNCHANGED: nothing in this file, or anything
- * that consumes it, ever writes to FieldCell.x or FieldCell.y. `homeX`/
- * `homeY` below are a read-only COPY captured once at story start, exactly
- * as in v0.1.
+ * that consumes it, ever writes to FieldCell.x, FieldCell.y, or
+ * FieldCell.glyph. `homeX`/`homeY`/`homeGlyph` are read-only COPIES
+ * captured once at story start; the renderer resolves a temporary override
+ * only at the point of drawing a specific frame, never touching the
+ * underlying cell.
+ *
+ * ---------------------------------------------------------------------------
+ * SIX-STAGE GRAMMAR
+ * ---------------------------------------------------------------------------
+ * FIELD -> AWAKENING -> APPROACHING -> FORMING_HERO -> HOLDING -> RELEASING
+ * -> RETURNING -> FIELD
+ *
+ * The "FIELD" bookends are simply the absence of a StoryState (`null`) --
+ * not phases this file names. The six real phases are StoryPhase below.
+ * AWAKENING + APPROACHING + FORMING_HERO together form one continuous,
+ * monotonically rising "forming" progress (0..1); RELEASING + RETURNING
+ * together form the mirrored, monotonically falling "returning" progress
+ * (1..0) -- see story-bridge.ts's progressFor() for exactly how elapsed
+ * real time within each phase maps to that shared progress value.
  */
 
-/** Which leg of the LIVING FIELD -> WORD -> LIVING FIELD cycle is active. */
-export type StoryPhase = "forming" | "holding" | "returning";
+import type { FieldStratum } from "./config";
+
+export type StoryPhase =
+  | "awakening"
+  | "approaching"
+  | "formingHero"
+  | "holding"
+  | "releasing"
+  | "returning";
 
 /**
- * One grapheme's source. `found: true` means a real, currently on-screen
- * FieldCell was located whose glyph is an exact match for this grapheme
- * (see grapheme-source.ts) -- `cellIndex` is that cell's index into the
- * FieldLayout.cells array this story was built against, a fast lookup key
- * for this layout generation only, never a permanent identity.
- *
- * `found: false` means no matching cell exists anywhere in the current
- * layout. Per explicit direction, this is NEVER papered over with a
- * fabricated ambient source -- the fragment instead fades in directly at
- * its target position (see story-bridge.ts's computeStoryOverlay), and
- * story-controller.ts logs a console dev note when this happens.
+ * One performer's complete story participation. Always a real, currently
+ * on-screen cell -- there is no "not found" case in v0.3 (see this file's
+ * header). `homeGlyph` is a read-only snapshot of what that cell was
+ * ambiently showing at the moment it was chosen as a performer; `grapheme`
+ * (the storyGlyph) is what it temporarily displays instead while
+ * sufficiently present to be legible -- see story-bridge.ts's glyph-swap
+ * threshold for exactly when that substitution (and its reversal) occurs.
  */
-export type StoryFragmentSource =
-  | { found: true; cellIndex: number; homeX: number; homeY: number }
-  | { found: false };
-
-/** One grapheme's full story participation: its text, its source, and
- *  where it's converging to (derived from the shaped final word's own
- *  metrics -- see grapheme-source.ts's measureGraphemeTargets()). */
 export interface StoryFragment {
+  cellIndex: number;
+  homeX: number;
+  homeY: number;
+  homeGlyph: string;
+  /** The stratum this cell belonged to at selection time -- captured so
+   *  the renderer can compute a per-performer peak scale (targeting the
+   *  hero's own font size from THIS specific starting size, not a fixed
+   *  global multiplier) without needing to re-look-up the cell's stratum
+   *  every frame. */
+  homeStratum: FieldStratum;
   grapheme: string;
-  source: StoryFragmentSource;
   targetX: number;
   targetY: number;
 }
@@ -55,7 +80,12 @@ export interface StoryFragment {
  *  browser-shaped fillText call that becomes the unmistakable hero during
  *  hold. Centred at (centerX, centerY) with textAlign "center" /
  *  textBaseline "middle", matching what measureGraphemeTargets() assumed
- *  when it computed each fragment's targetX/targetY. */
+ *  when it computed each fragment's targetX/targetY. Font weight is
+ *  intentionally NOT interpolated anywhere in this v0.1 proof -- performers
+ *  render at their home stratum's normal weight throughout; only position,
+ *  scale, opacity, and draw-order hierarchy carry the depth journey, per
+ *  explicit direction to prove those fundamentals before introducing
+ *  another optical variable. */
 export interface StoryHeroGeometry {
   text: string;
   centerX: number;
@@ -70,81 +100,155 @@ export interface StoryHeroGeometry {
  *  bit-identical rendering to before this feature existed. */
 export interface StoryState {
   phase: StoryPhase;
-  /** Engine clock time (same clock as the `t` renderField already
-   *  receives) at which the CURRENT phase began. */
+  /** Engine clock time (same clock renderField already receives) at which
+   *  the CURRENT phase began. Used only to detect phase-transition timing
+   *  edge cases; the actual progress calculation uses the two anchors
+   *  below, not this field, since progress must stay continuous ACROSS
+   *  the awakening/approaching/formingHero sub-phases (and, mirrored,
+   *  across releasing/returning) rather than resetting at each one. */
   phaseStartedAt: number;
-  /** All four fragments, in target left-to-right order, including any
-   *  `found: false` ones -- consumed by the overlay draw pass
-   *  (story-bridge.ts's computeStoryOverlay) for phantom fade-in-only
-   *  fragments and by the renderer's per-cell loop (via
-   *  fragmentByCellIndex below) for found ones. */
+  /** Engine clock time at which "awakening" began -- the anchor the rising
+   *  (forming-side) progress is computed against, unchanged across
+   *  awakening -> approaching -> formingHero. */
+  formingStartedAt: number;
+  /** Engine clock time at which "releasing" began -- the anchor the
+   *  falling (return-side) progress is computed against, unchanged across
+   *  releasing -> returning. Irrelevant (any value) while phase is one of
+   *  the forming-side three; only read once phase is releasing/returning. */
+  returningStartedAt: number;
+  /** All four performers, in final left-to-right target order (i.e.
+   *  fragments[0] is the leftmost target, matching the hero word's own
+   *  reading order) -- see performer-selection.ts's
+   *  assignPerformersToTargets(). */
   fragments: readonly StoryFragment[];
-  /** Keyed by StoryFragmentSource.cellIndex, O(1) lookup for the renderer's
-   *  per-cell loop, which iterates every on-screen cell every frame. Only
-   *  ever contains `found: true` fragments -- a phantom fragment has no
-   *  cellIndex and is never in this map. */
+  /** Keyed by StoryFragment.cellIndex, O(1) lookup for the renderer's
+   *  per-cell loop, which iterates every on-screen cell every frame. */
   fragmentByCellIndex: ReadonlyMap<number, StoryFragment>;
   hero: StoryHeroGeometry;
-  /** Font size (px) a FOUND fragment's home stratum would normally use --
-   *  passed through so a PHANTOM (not-found) fragment can be sized to
-   *  match real ambient glyphs rather than guessing a fraction of the
-   *  hero's own (much larger) size. See story-bridge.ts's
-   *  computeStoryOverlay(). */
-  fragmentFontSizePx: number;
-  /** The layout generation this story's fragments were captured against.
-   *  engine.ts's rebuild() is what actually enforces that a rebuild clears
-   *  story state; this field lets a caller confirm a StoryState it's
-   *  holding onto is still current before doing anything with it. */
+  /** This story's actual timing configuration -- captured once at story
+   *  start (reflecting whatever the dev-only sliders were set to when Play
+   *  was pressed), not re-read from a live/mutable source. Every progress
+   *  calculation in story-bridge.ts reads this rather than a module-level
+   *  constant, so two different Play presses with different slider
+   *  settings never interfere with each other mid-story. */
+  timing: StoryTimingConfig;
+  /** This story's actual ambient-dim factor, captured the same way. */
+  ambientDimFactor: number;
+  /** The layout generation this story's fragments were captured against --
+   *  see engine.ts's rebuild()/getLayoutGenerationId() for how a stale
+   *  story is defensively cleared on any resize/DPR change. */
   layoutGenerationId: number;
 }
 
-/** What the bridge's pure per-cell function resolves to for a FOUND
- *  fragment cell: an ADDITIVE position offset (never a replacement of
- *  cell.x/cell.y) and an opacity multiplier, composed into the renderer's
- *  existing pipeline exactly where `expression`'s and `livingRegion`'s
- *  multipliers already are. */
-export interface StoryCellOffset {
+/** What the bridge's pure per-cell function resolves to for a performing
+ *  cell: an ADDITIVE position offset (never a replacement of cell.x/
+ *  cell.y), a scale multiplier (1.0 = home/ambient size), an opacity
+ *  multiplier, and the glyph text to actually draw this frame (which may
+ *  differ from the cell's own ambient glyph -- see `glyphOverride`).
+ *  Composed into the renderer's existing pipeline exactly where
+ *  `expression`'s and `livingRegion`'s multipliers already are. */
+export interface StoryCellRenderState {
   dx: number;
   dy: number;
+  scale: number;
   opacityMultiplier: number;
+  /** The glyph text to draw for this cell THIS frame -- either the cell's
+   *  own homeGlyph (before the awaken-time swap, or after the return-time
+   *  swap-back) or the storyGlyph (grapheme), during the window in between.
+   *  Never both -- see story-bridge.ts's resolveGlyphText() for the single
+   *  instantaneous swap point in each direction. */
+  glyphOverride: string;
 }
 
-/** One overlay glyph to paint OUTSIDE the normal per-cell loop: either a
- *  phantom (not-found) fragment fading in/out at its target position, or
- *  the hero word itself. Both use the field's own colour so they read as
- *  part of the same visual world, per explicit direction. */
-export interface StoryOverlayGlyph {
-  text: string;
-  x: number;
-  y: number;
-  fontSizePx: number;
-  fontWeight: number;
-  opacity: number;
-}
-
+/** One overlay glyph painted OUTSIDE the normal per-cell loop: the hero
+ *  word itself, during the brief crossfade window. Uses the field's own
+ *  colour so it reads as part of the same visual world, per explicit
+ *  direction. There are no more "phantom" overlay fragments in v0.3 --
+ *  every performer is always a real cell, painted by the per-cell loop. */
 export interface StoryOverlay {
-  hero: StoryOverlayGlyph | null;
-  phantoms: readonly StoryOverlayGlyph[];
+  hero: {
+    text: string;
+    x: number;
+    y: number;
+    fontSizePx: number;
+    fontWeight: number;
+    opacity: number;
+  } | null;
 }
-
-/** Phase durations, ms. Within the spec's 2.5-3s form / 2s hold / 2.5-3s
- *  return targets. Exported so the outside story-controller can schedule
- *  its phase-transition timers against the exact same numbers the bridge
- *  uses for interpolation -- one source of truth, not two copies that
- *  could drift apart. */
-export const STORY_FORM_MS = 2800;
-export const STORY_HOLD_MS = 2200;
-export const STORY_RETURN_MS = 2800;
 
 /**
- * Ambient dimming factor applied to the REST of the field (every ordinary
- * cell, participating or not) while a story is at full presence (progress
- * = 1, i.e. throughout HOLD). 1.0 = no dimming at all; lower = more
- * dimming. Deliberately conservative per explicit direction ("subtle...
- * the field must remain visibly present and alive throughout... only a
- * restrained reduction") -- tune this one constant to adjust, nothing else
- * needs to change. Ramped in/out smoothly with the same progress curve
- * every other part of the story uses (see story-bridge.ts), never a hard
- * cut.
+ * Phase durations, ms -- all tunable via the story-test page's dev-only
+ * sliders (see app/living-language/story-test/page.tsx); these are the
+ * defaults, chosen to land near the approved ~14s total proof timeline.
+ * Exported so the outside story-controller can schedule its
+ * phase-transition timers against the exact same numbers the bridge uses
+ * for interpolation -- one source of truth, not two copies that could
+ * drift apart.
  */
-export const AMBIENT_DIM_FACTOR = 0.88;
+export const DEFAULT_AWAKENING_MS = 1500;
+export const DEFAULT_APPROACHING_MS = 3000;
+export const DEFAULT_FORMING_HERO_MS = 1000;
+export const DEFAULT_HOLDING_MS = 2500;
+export const DEFAULT_RELEASING_MS = 1000;
+export const DEFAULT_RETURNING_MS = 3000;
+
+export interface StoryTimingConfig {
+  awakeningMs: number;
+  approachingMs: number;
+  formingHeroMs: number;
+  holdingMs: number;
+  releasingMs: number;
+  returningMs: number;
+}
+
+export const DEFAULT_STORY_TIMING: StoryTimingConfig = {
+  awakeningMs: DEFAULT_AWAKENING_MS,
+  approachingMs: DEFAULT_APPROACHING_MS,
+  formingHeroMs: DEFAULT_FORMING_HERO_MS,
+  holdingMs: DEFAULT_HOLDING_MS,
+  releasingMs: DEFAULT_RELEASING_MS,
+  returningMs: DEFAULT_RETURNING_MS,
+};
+
+/**
+ * Reveal progress crossing this threshold (0..1, on the shared forming/
+ * returning progress scale -- see story-bridge.ts's progressFor()) is when
+ * the glyph identity swap happens: homeGlyph -> storyGlyph on the way up
+ * (during awakening, while progress is still well below this value's
+ * corresponding presence), storyGlyph -> homeGlyph on the way down (late in
+ * returning, mirrored). Deliberately low -- the swap must happen while the
+ * performer is still meaningfully sub-legible, per explicit direction
+ * ("never render both identities... the swap itself must be
+ * imperceptible").
+ */
+export const GLYPH_SWAP_PRESENCE_THRESHOLD = 0.12;
+
+/** Where, on the shared forming-side progress (0..1 across awakening +
+ *  approaching + formingHero combined), the crossfade into the literal
+ *  hero fillText begins. Deliberately close to 1 -- performers arrive
+ *  already close to the hero's own scale (see story-bridge.ts's
+ *  per-performer peak-scale calculation), so only a minimal crossfade
+ *  window is needed for correct Tamil shaping, not the wide window v0.2
+ *  used before that scale-matching existed. */
+export const CROSSFADE_START = 0.92;
+
+/** Peak performer scale is computed per-performer at story start (hero
+ *  fontSizePx / that performer's own home stratum fontSizePx) -- see
+ *  story-controller.ts. This constant is a SAFETY CEILING only, guarding
+ *  against a degenerate case (an extremely small home stratum font paired
+ *  with an extremely large hero font) producing an implausibly large scale
+ *  multiplier; it is not the normal operating value. */
+export const MAX_PERFORMER_SCALE = 8;
+
+/**
+ * Ambient dimming multiplier applied to every ORDINARY (non-performer) cell
+ * while a story is at full presence (progress = 1, throughout HOLDING).
+ * 1.0 = no dimming at all; lower = more dimming. Deliberately conservative
+ * per explicit direction ("the field remains visible behind it... only
+ * slightly quieter... do not darken the environment -- hierarchy should
+ * come from depth and presence, not from suppressing the background").
+ * Tunable via the story-test page's dev slider. Ramped in/out with the same
+ * shared progress every other part of the story uses, so it never cuts
+ * abruptly.
+ */
+export const DEFAULT_AMBIENT_DIM_FACTOR = 0.92;
