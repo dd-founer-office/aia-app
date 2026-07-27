@@ -73,6 +73,7 @@ export default function StoryTestPage() {
   const [ready, setReady] = useState(false);
   const [timing, setTiming] = useState<StoryTimingConfig>(DEFAULT_STORY_TIMING);
   const [ambientDimFactor, setAmbientDimFactor] = useState(DEFAULT_AMBIENT_DIM_FACTOR);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onLivingFieldEngineReady((engine: LivingFieldEngine) => {
@@ -102,57 +103,72 @@ export default function StoryTestPage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-end gap-4 pb-12 px-6">
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-sm text-neutral-500">
-        <span>Living Language Story — v0.3 proof · phase: {phase}</span>
-        <span className="text-xs text-neutral-400">total: {(totalMs / 1000).toFixed(1)}s</span>
+      {/* Phase/timing readout -- top-RIGHT corner, small, well clear of the
+          centre stage where performers converge and the hero word forms. */}
+      <div className="fixed top-4 right-4 flex flex-col items-end gap-0.5 text-xs text-neutral-500 pointer-events-none">
+        <span>v0.3 · phase: {phase}</span>
+        <span className="text-neutral-400">total: {(totalMs / 1000).toFixed(1)}s</span>
       </div>
 
-      {/* Dev-only tuning panel -- explicitly not production UI, gated
-          behind this route only. */}
-      <div className="fixed top-24 left-1/2 -translate-x-1/2 w-72 max-h-[55vh] overflow-y-auto rounded-2xl border border-neutral-200 bg-white/90 backdrop-blur px-4 py-3 flex flex-col gap-3 text-xs">
-        {TIMING_SLIDERS.map(({ key, label, min, max, step }) => (
-          <label key={key} className="flex flex-col gap-1">
+      {/* Dev-only tuning panel -- collapsed by default so it never blocks
+          the visual proof; toggle lives in the top-LEFT corner, and the
+          panel itself only ever occupies the left edge, never the centre,
+          so it can stay open while watching Play if wanted. Explicitly
+          not production UI, gated behind this route only. */}
+      <button
+        type="button"
+        onClick={() => setPanelOpen((v) => !v)}
+        className="fixed top-4 left-4 z-10 rounded-full border border-neutral-300 bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-600"
+      >
+        {panelOpen ? "Hide tuning ▲" : "Tuning ▼"}
+      </button>
+
+      {panelOpen && (
+        <div className="fixed top-14 left-4 w-64 max-h-[70vh] overflow-y-auto rounded-2xl border border-neutral-200 bg-white/95 backdrop-blur px-4 py-3 flex flex-col gap-3 text-xs shadow-lg">
+          {TIMING_SLIDERS.map(({ key, label, min, max, step }) => (
+            <label key={key} className="flex flex-col gap-1">
+              <span className="flex justify-between text-neutral-600">
+                <span>{label}</span>
+                <span>{timing[key]}ms</span>
+              </span>
+              <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={timing[key]}
+                onChange={(e) =>
+                  setTiming((prev) => ({ ...prev, [key]: Number(e.target.value) }))
+                }
+              />
+            </label>
+          ))}
+          <label className="flex flex-col gap-1">
             <span className="flex justify-between text-neutral-600">
-              <span>{label}</span>
-              <span>{timing[key]}ms</span>
+              <span>Ambient dim factor</span>
+              <span>{ambientDimFactor.toFixed(2)}</span>
             </span>
             <input
               type="range"
-              min={min}
-              max={max}
-              step={step}
-              value={timing[key]}
-              onChange={(e) =>
-                setTiming((prev) => ({ ...prev, [key]: Number(e.target.value) }))
-              }
+              min={0.5}
+              max={1}
+              step={0.01}
+              value={ambientDimFactor}
+              onChange={(e) => setAmbientDimFactor(Number(e.target.value))}
             />
           </label>
-        ))}
-        <label className="flex flex-col gap-1">
-          <span className="flex justify-between text-neutral-600">
-            <span>Ambient dim factor</span>
-            <span>{ambientDimFactor.toFixed(2)}</span>
-          </span>
-          <input
-            type="range"
-            min={0.5}
-            max={1}
-            step={0.01}
-            value={ambientDimFactor}
-            onChange={(e) => setAmbientDimFactor(Number(e.target.value))}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            setTiming(DEFAULT_STORY_TIMING);
-            setAmbientDimFactor(DEFAULT_AMBIENT_DIM_FACTOR);
-          }}
-          className="text-neutral-400 underline self-start"
-        >
-          reset sliders to defaults
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => {
+              setTiming(DEFAULT_STORY_TIMING);
+              setAmbientDimFactor(DEFAULT_AMBIENT_DIM_FACTOR);
+            }}
+            className="text-neutral-400 underline self-start"
+          >
+            reset sliders to defaults
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-3">
         <button
