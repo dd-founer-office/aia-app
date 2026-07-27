@@ -81,38 +81,37 @@
  * once per frame per stratum (the peak-multiplier lookup), not once per
  * cell -- see the top of renderField()'s stratum loop.
  *
- * Living Language Stories v0.1: one FINAL, explicitly opt-in term, sourced
- * from an optional `options.storyState` (story-bridge-types.ts) via
- * story-bridge.ts's `computeStoryOffset()`. This is the ONLY place in this
- * file that ever reads a position other than `cell.x`/`cell.y` themselves --
- * `cell.x`/`cell.y` are still never written anywhere, only read, exactly as
- * Sprint 03C's constitution requires. `computeStoryOffset()` returns `null`
- * (added position offset of 0, opacity multiplier of 1) for every cell on
- * every page that never installs a StoryState -- which, as of this commit,
- * is every page except the dedicated /living-language/story-test route (see
- * that route and lib/living-language-story/story-controller.ts, the only
- * caller of LivingFieldEngine.setStoryState()). Applied after every other
- * term, same reasoning as Living Region: not skipped on the static frame,
- * since computeStoryOffset() has its own explicit two-state behaviour for
- * reduced motion (see its own header).
+ * Living Language Stories v0.1 introduced the general principle this file
+ * still follows: an explicitly opt-in, `options.storyState`-gated term,
+ * applied after every other term, with its own two-state reduced-motion
+ * behaviour rather than being bypassed on the static frame. The specific
+ * mechanism has since evolved twice (v0.2's grapheme-fragment grammar, then
+ * v0.3's performer grammar below) -- see story-bridge.ts's own header for
+ * that history if useful context.
  *
- * Living Language Stories v0.2 (grapheme-fragment grammar, superseding
- * v0.1's silhouette): two more additions, both still exactly as opt-in as
- * the above.
+ * Living Language Stories v0.3 (performer-based grammar, superseding v0.2's
+ * grapheme-fragment grammar): a story no longer requires the field to
+ * happen to contain a matching glyph. ANY ordinary cell can become ANY
+ * performer -- Story Mode gives a chosen cell a TEMPORARY glyph override
+ * (`glyphOverride`) alongside its existing position offset and a NEW scale
+ * multiplier. Three renderer-visible consequences:
  *
- *   1. computeAmbientDimMultiplier() -- one more multiplicative term in the
- *      SAME per-cell opacity chain, applied to every ordinary cell
- *      (participating fragment or not). Returns exactly 1 (no dimming) when
- *      no story is active. Deliberately subtle (see
- *      story-bridge-types.ts's AMBIENT_DIM_FACTOR) -- the field must stay
- *      visibly alive throughout, per explicit direction.
- *   2. computeStoryOverlay() -- painted in a SEPARATE pass after the normal
- *      per-cell loop finishes: the hero word (a single, browser-shaped
- *      fillText of the complete target string) and any PHANTOM fragments
- *      (graphemes the current layout didn't happen to contain, so they
- *      fade in only at their target position rather than a fabricated
- *      ambient origin). Neither is a FieldCell; neither is drawn at all
- *      when no story is active.
+ *   1. There are no more "phantom" overlay fragments at all -- every
+ *      performer is always a real cell, so this file's normal per-cell loop
+ *      handles 100% of performer rendering; the overlay pass now paints
+ *      ONLY the hero word.
+ *   2. Performer cells can no longer share their stratum group's single
+ *      `ctx.font` setting the way ordinary cells do -- their scale varies
+ *      per-cell (each performer's own homeStratum vs the hero's font size),
+ *      so they need their OWN font-size resolution. They are therefore
+ *      SKIPPED in the normal per-stratum loop below and drawn in a
+ *      dedicated pass afterward.
+ *   3. That dedicated pass is also what gives performers "hierarchy" (per
+ *      explicit direction: position + scale + opacity + hierarchy, not
+ *      X/Y alone) -- drawn strictly after every ordinary cell regardless of
+ *      which stratum they originally belonged to, so a performer always
+ *      reads as foreground/on-top, never accidentally occluded by an
+ *      ordinary cell painted after it in stratum-iteration order.
  */
 
 import type { LivingFieldConfig, FieldStratum } from "./config";
@@ -132,7 +131,7 @@ import {
   type LivingRegionState,
 } from "./living-region-state";
 import { LIVING_REGION_CONFIG, resolveVerseStratum } from "./living-region";
-import { computeStoryOffset } from "./story-bridge";
+import { computeStoryCellRenderState } from "./story-bridge";
 import { computeAmbientDimMultiplier, computeStoryOverlay } from "./story-bridge";
 import type { StoryState } from "./story-bridge-types";
 
@@ -268,10 +267,9 @@ export function renderField(
     LIVING_REGION_CONFIG.opacity
   );
 
-  // Living Language Stories v0.2: identical for every cell this frame, so
-  // computed once here rather than once per cell -- same reasoning as
-  // livingRegionPeakMultiplier immediately above. Exactly 1 (no dimming)
-  // whenever no story is active.
+  // Living Language Stories v0.2/v0.3: identical for every ordinary cell
+  // this frame, so computed once here rather than once per cell.
+  // Exactly 1 (no dimming) whenever no story is active.
   const ambientDimMultiplier = computeAmbientDimMultiplier(
     options.storyState,
     t,
@@ -292,6 +290,12 @@ export function renderField(
       for (let cellIndex = 0; cellIndex < layout.cells.length; cellIndex++) {
         const cell = layout.cells[cellIndex];
         if (cell.stratum !== stratum || cell.scriptId !== scriptId) continue;
+        // Living Language Stories v0.3: a performing cell is drawn in its
+        // OWN dedicated pass below (it needs a per-cell font size the
+        // shared stratum-group ctx.font above can't provide, and must draw
+        // strictly after every ordinary cell for foreground hierarchy) --
+        // skip it here entirely rather than drawing it twice.
+        if (options.storyState?.fragmentByCellIndex.has(cellIndex)) continue;
 
         const baseOp = options.static
           ? cellOpacityStatic(cell, config)
@@ -323,38 +327,21 @@ export function renderField(
           livingRegionPeakMultiplier,
           options.static === true
         );
-        // Living Language Stories v0.1: `null` on every page that never
-        // installs a story (options.storyState omitted) -- dx/dy default to
-        // 0 and the multiplier to 1, so renderX/renderY below are always
-        // exactly cell.x/cell.y in that case. cell.x/cell.y themselves are
-        // never written to, here or anywhere else -- only read.
-        const storyOffset = computeStoryOffset(
-          options.storyState,
-          cellIndex,
-          t,
-          options.static === true
-        );
         const op = Math.min(
           1,
-          opticalOp *
-            expressionMultiplier *
-            livingRegionMultiplier *
-            (storyOffset?.opacityMultiplier ?? 1) *
-            ambientDimMultiplier
+          opticalOp * expressionMultiplier * livingRegionMultiplier * ambientDimMultiplier
         );
-        const renderX = cell.x + (storyOffset?.dx ?? 0);
-        const renderY = cell.y + (storyOffset?.dy ?? 0);
 
         ctx.fillStyle = `rgba(${cr},${cg},${cb},${op})`;
         if (cell.glyph.kind === "text") {
-          ctx.fillText(cell.glyph.value, renderX, renderY);
+          ctx.fillText(cell.glyph.value, cell.x, cell.y);
         } else {
           // kind === "path" (Vatteluttu). Optical calibration still applies
           // via `op` (opacity) and `effectiveSize` (path scale) above --
           // just no stroke/outline, per this module's documented rule
           // interpretation.
           ctx.save();
-          ctx.translate(renderX, renderY);
+          ctx.translate(cell.x, cell.y);
           drawPathGlyph(ctx, cell.glyph.value, effectiveSize);
           ctx.restore();
         }
@@ -362,17 +349,58 @@ export function renderField(
     }
   }
 
-  // Living Language Stories v0.2: overlay pass, painted AFTER every
-  // ordinary cell so it sits visually on top. Exactly a no-op (zero draw
-  // calls) whenever no story is active -- computeStoryOverlay() returns
-  // `{ hero: null, phantoms: [] }` in that case, same as every other
-  // story-conditional term in this file.
-  const overlay = computeStoryOverlay(options.storyState, t, options.static === true);
-  for (const phantom of overlay.phantoms) {
-    ctx.font = `${phantom.fontWeight} ${phantom.fontSizePx}px ${family}`;
-    ctx.fillStyle = `rgba(${cr},${cg},${cb},${Math.min(1, phantom.opacity)})`;
-    ctx.fillText(phantom.text, phantom.x, phantom.y);
+  // Living Language Stories v0.3: dedicated performer pass -- drawn strictly
+  // AFTER every ordinary cell (foreground hierarchy), each at its own
+  // resolved font size (home stratum size x this frame's scale, never the
+  // shared stratum-group ctx.font above) and its own resolved glyph text
+  // (homeGlyph or storyGlyph, per computeStoryCellRenderState's single
+  // instantaneous swap -- never both). A no-op loop (zero iterations)
+  // whenever no story is active, since fragmentByCellIndex is then absent/
+  // empty.
+  if (options.storyState) {
+    for (const fragment of options.storyState.fragments) {
+      const cell = layout.cells[fragment.cellIndex];
+      if (!cell) continue;
+      const renderState = computeStoryCellRenderState(
+        options.storyState,
+        fragment.cellIndex,
+        t,
+        options.static === true
+      );
+      if (!renderState) continue;
+
+      const baseOp = options.static
+        ? cellOpacityStatic(cell, config)
+        : cellOpacity(cell, t, config);
+      // cell.scriptId is stored as a plain string (set once by the
+      // Civilization Engine); validate against the known ScriptId union
+      // rather than an unsafe cast, falling back to the first configured
+      // script if a value somehow doesn't match (should never happen in
+      // practice -- scriptId is always one of SCRIPT_IDS by construction).
+      const scriptId = (SCRIPT_IDS as readonly string[]).includes(cell.scriptId)
+        ? (cell.scriptId as (typeof SCRIPT_IDS)[number])
+        : SCRIPT_IDS[0];
+      const weight = getScriptWeight(ACTIVE_CALIBRATION, scriptId);
+      const opticalOp = applyOpticalOpacity(baseOp, weight);
+      const op = Math.min(1, opticalOp * renderState.opacityMultiplier);
+
+      const performerFontSizePx = Math.round(fragment.homeStratum.fontSize * renderState.scale);
+      ctx.font = `${config.fontWeight} ${performerFontSizePx}px ${family}`;
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${op})`;
+
+      const renderX = cell.x + renderState.dx;
+      const renderY = cell.y + renderState.dy;
+      ctx.fillText(renderState.glyphOverride, renderX, renderY);
+    }
   }
+
+  // Living Language Stories v0.3: overlay pass, painted AFTER every ordinary
+  // cell AND every performer, so the hero sits visually on top of both.
+  // Exactly a no-op (zero draw calls) whenever no story is active --
+  // computeStoryOverlay() returns `{ hero: null }` in that case. No more
+  // phantom fragments -- every performer is always a real cell, drawn in
+  // the dedicated pass above.
+  const overlay = computeStoryOverlay(options.storyState, t, options.static === true);
   if (overlay.hero) {
     const hero = overlay.hero;
     ctx.font = `${hero.fontWeight} ${hero.fontSizePx}px ${family}`;
