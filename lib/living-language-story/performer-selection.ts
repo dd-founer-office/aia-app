@@ -55,6 +55,8 @@ export interface PerformerHome {
  *  are disqualified entirely -- on-screen safety, not scored. */
 const EDGE_MARGIN_FRACTION = 0.06;
 
+const EMPTY_EXCLUDE_SET: ReadonlySet<number> = new Set();
+
 /** Distance-from-center scoring peaks here (as a fraction of the shorter
  *  viewport dimension) and tapers off both closer and farther. Close
  *  candidates make too weak a journey to read as "coming from somewhere";
@@ -62,6 +64,79 @@ const EDGE_MARGIN_FRACTION = 0.06;
 const TARGET_DISTANCE_FRACTION = 0.325;
 /** Half-width of the distance scoring band, same units as above. */
 const DISTANCE_SPREAD = 0.25;
+
+/** Minimum distance (px) MICRO STAGE must sit from WORD STAGE -- keeps the
+ *  two compositional areas clearly visually distinct, per explicit
+ *  direction. */
+const MICRO_STAGE_MIN_SEPARATION_PX = 90;
+
+/**
+ * Derives MICRO STAGE geometry from already-selected வ்/ஆ homes -- NOT the
+ * other way around (an earlier draft selected வ்/ஆ homes AGAINST micro
+ * stage, which is circular: micro stage doesn't exist until their homes
+ * are known). Per corrected order:
+ *
+ *   1. வ்/ஆ homes are selected against WORD STAGE geometry (this function's
+ *      caller, story-controller.ts, does this via selectPerformerHomes()
+ *      before ever calling this function).
+ *   2. THIS function derives MICRO STAGE from those two homes' geometry.
+ *
+ * Starts from the midpoint of the two homes. If that midpoint would sit
+ * too close to WORD STAGE, pushes it outward along the WORD-STAGE ->
+ * midpoint vector until the minimum separation is satisfied (falling back
+ * to a fixed upward direction only in the degenerate case where the
+ * midpoint coincides almost exactly with WORD STAGE, which would leave no
+ * meaningful direction to push along). Finally clamps inside the same
+ * edge-safety bounds every other performer position respects.
+ *
+ * Deterministic -- no randomness -- and never increases travel distance
+ * more than the minimum needed to satisfy separation, per explicit
+ * direction ("does not unnecessarily increase travel distance").
+ */
+export function deriveMicroStage(
+  homeA: PerformerHome,
+  homeB: PerformerHome,
+  wordStageX: number,
+  wordStageY: number,
+  canvasWidth: number,
+  canvasHeight: number
+): { x: number; y: number } {
+  const midX = (homeA.x + homeB.x) / 2;
+  const midY = (homeA.y + homeB.y) / 2;
+
+  const dx = midX - wordStageX;
+  const dy = midY - wordStageY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  let x: number;
+  let y: number;
+
+  if (dist < 1e-6) {
+    // Degenerate: midpoint coincides with word stage. No meaningful
+    // direction to push along -- fall back to a fixed upward offset, the
+    // only case where a direction isn't derived from real geometry.
+    x = wordStageX;
+    y = wordStageY - MICRO_STAGE_MIN_SEPARATION_PX;
+  } else if (dist >= MICRO_STAGE_MIN_SEPARATION_PX) {
+    // Already far enough from word stage -- use the midpoint as-is,
+    // never traveling farther than necessary.
+    x = midX;
+    y = midY;
+  } else {
+    // Push the midpoint outward, along the same direction, only as far as
+    // needed to satisfy the minimum separation.
+    const scale = MICRO_STAGE_MIN_SEPARATION_PX / dist;
+    x = wordStageX + dx * scale;
+    y = wordStageY + dy * scale;
+  }
+
+  const edgeMarginX = canvasWidth * EDGE_MARGIN_FRACTION;
+  const edgeMarginY = canvasHeight * EDGE_MARGIN_FRACTION;
+  x = Math.min(canvasWidth - edgeMarginX, Math.max(edgeMarginX, x));
+  y = Math.min(canvasHeight - edgeMarginY, Math.max(edgeMarginY, y));
+
+  return { x, y };
+}
 
 /** Mild bonus for a non-shallowest-stratum candidate -- "suitable existing
  *  stratum/depth," per explicit direction, not an exclusion. */
@@ -89,16 +164,24 @@ function angularDifference(a: number, b: number): number {
 }
 
 /**
- * Deterministically selects `count` (always 4 for this proof) existing
- * field cells as performer homes. Greedy: picks the best-scoring candidate
- * one at a time, each subsequent pick additionally rewarded for angular
- * separation from every already-picked performer -- this is what spreads
- * four picks around the composition without ever hardcoding quadrants, and
- * adapts to whatever a given layout's real cell distribution looks like.
+ * Deterministically selects `count` existing field cells as performer
+ * homes. Greedy: picks the best-scoring candidate one at a time, each
+ * subsequent pick additionally rewarded for angular separation from every
+ * already-picked performer.
+ *
+ * v0.4 (Living Tamil COMBINE/DECOMBINE proof): gains an optional
+ * `excludeCellIndices` set, so this same function can run TWICE against
+ * one candidate pool -- once for வ்/ஆ, once for ழ்/த்/து -- without ever
+ * picking the same cell twice. Both calls score against the SAME (word
+ * stage) center; per explicit direction, வ்/ஆ are selected against word-
+ * stage geometry FIRST, and MICRO STAGE is only derived afterward from
+ * their resulting home positions (see story-controller.ts) -- this
+ * function has no concept of "micro stage" at all, avoiding the circular
+ * dependency an earlier draft had.
  *
  * Ties at every step broken by lowest cellIndex, so a given `cells` array
  * (i.e. a given layout generation, un-resized) always produces the same
- * four homes. No Math.random anywhere in this function.
+ * homes. No Math.random anywhere in this function.
  */
 export function selectPerformerHomes(
   cells: readonly PerformerCandidate[],
@@ -106,7 +189,8 @@ export function selectPerformerHomes(
   centerY: number,
   canvasWidth: number,
   canvasHeight: number,
-  count: number
+  count: number,
+  excludeCellIndices: ReadonlySet<number> = EMPTY_EXCLUDE_SET
 ): PerformerHome[] {
   const shorterDim = Math.min(canvasWidth, canvasHeight);
   const edgeMarginX = canvasWidth * EDGE_MARGIN_FRACTION;
@@ -114,6 +198,7 @@ export function selectPerformerHomes(
 
   const eligible = cells.filter(
     (c) =>
+      !excludeCellIndices.has(c.cellIndex) &&
       c.x >= edgeMarginX &&
       c.x <= canvasWidth - edgeMarginX &&
       c.y >= edgeMarginY &&
