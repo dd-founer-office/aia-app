@@ -1,47 +1,79 @@
 /**
- * Living Language Story — Story Controller (v0.3)
+ * Living Language Story — Story Controller (v0.4)
  * ----------------------------------------------------------------------------
  * Owns WHEN a story plays, WHICH cells become performers, and WHAT temporary
  * semantic identity each one takes on. Lives entirely outside
  * lib/living-field/ -- never touches a canvas, never reads or writes
  * FieldCell.x/y/glyph directly (only via the engine's own read-only
- * accessors), and never imports ambient-expression.ts or anything belonging
- * to the Ambient Language Layer.
- *
- * v0.3 CHANGE OF GRAMMAR (superseding v0.2's grapheme-matching approach):
- * builds four performers via performer-selection.ts (pure choreography --
- * ANY cell is eligible) instead of grapheme-source.ts's selectGraphemeSources
- * (which searched for cells whose EXISTING glyph happened to match a target
- * grapheme, and empirically came up empty for 3 of 4 graphemes on a typical
- * mobile layout). grapheme-source.ts is intentionally left untouched and
- * unimported here, per explicit direction, until this new grammar is
- * visually accepted -- it still exists for reference/comparison.
+ * accessors).
  *
  * ---------------------------------------------------------------------------
- * SIX-PHASE SCHEDULE
+ * v0.4: THREE EPISODES, NOT A GENERALIZED TIMELINE ENGINE
  * ---------------------------------------------------------------------------
- * FIELD -> awakening -> approaching -> formingHero -> holding -> releasing
- * -> returning -> FIELD. Exactly one setTimeout per phase transition,
- * scheduled against the SAME StoryTimingConfig durations story-bridge.ts
- * uses for interpolation -- one source of truth. Every frame IN BETWEEN
- * those transitions is painted by the engine's own already-running RAF
- * loop, which asks story-bridge.ts's pure functions where things should be
- * at time `t`. This controller runs no animation loop of its own.
+ * This proof tests whether the Living Field can demonstrate a Tamil
+ * grammatical relationship (மெய் + உயிர் -> உயிர்மெய், concretely
+ * வ் + ஆ -> வா) and then let that SAME resulting performer continue into
+ * the already-validated WORD PERFORMANCE (வா + ழ் + த் + து -> வாழ்த்து).
+ *
+ * Per explicit direction, this is built as THREE coordinated episodes, each
+ * one reusing the SAME six-phase engine (awakening -> approaching ->
+ * formingHero -> holding -> releasing -> returning) already validated for
+ * the single-word proof -- NOT a new generalized per-fragment beat-list /
+ * timeline system. The only genuinely new piece of state is
+ * `StoryFragment.pinnedAtFullPresence` (story-bridge-types.ts /
+ * story-bridge.ts), which lets ONE continuing performer skip re-ramping in
+ * from ambient when it re-enters a later episode.
+ *
+ *   EPISODE A -- COMBINE: வ் + ஆ -> வா. Two performers, awaken/approach/
+ *   form/hold, centred on MICRO STAGE. Stops at "holding" -- deliberately
+ *   never runs releasing/returning here; the resulting performer instead
+ *   continues directly into Episode B.
+ *
+ *   EPISODE B -- ASSEMBLE: வா + ழ் + த் + து -> வாழ்த்து. The exact same
+ *   WORD PERFORMANCE mechanism as the single-episode v0.3 proof, fed FOUR
+ *   fragments: the continuing வா carrier (pinnedAtFullPresence: true, its
+ *   "home" for this episode is MICRO STAGE, not its true original cell) plus
+ *   three freshly selected performers. Full six phases, centred on WORD
+ *   STAGE.
+ *
+ *   EPISODE C -- DECOMBINE: வா -> வ் + ஆ. Reuses the EXACT SAME two
+ *   StoryFragment objects Episode A built (same homes, same targets, same
+ *   graphemes) -- but instead of starting a fresh six-phase run, jumps
+ *   directly into "releasing" (returningStartedAt = now). Because it's
+ *   the identical fragment definition, the state machine's own release/
+ *   return math naturally sends வ்/ஆ back to their true original homes.
+ *
+ * These are linguistically DIFFERENT operations sharing one rendering
+ * mechanism -- see story-bridge-types.ts's StoryHeroGeometry doc comment.
+ * COMBINE represents a grammatical relationship; ASSEMBLE represents
+ * learned grapheme units participating in a word. Keep that distinction in
+ * naming here, even where the underlying calls are identical.
+ *
+ * ---------------------------------------------------------------------------
+ * SELECTION ORDER (corrected -- avoids a circular dependency)
+ * ---------------------------------------------------------------------------
+ *   1. Select வ்/ஆ homes against WORD STAGE geometry (existing
+ *      selectPerformerHomes(), unchanged scoring).
+ *   2. Derive MICRO STAGE from those two homes (performer-selection.ts's
+ *      deriveMicroStage()) -- never the other way around.
+ *   3. Select ழ்/த்/து homes against WORD STAGE, excluding the two cells
+ *      already reserved for வ்/ஆ.
+ * All five cellIndices are captured once, up front, and threaded through
+ * every episode -- never re-selected mid-sequence.
  *
  * ---------------------------------------------------------------------------
  * LAYOUT-GENERATION SAFETY (unchanged principle from earlier versions)
  * ---------------------------------------------------------------------------
- * A story's performers are only ever valid for the exact layout generation
- * they were selected against. engine.rebuild() has already defensively
- * cleared story state on any resize/DPR/viewport change; this controller
- * additionally checks engine.getLayoutGenerationId() before each scheduled
- * transition fires, so a stale timer can never reinstate performers
- * captured from a layout that no longer exists.
+ * engine.rebuild() has already defensively cleared story state on any
+ * resize/DPR/viewport change; this controller additionally checks
+ * engine.getLayoutGenerationId() before every one of the (now many more)
+ * scheduled transitions fires, across all three episodes.
  */
 
 import type { LivingFieldEngine } from "@/lib/living-field/engine";
 import {
   DEFAULT_STORY_TIMING,
+  DEFAULT_COMBINE_TIMING,
   DEFAULT_AMBIENT_DIM_FACTOR,
   type StoryFragment,
   type StoryPhase,
@@ -50,7 +82,7 @@ import {
 } from "@/lib/living-field/story-bridge-types";
 import type { FieldStratum } from "@/lib/living-field/config";
 import { measureGraphemeTargets, segmentGraphemes } from "./grapheme-source";
-import { selectPerformerHomes, assignPerformersToTargets } from "./performer-selection";
+import { selectPerformerHomes, assignPerformersToTargets, deriveMicroStage } from "./performer-selection";
 
 export interface StoryControllerOptions {
   fontFamily: string;
@@ -58,7 +90,11 @@ export interface StoryControllerOptions {
    *  whole story -- font weight is NOT interpolated in this v0.1 proof, per
    *  explicit direction. */
   heroFontWeight?: number;
-  /** Hero word font size, px. Defaults to 12% of the canvas's CSS height. */
+  /** Hero word font size, px. Defaults to 12% of the canvas's CSS height.
+   *  Also used as COMBINE's own result-glyph font size (see this file's
+   *  header for why: identical size at both ends of the Episode A -> B
+   *  handoff is what makes the continuing performer's transition
+   *  seamless). */
   heroFontSizePx?: number;
 }
 
@@ -76,7 +112,21 @@ export interface PlayTextFormationOptions {
   ambientDimFactor?: number;
 }
 
+export interface PlayCombineAssembleOptions extends PlayTextFormationOptions {
+  /** Overrides for Episode A (COMBINE) and Episode C (DECOMBINE)'s shared
+   *  timing -- see DEFAULT_COMBINE_TIMING's doc comment for why one config
+   *  covers both. `timing` (inherited above) covers Episode B (ASSEMBLE)
+   *  only, exactly as it already does for the single-episode proof. */
+  combineTiming?: Partial<StoryTimingConfig>;
+}
+
 export type StoryControllerPhase = StoryPhase | "idle";
+
+/** Small offset (px) each COMBINE input performer stops short of MICRO
+ *  STAGE's exact centre, along its own home->microStage line -- keeps
+ *  வ்/ஆ visibly approaching from two distinct sides rather than
+ *  overlapping exactly on the same point before the handoff. */
+const COMBINE_APPROACH_GAP_PX = 18;
 
 export class StoryController {
   private readonly engine: LivingFieldEngine;
@@ -103,10 +153,11 @@ export class StoryController {
 
   /**
    * Cancels any pending phase timers and returns the field to pure ambient
-   * state immediately. Safe to call from any phase: because FieldCell.x/y/
-   * glyph were never mutated in the first place, clearing story state is
-   * always a complete, exact return to HOME -- there is nothing left to
-   * reconcile.
+   * state immediately. Safe to call from any phase, in any episode: because
+   * FieldCell.x/y/glyph were never mutated in the first place, clearing
+   * story state is always a complete, exact return to HOME -- there is
+   * nothing left to reconcile, regardless of whether Reset happens during
+   * COMBINE, ASSEMBLE, or DECOMBINE.
    */
   reset(): void {
     this.clearTimers();
@@ -115,103 +166,299 @@ export class StoryController {
     this.engine.setStoryState(null);
   }
 
-  /** Runs one full LIVING FIELD -> word -> LIVING FIELD cycle. */
+  /** Runs one full LIVING FIELD -> word -> LIVING FIELD cycle, with no
+   *  COMBINE/DECOMBINE episodes -- the original v0.3 single-episode proof.
+   *  Kept for reference/comparison and any future word that doesn't need a
+   *  grammatical-relationship prelude. */
   playTextFormation(text: string, callOptions: PlayTextFormationOptions = {}): void {
     this.reset();
 
     const timing: StoryTimingConfig = { ...DEFAULT_STORY_TIMING, ...callOptions.timing };
     const ambientDimFactor = callOptions.ambientDimFactor ?? DEFAULT_AMBIENT_DIM_FACTOR;
 
-    const cells = this.engine.getLayoutCells();
-    if (!cells || cells.length === 0) return;
-
-    const stageSize = this.engine.getCanvasCssSize();
-    if (!stageSize) return;
-
-    const generationId = this.engine.getLayoutGenerationId();
-    const centerX = stageSize.width / 2;
-    const centerY = stageSize.height / 2;
-    const heroFontWeight = this.options.heroFontWeight ?? 700;
-    const heroFontSizePx = this.options.heroFontSizePx ?? Math.round(stageSize.height * 0.12);
+    const setup = this.prepareStage();
+    if (!setup) return;
+    const { cells, stageSize, generationId, wordStageX, wordStageY, heroFontWeight, heroFontSizePx, candidates } = setup;
 
     const graphemes = segmentGraphemes(text);
     const targets = measureGraphemeTargets(
-      text,
-      graphemes,
-      this.options.fontFamily,
-      heroFontWeight,
-      heroFontSizePx,
-      centerX,
-      centerY
+      text, graphemes, this.options.fontFamily, heroFontWeight, heroFontSizePx, wordStageX, wordStageY
     );
 
-    // --- Performer selection: pure choreography, no grapheme matching. ---
-    // Only TEXT-kind cells are eligible: the performer render pass always
-    // draws via ctx.fillText with a string glyphOverride (homeGlyph or
-    // storyGlyph), and a path-kind (Vatteluttu) cell's glyph.value is a
-    // GlyphPath, not a string -- there is no meaningful "homeGlyph" to
-    // capture for one. Without this filter, a selected Vatteluttu cell
-    // would silently fall back to using the STORY GRAPHEME as its own
-    // "homeGlyph" (nothing else representable), making the awaken-time
-    // swap a no-op and quietly recreating the original failure: the
-    // performer would show its target identity from before awakening even
-    // begins, never anything meaningfully "swapped." Vatteluttu is a small
-    // weighted fraction of the field, so excluding it from eligibility
-    // still leaves plenty of real text-glyph candidates on any real layout.
-    const candidates = cells
-      .map((cell, cellIndex) => ({ cell, cellIndex }))
-      .filter(({ cell }) => cell.glyph.kind === "text")
-      .map(({ cell, cellIndex }) => ({
-        cellIndex,
-        x: cell.x,
-        y: cell.y,
-        isShallowestStratum: isShallowest(cell.stratum),
-      }));
-    const homes = selectPerformerHomes(candidates, centerX, centerY, stageSize.width, stageSize.height, graphemes.length);
+    const homes = selectPerformerHomes(candidates, wordStageX, wordStageY, stageSize.width, stageSize.height, graphemes.length);
     if (homes.length < graphemes.length) {
-      // Fewer eligible cells than performers needed -- should not happen on
-      // any real layout (dozens of candidates typically exist), but fail
-      // visibly rather than silently proceeding with a partial cast.
       console.warn(
-        `[living-language-story] only found ${homes.length} eligible performer cells for ${graphemes.length} required -- aborting this playTextFormation() call.`
+        `[living-language-story] only found ${homes.length} eligible performer cells for ${graphemes.length} required -- aborting.`
+      );
+      return;
+    }
+    const assignedHomes = assignPerformersToTargets(homes, targets);
+    const fragments = this.buildFragments(cells, assignedHomes, graphemes, targets);
+    const fragmentByCellIndex = mapByCellIndex(fragments);
+    const hero = { text, centerX: wordStageX, centerY: wordStageY, fontSizePx: heroFontSizePx, fontWeight: heroFontWeight };
+
+    this.activeGenerationId = generationId;
+    const formingStartedAt = performance.now();
+    let elapsed = 0;
+    elapsed = this.scheduleSixPhaseSequence(
+      fragments, fragmentByCellIndex, hero, timing, ambientDimFactor,
+      formingStartedAt, generationId, elapsed, /* endsInReset */ true
+    );
+  }
+
+  /**
+   * Runs the full COMBINE -> ASSEMBLE -> DECOMBINE proof:
+   *
+   *   consonantGrapheme + vowelGrapheme -> combinedGrapheme
+   *   combinedGrapheme + remainingGraphemes -> fullWordText
+   *   fullWordText -> combinedGrapheme + remainingGraphemes
+   *   combinedGrapheme -> consonantGrapheme + vowelGrapheme
+   *
+   * `combinedGrapheme` is supplied explicitly by the caller (e.g. "வா"),
+   * never derived by concatenating consonantGrapheme + vowelGrapheme --
+   * that concatenation would not, in general, produce correct Tamil
+   * orthography (a vowel sign is not the standalone vowel's string
+   * substringed out). This controller has no Tamil-grammar knowledge at
+   * all; it only ever renders exactly the strings it's given.
+   */
+  playCombineAssemble(
+    consonantGrapheme: string,
+    vowelGrapheme: string,
+    combinedGrapheme: string,
+    remainingGraphemes: readonly string[],
+    fullWordText: string,
+    callOptions: PlayCombineAssembleOptions = {}
+  ): void {
+    this.reset();
+
+    const combineTiming: StoryTimingConfig = { ...DEFAULT_COMBINE_TIMING, ...callOptions.combineTiming };
+    const assembleTiming: StoryTimingConfig = { ...DEFAULT_STORY_TIMING, ...callOptions.timing };
+    const ambientDimFactor = callOptions.ambientDimFactor ?? DEFAULT_AMBIENT_DIM_FACTOR;
+
+    const setup = this.prepareStage();
+    if (!setup) return;
+    const { cells, stageSize, generationId, wordStageX, wordStageY, heroFontWeight, heroFontSizePx, candidates } = setup;
+
+    // --- STEP 1: select வ்/ஆ homes against WORD STAGE (not micro stage --
+    // avoids the circular dependency an earlier draft had). ---
+    const combineHomes = selectPerformerHomes(candidates, wordStageX, wordStageY, stageSize.width, stageSize.height, 2);
+    if (combineHomes.length < 2) {
+      console.warn("[living-language-story] could not find 2 eligible performer cells for COMBINE -- aborting.");
+      return;
+    }
+    // Deterministic convention: the FIRST-selected (higher-scoring) home
+    // becomes the consonant/carrier, per explicit direction that "it is
+    // acceptable for the existing வ் performer cellIndex to become the
+    // carrier" -- this is an implementation detail, not a linguistic claim.
+    const [homeConsonant, homeVowel] = combineHomes;
+
+    // --- STEP 2: derive MICRO STAGE from those two homes. ---
+    const microStage = deriveMicroStage(homeConsonant, homeVowel, wordStageX, wordStageY, stageSize.width, stageSize.height);
+
+    // --- STEP 3: select ழ்/த்/து homes against WORD STAGE, excluding the
+    // two already reserved for வ்/ஆ. ---
+    const usedIndices = new Set([homeConsonant.cellIndex, homeVowel.cellIndex]);
+    const wordHomes = selectPerformerHomes(
+      candidates, wordStageX, wordStageY, stageSize.width, stageSize.height, remainingGraphemes.length, usedIndices
+    );
+    if (wordHomes.length < remainingGraphemes.length) {
+      console.warn(
+        `[living-language-story] only found ${wordHomes.length} eligible performer cells for the remaining ${remainingGraphemes.length} -- aborting.`
       );
       return;
     }
 
-    // --- Assignment: which performer (by HOME) plays which grapheme, ----
-    // --- minimizing path crossings while preserving left-to-right order. ---
-    const assignedHomes = assignPerformersToTargets(homes, targets);
+    // Each COMBINE input approaches MICRO STAGE from its own side, stopping
+    // just short of the exact centre -- a visible "meeting," never an exact
+    // overlap before the handoff.
+    const consonantTarget = approachTargetNear(homeConsonant, microStage, COMBINE_APPROACH_GAP_PX);
+    const vowelTarget = approachTargetNear(homeVowel, microStage, COMBINE_APPROACH_GAP_PX);
 
-    const fragments: StoryFragment[] = graphemes.map((grapheme, i) => {
-      const home = assignedHomes[i];
-      const cell = cells[home.cellIndex];
-      return {
-        cellIndex: home.cellIndex,
-        homeX: home.x,
-        homeY: home.y,
-        // Read-only snapshot, captured once, right now -- never written
-        // back to the cell. This is the cell's genuine ambient identity at
-        // the moment it was cast as a performer.
-        homeGlyph: cell.glyph.kind === "text" ? cell.glyph.value : grapheme,
-        homeStratum: cell.stratum,
-        grapheme,
-        targetX: targets[i].x,
-        targetY: targets[i].y,
-      };
-    });
-
-    const fragmentByCellIndex = new Map<number, StoryFragment>();
-    for (const fragment of fragments) {
-      fragmentByCellIndex.set(fragment.cellIndex, fragment);
-    }
-
-    const hero = { text, centerX, centerY, fontSizePx: heroFontSizePx, fontWeight: heroFontWeight };
+    const consonantFragment = this.buildFragment(cells, homeConsonant, consonantGrapheme, consonantTarget);
+    const vowelFragment = this.buildFragment(cells, homeVowel, vowelGrapheme, vowelTarget);
+    const combineFragments = [consonantFragment, vowelFragment];
+    const combineFragmentByCellIndex = mapByCellIndex(combineFragments);
+    // Same font size as the word-stage hero, deliberately -- see this
+    // file's header for why identical size at both ends of the handoff is
+    // what makes Episode A -> B feel like one continuous performer rather
+    // than two different ones.
+    const combineHero = {
+      text: combinedGrapheme, centerX: microStage.x, centerY: microStage.y,
+      fontSizePx: heroFontSizePx, fontWeight: heroFontWeight,
+    };
 
     this.activeGenerationId = generationId;
-    const formingStartedAt = performance.now();
+    const combineFormingStartedAt = performance.now();
+
+    // --- EPISODE A -- COMBINE: awaken -> approach -> form -> hold. -------
+    // Deliberately stops here (no releasing/returning scheduled yet) -- the
+    // resulting performer continues directly into Episode B rather than
+    // dissolving back to ambient.
+    let elapsed = this.scheduleFourRisingPhases(
+      combineFragments, combineFragmentByCellIndex, combineHero, combineTiming, ambientDimFactor,
+      combineFormingStartedAt, generationId, 0
+    );
+
+    // --- Handoff into EPISODE B -- ASSEMBLE. ------------------------------
+    this.scheduleTransition(elapsed, generationId, () => {
+      // The continuing carrier: same cellIndex as the consonant performer,
+      // but a NEW StoryFragment for this episode -- its "home" for travel
+      // purposes is deliberately MICRO STAGE (where Episode A left it
+      // visually), not its true original field cell, and
+      // pinnedAtFullPresence means it never re-ramps in from ambient.
+      const carrierFragment: StoryFragment = {
+        cellIndex: homeConsonant.cellIndex,
+        homeX: microStage.x,
+        homeY: microStage.y,
+        homeGlyph: combinedGrapheme,
+        homeStratum: consonantFragment.homeStratum,
+        grapheme: combinedGrapheme,
+        targetX: 0, // set below, once the full target list is known
+        targetY: 0,
+        pinnedAtFullPresence: true,
+      };
+
+      const fullGraphemes = [combinedGrapheme, ...remainingGraphemes];
+      const targets = measureGraphemeTargets(
+        fullWordText, fullGraphemes, this.options.fontFamily, heroFontWeight, heroFontSizePx, wordStageX, wordStageY
+      );
+      // The carrier is fixed to targets[0] (combinedGrapheme is always the
+      // first grapheme of fullWordText) -- only the remaining three homes
+      // are permuted (via the EXISTING, unmodified crossing-minimization
+      // assignment) against targets[1..].
+      carrierFragment.targetX = targets[0].x;
+      carrierFragment.targetY = targets[0].y;
+
+      const remainingAssigned = assignPerformersToTargets(wordHomes, targets.slice(1));
+      const remainingFragments = this.buildFragments(cells, remainingAssigned, remainingGraphemes, targets.slice(1));
+
+      const assembleFragments = [carrierFragment, ...remainingFragments];
+      const assembleFragmentByCellIndex = mapByCellIndex(assembleFragments);
+      const assembleHero = {
+        text: fullWordText, centerX: wordStageX, centerY: wordStageY,
+        fontSizePx: heroFontSizePx, fontWeight: heroFontWeight,
+      };
+
+      const assembleFormingStartedAt = performance.now();
+      const assembleElapsed = this.scheduleSixPhaseSequence(
+        assembleFragments, assembleFragmentByCellIndex, assembleHero, assembleTiming, ambientDimFactor,
+        assembleFormingStartedAt, generationId, 0, /* endsInReset */ false
+      );
+
+      // --- EPISODE C -- DECOMBINE: reuse Episode A's EXACT fragment -----
+      // definitions, jumping straight into "releasing" -- the state
+      // machine's own release/return math then naturally sends வ்/ஆ back
+      // to their TRUE original homes (consonantFragment/vowelFragment's
+      // own homeX/homeY, untouched since Episode A).
+      this.scheduleTransition(assembleElapsed, generationId, () => {
+        const decombineReturningStartedAt = performance.now();
+        this.beginPhase(
+          "releasing", combineFragments, combineFragmentByCellIndex, combineHero,
+          combineTiming, ambientDimFactor, combineFormingStartedAt, decombineReturningStartedAt, generationId
+        );
+
+        this.scheduleTransition(combineTiming.releasingMs, generationId, () => {
+          this.beginPhase(
+            "returning", combineFragments, combineFragmentByCellIndex, combineHero,
+            combineTiming, ambientDimFactor, combineFormingStartedAt, decombineReturningStartedAt, generationId
+          );
+        });
+
+        this.scheduleTransition(combineTiming.releasingMs + combineTiming.returningMs, generationId, () => {
+          this.reset();
+        });
+      });
+    });
+  }
+
+  /** Call on unmount. */
+  destroy(): void {
+    this.reset();
+  }
+
+  // -- internals: shared setup -------------------------------------------
+
+  private prepareStage(): {
+    cells: NonNullable<ReturnType<LivingFieldEngine["getLayoutCells"]>>;
+    stageSize: NonNullable<ReturnType<LivingFieldEngine["getCanvasCssSize"]>>;
+    generationId: number;
+    wordStageX: number;
+    wordStageY: number;
+    heroFontWeight: number;
+    heroFontSizePx: number;
+    candidates: Array<{ cellIndex: number; x: number; y: number; isShallowestStratum: boolean }>;
+  } | null {
+    const cells = this.engine.getLayoutCells();
+    if (!cells || cells.length === 0) return null;
+    const stageSize = this.engine.getCanvasCssSize();
+    if (!stageSize) return null;
+
+    const generationId = this.engine.getLayoutGenerationId();
+    const wordStageX = stageSize.width / 2;
+    const wordStageY = stageSize.height / 2;
+    const heroFontWeight = this.options.heroFontWeight ?? 700;
+    const heroFontSizePx = this.options.heroFontSizePx ?? Math.round(stageSize.height * 0.12);
+
+    // Only TEXT-kind cells are eligible: the performer render pass always
+    // draws via ctx.fillText with a string glyphOverride, and a path-kind
+    // (Vatteluttu) cell's glyph.value is a GlyphPath, not a string -- see
+    // v0.3's own note on why this filter exists.
+    const candidates = cells
+      .map((cell, cellIndex) => ({ cell, cellIndex }))
+      .filter(({ cell }) => cell.glyph.kind === "text")
+      .map(({ cell, cellIndex }) => ({
+        cellIndex, x: cell.x, y: cell.y, isShallowestStratum: isShallowest(cell.stratum),
+      }));
+
+    return { cells, stageSize, generationId, wordStageX, wordStageY, heroFontWeight, heroFontSizePx, candidates };
+  }
+
+  private buildFragment(
+    cells: NonNullable<ReturnType<LivingFieldEngine["getLayoutCells"]>>,
+    home: { cellIndex: number; x: number; y: number },
+    grapheme: string,
+    target: { x: number; y: number }
+  ): StoryFragment {
+    const cell = cells[home.cellIndex];
+    return {
+      cellIndex: home.cellIndex,
+      homeX: home.x,
+      homeY: home.y,
+      homeGlyph: cell.glyph.kind === "text" ? cell.glyph.value : grapheme,
+      homeStratum: cell.stratum,
+      grapheme,
+      targetX: target.x,
+      targetY: target.y,
+    };
+  }
+
+  private buildFragments(
+    cells: NonNullable<ReturnType<LivingFieldEngine["getLayoutCells"]>>,
+    homes: readonly { cellIndex: number; x: number; y: number }[],
+    graphemes: readonly string[],
+    targets: readonly { x: number; y: number }[]
+  ): StoryFragment[] {
+    return graphemes.map((grapheme, i) => this.buildFragment(cells, homes[i], grapheme, targets[i]));
+  }
+
+  /** Schedules awakening -> approaching -> formingHero -> holding only
+   *  (Episode A's shape) -- deliberately does NOT schedule releasing/
+   *  returning. Returns the cumulative elapsed time (starting from
+   *  `startElapsedMs`) after "holding" begins, so a caller can schedule
+   *  what happens next relative to it. */
+  private scheduleFourRisingPhases(
+    fragments: readonly StoryFragment[],
+    fragmentByCellIndex: ReadonlyMap<number, StoryFragment>,
+    hero: StoryState["hero"],
+    timing: StoryTimingConfig,
+    ambientDimFactor: number,
+    formingStartedAt: number,
+    generationId: number,
+    startElapsedMs: number
+  ): number {
     this.beginPhase("awakening", fragments, fragmentByCellIndex, hero, timing, ambientDimFactor, formingStartedAt, 0, generationId);
 
-    let elapsed = timing.awakeningMs;
+    let elapsed = startElapsedMs + timing.awakeningMs;
     this.scheduleTransition(elapsed, generationId, () => {
       this.beginPhase("approaching", fragments, fragmentByCellIndex, hero, timing, ambientDimFactor, formingStartedAt, 0, generationId);
     });
@@ -227,14 +474,30 @@ export class StoryController {
     });
 
     elapsed += timing.holdingMs;
-    // Captured once, when "releasing" actually begins, and reused
-    // unchanged for "returning" below -- NOT independently reconstructed
-    // when returning's own timer fires. Two separately-scheduled
-    // setTimeouts drift slightly from their nominal delays; recomputing
-    // this value a second time would silently disagree with the value
-    // used during releasing, causing exactly the kind of discontinuity at
-    // the releasing/returning boundary that formingStartedAt's single
-    // capture (above) is designed to avoid on the forming side.
+    return elapsed;
+  }
+
+  /** Schedules the full six phases -- awakening through returning.
+   *  Returns the cumulative elapsed time after "returning" begins. If
+   *  `endsInReset` is true, also schedules a final reset() once returning
+   *  completes (used by the single-episode playTextFormation(); the
+   *  COMBINE/ASSEMBLE/DECOMBINE sequence instead schedules Episode C to
+   *  begin at that point, and only Episode C's own completion resets). */
+  private scheduleSixPhaseSequence(
+    fragments: readonly StoryFragment[],
+    fragmentByCellIndex: ReadonlyMap<number, StoryFragment>,
+    hero: StoryState["hero"],
+    timing: StoryTimingConfig,
+    ambientDimFactor: number,
+    formingStartedAt: number,
+    generationId: number,
+    startElapsedMs: number,
+    endsInReset: boolean
+  ): number {
+    let elapsed = this.scheduleFourRisingPhases(
+      fragments, fragmentByCellIndex, hero, timing, ambientDimFactor, formingStartedAt, generationId, startElapsedMs
+    );
+
     let returningStartedAt = 0;
     this.scheduleTransition(elapsed, generationId, () => {
       returningStartedAt = performance.now();
@@ -247,17 +510,15 @@ export class StoryController {
     });
 
     elapsed += timing.returningMs;
-    this.scheduleTransition(elapsed, generationId, () => {
-      this.reset();
-    });
+    if (endsInReset) {
+      this.scheduleTransition(elapsed, generationId, () => {
+        this.reset();
+      });
+    }
+    return elapsed;
   }
 
-  /** Call on unmount. */
-  destroy(): void {
-    this.reset();
-  }
-
-  // -- internals --------------------------------------------------------
+  // -- internals: primitives ----------------------------------------------
 
   private scheduleTransition(delayMs: number, generationId: number, run: () => void): void {
     this.timers.push(
@@ -314,4 +575,27 @@ export class StoryController {
 
 function isShallowest(stratum: FieldStratum): boolean {
   return stratum.id === "near";
+}
+
+function mapByCellIndex(fragments: readonly StoryFragment[]): Map<number, StoryFragment> {
+  const map = new Map<number, StoryFragment>();
+  for (const fragment of fragments) map.set(fragment.cellIndex, fragment);
+  return map;
+}
+
+/** A point `gapPx` short of `target`, along the straight line from `home`
+ *  to `target` -- used so a COMBINE input performer visibly approaches
+ *  MICRO STAGE from its own side rather than landing exactly on the same
+ *  point as the other input. */
+function approachTargetNear(
+  home: { x: number; y: number },
+  target: { x: number; y: number },
+  gapPx: number
+): { x: number; y: number } {
+  const dx = target.x - home.x;
+  const dy = target.y - home.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist <= gapPx) return { x: home.x, y: home.y };
+  const t = 1 - gapPx / dist;
+  return { x: home.x + dx * t, y: home.y + dy * t };
 }
