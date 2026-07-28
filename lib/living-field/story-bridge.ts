@@ -120,9 +120,22 @@ function travel01(progress: number, awakeningFraction: number): number {
 /** Fragment presence envelope INCLUDING the crossfade-out near the end:
  *  rises with presence01 until CROSSFADE_START, then falls 1->0 over the
  *  remaining sliver as the hero overlay takes over. Symmetric under
- *  progress-reversal (mirrors automatically for the return side). */
-function fragmentCrossfadePresence(progress: number): number {
-  const base = presence01(progress);
+ *  progress-reversal (mirrors automatically for the return side).
+ *
+ * v0.4: `pinnedAtFullPresence` (StoryFragment's own flag, see its doc
+ * comment) replaces the RISING base (presence01(progress), i.e. "ramp up
+ * from ambient") with a constant 1 -- this fragment is already fully
+ * established from a prior episode, so it never re-ramps in. The
+ * crossfade-OUT tail near CROSSFADE_START is completely UNCHANGED either
+ * way: a pinned fragment still hides itself right as the unified result
+ * text takes over (avoiding a double-drawn glyph), and still reappears at
+ * that same tail on the way back down -- then, because its base stays 1
+ * rather than falling further with presence01, it remains fully visible
+ * for the entire rest of its journey (e.g. traveling back to a meeting
+ * point) rather than fading toward ambient the way an ordinary returning
+ * fragment does. */
+function fragmentCrossfadePresence(progress: number, pinnedAtFullPresence: boolean): number {
+  const base = pinnedAtFullPresence ? 1 : presence01(progress);
   if (progress <= CROSSFADE_START) return base;
   const fadeT = (progress - CROSSFADE_START) / (1 - CROSSFADE_START);
   return base * (1 - smoothstep(fadeT));
@@ -157,7 +170,7 @@ export function computeStoryCellRenderState(
 
   const timing = state.timing;
   const progress = progressFor(state, t, staticFrame);
-  const presence = fragmentCrossfadePresence(progress);
+  const presence = fragmentCrossfadePresence(progress, fragment.pinnedAtFullPresence === true);
 
   const formingAwakeningFraction =
     timing.awakeningMs / (timing.awakeningMs + timing.approachingMs + timing.formingHeroMs);
@@ -167,7 +180,10 @@ export function computeStoryCellRenderState(
     MAX_PERFORMER_SCALE,
     Math.max(1, computeHeroFontSizeForFragment(state) / fragment.homeStratum.fontSize)
   );
-  const scaleBase = presence01(progress);
+  // Scale uses the same pinned-vs-ramping base as presence, for the same
+  // reason: a continuing performer is already at full size, not re-growing
+  // from ambient.
+  const scaleBase = fragment.pinnedAtFullPresence === true ? 1 : presence01(progress);
   const scale = 1 + scaleBase * (peakScale - 1);
 
   return {
