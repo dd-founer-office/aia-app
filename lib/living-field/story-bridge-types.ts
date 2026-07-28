@@ -74,18 +74,40 @@ export interface StoryFragment {
   grapheme: string;
   targetX: number;
   targetY: number;
+  /** v0.4 (Living Tamil COMBINE/ASSEMBLE/DECOMBINE): true ONLY for a
+   *  performer continuing an identity it already fully established in a
+   *  PRIOR episode -- concretely, the வா carrier re-entering ASSEMBLE
+   *  after COMBINE already formed it. When true, this fragment's opacity/
+   *  scale never ramp UP from ambient (it's already fully present) and
+   *  never simply hold flat either -- it still crossfades out in sync with
+   *  the episode's own result forming (so it isn't double-drawn alongside
+   *  the unified hero text), then crossfades back in during release and
+   *  STAYS fully visible all the way to wherever this fragment's `homeX/
+   *  homeY` point to (which, for a continuing performer, is deliberately
+   *  its PREVIOUS episode's meeting point, not its true original field
+   *  cell -- see story-controller.ts). Position/travel are completely
+   *  unaffected by this flag either way -- it only ever changes the
+   *  opacity/scale ramp's starting behaviour. Absent (or false) for every
+   *  ordinary performer, which is the same "already fully present" state
+   *  every fragment before v0.4 always assumed. */
+  pinnedAtFullPresence?: boolean;
 }
 
-/** Geometry/typography of the hero word itself -- the single
- *  browser-shaped fillText call that becomes the unmistakable hero during
- *  hold. Centred at (centerX, centerY) with textAlign "center" /
- *  textBaseline "middle", matching what measureGraphemeTargets() assumed
- *  when it computed each fragment's targetX/targetY. Font weight is
- *  intentionally NOT interpolated anywhere in this v0.1 proof -- performers
- *  render at their home stratum's normal weight throughout; only position,
- *  scale, opacity, and draw-order hierarchy carry the depth journey, per
- *  explicit direction to prove those fundamentals before introducing
- *  another optical variable. */
+/** Geometry/typography of whatever RESULT overlay is currently active --
+ *  a single, browser-shaped fillText call centred at (centerX, centerY)
+ *  with textAlign "center" / textBaseline "middle".
+ *
+ *  v0.4 (Living Tamil COMBINE/ASSEMBLE/DECOMBINE): this SAME type, and the
+ *  SAME renderer mechanism, is deliberately reused for two linguistically
+ *  DIFFERENT events -- the product/story-controller layer is responsible
+ *  for preserving that distinction in naming and sequencing, not this
+ *  type:
+ *    - COMBINE's result: "வா", centred at MICRO STAGE -- represents a
+ *      Tamil grammatical relationship (மெய் + உயிர் -> உயிர்மெய்).
+ *    - ASSEMBLE's result: "வாழ்த்து", centred at WORD STAGE -- represents
+ *      learned grapheme units participating in a word.
+ *  Sharing the mechanic is a rendering-efficiency decision; it does not
+ *  imply these are the same linguistic operation. */
 export interface StoryHeroGeometry {
   text: string;
   centerX: number;
@@ -208,6 +230,28 @@ export const DEFAULT_STORY_TIMING: StoryTimingConfig = {
   holdingMs: DEFAULT_HOLDING_MS,
   releasingMs: DEFAULT_RELEASING_MS,
   returningMs: DEFAULT_RETURNING_MS,
+};
+
+/**
+ * v0.4 (Living Tamil COMBINE/DECOMBINE proof): a SECOND, independently
+ * tunable timing config, used for the வ்/ஆ episode -- both its forming
+ * side (COMBINE: awaken -> approach -> form "வா" -> hold) AND its
+ * returning side (DECOMBINE: "வா" releases back into வ்/ஆ -> both travel
+ * to their true original homes). See story-controller.ts for exactly how
+ * one 2-fragment StoryState is built for COMBINE, handed off (its carrier
+ * continuing into ASSEMBLE), then that SAME 2-fragment definition is
+ * reused a second time -- initialized directly into "releasing" -- for
+ * DECOMBINE. `holdingMs` here is the mandatory ~1s vா-alone learning
+ * pause; ASSEMBLE (DEFAULT_STORY_TIMING above) has its own, separate
+ * holdingMs for the வாழ்த்து hold.
+ */
+export const DEFAULT_COMBINE_TIMING: StoryTimingConfig = {
+  awakeningMs: 1200,
+  approachingMs: 2500,
+  formingHeroMs: 800,
+  holdingMs: 1000,
+  releasingMs: 800,
+  returningMs: 1700,
 };
 
 /**
