@@ -257,7 +257,8 @@ export function buildFieldLayout(
   width: number,
   height: number,
   config: LivingFieldConfig,
-  reservedVerse?: ReservedVerseInput
+  reservedVerse?: ReservedVerseInput,
+  requiredGlyphs?: readonly string[]
 ): FieldLayout {
   // --- Sprint 04A: Reserved Semantic Cells (fully inert when omitted) -----
   // Computing this BEFORE the ordinary Field Engine scatter lets that scatter
@@ -336,9 +337,50 @@ export function buildFieldLayout(
 
   // Stage 3: Civilization Engine — unchanged logic from Sprint 02, now run
   // as its own explicit stage on the refined slots.
+  //
+  // v0.6 (Living Language Story presence guarantee): `requiredGlyphs`, when
+  // supplied, is a generic glyph multiset (e.g. ["வ்","ஆ","ழ்","த்","த்","உ"])
+  // -- this file has NO knowledge of what word or story requested it, and
+  // never will; it receives only "these glyph values must exist at least
+  // this many times." A small number of the ALREADY-naturally-scattered
+  // slots (their positions decided entirely by Field Engine + Natural
+  // Distribution above, completely unaffected by this) are chosen,
+  // deterministically and evenly spread across the existing slot array (so
+  // no spatial region, cluster, or density pattern is implied), and simply
+  // receive the requested glyph value directly instead of a random deal.
+  // Every other slot deals exactly as before. Duplicate entries in
+  // `requiredGlyphs` (e.g. "த்" twice) each claim their OWN distinct slot --
+  // multiplicity is never collapsed.
+  //
+  // Omitted (every call site before this commit, and every call site in
+  // THIS commit except the Living Language Story prototype) -> the map
+  // below stays empty -> bit-identical to prior behaviour. See
+  // field-layout.selfcheck.ts's dedicated proof of this.
+  const forcedGlyphBySlotIndex = new Map<number, string>();
+  if (requiredGlyphs && requiredGlyphs.length > 0 && slots.length > 0) {
+    const n = Math.min(requiredGlyphs.length, slots.length);
+    if (requiredGlyphs.length > slots.length) {
+      console.warn(
+        `[Living Field] requiredGlyphs has ${requiredGlyphs.length} entries but this layout only has ` +
+          `${slots.length} cells -- only the first ${n} could be guaranteed.`
+      );
+    }
+    for (let i = 0; i < n; i++) {
+      // Evenly spread across the slot array -- NOT a spatial region. Field
+      // Engine generates slots row by row, so this lands requested glyphs
+      // across naturally different rows/areas without ever computing or
+      // implying a rectangle, cluster, or density change of any kind.
+      const slotIndex = Math.floor((i * slots.length) / n);
+      forcedGlyphBySlotIndex.set(slotIndex, requiredGlyphs[i]);
+    }
+  }
+
   const dealers = buildDealers(config.strata);
-  const ordinaryCells: FieldCell[] = slots.map((slot) => {
-    const { glyph, scriptId } = dealGlyphForStratum(slot.stratum, dealers);
+  const ordinaryCells: FieldCell[] = slots.map((slot, slotIndex) => {
+    const forced = forcedGlyphBySlotIndex.get(slotIndex);
+    const { glyph, scriptId } = forced
+      ? { glyph: { kind: "text" as const, value: forced }, scriptId: "modern-tamil-247" }
+      : dealGlyphForStratum(slot.stratum, dealers);
     return {
       x: slot.x,
       y: slot.y,
