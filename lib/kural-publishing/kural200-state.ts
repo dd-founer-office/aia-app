@@ -41,13 +41,23 @@ export const DEFAULT_KURAL_200_CONTENT: KuralPublishingContent = {
 /** A node in the Formation Path graph -- a glyph, a fixed spatial position
  *  (fraction of canvas width/height, so it holds at any output size), and
  *  how visually present it should be. Never rendered with a plus sign, an
- *  arrow, or a label -- position and convergence alone carry the meaning. */
+ *  arrow, or a label -- position and convergence alone carry the meaning.
+ *
+ *  Visual Pass 02 emphasis tiers (renderer.ts owns the actual styling):
+ *   - component: ச், ஒ -- sits at ordinary ambient-field weight, findable
+ *     only because it's consistently there, not because it's shouted.
+ *   - formed: சொ -- the first resolved shape, modestly more present.
+ *   - emerging: சொல் -- clearer still, but stays part of the Living Layer,
+ *     never rendered as a heading.
+ *   - selected: பயன் -- not built from visible components at all (no
+ *     decomposition was confidently known, so none was invented); rendered
+ *     softly, as something that survived rather than something constructed. */
 export interface FormationNode {
   id: string;
   glyph: string;
   x: number;
   y: number;
-  emphasis: "component" | "formed" | "discoverable";
+  emphasis: "component" | "formed" | "emerging" | "selected";
 }
 
 export interface FormationPath {
@@ -56,11 +66,11 @@ export interface FormationPath {
 }
 
 export const FORMATION_NODES: readonly FormationNode[] = [
-  { id: "c-ch", glyph: "ச்", x: 0.335, y: 0.36, emphasis: "component" },
-  { id: "c-o", glyph: "ஒ", x: 0.335, y: 0.6, emphasis: "component" },
-  { id: "f-cho", glyph: "சொ", x: 0.465, y: 0.48, emphasis: "formed" },
-  { id: "f-chol", glyph: "சொல்", x: 0.585, y: 0.44, emphasis: "discoverable" },
-  { id: "f-payan", glyph: "பயன்", x: 0.565, y: 0.665, emphasis: "discoverable" },
+  { id: "c-ch", glyph: "ச்", x: 0.3, y: 0.34, emphasis: "component" },
+  { id: "c-o", glyph: "ஒ", x: 0.315, y: 0.63, emphasis: "component" },
+  { id: "f-cho", glyph: "சொ", x: 0.445, y: 0.49, emphasis: "formed" },
+  { id: "f-chol", glyph: "சொல்", x: 0.565, y: 0.43, emphasis: "emerging" },
+  { id: "f-payan", glyph: "பயன்", x: 0.605, y: 0.6, emphasis: "selected" },
 ];
 
 export const FORMATION_PATHS: readonly FormationPath[] = [
@@ -69,15 +79,19 @@ export const FORMATION_PATHS: readonly FormationPath[] = [
   { fromId: "f-cho", toId: "f-chol" },
 ];
 
-/** Spatial regions as fractions of canvas width. Left of `denseEnd` is the
- *  dense ambient field; between `denseEnd` and `transitionEnd` density
- *  tapers to zero and the Formation Paths live; at and beyond `quietStart`
- *  no ambient glyph is ever drawn -- the silence is structural, not a
- *  low-opacity approximation of silence. */
+/** Spatial regions as fractions of canvas width.
+ *   0 -> denseEnd:            sustained abundance -- density stays high,
+ *                              only gently easing (the "linguistic world").
+ *   denseEnd -> transitionEnd: connection -> formation -> selection --
+ *                              density genuinely falls, Formation Paths and
+ *                              the root-filament texture live here.
+ *   transitionEnd (= quietStart) -> edge: structural silence -- zero
+ *                              ambient glyphs, ever. Not a low-opacity
+ *                              approximation of quiet; an actual absence. */
 export const REGIONS = {
-  denseEnd: 0.42,
-  transitionEnd: 0.62,
-  quietStart: 0.62,
+  denseEnd: 0.46,
+  transitionEnd: 0.63,
+  quietStart: 0.63,
 } as const;
 
 /** Derives the deterministic layout seed from the Kural number, per the
