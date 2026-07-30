@@ -344,34 +344,65 @@ export function buildFieldLayout(
   // never will; it receives only "these glyph values must exist at least
   // this many times." A small number of the ALREADY-naturally-scattered
   // slots (their positions decided entirely by Field Engine + Natural
-  // Distribution above, completely unaffected by this) are chosen,
-  // deterministically and evenly spread across the existing slot array (so
-  // no spatial region, cluster, or density pattern is implied), and simply
-  // receive the requested glyph value directly instead of a random deal.
-  // Every other slot deals exactly as before. Duplicate entries in
+  // Distribution above, completely unaffected by this) are chosen, and
+  // simply receive the requested glyph value directly instead of a random
+  // deal. Every other slot deals exactly as before. Duplicate entries in
   // `requiredGlyphs` (e.g. "த்" twice) each claim their OWN distinct slot --
   // multiplicity is never collapsed.
   //
+  // Edge-safety correction (found by testing, not assumed correct): an
+  // earlier version spread picks evenly across the FULL slot array
+  // (`floor(i * slots.length / n)`), which meant the first pick (i=0)
+  // always landed on slot index 0 -- and because Field Engine generates
+  // slots row-by-row starting at row 0, slot 0 is always at or near the
+  // very top-left corner, consistently inside the edge margin any sane
+  // downstream consumer (e.g. performer-selection.ts's own
+  // EDGE_MARGIN_FRACTION) would exclude for on-screen safety. A guarantee
+  // that reliably hands back an unusable cell isn't a real guarantee, so
+  // picks are now spread only across slots that AREN'T edge-adjacent in
+  // the first place -- still purely a choice among already-existing,
+  // already-natural positions; nothing here computes a new position, a
+  // region, or a density change. The 0.06 fraction below is duplicated
+  // (not imported) from performer-selection.ts's own constant, matching
+  // this codebase's established pattern of duplicating small, stable
+  // constants across a module boundary rather than coupling the Kernel to
+  // an app-level consumer's file.
+  //
   // Omitted (every call site before this commit, and every call site in
   // THIS commit except the Living Language Story prototype) -> the map
-  // below stays empty -> bit-identical to prior behaviour. See
-  // field-layout.selfcheck.ts's dedicated proof of this.
+  // below stays empty -> bit-identical to prior behaviour.
   const forcedGlyphBySlotIndex = new Map<number, string>();
   if (requiredGlyphs && requiredGlyphs.length > 0 && slots.length > 0) {
-    const n = Math.min(requiredGlyphs.length, slots.length);
-    if (requiredGlyphs.length > slots.length) {
+    const REQUIRED_GLYPH_EDGE_MARGIN_FRACTION = 0.06;
+    const edgeMarginX = width * REQUIRED_GLYPH_EDGE_MARGIN_FRACTION;
+    const edgeMarginY = height * REQUIRED_GLYPH_EDGE_MARGIN_FRACTION;
+    const interiorSlotIndices = slots
+      .map((slot, i) => ({ slot, i }))
+      .filter(
+        ({ slot }) =>
+          slot.x >= edgeMarginX &&
+          slot.x <= width - edgeMarginX &&
+          slot.y >= edgeMarginY &&
+          slot.y <= height - edgeMarginY
+      )
+      .map(({ i }) => i);
+
+    const pool = interiorSlotIndices.length > 0 ? interiorSlotIndices : slots.map((_, i) => i);
+    const n = Math.min(requiredGlyphs.length, pool.length);
+    if (requiredGlyphs.length > pool.length) {
       console.warn(
-        `[Living Field] requiredGlyphs has ${requiredGlyphs.length} entries but this layout only has ` +
-          `${slots.length} cells -- only the first ${n} could be guaranteed.`
+        `[Living Field] requiredGlyphs has ${requiredGlyphs.length} entries but only ${pool.length} ` +
+          `edge-safe cells are available in this layout -- only the first ${n} could be guaranteed.`
       );
     }
     for (let i = 0; i < n; i++) {
-      // Evenly spread across the slot array -- NOT a spatial region. Field
-      // Engine generates slots row by row, so this lands requested glyphs
-      // across naturally different rows/areas without ever computing or
-      // implying a rectangle, cluster, or density change of any kind.
-      const slotIndex = Math.floor((i * slots.length) / n);
-      forcedGlyphBySlotIndex.set(slotIndex, requiredGlyphs[i]);
+      // Evenly spread across the eligible (edge-safe) slot pool -- NOT a
+      // spatial region. Field Engine generates slots row by row, so this
+      // still lands requested glyphs across naturally different
+      // rows/areas without ever computing or implying a rectangle,
+      // cluster, or density change of any kind.
+      const poolIndex = Math.floor((i * pool.length) / n);
+      forcedGlyphBySlotIndex.set(pool[poolIndex], requiredGlyphs[i]);
     }
   }
 
