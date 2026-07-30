@@ -252,8 +252,179 @@ export function selectPerformerHomes(
 }
 
 // ---------------------------------------------------------------------------
-// Assignment: which performer goes to which target, minimizing crossings
+// v0.6: Grapheme-aware constellation selection
 // ---------------------------------------------------------------------------
+// selectPerformerHomes() above is deliberately left untouched (still used by
+// nothing in the current story flow as of this commit, kept for reference/
+// possible reuse) -- it selects PURELY by geometry, with no concept of a
+// cell's actual glyph. That was correct for v0.4's "any cell can become any
+// performer" model. The current direction is different: every performer
+// must be a GENUINE existing field cell whose ambient glyph already matches
+// the required grapheme -- no substitution, no unrelated cell standing in.
+// selectConstellation() below is the replacement selection mechanism for
+// that model: same distance/stratum/separation scoring philosophy as
+// selectPerformerHomes() (same constants, reused directly), but candidates
+// are first bucketed by their REAL glyph value, and only cells matching a
+// role's required grapheme are ever eligible for that role.
+
+export interface GlyphCandidate {
+  cellIndex: number;
+  x: number;
+  y: number;
+  glyph: string;
+  /** Same meaning as PerformerCandidate.isShallowestStratum. */
+  isShallowestStratum: boolean;
+}
+
+/**
+ * One role in a constellation -- e.g. "the வ் performer," "the ஆ performer
+ * that pairs with role 0." `pairedWithRoleIndex`, when present, MUST refer
+ * to an earlier index in the roles array passed to selectConstellation()
+ * (that role is guaranteed already selected by the time this one is
+ * scored, since roles are filled in array order).
+ */
+export interface ConstellationRole {
+  /** The exact real glyph value this role's cell must already contain --
+   *  e.g. "வ்". Never derived, never fabricated; selectConstellation()
+   *  only ever picks a cell whose glyph already equals this string. */
+  glyph: string;
+  /** If this role represents one half of a linguistic pair (e.g. ஆ paired
+   *  with the already-chosen வ்), the index of that other role -- used to
+   *  add a "meets naturally" scoring bonus. Omitted for roles selected
+   *  purely on their own geometry (independent performers). */
+  pairedWithRoleIndex?: number;
+}
+
+/** Paired-role scoring targets a SMALLER mutual distance than the general
+ *  distance-from-centre scoring above -- paired performers should end up
+ *  close enough to have a natural, readable meeting, not merely "somewhere
+ *  in the same general area." Same units (fraction of shorter viewport
+ *  dimension) as TARGET_DISTANCE_FRACTION. */
+const PAIR_TARGET_DISTANCE_FRACTION = 0.16;
+const PAIR_DISTANCE_SPREAD = 0.14;
+/** How strongly pair-elegance is rewarded, relative to the 0..1 distance
+ *  score -- meaningful, but not so strong it overrides basic on-screen
+ *  safety or overall composition balance. */
+const PAIR_ELEGANCE_WEIGHT = 1.1;
+
+function pairEleganceScore(normalizedDistToPartner: number): number {
+  const diff = Math.abs(normalizedDistToPartner - PAIR_TARGET_DISTANCE_FRACTION);
+  return Math.max(0, 1 - diff / PAIR_DISTANCE_SPREAD);
+}
+
+/**
+ * Deterministically selects one real, genuine field cell per role, in the
+ * order `roles` is given. Each role only ever considers cells whose ACTUAL
+ * glyph matches that role's required grapheme -- never an unrelated cell,
+ * never a fabricated one. Returns `null` if any role's glyph has zero
+ * remaining eligible candidates (should not happen when the layout was
+ * built with a matching `requiredGlyphs` multiset -- see field-layout.ts --
+ * but this function makes no such assumption itself and fails honestly
+ * rather than ever inventing a source).
+ *
+ * Same core scoring as selectPerformerHomes(): distance-from-centre band,
+ * mild depth-stratum preference, angular separation from every
+ * already-picked role (regardless of pairing), edge safety. Roles with
+ * `pairedWithRoleIndex` set ALSO score a pair-elegance term rewarding a
+ * natural (close but not overlapping) distance to that specific partner's
+ * already-chosen position -- this is what makes வ்/ஆ (and, independently,
+ * த்₂/உ) read as belonging to each other rather than merely coexisting in
+ * the same composition.
+ *
+ * Two duplicate roles requesting the SAME glyph (e.g. both த் roles) are
+ * handled correctly by construction: whichever role is filled first claims
+ * its cellIndex, removing it from the shared candidate pool before the
+ * second role of the same glyph is scored -- they can never resolve to the
+ * same cell.
+ *
+ * Deterministic: no Math.random anywhere. Ties broken by lowest cellIndex.
+ */
+export function selectConstellation(
+  cells: readonly GlyphCandidate[],
+  roles: readonly ConstellationRole[],
+  centerX: number,
+  centerY: number,
+  canvasWidth: number,
+  canvasHeight: number
+): PerformerHome[] | null {
+  const shorterDim = Math.min(canvasWidth, canvasHeight);
+  const edgeMarginX = canvasWidth * EDGE_MARGIN_FRACTION;
+  const edgeMarginY = canvasHeight * EDGE_MARGIN_FRACTION;
+
+  const byGlyph = new Map<string, GlyphCandidate[]>();
+  for (const cell of cells) {
+    if (
+      cell.x < edgeMarginX ||
+      cell.x > canvasWidth - edgeMarginX ||
+      cell.y < edgeMarginY ||
+      cell.y > canvasHeight - edgeMarginY
+    ) {
+      continue; // edge/clipping safety -- disqualified entirely, same as selectPerformerHomes()
+    }
+    const list = byGlyph.get(cell.glyph);
+    if (list) list.push(cell);
+    else byGlyph.set(cell.glyph, [cell]);
+  }
+
+  const usedCellIndices = new Set<number>();
+  const picked: PerformerHome[] = [];
+  const pickedAngles: number[] = [];
+
+  for (let roleIndex = 0; roleIndex < roles.length; roleIndex++) {
+    const role = roles[roleIndex];
+    const candidates = (byGlyph.get(role.glyph) ?? []).filter(
+      (c) => !usedCellIndices.has(c.cellIndex)
+    );
+    if (candidates.length === 0) return null;
+
+    const partner = role.pairedWithRoleIndex !== undefined ? picked[role.pairedWithRoleIndex] : null;
+
+    let best: GlyphCandidate | null = null;
+    let bestScore = -Infinity;
+
+    for (const candidate of candidates) {
+      const dx = candidate.x - centerX;
+      const dy = candidate.y - centerY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const normalizedDist = dist / shorterDim;
+      const angle = Math.atan2(dy, dx);
+
+      let score = distanceScore(normalizedDist);
+      if (!candidate.isShallowestStratum) score += DEEP_STRATUM_BONUS;
+
+      if (pickedAngles.length > 0) {
+        const minSeparation = Math.min(...pickedAngles.map((a) => angularDifference(angle, a)));
+        score += SEPARATION_WEIGHT * (minSeparation / Math.PI);
+      }
+
+      if (partner) {
+        const pdx = candidate.x - partner.x;
+        const pdy = candidate.y - partner.y;
+        const partnerDist = Math.sqrt(pdx * pdx + pdy * pdy) / shorterDim;
+        score += PAIR_ELEGANCE_WEIGHT * pairEleganceScore(partnerDist);
+      }
+
+      if (
+        score > bestScore ||
+        (score === bestScore && best !== null && candidate.cellIndex < best.cellIndex)
+      ) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+
+    // candidates.length > 0 was already checked above, so `best` is always
+    // set here -- the loop above always finds at least one candidate.
+    usedCellIndices.add(best!.cellIndex);
+    const home = { cellIndex: best!.cellIndex, x: best!.x, y: best!.y };
+    picked.push(home);
+    pickedAngles.push(Math.atan2(best!.y - centerY, best!.x - centerX));
+  }
+
+  return picked;
+}
+
+
 
 interface Point {
   x: number;
