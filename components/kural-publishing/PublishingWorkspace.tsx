@@ -8,10 +8,21 @@
  * database, no API route. Isolated from the rest of the Contributor App:
  * this file imports nothing from app/ or components/ outside its own
  * kural-publishing/ folder.
+ *
+ * Visual Pass 05 adds a "Show Formation Logic" debug toggle. It only ever
+ * affects the live preview (passed straight through to KuralHeroCanvas).
+ * Download PNG deliberately does NOT read the live preview canvas -- it
+ * calls renderKuralPublishingForExport, a fully independent render that
+ * always forces the debug overlay off, so the toggle can never leak into
+ * an exported file regardless of what's on screen when Download is clicked.
  */
 
-import { useCallback, useRef, useState } from "react";
-import KuralHeroCanvas, { CANVAS_WIDTH, CANVAS_HEIGHT } from "./KuralHeroCanvas";
+import { useCallback, useState } from "react";
+import KuralHeroCanvas, {
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  renderKuralPublishingForExport,
+} from "./KuralHeroCanvas";
 import {
   DEFAULT_KURAL_200_CONTENT,
   deriveIssueNumber,
@@ -48,7 +59,8 @@ export default function PublishingWorkspace() {
     DEFAULT_KURAL_200_CONTENT
   );
   const [generation, setGeneration] = useState(0);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [showFormationLogic, setShowFormationLogic] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleFieldChange = useCallback((key: ContentField, value: string) => {
     setContent((prev) => ({ ...prev, [key]: value }));
@@ -58,14 +70,12 @@ export default function PublishingWorkspace() {
     setGeneration((g) => g + 1);
   }, []);
 
-  const handleCanvasReady = useCallback((canvas: HTMLCanvasElement) => {
-    canvasRef.current = canvas;
-  }, []);
-
-  const handleDownload = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.toBlob((blob) => {
+  const handleDownload = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      // Independent render, debug always forced off inside this helper --
+      // never reads the (possibly debug-overlaid) live preview canvas.
+      const blob = await renderKuralPublishingForExport(content);
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -75,7 +85,9 @@ export default function PublishingWorkspace() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    }, "image/png");
+    } finally {
+      setIsExporting(false);
+    }
   }, [content]);
 
   return (
@@ -117,10 +129,27 @@ export default function PublishingWorkspace() {
           <button
             type="button"
             onClick={handleDownload}
-            className="rounded-[var(--radius-button)] border border-[var(--color-primary)] bg-transparent px-5 py-3 text-sm font-medium text-[var(--color-primary)]"
+            disabled={isExporting}
+            className="rounded-[var(--radius-button)] border border-[var(--color-primary)] bg-transparent px-5 py-3 text-sm font-medium text-[var(--color-primary)] disabled:opacity-50"
           >
-            Download PNG
+            {isExporting ? "Preparing PNG…" : "Download PNG"}
           </button>
+        </div>
+
+        <div className="mt-8 border-t border-[var(--color-border)] pt-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={showFormationLogic}
+              onChange={(e) => setShowFormationLogic(e.target.checked)}
+            />
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Show Formation Logic (debug, preview only)
+            </span>
+          </label>
+          <p className="mt-1 text-xs text-[var(--color-muted-foreground)] opacity-70">
+            Never appears in the downloaded PNG.
+          </p>
         </div>
       </section>
 
@@ -132,7 +161,7 @@ export default function PublishingWorkspace() {
           <KuralHeroCanvas
             content={content}
             generation={generation}
-            onCanvasReady={handleCanvasReady}
+            debugFormationLogic={showFormationLogic}
           />
         </div>
       </section>

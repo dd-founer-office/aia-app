@@ -9,13 +9,20 @@
  * changing the actual export resolution.
  *
  * Deliberately NOT the Living Field's LivingFieldEngine/requestAnimationFrame
- * loop -- this draws exactly once per (content, generation) change and then
- * stops. No animation, per the brief.
+ * loop -- this draws exactly once per (content, generation, debug) change
+ * and then stops. No animation, per the brief.
  *
  * Font resolution mirrors components/field/LivingField.tsx's own approach
  * (read --font-tamil-sans / --font-sans from the document, re-render once
  * document.fonts settles) without importing that component -- concept reuse
  * only, as instructed.
+ *
+ * Visual Pass 05 adds `debugFormationLogic` for the live preview only, plus
+ * `renderKuralPublishingForExport` -- a self-contained export path that
+ * always renders with debug forced false, independent of whatever the
+ * on-screen toggle is set to. PublishingWorkspace's Download PNG button
+ * calls that helper directly rather than reading pixels off the live
+ * preview canvas, so the debug overlay can never leak into an export.
  */
 
 import { useEffect, useRef } from "react";
@@ -45,16 +52,16 @@ interface KuralHeroCanvasProps {
   generation: number;
   /** Optional canonical KKA logo, once available. */
   logoImage?: HTMLImageElement | null;
-  /** Fires after every paint with the live canvas element, so the workspace
-   *  can wire up PNG export without this component owning download logic. */
-  onCanvasReady?: (canvas: HTMLCanvasElement) => void;
+  /** INTERNAL, development-only. Live-preview only -- see module doc.
+   *  Defaults to false. */
+  debugFormationLogic?: boolean;
 }
 
 export default function KuralHeroCanvas({
   content,
   generation,
   logoImage,
-  onCanvasReady,
+  debugFormationLogic = false,
 }: KuralHeroCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -72,15 +79,15 @@ export default function KuralHeroCanvas({
         tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
         sansFont: resolveFont("--font-sans", SANS_FALLBACK),
         logoImage: logoImage ?? null,
+        debugFormationLogic,
       });
-      onCanvasReady?.(canvas);
     };
 
     paint();
 
     // Canvas text does not reflow when a web font finishes loading the way
-    // DOM text does -- repaint once loading settles so the exported PNG
-    // never freezes on a fallback-font measurement.
+    // DOM text does -- repaint once loading settles so the preview never
+    // freezes on a fallback-font measurement.
     let cancelled = false;
     if (typeof document !== "undefined" && "fonts" in document) {
       document.fonts.ready
@@ -95,8 +102,7 @@ export default function KuralHeroCanvas({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content, generation, logoImage]);
+  }, [content, generation, logoImage, debugFormationLogic]);
 
   return (
     <canvas
@@ -113,4 +119,44 @@ export default function KuralHeroCanvas({
       }}
     />
   );
+}
+
+/** Renders a fresh, fully independent 1648x928 canvas for PNG export --
+ *  always with debugFormationLogic: false and logoImage: null, regardless
+ *  of the live preview's current state. This is the ONLY function
+ *  PublishingWorkspace's Download PNG button should call, precisely so the
+ *  debug overlay can never appear in an exported file. */
+export async function renderKuralPublishingForExport(
+  content: KuralPublishingContent
+): Promise<Blob | null> {
+  const canvas = document.createElement("canvas");
+  canvas.width = CANVAS_WIDTH;
+  canvas.height = CANVAS_HEIGHT;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  // Fonts are already loaded by the time someone can click Download (the
+  // live preview has been on screen), but wait on document.fonts.ready
+  // defensively anyway before drawing the export-only canvas.
+  if (typeof document !== "undefined" && "fonts" in document) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      /* fallback chain already in place */
+    }
+  }
+
+  renderKuralPublishing(ctx, {
+    width: CANVAS_WIDTH,
+    height: CANVAS_HEIGHT,
+    content,
+    tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
+    sansFont: resolveFont("--font-sans", SANS_FALLBACK),
+    logoImage: null,
+    debugFormationLogic: false,
+  });
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/png");
+  });
 }

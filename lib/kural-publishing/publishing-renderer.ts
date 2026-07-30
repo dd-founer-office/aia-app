@@ -1,5 +1,5 @@
 /**
- * Kural Publishing — Renderer (MVP, Visual Pass 04)
+ * Kural Publishing — Renderer (MVP, Visual Pass 05)
  * ----------------------------------------------------------------------------
  * Deliberately isolated from lib/living-field/renderer.ts. That renderer is
  * the locked, live requestAnimationFrame engine for the ambient app
@@ -25,9 +25,21 @@
  *   DENSITY CREATES DEPTH. DEPTH CREATES DARKNESS. FORMATION CREATES
  *   ORDER. SILENCE CREATES CLARITY.
  * Pass 03's atmosphere read as a background panel with a visible edge
- * around the transition -- this pass deliberately weakens that layer and
- * pushes the actual visual weight back onto glyph population, overlap,
+ * around the transition -- pass 04 deliberately weakened that layer and
+ * pushed the actual visual weight back onto glyph population, overlap,
  * and the Formation Path network.
+ *
+ * Pass 05 governing rule (does not touch composition/density/atmosphere --
+ * see pass 04's own header for that): every glyph belongs to one of three
+ * semantic depths -- AMBIENT (broad modern-Tamil environment), KURAL
+ * MATERIAL (real substrings of the actual Kural 200 text), or SEMANTIC
+ * SURVIVOR (சொ/சொல்/பயன், rendered only via FORMATION_NODES, never from
+ * the ambient loop). The rule: the more visually prominent a form becomes,
+ * the more directly it must relate to the source content -- so the
+ * high-contrast LARGE/ANCHOR ambient tiers are now always Kural material,
+ * never arbitrary. Formation Paths also become a real three-tier system
+ * (primary/secondary/tertiary) with exactly 5 primary paths, and an
+ * INTERNAL debug overlay (never on the export path) can reveal them.
  *
  * Determinism: every random draw in this file goes through the seeded
  * generator derived from the Kural number (kural200-state.deriveSeed).
@@ -79,13 +91,20 @@ export interface RenderKuralPublishingOptions {
   /** Canonical KKA logo, once it exists. Left undefined/null draws nothing --
    *  never a placeholder box or generated mark. */
   logoImage?: HTMLImageElement | null;
+  /** INTERNAL, development-only. When true, overlays the primary Formation
+   *  Paths and their participating glyphs at high contrast so the intended
+   *  structure can be verified against a screenshot instead of guessed at.
+   *  Must never be true on the export path -- see
+   *  KuralHeroCanvas.renderKuralPublishingForExport, which always renders
+   *  with this forced false regardless of the live preview's toggle state. */
+  debugFormationLogic?: boolean;
 }
 
 export function renderKuralPublishing(
   ctx: CanvasRenderingContext2D,
   opts: RenderKuralPublishingOptions
 ): void {
-  const { width, height, content, tamilFont, sansFont, logoImage } = opts;
+  const { width, height, content, tamilFont, sansFont, logoImage, debugFormationLogic } = opts;
   const rand = createSeededRandom(deriveSeed(content.kuralNumber));
 
   // Real substrings of the actual verified Kural text, not invented glyphs --
@@ -98,11 +117,23 @@ export function renderKuralPublishing(
   ctx.clearRect(0, 0, width, height);
   drawAtmosphere(ctx, width, height, rand);
 
-  drawAmbientField(ctx, width, height, tamilFont, rand, kuralSyllables);
-  drawFormationLayer(ctx, width, height, tamilFont, rand);
+  // Built once, at the exact point in the RNG sequence pass 04 already built
+  // it (immediately before the ambient field's own pocket noise) -- shared
+  // with the formation layer below so secondary paths can genuinely
+  // "connect clusters" instead of guessing at where they are. This ordering
+  // is what keeps this pass's composition byte-identical to pass 04's
+  // wherever this pass doesn't intentionally change something.
+  const macro = buildMacroClusters(rand);
+
+  drawAmbientField(ctx, width, height, tamilFont, rand, kuralSyllables, macro);
+  const debugInfo = drawFormationLayer(ctx, width, height, tamilFont, rand, macro);
   drawForegroundKural(ctx, width, height, content, tamilFont, sansFont);
   drawMetadata(ctx, width, height, content, sansFont);
   if (logoImage) drawLogoSlot(ctx, width, height, logoImage);
+
+  if (debugFormationLogic) {
+    drawDebugFormationOverlay(ctx, width, height, tamilFont, debugInfo);
+  }
 }
 
 /** Splits Tamil text into orthographic syllables (an independent vowel, or
@@ -279,7 +310,8 @@ function drawAmbientField(
   height: number,
   tamilFont: string,
   rand: SeededRandom,
-  kuralSyllables: readonly string[]
+  kuralSyllables: readonly string[],
+  macro: readonly MacroCluster[]
 ): void {
   // A finer grid still -- more addressable slots for the micro-mass this
   // pass asks for.
@@ -289,7 +321,6 @@ function drawAmbientField(
   const rows = Math.ceil(height / rowH);
   const protectedCol = Math.ceil((REGIONS.transitionEnd * width) / colW);
 
-  const macro = buildMacroClusters(rand);
   const pockets = buildPocketField(rand);
 
   for (let r = 0; r < rows; r++) {
@@ -366,15 +397,23 @@ function drawAmbientGlyph(
   let baseOpacity: number;
   let colorMix: number; // 0 = primary green, 1 = near-dark foreground
   let wide = false;
+  // Semantic depth this glyph is drawn from -- see the three-depth rule
+  // below. "ambient" = broad Tamil environment (A), "kuralMaterial" =
+  // forms actually present in Kural 200 (B). Category C (சொ/சொல்/பயன்,
+  // the semantic survivors) is never drawn from this ambient loop at all --
+  // it only ever comes from FORMATION_NODES, rendered separately.
+  let depth: "ambient" | "kuralMaterial";
 
   if (roll < pMicro) {
     size = rand.range(4, 8); // MICRO -- the bulk of the mass
     baseOpacity = rand.range(0.03, 0.1);
     colorMix = 0;
+    depth = "ambient"; // deep atmosphere stays the broad language environment
   } else if (roll < pMicro + pSmallMed) {
     size = rand.range(9, 16); // SMALL / MEDIUM
     baseOpacity = rand.range(0.08, 0.19);
     colorMix = 0.12;
+    depth = "ambient"; // mixes with Kural material via kuralBias below
   } else if (roll < pMicro + pSmallMed + pLarge) {
     const isAnchor = rand.chance(0.14); // genuinely rare, high-presence
     if (isAnchor) {
@@ -386,11 +425,21 @@ function drawAmbientGlyph(
       baseOpacity = rand.range(0.15, 0.29);
       colorMix = 0.26;
     }
+    // RULE: the more visually prominent a form becomes, the more directly
+    // it must relate to the source content. LARGE and ANCHOR are both
+    // high-contrast enough to read as "visual heroes," so both are always
+    // Kural material, never an arbitrary ambient form -- this is the fix
+    // for "arbitrary Tamil forms receiving large size / dark contrast."
+    depth = "kuralMaterial";
   } else {
     size = rand.range(42, 80); // GHOST -- rare, huge, barely there
     baseOpacity = rand.range(0.015, 0.04);
     colorMix = 0;
     wide = true;
+    // Large ghost forms are allowed to be ambient specifically because
+    // they stay extremely low opacity -- prominence, not scale alone, is
+    // what the rule restricts.
+    depth = "ambient";
   }
 
   const jitterRange = wide ? 30 : 7;
@@ -398,11 +447,16 @@ function drawAmbientGlyph(
   const jitterY = rand.range(-jitterRange, jitterRange);
 
   // Content narrows toward the actual Kural as density falls -- deep field
-  // stays a broad Tamil environment.
+  // stays a broad Tamil environment. kuralMaterial-depth glyphs always draw
+  // from the real Kural text; ambient-depth glyphs mix in Kural material
+  // increasingly as xFrac grows, per "MID LEFT: mix, CENTRE: mostly Kural
+  // material."
   const kuralBias = kuralSyllables.length > 0
     ? Math.max(0, Math.min(0.68, (xFrac - REGIONS.denseEnd * 0.35) / (REGIONS.denseEnd * 1.1)))
     : 0;
-  const glyph = rand.chance(kuralBias)
+  const useKuralMaterial =
+    kuralSyllables.length > 0 && (depth === "kuralMaterial" || rand.chance(kuralBias));
+  const glyph = useKuralMaterial
     ? rand.pick(kuralSyllables)
     : rand.pick(MODERN_TAMIL_VALUES);
 
@@ -437,70 +491,142 @@ function drawMicroTrace(
 }
 
 // ---------------------------------------------------------------------------
-// Formation Paths -- a discoverable branching network again. Three tiers:
-// primary (the linguistically real edges), secondary (fewer, slightly
-// clearer, connecting local clusters), tertiary (many, extremely thin,
-// very faint). All grown through and between the glyph mass, not drawn as
-// a foreground web.
+// Formation Paths -- the structural system, not decoration behind letters.
+// Three tiers: TERTIARY (many, hairline, very faint, local), SECONDARY
+// (moderate, visible on inspection, connect clusters), PRIMARY (3-5,
+// clearly discoverable, the actual linguistic/emergence journeys). Paths
+// are drawn before glyphs, so glyph clusters naturally occlude parts of
+// them -- "some paths should disappear behind glyph clusters."
 // ---------------------------------------------------------------------------
+
+/** A drawn primary path's geometry, kept only so the debug overlay can
+ *  redraw the exact same curve at high contrast -- no extra RNG draws are
+ *  needed for that, keeping debug rendering fully deterministic and
+ *  decoupled from export. */
+interface PrimaryEdgeRecord {
+  x1: number;
+  y1: number;
+  cx1: number;
+  cy1: number;
+  cx2: number;
+  cy2: number;
+  x2: number;
+  y2: number;
+}
+
+export interface FormationDebugInfo {
+  edges: PrimaryEdgeRecord[];
+  markers: { x: number; y: number }[];
+}
 
 function drawFormationLayer(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   tamilFont: string,
-  rand: SeededRandom
-): void {
+  rand: SeededRandom,
+  macro: readonly MacroCluster[]
+): FormationDebugInfo {
   const nodeById = new Map(FORMATION_NODES.map((n) => [n.id, n]));
+  const edges: PrimaryEdgeRecord[] = [];
+  const markers: { x: number; y: number }[] = [];
 
   ctx.lineCap = "round";
 
   // Root network first (furthest back) -- tertiary, then secondary. Most of
   // this connects nothing at all.
-  drawRootFilaments(ctx, width, height, rand);
+  drawRootFilaments(ctx, width, height, rand, macro);
 
-  // The three linguistically real relationships, blended into the same
-  // texture next.
+  // PRIMARY 1-3: the linguistically real relationships (ச்+ஒ->சொ->சொல்).
   for (const path of FORMATION_PATHS) {
     const from = nodeById.get(path.fromId);
     const to = nodeById.get(path.toId);
     if (!from || !to) continue;
-    drawFormationBranch(ctx, from, to, width, height, rand);
+    const edge = drawPrimaryPath(ctx, from.x * width, from.y * height, to.x * width, to.y * height, rand);
+    edges.push(edge);
+  }
+
+  // PRIMARY 4: a broad guide from deep in the language mass toward the
+  // formation region -- no glyph at either end, it's the field itself
+  // pointing the eye onward, per "guide the eye broadly: LANGUAGE MASS ->
+  // FORMATION REGION." Fixed coordinates, not random -- this is a single
+  // deliberate journey, not decorative texture.
+  {
+    const x1 = width * 0.1;
+    const y1 = height * 0.55;
+    const x2 = width * (REGIONS.denseEnd * 0.95);
+    const y2 = height * 0.5;
+    const edge = drawPrimaryPath(ctx, x1, y1, x2, y2, rand);
+    edges.push(edge);
+    markers.push({ x: x1, y: y1 });
+  }
+
+  // PRIMARY 5: பயன்'s own emergence journey, distinct from சொ/சொல்'s. Starts
+  // inside the guaranteed macro cluster already centred on சொல்/பயன் (see
+  // buildMacroClusters), so பயன் reads as generated by accumulated material
+  // rather than placed on top of it.
+  {
+    const payanNode = FORMATION_NODES.find((n) => n.id === "f-payan");
+    const clusterCentre = macro[0]; // the guaranteed, non-random cluster (index 0)
+    if (payanNode && clusterCentre) {
+      const x1 = width * (clusterCentre.cx - 0.09);
+      const y1 = height * (clusterCentre.cy - 0.06);
+      const x2 = payanNode.x * width;
+      const y2 = payanNode.y * height;
+      const edge = drawPrimaryPath(ctx, x1, y1, x2, y2, rand);
+      edges.push(edge);
+      markers.push({ x: x1, y: y1 });
+    }
   }
 
   for (const node of FORMATION_NODES) {
     drawFormationNode(ctx, node, width, height, tamilFont, rand);
+    markers.push({ x: node.x * width, y: node.y * height });
   }
+
+  return { edges, markers };
 }
 
-/** Secondary branches: fewer, slightly clearer, connect local clusters --
- *  begin inside dense clusters (density-weighted) and mostly taper into
- *  nothing, some branching once. Tertiary branches: many, extremely thin,
- *  very faint, short/local -- background texture. Neither connects to a
- *  named FormationNode; both are texture, not claims about linguistic
- *  structure. */
+/** Secondary branches: a moderate number, visible on inspection, and now
+ *  deliberately seeded near macro cluster centres so they read as
+ *  connecting clusters rather than starting from arbitrary points. Tertiary
+ *  branches: many, hairline, very faint, short/local -- background texture.
+ *  Neither connects to a named FormationNode; both are texture, not claims
+ *  about linguistic structure. */
 function drawRootFilaments(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  rand: SeededRandom
+  rand: SeededRandom,
+  macro: readonly MacroCluster[]
 ): void {
-  const secondaryAttempts = 85;
+  const secondaryAttempts = 55;
   for (let i = 0; i < secondaryAttempts; i++) {
-    const xFrac = rand.range(0.03, REGIONS.transitionEnd * 0.98);
+    // Seed near a cluster centre (with spread) roughly half the time, so
+    // secondary paths visibly originate from where the language mass has
+    // actually accumulated -- "connect clusters," not scatter randomly.
+    let xFrac: number;
+    let y: number;
+    if (macro.length > 0 && rand.chance(0.6)) {
+      const cluster = rand.pick(macro);
+      xFrac = Math.max(0.02, Math.min(REGIONS.transitionEnd * 0.95, cluster.cx + rand.range(-cluster.r, cluster.r)));
+      y = height * Math.max(0.03, Math.min(0.97, cluster.cy + rand.range(-cluster.r, cluster.r) * 0.7));
+    } else {
+      xFrac = rand.range(0.03, REGIONS.transitionEnd * 0.98);
+      y = rand.range(height * 0.05, height * 0.95);
+    }
     const density = baseFalloff(xFrac);
     if (!rand.chance(Math.min(1, density * 0.85 + 0.15))) continue;
 
     const x = xFrac * width;
-    const y = rand.range(height * 0.05, height * 0.95);
     const angle = rand.range(-Math.PI * 0.42, Math.PI * 0.42); // broadly rightward
-    const length = rand.range(28, 125) * (0.5 + density);
-    const depthBudget = rand.chance(0.36) ? 2 : 1;
+    const length = rand.range(30, 130) * (0.5 + density);
+    const depthBudget = rand.chance(0.4) ? 2 : 1;
 
-    drawFilamentBranch(ctx, x, y, angle, length, rand, depthBudget, 0.07, 0.2);
+    drawFilamentBranch(ctx, x, y, angle, length, rand, depthBudget, 0.09, 0.22);
   }
 
-  const tertiaryAttempts = 95;
+  const tertiaryAttempts = 100;
   for (let i = 0; i < tertiaryAttempts; i++) {
     const xFrac = rand.range(0.02, REGIONS.transitionEnd * 1.03);
     const density = baseFalloff(Math.min(xFrac, REGIONS.transitionEnd - 0.001));
@@ -570,24 +696,22 @@ function drawFilamentBranch(
   }
 }
 
-/** The three linguistically real relationships (primary paths) -- very few,
- *  discoverable, leading toward actual Kural-derived formations. Reaches
- *  exact from/to points (unlike the decorative filaments), but with two
- *  independent bends and a fading gradient stroke so it reads as part of
- *  the same root network -- and, most of the time, spawns a stray branch
- *  that goes nowhere, further disguising it as "the one clean connector." */
-function drawFormationBranch(
+/** A primary path between two raw coordinates -- very few of these exist
+ *  (5 total: see drawFormationLayer), each clearly discoverable, each
+ *  representing an actual linguistic/emergence journey rather than
+ *  decoration. Two independent bends and a fading gradient stroke so it
+ *  still reads as part of the same root network as the secondary/tertiary
+ *  filaments -- and, most of the time, spawns a stray branch that goes
+ *  nowhere, further disguising it as "the one clean connector." Returns
+ *  its own geometry so the debug overlay can redraw this exact curve. */
+function drawPrimaryPath(
   ctx: CanvasRenderingContext2D,
-  from: FormationNode,
-  to: FormationNode,
-  width: number,
-  height: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
   rand: SeededRandom
-): void {
-  const x1 = from.x * width;
-  const y1 = from.y * height;
-  const x2 = to.x * width;
-  const y2 = to.y * height;
+): PrimaryEdgeRecord {
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy) || 1;
@@ -601,14 +725,14 @@ function drawFormationBranch(
   const cx2 = x1 + dx * 0.7 + nx * bow2;
   const cy2 = y1 + dy * 0.7 + ny * bow2;
 
-  const peakAlpha = rand.range(0.16, 0.27);
+  const peakAlpha = rand.range(0.19, 0.31);
   const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
   gradient.addColorStop(0, withAlpha(COLORS.primary, peakAlpha * 0.5));
   gradient.addColorStop(0.5, withAlpha(COLORS.primary, peakAlpha));
   gradient.addColorStop(1, withAlpha(COLORS.primary, peakAlpha * 0.3));
 
   ctx.strokeStyle = gradient;
-  ctx.lineWidth = rand.range(0.7, 1.15);
+  ctx.lineWidth = rand.range(0.75, 1.2);
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
@@ -619,8 +743,10 @@ function drawFormationBranch(
     const bx = x1 + dx * t + nx * bow1 * 0.5;
     const by = y1 + dy * t + ny * bow1 * 0.5;
     const branchAngle = Math.atan2(dy, dx) + rand.range(-1.3, 1.3);
-    drawFilamentBranch(ctx, bx, by, branchAngle, rand.range(26, 62), rand, 1, 0.08, 0.18);
+    drawFilamentBranch(ctx, bx, by, branchAngle, rand.range(26, 62), rand, 1, 0.09, 0.2);
   }
+
+  return { x1, y1, cx1, cy1, cx2, cy2, x2, y2 };
 }
 
 /** Styling per emphasis tier. `component` (ச், ஒ) is deliberately close to
@@ -667,6 +793,54 @@ function drawFormationNode(
   ctx.font = `400 ${size}px ${tamilFont}`;
   ctx.fillStyle = withAlpha(COLORS.primary, opacity);
   ctx.fillText(node.glyph, x, y);
+}
+
+// ---------------------------------------------------------------------------
+// Debug overlay -- INTERNAL, development-only. Redraws the 5 primary paths
+// (using the exact control points already computed above -- no new RNG
+// draws, so this never touches determinism) at high contrast, plus a small
+// marker at every primary endpoint. Purely additive: nothing below it is
+// altered. Callers must only ever pass debugFormationLogic: true on a live
+// preview, never on the export path -- see
+// KuralHeroCanvas.renderKuralPublishingForExport.
+// ---------------------------------------------------------------------------
+
+function drawDebugFormationOverlay(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  tamilFont: string,
+  info: FormationDebugInfo
+): void {
+  ctx.save();
+  ctx.lineCap = "round";
+
+  for (const edge of info.edges) {
+    ctx.strokeStyle = withAlpha(COLORS.foreground, 0.85);
+    ctx.lineWidth = 2.25;
+    ctx.beginPath();
+    ctx.moveTo(edge.x1, edge.y1);
+    ctx.bezierCurveTo(edge.cx1, edge.cy1, edge.cx2, edge.cy2, edge.x2, edge.y2);
+    ctx.stroke();
+  }
+
+  for (const marker of info.markers) {
+    ctx.beginPath();
+    ctx.arc(marker.x, marker.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = withAlpha(COLORS.background, 0.9);
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = withAlpha(COLORS.foreground, 0.95);
+    ctx.stroke();
+  }
+
+  ctx.font = `700 13px ${tamilFont}`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = withAlpha(COLORS.foreground, 0.9);
+  ctx.fillText("DEBUG: Formation Logic — never exported", 12, 12);
+
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
