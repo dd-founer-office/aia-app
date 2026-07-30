@@ -1,5 +1,5 @@
 /**
- * Kural Publishing — Renderer (MVP, Visual Pass 03)
+ * Kural Publishing — Renderer (MVP, Visual Pass 04)
  * ----------------------------------------------------------------------------
  * Deliberately isolated from lib/living-field/renderer.ts. That renderer is
  * the locked, live requestAnimationFrame engine for the ambient app
@@ -11,20 +11,23 @@
  * Spatial behaviour for Kural 200 specifically (not a general rule for
  * future Kurals -- see kural200-state.ts):
  *
- *   LEFT (0 -> denseEnd)         a dense linguistic world -- atmosphere,
- *                                depth strata, macro clusters
- *   CENTRE (denseEnd -> quiet)   dissolve -- population and paths thin and
- *                                break apart; components converge into
- *                                formed, then emerging, then selected Tamil
+ *   LEFT (0 -> denseEnd)         a linguistic ecosystem -- density itself
+ *                                creates the depth, not a background panel
+ *   CENTRE (denseEnd -> quiet)   dissolve -- population, scale, and paths
+ *                                thin; content narrows toward Kural-derived
+ *                                material; components converge into formed,
+ *                                then emerging, then selected Tamil
  *   RIGHT (quietStart -> edge)   protected silence -- the Kural and its
  *                                editorial thought, and nothing else
  *
- * This pass adds atmospheric tonal depth and a much larger, multi-strata
- * glyph population and root-filament network, per visual-pass-03 direction
- * (reference: an approved conceptual image -- used only for compositional
- * qualities: density, depth, atmosphere, hierarchy, transition, energy.
- * Nothing from that reference is drawn, traced, cropped, or composited into
- * this canvas; every mark below is procedurally generated from the seed).
+ * Visual Pass 04 governing principle (per founder direction, reference
+ * used only for compositional qualities -- nothing traced/composited):
+ *   DENSITY CREATES DEPTH. DEPTH CREATES DARKNESS. FORMATION CREATES
+ *   ORDER. SILENCE CREATES CLARITY.
+ * Pass 03's atmosphere read as a background panel with a visible edge
+ * around the transition -- this pass deliberately weakens that layer and
+ * pushes the actual visual weight back onto glyph population, overlap,
+ * and the Formation Path network.
  *
  * Determinism: every random draw in this file goes through the seeded
  * generator derived from the Kural number (kural200-state.deriveSeed).
@@ -52,8 +55,8 @@ const COLORS = {
 } as const;
 
 /** A deep, desaturated sage -- derived by darkening primaryDark, not an
- *  invented neon tone. Anchors the atmosphere's left edge ("linguistic
- *  depth", per the brief) without going flat black. */
+ *  invented neon tone. Used sparingly this pass; darkness now comes mostly
+ *  from overlapping glyphs, not from this colour painted as a panel. */
 const DEEP_SAGE = "#102D1F";
 
 /** Modern Tamil only -- filtered here, inside the publishing implementation,
@@ -85,23 +88,39 @@ export function renderKuralPublishing(
   const { width, height, content, tamilFont, sansFont, logoImage } = opts;
   const rand = createSeededRandom(deriveSeed(content.kuralNumber));
 
+  // Real substrings of the actual verified Kural text, not invented glyphs --
+  // used to bias what the field shows as it approaches the formation region,
+  // per "content becomes MORE specific as the field becomes LESS dense."
+  const kuralSyllables = extractTamilSyllables(
+    `${content.tamilLine1} ${content.tamilLine2}`
+  );
+
   ctx.clearRect(0, 0, width, height);
   drawAtmosphere(ctx, width, height, rand);
 
-  drawAmbientField(ctx, width, height, tamilFont, rand);
+  drawAmbientField(ctx, width, height, tamilFont, rand, kuralSyllables);
   drawFormationLayer(ctx, width, height, tamilFont, rand);
   drawForegroundKural(ctx, width, height, content, tamilFont, sansFont);
   drawMetadata(ctx, width, height, content, sansFont);
   if (logoImage) drawLogoSlot(ctx, width, height, logoImage);
 }
 
+/** Splits Tamil text into orthographic syllables (an independent vowel, or
+ *  a consonant with an optional vowel-sign/virama) -- a real decomposition
+ *  of the actual verified string, not a fabricated glyph set. Recomputed
+ *  from `content` at render time since the control panel can edit the
+ *  Tamil lines. */
+function extractTamilSyllables(text: string): string[] {
+  const matches = text.match(/[\u0B85-\u0B94]|[\u0B95-\u0BB9][\u0BBE-\u0BCD]?/g);
+  return matches ?? [];
+}
+
 // ---------------------------------------------------------------------------
-// Atmosphere -- tonal depth, not a flat background. A multi-stop left->right
-// transition (deep sage -> primaryDark -> primary -> sage-mint -> the app's
-// own background) plus several large, deterministically placed translucent
-// radial "clouds" over the left field, so the shift reads as environment
-// rather than a CSS gradient. Clamped to never bleed past REGIONS.quietStart
-// -- the quiet region stays exactly the app's background colour, i.e. air.
+// Atmosphere -- a MUCH lighter hand than the previous pass. Colour fades out
+// well inside the dense field itself (by ~0.85 * denseEnd), not at the quiet
+// boundary, so there is no visible panel edge anywhere near the
+// transition/formation region. What depth remains here is a soft support
+// layer; the language mass is what should read as dark and deep.
 // ---------------------------------------------------------------------------
 
 function drawAtmosphere(
@@ -110,31 +129,33 @@ function drawAtmosphere(
   height: number,
   rand: SeededRandom
 ): void {
-  const q = REGIONS.quietStart;
+  // Colouring is fully resolved to the app's own background well before the
+  // dense field even ends -- everything past this point gets its depth from
+  // glyph density alone, never from a painted panel.
+  const colorEnd = REGIONS.denseEnd * 0.82;
 
   const base = ctx.createLinearGradient(0, 0, width, 0);
-  base.addColorStop(0, DEEP_SAGE);
-  base.addColorStop(0.14, mix(DEEP_SAGE, COLORS.primaryDark, 0.6));
-  base.addColorStop(q * 0.5, COLORS.primaryDark);
-  base.addColorStop(q * 0.75, COLORS.primary);
-  base.addColorStop(q * 0.94, mix(COLORS.primary, COLORS.background, 0.6));
-  base.addColorStop(q, mix(COLORS.primary, COLORS.background, 0.93));
+  base.addColorStop(0, mix(DEEP_SAGE, COLORS.background, 0.3));
+  base.addColorStop(colorEnd * 0.32, mix(DEEP_SAGE, COLORS.primaryDark, 0.42));
+  base.addColorStop(colorEnd * 0.68, mix(COLORS.primary, COLORS.background, 0.45));
+  base.addColorStop(colorEnd, mix(COLORS.primary, COLORS.background, 0.88));
   base.addColorStop(1, COLORS.background);
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, width, height);
 
-  // Layered translucent clouds -- deterministic placement, radii, and tone,
-  // clamped so nothing paints past the quiet boundary.
-  const cloudClipWidth = width * q;
-  const cloudCount = 7;
+  // A handful of soft, low-opacity clouds -- support texture, not a second
+  // dark layer. Clamped well inside the dense field so nothing reads as a
+  // boundary.
+  const cloudClipWidth = width * Math.min(REGIONS.denseEnd * 1.05, REGIONS.quietStart);
+  const cloudCount = 4;
   for (let i = 0; i < cloudCount; i++) {
-    const cx = rand.range(-width * 0.08, width * (REGIONS.denseEnd + 0.12));
+    const cx = rand.range(-width * 0.05, width * REGIONS.denseEnd * 0.75);
     const cy = rand.range(height * 0.05, height * 0.95);
-    const r = rand.range(width * 0.13, width * 0.3);
-    const darker = rand.chance(0.55);
+    const r = rand.range(width * 0.1, width * 0.22);
+    const darker = rand.chance(0.5);
     const tone = darker
-      ? mixAlpha(DEEP_SAGE, COLORS.primaryDark, rand.range(0, 1), rand.range(0.1, 0.22))
-      : mixAlpha(COLORS.primary, COLORS.background, rand.range(0.15, 0.65), rand.range(0.08, 0.16));
+      ? mixAlpha(DEEP_SAGE, COLORS.primaryDark, rand.range(0, 1), rand.range(0.05, 0.11))
+      : mixAlpha(COLORS.primary, COLORS.background, rand.range(0.2, 0.6), rand.range(0.04, 0.08));
 
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
     grad.addColorStop(0, tone);
@@ -145,16 +166,16 @@ function drawAtmosphere(
 }
 
 // ---------------------------------------------------------------------------
-// Ambient field -- a language mass on the left that dissolves toward
-// REGIONS.transitionEnd, never a uniform scatter. Three multipliers combine:
-// a left->right base falloff (with a genuine "dissolve" curve, not a linear
-// fade), several macro cluster bumps (clusters within clusters), and a fine
-// pocket grid (small clearings within clusters).
+// Ambient field -- a true micro-language mass. Population is dominated by
+// tiny/micro marks (per founder direction: roughly 65% micro/tiny, 25%
+// small/medium, 8% large, 2% ghost, as a visual-hierarchy target, not an
+// exact quota). Darkness is local and irregular (macro clusters + fine
+// pockets), and large glyphs are actively suppressed in the transition zone
+// so the centre doesn't read as "unrelated large letters."
 // ---------------------------------------------------------------------------
 
-/** 0 -> denseEnd: sustained abundance (a mass, not a peak that immediately
- *  fades). denseEnd -> transitionEnd: a steep "dissolve" -- population
- *  genuinely breaks apart, not just dims. Zero beyond transitionEnd, always. */
+/** 0 -> denseEnd: sustained abundance. denseEnd -> transitionEnd: a genuine
+ *  dissolve, not a dim. Zero beyond transitionEnd, always. */
 function baseFalloff(xFrac: number): number {
   if (xFrac >= REGIONS.transitionEnd) return 0;
   if (xFrac <= REGIONS.denseEnd) {
@@ -173,18 +194,32 @@ interface MacroCluster {
   strength: number;
 }
 
-/** "Clusters within clusters": a handful of large gaussian-ish bumps seeded
- *  across the left field, so density accumulates in a few regions rather
- *  than spreading evenly -- per "allow clusters within clusters." */
+/** "Clusters within clusters" -- irregular topography, not a flat density
+ *  value across the left field. One cluster is fixed (not random) around
+ *  the சொல்/பயன் formation nodes specifically, so that region always has
+ *  accumulated material to be "selected" from, regardless of seed; the rest
+ *  are seeded and vary with content. */
 function buildMacroClusters(rand: SeededRandom): MacroCluster[] {
   const clusters: MacroCluster[] = [];
-  const count = 5;
+
+  const payanNode = FORMATION_NODES.find((n) => n.id === "f-payan");
+  const cholNode = FORMATION_NODES.find((n) => n.id === "f-chol");
+  if (payanNode && cholNode) {
+    clusters.push({
+      cx: (payanNode.x + cholNode.x) / 2,
+      cy: (payanNode.y + cholNode.y) / 2,
+      r: 0.1,
+      strength: 0.4,
+    });
+  }
+
+  const count = 6;
   for (let i = 0; i < count; i++) {
     clusters.push({
-      cx: rand.range(0.02, REGIONS.denseEnd * 0.88),
-      cy: rand.range(0.06, 0.94),
-      r: rand.range(0.13, 0.3),
-      strength: rand.range(0.35, 0.8),
+      cx: rand.range(0.02, REGIONS.denseEnd * 0.92),
+      cy: rand.range(0.05, 0.95),
+      r: rand.range(0.1, 0.26),
+      strength: rand.range(0.3, 0.75),
     });
   }
   return clusters;
@@ -204,14 +239,14 @@ function macroBumpAt(clusters: readonly MacroCluster[], xFrac: number, yFrac: nu
 /** Fine pocket grid -- small clearings and denser patches within a macro
  *  cluster, looked up with light neighbour-averaging so edges blend rather
  *  than showing a visible grid. */
-const POCKET_COLS = 11;
-const POCKET_ROWS = 7;
+const POCKET_COLS = 13;
+const POCKET_ROWS = 8;
 
 function buildPocketField(rand: SeededRandom): number[][] {
   const field: number[][] = [];
   for (let r = 0; r < POCKET_ROWS; r++) {
     const row: number[] = [];
-    for (let c = 0; c < POCKET_COLS; c++) row.push(rand.range(0.5, 1.6));
+    for (let c = 0; c < POCKET_COLS; c++) row.push(rand.range(0.45, 1.65));
     field.push(row);
   }
   return field;
@@ -235,7 +270,7 @@ function densityAt(
   if (base <= 0) return 0;
   const bump = 1 + macroBumpAt(macro, xFrac, yFrac);
   const pocket = pocketMultiplierAt(pockets, xFrac, yFrac);
-  return Math.max(0, Math.min(2.4, base * bump * pocket));
+  return Math.max(0, Math.min(2.6, base * bump * pocket));
 }
 
 function drawAmbientField(
@@ -243,13 +278,13 @@ function drawAmbientField(
   width: number,
   height: number,
   tamilFont: string,
-  rand: SeededRandom
+  rand: SeededRandom,
+  kuralSyllables: readonly string[]
 ): void {
-  // A finer grid than before -- more addressable slots is what lets the
-  // left read as "hundreds of visible marks, many more barely perceptible"
-  // rather than a scattering.
-  const colW = 19;
-  const rowH = 22;
+  // A finer grid still -- more addressable slots for the micro-mass this
+  // pass asks for.
+  const colW = 15;
+  const rowH = 17;
   const cols = Math.ceil(width / colW);
   const rows = Math.ceil(height / rowH);
   const protectedCol = Math.ceil((REGIONS.transitionEnd * width) / colW);
@@ -270,15 +305,12 @@ function drawAmbientField(
         continue;
       }
 
-      const gap = Math.max(1, Math.round(rand.range(1, 4) * (1.6 - Math.min(1.5, density))));
+      const gap = Math.max(1, Math.round(rand.range(1, 3) * (1.6 - Math.min(1.5, density))));
       c += gap;
       if (c >= protectedCol) break;
 
-      // Pockets and macro clusters can push density well above 1 -- that is
-      // the substantial population increase the correction asked for,
-      // concentrated in a few accumulated regions rather than spread evenly.
       const maxClusterLen =
-        density > 1.6 ? 9 : density > 1.1 ? 6 : density > 0.65 ? 4 : density > 0.3 ? 2 : 1;
+        density > 1.7 ? 11 : density > 1.2 ? 8 : density > 0.7 ? 5 : density > 0.35 ? 3 : 1;
       const clusterLen = rand.int(1, maxClusterLen + 1);
 
       for (let i = 0; i < clusterLen && c < protectedCol; i++, c++) {
@@ -288,63 +320,92 @@ function drawAmbientField(
         const cyFrac = cy / height;
         const d = densityAt(cxFrac, cyFrac, macro, pockets);
         if (d <= 0.03) continue;
-        // Intentional gaps within a cluster -- regions that breathe, per
-        // the brief -- not every slot fires even inside a dense pocket.
-        if (!rand.chance(Math.min(1, d * 0.62 + 0.14))) continue;
+        // Regions that breathe -- not every slot fires even inside a dense
+        // pocket.
+        if (!rand.chance(Math.min(1, d * 0.6 + 0.16))) continue;
 
-        drawAmbientGlyph(ctx, cx, cy, d, tamilFont, rand);
+        drawAmbientGlyph(ctx, cx, cy, d, cxFrac, tamilFont, rand, kuralSyllables);
+        // A second, even smaller pass of pure micro-dot texture layered
+        // right alongside the glyphs -- "atmospheric texture" without any
+        // imported imagery: fine traces, not letters.
+        if (rand.chance(0.22)) drawMicroTrace(ctx, cx, cy, d, rand);
       }
     }
   }
 }
 
-/** Five depth/contrast strata -- DEEP dominates, MID and NEAR give
- *  progressively stronger contrast, GHOST is rare/huge/barely-there, and
- *  ANCHOR is a genuinely rare, high-presence, near-dark mark that gives the
- *  left field a few visual anchors instead of uniform faintness. Colour
- *  itself shifts toward `foreground` for the stronger tiers -- contrast
- *  comes from tone as well as opacity, not opacity alone. */
+/** Four population strata (micro/tiny, small/medium, large, ghost), plus a
+ *  rare "anchor" carved out of the large tier for genuine high-presence
+ *  marks. Weighted heavily toward the tiny end -- per founder direction,
+ *  roughly 65/25/8/2 as a visual-hierarchy target. Large-tier probability
+ *  is actively suppressed as xFrac moves into the transition zone, folding
+ *  that mass back into the micro tier, so the centre stops reading as
+ *  scattered oversized letters. As xFrac increases, glyph choice is
+ *  increasingly drawn from the real Kural syllables rather than the full
+ *  modern-Tamil set -- content narrows as density falls. */
 function drawAmbientGlyph(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   density: number,
+  xFrac: number,
   tamilFont: string,
-  rand: SeededRandom
+  rand: SeededRandom,
+  kuralSyllables: readonly string[]
 ): void {
+  // Suppress LARGE/GHOST probability as the field moves toward the
+  // formation region -- their mass folds back into MICRO instead.
+  const centreSuppress = Math.max(0, Math.min(1, (xFrac - REGIONS.denseEnd * 0.4) / (REGIONS.denseEnd * 0.9)));
+  const pMicro = 0.65 + 0.08 * centreSuppress;
+  const pSmallMed = 0.25 + 0.02 * centreSuppress;
+  const pLarge = Math.max(0.01, 0.08 - 0.08 * centreSuppress);
+  // pGhost is whatever remains.
+
   const roll = rand.next();
   let size: number;
   let baseOpacity: number;
   let colorMix: number; // 0 = primary green, 1 = near-dark foreground
   let wide = false;
 
-  if (roll < 0.48) {
-    size = rand.range(6, 11); // DEEP -- very many, tiny, low opacity
-    baseOpacity = rand.range(0.025, 0.08);
+  if (roll < pMicro) {
+    size = rand.range(4, 8); // MICRO -- the bulk of the mass
+    baseOpacity = rand.range(0.03, 0.1);
     colorMix = 0;
-  } else if (roll < 0.75) {
-    size = rand.range(12, 18); // MID -- medium, greater contrast
-    baseOpacity = rand.range(0.07, 0.17);
+  } else if (roll < pMicro + pSmallMed) {
+    size = rand.range(9, 16); // SMALL / MEDIUM
+    baseOpacity = rand.range(0.08, 0.19);
     colorMix = 0.12;
-  } else if (roll < 0.895) {
-    size = rand.range(19, 28); // NEAR -- fewer, larger, higher contrast
-    baseOpacity = rand.range(0.15, 0.3);
-    colorMix = 0.28;
-  } else if (roll < 0.965) {
-    size = rand.range(44, 82); // GHOST -- rare, huge, barely there
-    baseOpacity = rand.range(0.018, 0.045);
+  } else if (roll < pMicro + pSmallMed + pLarge) {
+    const isAnchor = rand.chance(0.14); // genuinely rare, high-presence
+    if (isAnchor) {
+      size = rand.range(22, 34);
+      baseOpacity = rand.range(0.42, 0.64);
+      colorMix = 0.8;
+    } else {
+      size = rand.range(18, 27);
+      baseOpacity = rand.range(0.15, 0.29);
+      colorMix = 0.26;
+    }
+  } else {
+    size = rand.range(42, 80); // GHOST -- rare, huge, barely there
+    baseOpacity = rand.range(0.015, 0.04);
     colorMix = 0;
     wide = true;
-  } else {
-    size = rand.range(25, 38); // ANCHOR -- genuinely rare, high presence
-    baseOpacity = rand.range(0.45, 0.68);
-    colorMix = 0.82;
   }
 
-  const jitterRange = wide ? 32 : 9;
+  const jitterRange = wide ? 30 : 7;
   const jitterX = rand.range(-jitterRange, jitterRange);
   const jitterY = rand.range(-jitterRange, jitterRange);
-  const glyph = rand.pick(MODERN_TAMIL_VALUES);
+
+  // Content narrows toward the actual Kural as density falls -- deep field
+  // stays a broad Tamil environment.
+  const kuralBias = kuralSyllables.length > 0
+    ? Math.max(0, Math.min(0.68, (xFrac - REGIONS.denseEnd * 0.35) / (REGIONS.denseEnd * 1.1)))
+    : 0;
+  const glyph = rand.chance(kuralBias)
+    ? rand.pick(kuralSyllables)
+    : rand.pick(MODERN_TAMIL_VALUES);
+
   const opacity = Math.min(1, baseOpacity * (0.55 + density * 0.5));
   const color = mix(COLORS.primary, COLORS.foreground, colorMix);
 
@@ -355,12 +416,32 @@ function drawAmbientGlyph(
   ctx.fillText(glyph, x + jitterX, y + jitterY);
 }
 
+/** A single tiny filled dot -- pure procedural texture, not a letterform.
+ *  "Micro dots / very fine traces / soft local haze," per the brief. No
+ *  imported noise, no imagery -- one seeded circle. */
+function drawMicroTrace(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  density: number,
+  rand: SeededRandom
+): void {
+  const r = rand.range(0.5, 1.6);
+  const opacity = rand.range(0.02, 0.07) * (0.5 + density * 0.5);
+  const dx = rand.range(-10, 10);
+  const dy = rand.range(-10, 10);
+  ctx.beginPath();
+  ctx.arc(x + dx, y + dy, r, 0, Math.PI * 2);
+  ctx.fillStyle = withAlpha(COLORS.primaryDark, opacity);
+  ctx.fill();
+}
+
 // ---------------------------------------------------------------------------
-// Formation Paths -- a branching root/mycelium-like network, not diagram
-// connectors. Primary (the three linguistically real edges), secondary
-// (decorative branches, mostly connecting nothing), and tertiary (very
-// faint additional texture) all share the same drawing language, so no
-// single path reads as "the clean connector."
+// Formation Paths -- a discoverable branching network again. Three tiers:
+// primary (the linguistically real edges), secondary (fewer, slightly
+// clearer, connecting local clusters), tertiary (many, extremely thin,
+// very faint). All grown through and between the glyph mass, not drawn as
+// a foreground web.
 // ---------------------------------------------------------------------------
 
 function drawFormationLayer(
@@ -374,8 +455,8 @@ function drawFormationLayer(
 
   ctx.lineCap = "round";
 
-  // Decorative root network first (furthest back) -- secondary + tertiary
-  // passes. Most of this connects nothing at all.
+  // Root network first (furthest back) -- tertiary, then secondary. Most of
+  // this connects nothing at all.
   drawRootFilaments(ctx, width, height, rand);
 
   // The three linguistically real relationships, blended into the same
@@ -392,44 +473,45 @@ function drawFormationLayer(
   }
 }
 
-/** Secondary branches: begin inside dense clusters (density-weighted via
- *  rand.chance), wander, and mostly taper into nothing. Tertiary branches:
- *  a second, much fainter and shorter pass for background texture -- "very
- *  faint tertiary branches," per the brief. Neither connects to a named
- *  FormationNode; both are texture, not claims about linguistic structure. */
+/** Secondary branches: fewer, slightly clearer, connect local clusters --
+ *  begin inside dense clusters (density-weighted) and mostly taper into
+ *  nothing, some branching once. Tertiary branches: many, extremely thin,
+ *  very faint, short/local -- background texture. Neither connects to a
+ *  named FormationNode; both are texture, not claims about linguistic
+ *  structure. */
 function drawRootFilaments(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   rand: SeededRandom
 ): void {
-  const secondaryAttempts = 70;
+  const secondaryAttempts = 85;
   for (let i = 0; i < secondaryAttempts; i++) {
     const xFrac = rand.range(0.03, REGIONS.transitionEnd * 0.98);
     const density = baseFalloff(xFrac);
-    if (!rand.chance(Math.min(1, density * 0.9 + 0.12))) continue;
+    if (!rand.chance(Math.min(1, density * 0.85 + 0.15))) continue;
 
     const x = xFrac * width;
     const y = rand.range(height * 0.05, height * 0.95);
     const angle = rand.range(-Math.PI * 0.42, Math.PI * 0.42); // broadly rightward
-    const length = rand.range(30, 130) * (0.5 + density);
-    const depthBudget = rand.chance(0.34) ? 2 : 1;
+    const length = rand.range(28, 125) * (0.5 + density);
+    const depthBudget = rand.chance(0.36) ? 2 : 1;
 
-    drawFilamentBranch(ctx, x, y, angle, length, rand, depthBudget, 0.05, 0.16);
+    drawFilamentBranch(ctx, x, y, angle, length, rand, depthBudget, 0.07, 0.2);
   }
 
-  const tertiaryAttempts = 55;
+  const tertiaryAttempts = 95;
   for (let i = 0; i < tertiaryAttempts; i++) {
-    const xFrac = rand.range(0.02, REGIONS.transitionEnd * 1.02);
+    const xFrac = rand.range(0.02, REGIONS.transitionEnd * 1.03);
     const density = baseFalloff(Math.min(xFrac, REGIONS.transitionEnd - 0.001));
-    if (!rand.chance(Math.min(1, density * 0.7 + 0.18))) continue;
+    if (!rand.chance(Math.min(1, density * 0.65 + 0.22))) continue;
 
     const x = xFrac * width;
     const y = rand.range(height * 0.04, height * 0.96);
     const angle = rand.range(-Math.PI * 0.5, Math.PI * 0.5);
-    const length = rand.range(16, 58);
+    const length = rand.range(14, 50);
 
-    drawFilamentBranch(ctx, x, y, angle, length, rand, 1, 0.02, 0.06);
+    drawFilamentBranch(ctx, x, y, angle, length, rand, 1, 0.03, 0.08);
   }
 }
 
@@ -488,11 +570,12 @@ function drawFilamentBranch(
   }
 }
 
-/** The three linguistically real relationships (primary paths). Reaches
+/** The three linguistically real relationships (primary paths) -- very few,
+ *  discoverable, leading toward actual Kural-derived formations. Reaches
  *  exact from/to points (unlike the decorative filaments), but with two
- *  independent bends and a fading gradient stroke so it reads as one more
- *  root among many -- and, most of the time, spawns a stray branch that
- *  goes nowhere, further disguising it as "the one clean connector." */
+ *  independent bends and a fading gradient stroke so it reads as part of
+ *  the same root network -- and, most of the time, spawns a stray branch
+ *  that goes nowhere, further disguising it as "the one clean connector." */
 function drawFormationBranch(
   ctx: CanvasRenderingContext2D,
   from: FormationNode,
@@ -518,14 +601,14 @@ function drawFormationBranch(
   const cx2 = x1 + dx * 0.7 + nx * bow2;
   const cy2 = y1 + dy * 0.7 + ny * bow2;
 
-  const peakAlpha = rand.range(0.13, 0.22);
+  const peakAlpha = rand.range(0.16, 0.27);
   const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
   gradient.addColorStop(0, withAlpha(COLORS.primary, peakAlpha * 0.5));
   gradient.addColorStop(0.5, withAlpha(COLORS.primary, peakAlpha));
   gradient.addColorStop(1, withAlpha(COLORS.primary, peakAlpha * 0.3));
 
   ctx.strokeStyle = gradient;
-  ctx.lineWidth = rand.range(0.65, 1.1);
+  ctx.lineWidth = rand.range(0.7, 1.15);
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
@@ -536,22 +619,23 @@ function drawFormationBranch(
     const bx = x1 + dx * t + nx * bow1 * 0.5;
     const by = y1 + dy * t + ny * bow1 * 0.5;
     const branchAngle = Math.atan2(dy, dx) + rand.range(-1.3, 1.3);
-    drawFilamentBranch(ctx, bx, by, branchAngle, rand.range(28, 66), rand, 1, 0.06, 0.15);
+    drawFilamentBranch(ctx, bx, by, branchAngle, rand.range(26, 62), rand, 1, 0.08, 0.18);
   }
 }
 
-/** Styling per emphasis tier. `component` sits close to ordinary NEAR-tier
- *  ambient weight (findable only by being consistently there, at a
- *  consistent position, not by being loud); each subsequent tier gains a
- *  little presence, never becoming heading-like. `selected` (பயன்) is
- *  drawn with a soft under-layer via a slight canvas blur -- "this idea
- *  survived" rather than "this was constructed" -- since, unlike சொ/சொல்,
- *  it was never built from visible components on this canvas. */
+/** Styling per emphasis tier. `component` (ச், ஒ) is deliberately close to
+ *  ordinary ambient weight now -- embedded, not enlarged to identify it, per
+ *  "do not enlarge them simply to identify them." Each subsequent tier
+ *  gains a little presence, never becoming heading-like. `selected`
+ *  (பயன்) is drawn with a soft under-layer via a slight canvas blur --
+ *  "this idea survived" rather than "this was constructed" -- and sits
+ *  inside a guaranteed macro cluster (see buildMacroClusters) so it reads
+ *  as selected from accumulated material, not placed on empty ground. */
 const EMPHASIS_STYLE = {
-  component: { minSize: 15, maxSize: 20, minOpacity: 0.24, maxOpacity: 0.36 },
-  formed: { minSize: 23, maxSize: 28, minOpacity: 0.4, maxOpacity: 0.5 },
-  emerging: { minSize: 30, maxSize: 36, minOpacity: 0.52, maxOpacity: 0.63 },
-  selected: { minSize: 26, maxSize: 31, minOpacity: 0.44, maxOpacity: 0.55 },
+  component: { minSize: 16, maxSize: 21, minOpacity: 0.18, maxOpacity: 0.28 },
+  formed: { minSize: 22, maxSize: 27, minOpacity: 0.36, maxOpacity: 0.46 },
+  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.5, maxOpacity: 0.61 },
+  selected: { minSize: 25, maxSize: 30, minOpacity: 0.42, maxOpacity: 0.53 },
 } as const;
 
 function drawFormationNode(
@@ -586,11 +670,9 @@ function drawFormationNode(
 }
 
 // ---------------------------------------------------------------------------
-// Foreground Kural + English thought -- the quiet region's only content.
-// Left-aligned per the locked Kural display rule (never centered), sized to
-// fit within the protected region via measureText. minSize is a genuine
-// safety floor now (15px), not a number that happened to be big enough for
-// one draft of the text -- this is the fix for the right-edge clipping bug.
+// Foreground Kural + English thought -- unchanged this pass, per the brief
+// ("do not redesign it in this pass"). Left-aligned per the locked Kural
+// display rule, sized to fit via measureText with a genuine safety floor.
 // ---------------------------------------------------------------------------
 
 function drawForegroundKural(
@@ -606,11 +688,6 @@ function drawForegroundKural(
   const maxTextWidth = width - leftX - rightMargin;
 
   const kuralLines = [content.tamilLine1, content.tamilLine2];
-  // Larger and more generously spaced than before -- the Kural is the
-  // primary textual voice; the Living Layer must not compete with it. The
-  // fit loop will shrink below startSize whenever needed and never returns
-  // a size wider than maxTextWidth, so this can never clip the canvas edge
-  // regardless of how long the input text is.
   const kuralSize = fitFontSize(ctx, kuralLines, tamilFont, 500, maxTextWidth, 48, 15);
   const kuralLineGap = kuralSize * 1.48;
   const kuralY1 = height * 0.4;
@@ -629,8 +706,6 @@ function drawForegroundKural(
   const engY1 = kuralY2 + kuralSize * 1.7;
   const engY2 = engY1 + engLineGap;
 
-  // Neutral, not green -- clearly subordinate to the Kural, more editorial
-  // presence than a whisper but never a second voice competing with it.
   ctx.font = `500 ${engSize}px ${sansFont}`;
   ctx.fillStyle = withAlpha(COLORS.muted, 1);
   ctx.fillText(content.englishLine1, leftX, engY1);
@@ -638,12 +713,10 @@ function drawForegroundKural(
 }
 
 /** Shrinks font size (never below minSize) until every line fits maxWidth,
- *  using the browser's own text metrics -- not an estimate. minSize here is
- *  a true safety floor (15px for the Kural): whatever comes out of this
- *  function is guaranteed to measure at or under maxWidth at that size for
- *  any realistic Kural line length, so foreground text can never be clipped
- *  by the canvas edge. Restores no state on its own; caller sets ctx.font
- *  again before actually drawing. */
+ *  using the browser's own text metrics -- not an estimate. minSize is a
+ *  true safety floor (15px): the Kural can never be clipped by the canvas
+ *  edge regardless of edited content length. Restores no state on its own;
+ *  caller sets ctx.font again before actually drawing. */
 function fitFontSize(
   ctx: CanvasRenderingContext2D,
   lines: readonly string[],
@@ -664,7 +737,7 @@ function fitFontSize(
 }
 
 // ---------------------------------------------------------------------------
-// Metadata -- low-hierarchy credit line, quiet region only.
+// Metadata -- low-hierarchy credit line, quiet region only. Unchanged.
 // ---------------------------------------------------------------------------
 
 function drawMetadata(
@@ -687,7 +760,7 @@ function drawMetadata(
 
 // ---------------------------------------------------------------------------
 // Identity zone -- draws only when a real logo image is supplied. No
-// fallback mark, no "logo missing" text, no placeholder box.
+// fallback mark, no "logo missing" text, no placeholder box. Unchanged.
 // ---------------------------------------------------------------------------
 
 function drawLogoSlot(
