@@ -44,14 +44,23 @@ export const DEFAULT_KURAL_200_CONTENT: KuralPublishingContent = {
  *  arrow, or a label -- position and convergence alone carry the meaning.
  *
  *  Visual Pass 02 emphasis tiers (renderer.ts owns the actual styling):
- *   - component: ச், ஒ -- sits at ordinary ambient-field weight, findable
- *     only because it's consistently there, not because it's shouted.
+ *   - component: ச், ஒ, ல் -- sit at ordinary ambient-field weight,
+ *     findable only because they're consistently there, not because
+ *     they're shouted.
  *   - formed: சொ -- the first resolved shape, modestly more present.
  *   - emerging: சொல் -- clearer still, but stays part of the Living Layer,
  *     never rendered as a heading.
  *   - selected: பயன் -- not built from visible components at all (no
  *     decomposition was confidently known, so none was invented); rendered
- *     softly, as something that survived rather than something constructed. */
+ *     softly, as something that survived rather than something constructed.
+ *
+ *  Formation Pass 06: ல் added as its own component node -- சொ + ல் -> சொல்
+ *  is the second real formation the renderer grows an organic root family
+ *  toward (see publishing-renderer.ts). பயன் remains deliberately
+ *  disconnected from any Formation Path -- it is a semantic survivor, not
+ *  something சொல் linguistically forms. Rendering only ever links சொல் and
+ *  பயன் via a diffuse Semantic Trace, never a Formation Path -- see the
+ *  renderer's own distinction between the two. */
 export interface FormationNode {
   id: string;
   glyph: string;
@@ -68,6 +77,7 @@ export interface FormationPath {
 export const FORMATION_NODES: readonly FormationNode[] = [
   { id: "c-ch", glyph: "ச்", x: 0.3, y: 0.34, emphasis: "component" },
   { id: "c-o", glyph: "ஒ", x: 0.315, y: 0.63, emphasis: "component" },
+  { id: "c-l", glyph: "ல்", x: 0.5, y: 0.605, emphasis: "component" },
   { id: "f-cho", glyph: "சொ", x: 0.445, y: 0.49, emphasis: "formed" },
   { id: "f-chol", glyph: "சொல்", x: 0.565, y: 0.43, emphasis: "emerging" },
   { id: "f-payan", glyph: "பயன்", x: 0.605, y: 0.6, emphasis: "selected" },

@@ -52,7 +52,6 @@ import { createSeededRandom, type SeededRandom } from "./seeded-random";
 import {
   deriveSeed,
   FORMATION_NODES,
-  FORMATION_PATHS,
   REGIONS,
   type FormationNode,
   type KuralPublishingContent,
@@ -132,7 +131,7 @@ export function renderKuralPublishing(
   if (logoImage) drawLogoSlot(ctx, width, height, logoImage);
 
   if (debugFormationLogic) {
-    drawDebugFormationOverlay(ctx, width, height, tamilFont, debugInfo);
+    drawDebugFormationOverlay(ctx, width, height, tamilFont, sansFont, debugInfo);
   }
 }
 
@@ -499,24 +498,27 @@ function drawMicroTrace(
 // them -- "some paths should disappear behind glyph clusters."
 // ---------------------------------------------------------------------------
 
-/** A drawn primary path's geometry, kept only so the debug overlay can
- *  redraw the exact same curve at high contrast -- no extra RNG draws are
- *  needed for that, keeping debug rendering fully deterministic and
- *  decoupled from export. */
-interface PrimaryEdgeRecord {
-  x1: number;
-  y1: number;
-  cx1: number;
-  cy1: number;
-  cx2: number;
-  cy2: number;
-  x2: number;
-  y2: number;
+/** A point along a grown trunk or scattered trace -- used only to let the
+ *  debug overlay redraw the exact same shapes at high contrast. No extra
+ *  RNG draws happen when redrawing these, so debug rendering never touches
+ *  determinism and stays fully decoupled from export. */
+interface TrunkPoint {
+  x: number;
+  y: number;
+}
+
+/** One grown Formation Path family, kept for the debug overlay. `kind`
+ *  distinguishes an actual linguistic construction from an atmospheric
+ *  Semantic Trace -- see drawFormationTrunk vs drawSemanticTrace. */
+interface FormationTrunkRecord {
+  points: TrunkPoint[];
+  kind: "formation" | "semantic";
+  label: string;
 }
 
 export interface FormationDebugInfo {
-  edges: PrimaryEdgeRecord[];
-  markers: { x: number; y: number }[];
+  trunks: FormationTrunkRecord[];
+  markers: { x: number; y: number; label: string }[];
 }
 
 function drawFormationLayer(
@@ -528,71 +530,148 @@ function drawFormationLayer(
   macro: readonly MacroCluster[]
 ): FormationDebugInfo {
   const nodeById = new Map(FORMATION_NODES.map((n) => [n.id, n]));
-  const edges: PrimaryEdgeRecord[] = [];
-  const markers: { x: number; y: number }[] = [];
+  const trunks: FormationTrunkRecord[] = [];
+  const markers: { x: number; y: number; label: string }[] = [];
 
   ctx.lineCap = "round";
 
-  // Root network first (furthest back) -- tertiary, then secondary. Most of
-  // this connects nothing at all.
+  // Background root network first (furthest back) -- tertiary, then
+  // secondary. Most of this connects nothing at all; it's the atmosphere
+  // the primary families grow through.
   drawRootFilaments(ctx, width, height, rand, macro);
 
-  // PRIMARY 1-3: the linguistically real relationships (ச்+ஒ->சொ->சொல்).
-  for (const path of FORMATION_PATHS) {
-    const from = nodeById.get(path.fromId);
-    const to = nodeById.get(path.toId);
-    if (!from || !to) continue;
-    const edge = drawPrimaryPath(ctx, from.x * width, from.y * height, to.x * width, to.y * height, rand);
-    edges.push(edge);
+  const chNode = nodeById.get("c-ch");
+  const oNode = nodeById.get("c-o");
+  const lNode = nodeById.get("c-l");
+  const choNode = nodeById.get("f-cho");
+  const cholNode = nodeById.get("f-chol");
+  const payanNode = nodeById.get("f-payan");
+
+  // FORMATION FAMILY 1: ச் -- a root originating inside the language mass
+  // near ச், not exactly at it (per "should not know exactly where a
+  // relationship begins"), growing toward the சொ convergence.
+  if (chNode && choNode) {
+    const originX = width * (chNode.x - 0.06);
+    const originY = height * (chNode.y + 0.03);
+    const targetX = width * choNode.x;
+    const targetY = height * choNode.y;
+    const points = growTrunk(rand, originX, originY, targetX, targetY, 6);
+    drawFormationTrunk(ctx, points, rand, {
+      minAlpha: 0.05,
+      maxAlpha: 0.24,
+      minWidth: 0.55,
+      maxWidth: 1.05,
+      secondaryChance: 0.32,
+    });
+    trunks.push({ points, kind: "formation", label: "ச் root → சொ" });
   }
 
-  // PRIMARY 4: a broad guide from deep in the language mass toward the
-  // formation region -- no glyph at either end, it's the field itself
-  // pointing the eye onward, per "guide the eye broadly: LANGUAGE MASS ->
-  // FORMATION REGION." Fixed coordinates, not random -- this is a single
-  // deliberate journey, not decorative texture.
-  {
-    const x1 = width * 0.1;
-    const y1 = height * 0.55;
-    const x2 = width * (REGIONS.denseEnd * 0.95);
-    const y2 = height * 0.5;
-    const edge = drawPrimaryPath(ctx, x1, y1, x2, y2, rand);
-    edges.push(edge);
-    markers.push({ x: x1, y: y1 });
+  // FORMATION FAMILY 2: ஒ -- its own independent root, converging on the
+  // same சொ point from a different direction.
+  if (oNode && choNode) {
+    const originX = width * (oNode.x - 0.05);
+    const originY = height * (oNode.y - 0.04);
+    const targetX = width * choNode.x;
+    const targetY = height * choNode.y;
+    const points = growTrunk(rand, originX, originY, targetX, targetY, 6);
+    drawFormationTrunk(ctx, points, rand, {
+      minAlpha: 0.05,
+      maxAlpha: 0.24,
+      minWidth: 0.55,
+      maxWidth: 1.05,
+      secondaryChance: 0.32,
+    });
+    trunks.push({ points, kind: "formation", label: "ஒ root → சொ" });
   }
 
-  // PRIMARY 5: பயன்'s own emergence journey, distinct from சொ/சொல்'s. Starts
-  // inside the guaranteed macro cluster already centred on சொல்/பயன் (see
-  // buildMacroClusters), so பயன் reads as generated by accumulated material
-  // rather than placed on top of it.
-  {
-    const payanNode = FORMATION_NODES.find((n) => n.id === "f-payan");
-    const clusterCentre = macro[0]; // the guaranteed, non-random cluster (index 0)
-    if (payanNode && clusterCentre) {
-      const x1 = width * (clusterCentre.cx - 0.09);
-      const y1 = height * (clusterCentre.cy - 0.06);
-      const x2 = payanNode.x * width;
-      const y2 = payanNode.y * height;
-      const edge = drawPrimaryPath(ctx, x1, y1, x2, y2, rand);
-      edges.push(edge);
-      markers.push({ x: x1, y: y1 });
-    }
+  // FORMATION FAMILY 3: the system associated with சொ continues (does not
+  // stop at the first convergence) while a separate ல் root joins it, both
+  // resolving toward சொல்.
+  if (choNode && lNode && cholNode) {
+    const contPoints = growTrunk(
+      rand,
+      width * choNode.x,
+      height * choNode.y,
+      width * cholNode.x,
+      height * cholNode.y,
+      5
+    );
+    drawFormationTrunk(ctx, contPoints, rand, {
+      minAlpha: 0.07,
+      maxAlpha: 0.27,
+      minWidth: 0.6,
+      maxWidth: 1.1,
+      secondaryChance: 0.3,
+    });
+    trunks.push({ points: contPoints, kind: "formation", label: "சொ continues → சொல்" });
+
+    const lOriginX = width * (lNode.x - 0.055);
+    const lOriginY = height * (lNode.y - 0.035);
+    const lPoints = growTrunk(rand, lOriginX, lOriginY, width * cholNode.x, height * cholNode.y, 5);
+    drawFormationTrunk(ctx, lPoints, rand, {
+      minAlpha: 0.06,
+      maxAlpha: 0.25,
+      minWidth: 0.55,
+      maxWidth: 1.05,
+      secondaryChance: 0.32,
+    });
+    trunks.push({ points: lPoints, kind: "formation", label: "ல் root → சொல்" });
+  }
+
+  // FORMATION FAMILY 4: பயன் -- a fully INDEPENDENT root family, from a
+  // deep origin nowhere near ச்/ஒ/ல்/சொ/சொல். பயன் is a semantic
+  // survivor, not something சொல் linguistically forms -- see the
+  // deliberate absence of any trunk between them below.
+  if (payanNode) {
+    const originX = width * 0.185;
+    const originY = height * 0.76;
+    const points = growTrunk(rand, originX, originY, width * payanNode.x, height * payanNode.y, 6);
+    drawFormationTrunk(ctx, points, rand, {
+      minAlpha: 0.05,
+      maxAlpha: 0.22,
+      minWidth: 0.55,
+      maxWidth: 1.0,
+      secondaryChance: 0.3,
+    });
+    trunks.push({ points, kind: "formation", label: "பயன் root (independent)" });
+  }
+
+  // SEMANTIC TRACE: சொல் and பயன் may relate conceptually as the two ideas
+  // that survive the Kural, but that is NOT a linguistic construction --
+  // rendered as diffuse, discontinuous wisps, never a single connecting
+  // stroke, so it can never read as a Formation Path.
+  if (cholNode && payanNode) {
+    const tracePoints = drawSemanticTrace(
+      ctx,
+      width * cholNode.x,
+      height * cholNode.y,
+      width * payanNode.x,
+      height * payanNode.y,
+      rand,
+      9
+    );
+    trunks.push({
+      points: tracePoints,
+      kind: "semantic",
+      label: "சொல் ↔ பயன் (semantic trace only — NOT a formation path)",
+    });
   }
 
   for (const node of FORMATION_NODES) {
     drawFormationNode(ctx, node, width, height, tamilFont, rand);
-    markers.push({ x: node.x * width, y: node.y * height });
+    markers.push({ x: node.x * width, y: node.y * height, label: `${node.glyph} (${node.emphasis})` });
   }
 
-  return { edges, markers };
+  return { trunks, markers };
 }
 
-/** Secondary branches: a moderate number, visible on inspection, and now
+/** Secondary branches: a moderate number, visible on inspection, and
  *  deliberately seeded near macro cluster centres so they read as
  *  connecting clusters rather than starting from arbitrary points. Tertiary
  *  branches: many, hairline, very faint, short/local -- background texture.
- *  Neither connects to a named FormationNode; both are texture, not claims
- *  about linguistic structure. */
+ *  Neither connects to a named FormationNode; both are atmospheric texture,
+ *  not claims about linguistic structure. Together these are the "roots
+ *  beneath soil" the primary families grow through and disappear into. */
 function drawRootFilaments(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -644,7 +723,9 @@ function drawRootFilaments(
 /** One organic segment with a fading gradient stroke -- visible near its
  *  origin, gone by its tip. Grown, not drawn: two independent curvature
  *  terms rather than one clean arc. May spawn a single shorter child
- *  branch partway along, when depthBudget allows. */
+ *  branch partway along, when depthBudget allows. The primitive every
+ *  secondary/tertiary trace AND every primary trunk's side-branches are
+ *  built from. */
 function drawFilamentBranch(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -696,72 +777,130 @@ function drawFilamentBranch(
   }
 }
 
-/** A primary path between two raw coordinates -- very few of these exist
- *  (5 total: see drawFormationLayer), each clearly discoverable, each
- *  representing an actual linguistic/emergence journey rather than
- *  decoration. Two independent bends and a fading gradient stroke so it
- *  still reads as part of the same root network as the secondary/tertiary
- *  filaments -- and, most of the time, spawns a stray branch that goes
- *  nowhere, further disguising it as "the one clean connector." Returns
- *  its own geometry so the debug overlay can redraw this exact curve. */
-function drawPrimaryPath(
+/** Grows an organic multi-segment TRUNK from (x1,y1) toward (x2,y2) -- a
+ *  guided random walk, not a straight line or a single smooth curve. Each
+ *  step blends "drift toward the target" with jitter that shrinks as it
+ *  approaches but never reaches zero, so the trunk lands CLOSE to, not
+ *  exactly on, the target -- "no obvious endpoint" in normal view. This is
+ *  the ROOT+TRUNK primitive every Formation Path family is built from. */
+function growTrunk(
+  rand: SeededRandom,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  steps: number
+): TrunkPoint[] {
+  const points: TrunkPoint[] = [{ x: x1, y: y1 }];
+  const totalLen = Math.hypot(x2 - x1, y2 - y1) || 1;
+  const stepLen = totalLen / steps;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const idealX = x1 + (x2 - x1) * t;
+    const idealY = y1 + (y2 - y1) * t;
+    const jitterAmount = 0.14 + (1 - t) * 0.5;
+    const px = idealX + rand.range(-1, 1) * stepLen * jitterAmount;
+    const py = idealY + rand.range(-1, 1) * stepLen * jitterAmount;
+    points.push({ x: px, y: py });
+  }
+  return points;
+}
+
+/** Strokes a grown trunk as a CHAIN of short curved segments -- never one
+ *  long Bézier arc. Each segment gets its own curvature jitter, thickness,
+ *  and opacity; opacity ramps up toward the convergence end ("slightly
+ *  clearer near formation"), which is what marks this as a FORMATION PATH
+ *  rather than a Semantic Trace. SECONDARY BRANCHES leave the trunk at
+ *  irregular points along the way -- reusing drawFilamentBranch, so
+ *  "joining/leaving the trunk" comes from the same organic primitive as
+ *  the background texture rather than new machinery; some die almost
+ *  immediately, some run further. Returns the trunk points for the debug
+ *  overlay -- no new RNG draws needed to redraw them later. */
+function drawFormationTrunk(
+  ctx: CanvasRenderingContext2D,
+  points: readonly TrunkPoint[],
+  rand: SeededRandom,
+  opts: { minAlpha: number; maxAlpha: number; minWidth: number; maxWidth: number; secondaryChance: number }
+): void {
+  for (let i = 1; i < points.length; i++) {
+    const t = i / (points.length - 1);
+    const a = points[i - 1];
+    const b = points[i];
+    const mx = (a.x + b.x) / 2 + rand.range(-7, 7);
+    const my = (a.y + b.y) / 2 + rand.range(-7, 7);
+    const alpha = opts.minAlpha + (opts.maxAlpha - opts.minAlpha) * t;
+
+    ctx.strokeStyle = withAlpha(COLORS.primary, alpha);
+    ctx.lineWidth = opts.minWidth + (opts.maxWidth - opts.minWidth) * t;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.quadraticCurveTo(mx, my, b.x, b.y);
+    ctx.stroke();
+
+    if (i < points.length - 1 && rand.chance(opts.secondaryChance)) {
+      const dir = Math.atan2(b.y - a.y, b.x - a.x);
+      const branchAngle = dir + rand.range(-1.2, 1.2);
+      const depthBudget = rand.chance(0.4) ? 2 : 1;
+      drawFilamentBranch(ctx, b.x, b.y, branchAngle, rand.range(18, 55), rand, depthBudget, 0.05, 0.16);
+    }
+  }
+}
+
+/** A SEMANTIC TRACE -- diffuse, discontinuous, atmospheric. Deliberately
+ *  NOT a single connecting stroke between two points, so it can never be
+ *  mistaken for a linguistic Formation Path: several short, disconnected
+ *  wisps scattered in the loose region between them, each pointing in its
+ *  own loosely-related direction rather than tracing a route from A to B. */
+function drawSemanticTrace(
   ctx: CanvasRenderingContext2D,
   x1: number,
   y1: number,
   x2: number,
   y2: number,
-  rand: SeededRandom
-): PrimaryEdgeRecord {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len;
-  const ny = dx / len;
+  rand: SeededRandom,
+  count: number
+): TrunkPoint[] {
+  const markers: TrunkPoint[] = [];
+  for (let i = 0; i < count; i++) {
+    const t = rand.range(0.15, 0.85);
+    const baseX = x1 + (x2 - x1) * t;
+    const baseY = y1 + (y2 - y1) * t;
+    const wx = baseX + rand.range(-32, 32);
+    const wy = baseY + rand.range(-42, 42);
+    const angle = rand.range(0, Math.PI * 2);
+    const len = rand.range(8, 22);
+    const ex = wx + Math.cos(angle) * len;
+    const ey = wy + Math.sin(angle) * len;
+    const mx = (wx + ex) / 2 + rand.range(-4, 4);
+    const my = (wy + ey) / 2 + rand.range(-4, 4);
 
-  const bow1 = rand.range(12, 30) * (rand.chance(0.5) ? 1 : -1);
-  const bow2 = rand.range(9, 26) * (rand.chance(0.5) ? 1 : -1);
-  const cx1 = x1 + dx * 0.28 + nx * bow1;
-  const cy1 = y1 + dy * 0.28 + ny * bow1;
-  const cx2 = x1 + dx * 0.7 + nx * bow2;
-  const cy2 = y1 + dy * 0.7 + ny * bow2;
-
-  const peakAlpha = rand.range(0.19, 0.31);
-  const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
-  gradient.addColorStop(0, withAlpha(COLORS.primary, peakAlpha * 0.5));
-  gradient.addColorStop(0.5, withAlpha(COLORS.primary, peakAlpha));
-  gradient.addColorStop(1, withAlpha(COLORS.primary, peakAlpha * 0.3));
-
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = rand.range(0.75, 1.2);
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
-  ctx.stroke();
-
-  if (rand.chance(0.8)) {
-    const t = rand.range(0.3, 0.6);
-    const bx = x1 + dx * t + nx * bow1 * 0.5;
-    const by = y1 + dy * t + ny * bow1 * 0.5;
-    const branchAngle = Math.atan2(dy, dx) + rand.range(-1.3, 1.3);
-    drawFilamentBranch(ctx, bx, by, branchAngle, rand.range(26, 62), rand, 1, 0.09, 0.2);
+    ctx.strokeStyle = withAlpha(COLORS.muted, rand.range(0.04, 0.1));
+    ctx.lineWidth = rand.range(0.5, 0.9);
+    ctx.beginPath();
+    ctx.moveTo(wx, wy);
+    ctx.quadraticCurveTo(mx, my, ex, ey);
+    ctx.stroke();
+    markers.push({ x: wx, y: wy });
   }
-
-  return { x1, y1, cx1, cy1, cx2, cy2, x2, y2 };
+  return markers;
 }
 
-/** Styling per emphasis tier. `component` (ச், ஒ) is deliberately close to
- *  ordinary ambient weight now -- embedded, not enlarged to identify it, per
- *  "do not enlarge them simply to identify them." Each subsequent tier
- *  gains a little presence, never becoming heading-like. `selected`
- *  (பயன்) is drawn with a soft under-layer via a slight canvas blur --
- *  "this idea survived" rather than "this was constructed" -- and sits
- *  inside a guaranteed macro cluster (see buildMacroClusters) so it reads
- *  as selected from accumulated material, not placed on empty ground. */
+/** Styling per emphasis tier. `component` (ச், ஒ, ல்) is deliberately
+ *  close to ordinary ambient weight -- embedded, not enlarged to identify
+ *  it, per "do not enlarge them simply to identify them," and gets no
+ *  glow. Each subsequent tier gains a little presence, never becoming
+ *  heading-like. `formed`/`emerging`/`selected` all get a very subtle soft
+ *  under-layer via a slight canvas blur -- convergence communicated
+ *  through "local glow/contrast only if extremely subtle," per the brief,
+ *  rather than through any drawn node/circle. `selected` (பயன்) keeps the
+ *  strongest version of this since it was never built from visible
+ *  components at all -- "this idea survived" rather than "this was
+ *  constructed." */
 const EMPHASIS_STYLE = {
-  component: { minSize: 16, maxSize: 21, minOpacity: 0.18, maxOpacity: 0.28 },
-  formed: { minSize: 22, maxSize: 27, minOpacity: 0.36, maxOpacity: 0.46 },
-  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.5, maxOpacity: 0.61 },
-  selected: { minSize: 25, maxSize: 30, minOpacity: 0.42, maxOpacity: 0.53 },
+  component: { minSize: 16, maxSize: 21, minOpacity: 0.18, maxOpacity: 0.28, glow: 0 },
+  formed: { minSize: 22, maxSize: 27, minOpacity: 0.36, maxOpacity: 0.46, glow: 0.3 },
+  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.5, maxOpacity: 0.61, glow: 0.35 },
+  selected: { minSize: 25, maxSize: 30, minOpacity: 0.42, maxOpacity: 0.53, glow: 0.55 },
 } as const;
 
 function drawFormationNode(
@@ -781,11 +920,11 @@ function drawFormationNode(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  if (node.emphasis === "selected") {
+  if (style.glow > 0) {
     ctx.save();
     ctx.filter = "blur(0.8px)";
     ctx.font = `400 ${size * 1.15}px ${tamilFont}`;
-    ctx.fillStyle = withAlpha(COLORS.primary, opacity * 0.55);
+    ctx.fillStyle = withAlpha(COLORS.primary, opacity * style.glow);
     ctx.fillText(node.glyph, x, y);
     ctx.restore();
   }
@@ -796,13 +935,14 @@ function drawFormationNode(
 }
 
 // ---------------------------------------------------------------------------
-// Debug overlay -- INTERNAL, development-only. Redraws the 5 primary paths
-// (using the exact control points already computed above -- no new RNG
-// draws, so this never touches determinism) at high contrast, plus a small
-// marker at every primary endpoint. Purely additive: nothing below it is
-// altered. Callers must only ever pass debugFormationLogic: true on a live
-// preview, never on the export path -- see
-// KuralHeroCanvas.renderKuralPublishingForExport.
+// Debug overlay -- INTERNAL, development-only. Redraws the grown trunks
+// (using the exact points already computed above -- no new RNG draws, so
+// this never touches determinism) at high contrast, colour-coded by kind
+// so FORMATION PATHS and SEMANTIC TRACES are visually distinguishable, plus
+// a labelled marker at every node and trunk origin. Purely additive:
+// nothing below it is altered. Callers must only ever pass
+// debugFormationLogic: true on a live preview, never on the export path --
+// see KuralHeroCanvas.renderKuralPublishingForExport.
 // ---------------------------------------------------------------------------
 
 function drawDebugFormationOverlay(
@@ -810,18 +950,32 @@ function drawDebugFormationOverlay(
   width: number,
   height: number,
   tamilFont: string,
+  sansFont: string,
   info: FormationDebugInfo
 ): void {
   ctx.save();
   ctx.lineCap = "round";
 
-  for (const edge of info.edges) {
-    ctx.strokeStyle = withAlpha(COLORS.foreground, 0.85);
-    ctx.lineWidth = 2.25;
+  for (const trunk of info.trunks) {
+    if (trunk.points.length < 2) continue;
+    const isFormation = trunk.kind === "formation";
+    ctx.strokeStyle = isFormation ? withAlpha(COLORS.foreground, 0.85) : withAlpha(COLORS.muted, 0.95);
+    ctx.lineWidth = isFormation ? 2 : 1.5;
+    if (!isFormation) ctx.setLineDash([3, 4]);
     ctx.beginPath();
-    ctx.moveTo(edge.x1, edge.y1);
-    ctx.bezierCurveTo(edge.cx1, edge.cy1, edge.cx2, edge.cy2, edge.x2, edge.y2);
+    ctx.moveTo(trunk.points[0].x, trunk.points[0].y);
+    for (let i = 1; i < trunk.points.length; i++) {
+      ctx.lineTo(trunk.points[i].x, trunk.points[i].y);
+    }
     ctx.stroke();
+    ctx.setLineDash([]);
+
+    const origin = trunk.points[0];
+    ctx.font = `600 10px ${sansFont}`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = isFormation ? withAlpha(COLORS.foreground, 0.9) : withAlpha(COLORS.muted, 1);
+    ctx.fillText(trunk.label, origin.x + 4, origin.y - 4);
   }
 
   for (const marker of info.markers) {
@@ -832,6 +986,12 @@ function drawDebugFormationOverlay(
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = withAlpha(COLORS.foreground, 0.95);
     ctx.stroke();
+
+    ctx.font = `600 10px ${sansFont}`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = withAlpha(COLORS.foreground, 0.9);
+    ctx.fillText(marker.label, marker.x + 8, marker.y + 6);
   }
 
   ctx.font = `700 13px ${tamilFont}`;
@@ -839,6 +999,8 @@ function drawDebugFormationOverlay(
   ctx.textBaseline = "top";
   ctx.fillStyle = withAlpha(COLORS.foreground, 0.9);
   ctx.fillText("DEBUG: Formation Logic — never exported", 12, 12);
+  ctx.font = `500 11px ${sansFont}`;
+  ctx.fillText("Solid = Formation Path (linguistic).  Dashed = Semantic Trace (conceptual only).", 12, 30);
 
   ctx.restore();
 }
