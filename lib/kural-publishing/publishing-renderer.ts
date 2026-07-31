@@ -193,6 +193,47 @@ function drawAtmosphere(
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, cloudClipWidth, height);
   }
+
+  drawLocalTonalVariation(ctx, width, height, colorEnd);
+}
+
+/** A pure function of position, not of the seeded generator -- deliberately
+ *  does NOT consume any `rand` draws, so adding this never shifts the RNG
+ *  sequence that macro clusters / the ambient field / Formation Paths all
+ *  depend on downstream. That's what makes this a genuine "refine without
+ *  rebuilding": composition stays byte-identical to before except for this
+ *  additional, independent grain layer softening the dark-panel/light-panel
+ *  read within the already-dark region. */
+function positionHash(x: number, y: number): number {
+  const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function drawLocalTonalVariation(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  colorEnd: number
+): void {
+  const cell = 34;
+  const cols = Math.ceil((colorEnd * width) / cell);
+  const rows = Math.ceil(height / cell);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cx = c * cell;
+      const cy = r * cell;
+      const xFrac = cx / width;
+      const fade = Math.max(0, 1 - xFrac / colorEnd);
+      const n = positionHash(c * 1.7, r * 2.3);
+      const delta = (n - 0.5) * 0.09 * fade;
+      if (Math.abs(delta) < 0.006) continue;
+      ctx.fillStyle =
+        delta > 0
+          ? mixAlpha(DEEP_SAGE, COLORS.primaryDark, 0.5, delta)
+          : mixAlpha(COLORS.primary, COLORS.background, 0.5, -delta);
+      ctx.fillRect(cx, cy, cell, cell);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -290,6 +331,29 @@ function pocketMultiplierAt(field: number[][], xFrac: number, yFrac: number): nu
   return (field[fr][fc] * 2 + field[fr][rightC] + field[belowR][fc]) / 4;
 }
 
+/** Final MVP pass: a small local clearing around every Formation Node
+ *  position -- "immediately around each survivor... create a subtle local
+ *  clearing... reduce unrelated ambient glyph competition." A pure spatial
+ *  density multiplier, not a change to glyph categorisation or the
+ *  Kural-bias logic (both frozen this pass) -- it only thins out whatever
+ *  would otherwise land in that small radius. This is the direct fix for
+ *  survivor glyphs (சொ especially) previously reading as duplicated by
+ *  nearby ambient/Kural-material text sitting right on top of them. */
+const CLEARING_RADIUS = 0.05;
+const CLEARING_STRENGTH = 0.55;
+
+function clearingAt(xFrac: number, yFrac: number): number {
+  let factor = 1;
+  for (const node of FORMATION_NODES) {
+    const dx = xFrac - node.x;
+    const dy = (yFrac - node.y) * 0.6;
+    const d2 = dx * dx + dy * dy;
+    const dip = CLEARING_STRENGTH * Math.exp(-d2 / (CLEARING_RADIUS * CLEARING_RADIUS * 0.5));
+    factor = Math.min(factor, 1 - dip);
+  }
+  return Math.max(0.15, factor);
+}
+
 function densityAt(
   xFrac: number,
   yFrac: number,
@@ -300,7 +364,8 @@ function densityAt(
   if (base <= 0) return 0;
   const bump = 1 + macroBumpAt(macro, xFrac, yFrac);
   const pocket = pocketMultiplierAt(pockets, xFrac, yFrac);
-  return Math.max(0, Math.min(2.6, base * bump * pocket));
+  const clearing = clearingAt(xFrac, yFrac);
+  return Math.max(0, Math.min(2.6, base * bump * pocket * clearing));
 }
 
 function drawAmbientField(
@@ -557,11 +622,11 @@ function drawFormationLayer(
     const targetY = height * choNode.y;
     const points = growTrunk(rand, originX, originY, targetX, targetY, 6);
     drawFormationTrunk(ctx, points, rand, {
-      minAlpha: 0.05,
-      maxAlpha: 0.24,
+      minAlpha: 0.07,
+      maxAlpha: 0.31,
       minWidth: 0.55,
       maxWidth: 1.05,
-      secondaryChance: 0.32,
+      secondaryChance: 0.38,
     });
     trunks.push({ points, kind: "formation", label: "ச் root → சொ" });
   }
@@ -575,11 +640,11 @@ function drawFormationLayer(
     const targetY = height * choNode.y;
     const points = growTrunk(rand, originX, originY, targetX, targetY, 6);
     drawFormationTrunk(ctx, points, rand, {
-      minAlpha: 0.05,
-      maxAlpha: 0.24,
+      minAlpha: 0.07,
+      maxAlpha: 0.31,
       minWidth: 0.55,
       maxWidth: 1.05,
-      secondaryChance: 0.32,
+      secondaryChance: 0.38,
     });
     trunks.push({ points, kind: "formation", label: "ஒ root → சொ" });
   }
@@ -597,11 +662,11 @@ function drawFormationLayer(
       5
     );
     drawFormationTrunk(ctx, contPoints, rand, {
-      minAlpha: 0.07,
-      maxAlpha: 0.27,
+      minAlpha: 0.09,
+      maxAlpha: 0.34,
       minWidth: 0.6,
       maxWidth: 1.1,
-      secondaryChance: 0.3,
+      secondaryChance: 0.36,
     });
     trunks.push({ points: contPoints, kind: "formation", label: "சொ continues → சொல்" });
 
@@ -609,11 +674,11 @@ function drawFormationLayer(
     const lOriginY = height * (lNode.y - 0.035);
     const lPoints = growTrunk(rand, lOriginX, lOriginY, width * cholNode.x, height * cholNode.y, 5);
     drawFormationTrunk(ctx, lPoints, rand, {
-      minAlpha: 0.06,
-      maxAlpha: 0.25,
+      minAlpha: 0.08,
+      maxAlpha: 0.32,
       minWidth: 0.55,
       maxWidth: 1.05,
-      secondaryChance: 0.32,
+      secondaryChance: 0.38,
     });
     trunks.push({ points: lPoints, kind: "formation", label: "ல் root → சொல்" });
   }
@@ -627,11 +692,11 @@ function drawFormationLayer(
     const originY = height * 0.76;
     const points = growTrunk(rand, originX, originY, width * payanNode.x, height * payanNode.y, 6);
     drawFormationTrunk(ctx, points, rand, {
-      minAlpha: 0.05,
-      maxAlpha: 0.22,
+      minAlpha: 0.07,
+      maxAlpha: 0.29,
       minWidth: 0.55,
       maxWidth: 1.0,
-      secondaryChance: 0.3,
+      secondaryChance: 0.36,
     });
     trunks.push({ points, kind: "formation", label: "பயன் root (independent)" });
   }
@@ -898,9 +963,9 @@ function drawSemanticTrace(
  *  constructed." */
 const EMPHASIS_STYLE = {
   component: { minSize: 16, maxSize: 21, minOpacity: 0.18, maxOpacity: 0.28, glow: 0 },
-  formed: { minSize: 22, maxSize: 27, minOpacity: 0.36, maxOpacity: 0.46, glow: 0.3 },
-  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.5, maxOpacity: 0.61, glow: 0.35 },
-  selected: { minSize: 25, maxSize: 30, minOpacity: 0.42, maxOpacity: 0.53, glow: 0.55 },
+  formed: { minSize: 22, maxSize: 27, minOpacity: 0.4, maxOpacity: 0.5, glow: 0.36 },
+  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.54, maxOpacity: 0.65, glow: 0.4 },
+  selected: { minSize: 25, maxSize: 30, minOpacity: 0.46, maxOpacity: 0.57, glow: 0.6 },
 } as const;
 
 function drawFormationNode(
@@ -1006,9 +1071,12 @@ function drawDebugFormationOverlay(
 }
 
 // ---------------------------------------------------------------------------
-// Foreground Kural + English thought -- unchanged this pass, per the brief
-// ("do not redesign it in this pass"). Left-aligned per the locked Kural
-// display rule, sized to fit via measureText with a genuine safety floor.
+// Foreground editorial block -- Final MVP pass. A deliberate vertical
+// hierarchy (logo -> குறள் 200 identity line -> Tamil Kural -> English
+// thought -> metadata), all left-aligned to the same edge. Kural display
+// rule (left-aligned, never centered) and the safety-floor sizing are
+// unchanged from earlier passes; this pass increases scale/presence and
+// adds the identity line per the founder's final art direction.
 // ---------------------------------------------------------------------------
 
 function drawForegroundKural(
@@ -1023,35 +1091,55 @@ function drawForegroundKural(
   const rightMargin = width * 0.05;
   const maxTextWidth = width - leftX - rightMargin;
 
-  const kuralLines = [content.tamilLine1, content.tamilLine2];
-  const kuralSize = fitFontSize(ctx, kuralLines, tamilFont, 500, maxTextWidth, 48, 15);
-  const kuralLineGap = kuralSize * 1.48;
-  const kuralY1 = height * 0.4;
-  const kuralY2 = kuralY1 + kuralLineGap;
-
+  // Quiet identity line -- "குறள் 200" -- with a minimal divider beneath it.
+  // Not a banner: small caps-weight text and a short thin rule, nothing more.
+  const identityY = height * 0.205;
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
+  ctx.font = `500 15px ${tamilFont}`;
+  ctx.fillStyle = withAlpha(COLORS.muted, 0.85);
+  ctx.fillText(`குறள் ${content.kuralNumber}`, leftX, identityY);
+
+  const dividerY = identityY + height * 0.018;
+  ctx.strokeStyle = withAlpha(COLORS.muted, 0.35);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(leftX, dividerY);
+  ctx.lineTo(leftX + width * 0.05, dividerY);
+  ctx.stroke();
+
+  // Tamil Kural -- the primary voice. Larger and more generously spaced
+  // than earlier passes; still guaranteed never to clip via the fit-shrink
+  // safety floor.
+  const kuralLines = [content.tamilLine1, content.tamilLine2];
+  const kuralSize = fitFontSize(ctx, kuralLines, tamilFont, 500, maxTextWidth, 54, 16);
+  const kuralLineGap = kuralSize * 1.52;
+  const kuralY1 = height * 0.34;
+  const kuralY2 = kuralY1 + kuralLineGap;
+
   ctx.fillStyle = COLORS.foreground;
   ctx.font = `500 ${kuralSize}px ${tamilFont}`;
   ctx.fillText(content.tamilLine1, leftX, kuralY1);
   ctx.fillText(content.tamilLine2, leftX, kuralY2);
 
+  // English thought -- secondary voice, stronger than earlier passes
+  // (larger, heavier weight) but still clearly subordinate to the Tamil.
   const englishLines = [content.englishLine1, content.englishLine2];
-  const engSize = fitFontSize(ctx, englishLines, sansFont, 500, maxTextWidth, 19, 12);
-  const engLineGap = engSize * 1.55;
-  const engY1 = kuralY2 + kuralSize * 1.7;
+  const engSize = fitFontSize(ctx, englishLines, sansFont, 700, maxTextWidth, 22, 13);
+  const engLineGap = engSize * 1.6;
+  const engY1 = kuralY2 + kuralSize * 1.8;
   const engY2 = engY1 + engLineGap;
 
-  ctx.font = `500 ${engSize}px ${sansFont}`;
-  ctx.fillStyle = withAlpha(COLORS.muted, 1);
+  ctx.font = `700 ${engSize}px ${sansFont}`;
+  ctx.fillStyle = withAlpha(COLORS.foreground, 0.78);
   ctx.fillText(content.englishLine1, leftX, engY1);
   ctx.fillText(content.englishLine2, leftX, engY2);
 }
 
 /** Shrinks font size (never below minSize) until every line fits maxWidth,
  *  using the browser's own text metrics -- not an estimate. minSize is a
- *  true safety floor (15px): the Kural can never be clipped by the canvas
- *  edge regardless of edited content length. Restores no state on its own;
+ *  true safety floor: the Kural can never be clipped by the canvas edge
+ *  regardless of edited content length. Restores no state on its own;
  *  caller sets ctx.font again before actually drawing. */
 function fitFontSize(
   ctx: CanvasRenderingContext2D,
@@ -1073,7 +1161,8 @@ function fitFontSize(
 }
 
 // ---------------------------------------------------------------------------
-// Metadata -- low-hierarchy credit line, quiet region only. Unchanged.
+// Metadata -- tertiary footer line, aligned to the same left edge as the
+// rest of the editorial block, with generous breathing room above it.
 // ---------------------------------------------------------------------------
 
 function drawMetadata(
@@ -1096,7 +1185,11 @@ function drawMetadata(
 
 // ---------------------------------------------------------------------------
 // Identity zone -- draws only when a real logo image is supplied. No
-// fallback mark, no "logo missing" text, no placeholder box. Unchanged.
+// fallback mark, no "logo missing" text, no placeholder box. Final MVP
+// pass: repositioned above the Kural editorial block, left-aligned to the
+// same edge as குறள் 200 / the Kural / the English thought, rather than a
+// top-right corner badge -- "restrained editorial identity," not a badge.
+// Aspect ratio always preserved; only ever scaled down, never distorted.
 // ---------------------------------------------------------------------------
 
 function drawLogoSlot(
@@ -1105,19 +1198,19 @@ function drawLogoSlot(
   height: number,
   logoImage: HTMLImageElement
 ): void {
-  const maxW = width * 0.09;
-  const maxH = height * 0.09;
   const naturalW = logoImage.naturalWidth || logoImage.width;
   const naturalH = logoImage.naturalHeight || logoImage.height;
   if (!naturalW || !naturalH) return;
 
+  const leftX = REGIONS.quietStart * width + width * 0.038;
+  const maxH = height * 0.06;
+  const maxW = width * 0.16;
   const scale = Math.min(maxW / naturalW, maxH / naturalH, 1);
   const w = naturalW * scale;
   const h = naturalH * scale;
-  const x = width - width * 0.06 - w;
-  const y = height * 0.06;
+  const y = height * 0.075;
 
-  ctx.drawImage(logoImage, x, y, w, h);
+  ctx.drawImage(logoImage, leftX, y, w, h);
 }
 
 // ---------------------------------------------------------------------------

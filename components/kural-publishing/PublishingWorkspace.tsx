@@ -15,12 +15,19 @@
  * calls renderKuralPublishingForExport, a fully independent render that
  * always forces the debug overlay off, so the toggle can never leak into
  * an exported file regardless of what's on screen when Download is clicked.
+ *
+ * Final MVP art direction pass adds logo loading: attempts to load the
+ * canonical asset from KKA_LOGO_PATH. If it isn't there yet, the load
+ * simply fails and no logo draws -- no placeholder, no generated mark, per
+ * the standing rule. The moment the real file exists at that path, it
+ * appears in both the preview and the export with no further code change.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import KuralHeroCanvas, {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
+  KKA_LOGO_PATH,
   renderKuralPublishingForExport,
 } from "./KuralHeroCanvas";
 import {
@@ -61,6 +68,23 @@ export default function PublishingWorkspace() {
   const [generation, setGeneration] = useState(0);
   const [showFormationLogic, setShowFormationLogic] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) setLogoImage(img);
+    };
+    img.onerror = () => {
+      // Asset not supplied yet -- expected until the canonical file is
+      // added at KKA_LOGO_PATH. No placeholder, no retry, no console noise.
+    };
+    img.src = KKA_LOGO_PATH;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFieldChange = useCallback((key: ContentField, value: string) => {
     setContent((prev) => ({ ...prev, [key]: value }));
@@ -75,7 +99,7 @@ export default function PublishingWorkspace() {
     try {
       // Independent render, debug always forced off inside this helper --
       // never reads the (possibly debug-overlaid) live preview canvas.
-      const blob = await renderKuralPublishingForExport(content);
+      const blob = await renderKuralPublishingForExport(content, logoImage);
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -88,7 +112,7 @@ export default function PublishingWorkspace() {
     } finally {
       setIsExporting(false);
     }
-  }, [content]);
+  }, [content, logoImage]);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[1400px] flex-col gap-6 px-5 py-8 lg:flex-row lg:gap-10 lg:px-10">
@@ -151,6 +175,11 @@ export default function PublishingWorkspace() {
             Never appears in the downloaded PNG.
           </p>
         </div>
+
+        <p className="mt-4 text-xs text-[var(--color-muted-foreground)] opacity-70">
+          Logo: {logoImage ? "loaded from " : "not yet supplied at "}
+          <code>{KKA_LOGO_PATH}</code>
+        </p>
       </section>
 
       <section className="flex-1">
@@ -161,6 +190,7 @@ export default function PublishingWorkspace() {
           <KuralHeroCanvas
             content={content}
             generation={generation}
+            logoImage={logoImage}
             debugFormationLogic={showFormationLogic}
           />
         </div>

@@ -32,6 +32,14 @@ import type { KuralPublishingContent } from "@/lib/kural-publishing/kural200-sta
 export const CANVAS_WIDTH = 1648;
 export const CANVAS_HEIGHT = 928;
 
+/** Where the canonical Kural Koorum Aram logo is expected to live once
+ *  supplied. Nothing in this file generates a fallback if it's missing --
+ *  PublishingWorkspace's loader simply fails silently and no logo draws,
+ *  per the standing rule against placeholder/generated marks. Add the real
+ *  asset at this path (public/brand/...) and it starts appearing with no
+ *  further code change. */
+export const KKA_LOGO_PATH = "/brand/kural-koorum-aram-logo.png";
+
 const TAMIL_FALLBACK =
   "'Noto Sans Tamil','Nirmala UI','Tamil Sangam MN','Tamil MN',sans-serif";
 const SANS_FALLBACK =
@@ -122,12 +130,15 @@ export default function KuralHeroCanvas({
 }
 
 /** Renders a fresh, fully independent 1648x928 canvas for PNG export --
- *  always with debugFormationLogic: false and logoImage: null, regardless
- *  of the live preview's current state. This is the ONLY function
+ *  always with debugFormationLogic: false, regardless of the live
+ *  preview's current toggle state. This is the ONLY function
  *  PublishingWorkspace's Download PNG button should call, precisely so the
- *  debug overlay can never appear in an exported file. */
+ *  debug overlay can never appear in an exported file. Accepts the same
+ *  logo image the preview is showing, so the export matches what's on
+ *  screen once the canonical asset is in place. */
 export async function renderKuralPublishingForExport(
-  content: KuralPublishingContent
+  content: KuralPublishingContent,
+  logoImage: HTMLImageElement | null = null
 ): Promise<Blob | null> {
   const canvas = document.createElement("canvas");
   canvas.width = CANVAS_WIDTH;
@@ -152,7 +163,7 @@ export async function renderKuralPublishingForExport(
     content,
     tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
     sansFont: resolveFont("--font-sans", SANS_FALLBACK),
-    logoImage: null,
+    logoImage,
     debugFormationLogic: false,
   });
 
