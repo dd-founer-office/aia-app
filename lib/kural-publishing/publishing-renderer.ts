@@ -135,9 +135,8 @@ export function renderKuralPublishing(
 
   drawAmbientField(ctx, width, height, tamilFont, rand, kuralSyllables, macro);
   const debugInfo = drawFormationLayer(ctx, width, height, tamilFont, rand, macro);
-  drawForegroundKural(ctx, width, height, content, tamilFont, sansFont);
+  drawForegroundKural(ctx, width, height, content, tamilFont, sansFont, logoImage ?? null);
   drawMetadata(ctx, width, height, content, sansFont);
-  if (logoImage) drawLogoSlot(ctx, width, height, logoImage);
 
   if (debugFormationLogic) {
     drawDebugFormationOverlay(ctx, width, height, tamilFont, sansFont, debugInfo);
@@ -182,25 +181,37 @@ function drawAtmosphere(
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, width, height);
 
-  // A handful of soft, low-opacity clouds -- support texture, not a second
-  // dark layer. Clamped well inside the dense field so nothing reads as a
+  // A handful of soft, low-opacity strata patches -- support texture, not a
+  // second dark layer. Deliberately elongated and rotated, never a perfect
+  // circle: a round soft-edged bloom reads as smoke or cloud, which the
+  // brief explicitly rules out. An irregular, stretched patch reads closer
+  // to a mineral vein or aged patina -- material, not atmosphere-in-the-sky
+  // sense. Clamped well inside the dense field so nothing reads as a
   // boundary.
   const cloudClipWidth = width * Math.min(REGIONS.denseEnd * 1.05, REGIONS.quietStart);
-  const cloudCount = 4;
+  const cloudCount = 6;
   for (let i = 0; i < cloudCount; i++) {
     const cx = rand.range(-width * 0.05, width * REGIONS.denseEnd * 0.75);
     const cy = rand.range(height * 0.05, height * 0.95);
-    const r = rand.range(width * 0.1, width * 0.22);
-    const darker = rand.chance(0.5);
+    const r = rand.range(width * 0.055, width * 0.11);
+    const stretch = rand.range(1.3, 2.1);
+    const rotation = rand.range(0, Math.PI);
+    const darker = rand.chance(0.62);
     const tone = darker
-      ? mixAlpha(COLORS.deepCode, COLORS.heritageBronze, rand.range(0, 0.5), rand.range(0.08, 0.16))
-      : mixAlpha(COLORS.heritageBronze, COLORS.warmParchment, rand.range(0.2, 0.6), rand.range(0.04, 0.08));
+      ? mixAlpha(COLORS.deepCode, COLORS.heritageBronze, rand.range(0, 0.5), rand.range(0.06, 0.12))
+      : mixAlpha(COLORS.heritageBronze, COLORS.warmParchment, rand.range(0.2, 0.6), rand.range(0.02, 0.04));
 
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation);
+    ctx.scale(stretch, 1);
+    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
     grad.addColorStop(0, tone);
+    grad.addColorStop(0.7, tone);
     grad.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, cloudClipWidth, height);
+    ctx.fillRect(-cloudClipWidth, -height, cloudClipWidth * 2, height * 2);
+    ctx.restore();
   }
 
   drawLocalTonalVariation(ctx, width, height, colorEnd);
@@ -219,13 +230,47 @@ function positionHash(x: number, y: number): number {
   return s - Math.floor(s);
 }
 
+/** Smoothly interpolated hash sampled at fine pixel coordinates against a
+ *  coarse grid spaced gridStep apart -- a single octave of organic value
+ *  noise. Bilinear interpolation is what turns a hard hash lookup into a
+ *  soft undulation instead of a blocky, digital-looking grid -- this is
+ *  the fix for texture that could read as a noise filter. */
+function smoothNoise(px: number, py: number, gridStep: number): number {
+  const fx = px / gridStep;
+  const fy = py / gridStep;
+  const x0 = Math.floor(fx);
+  const y0 = Math.floor(fy);
+  const tx = fx - x0;
+  const ty = fy - y0;
+  const h00 = positionHash(x0, y0);
+  const h10 = positionHash(x0 + 1, y0);
+  const h01 = positionHash(x0, y0 + 1);
+  const h11 = positionHash(x0 + 1, y0 + 1);
+  const top = h00 + (h10 - h00) * tx;
+  const bottom = h01 + (h11 - h01) * tx;
+  return top + (bottom - top) * ty;
+}
+
+/** Three octaves layered together -- a large, slow undulation (buried
+ *  strata), a medium patch scale (material variation), and a fine grain
+ *  (surface texture). This is what "many invisible layers beneath the
+ *  visible letters" actually means procedurally: depth is not one texture
+ *  pass, it's several, at different scales, summed. Still a pure function
+ *  of position -- zero rand draws, so composition is untouched. */
+function organicDepth(px: number, py: number): number {
+  const strata = smoothNoise(px + 50, py + 120, 210);
+  const material = smoothNoise(px + 900, py + 300, 68);
+  const grain = smoothNoise(px + 1400, py + 800, 21);
+  return strata * 0.5 + material * 0.32 + grain * 0.18;
+}
+
 function drawLocalTonalVariation(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   colorEnd: number
 ): void {
-  const cell = 34;
+  const cell = 13;
   const cols = Math.ceil((colorEnd * width) / cell);
   const rows = Math.ceil(height / cell);
   for (let r = 0; r < rows; r++) {
@@ -234,9 +279,9 @@ function drawLocalTonalVariation(
       const cy = r * cell;
       const xFrac = cx / width;
       const fade = Math.max(0, 1 - xFrac / colorEnd);
-      const n = positionHash(c * 1.7, r * 2.3);
-      const delta = (n - 0.5) * 0.09 * fade;
-      if (Math.abs(delta) < 0.006) continue;
+      const n = organicDepth(cx, cy);
+      const delta = (n - 0.5) * 0.1 * fade;
+      if (Math.abs(delta) < 0.005) continue;
       ctx.fillStyle =
         delta > 0
           ? mixAlpha(COLORS.deepCode, COLORS.heritageBronze, 0.5, delta)
@@ -259,7 +304,7 @@ function drawParchmentTexture(
   height: number,
   colorEnd: number
 ): void {
-  const cell = 46;
+  const cell = 18;
   const startCol = Math.floor((colorEnd * width) / cell);
   const cols = Math.ceil(width / cell);
   const rows = Math.ceil(height / cell);
@@ -267,9 +312,9 @@ function drawParchmentTexture(
     for (let c = startCol; c < cols; c++) {
       const cx = c * cell;
       const cy = r * cell;
-      const n = positionHash(c * 2.1 + 0.37, r * 1.6 + 0.61);
-      const delta = (n - 0.5) * 0.03;
-      if (Math.abs(delta) < 0.004) continue;
+      const n = smoothNoise(cx + 2200, cy + 1500, 58);
+      const delta = (n - 0.5) * 0.032;
+      if (Math.abs(delta) < 0.003) continue;
       ctx.fillStyle =
         delta > 0
           ? mixAlpha(COLORS.warmParchment, COLORS.heritageBronze, 0.5, delta)
@@ -534,8 +579,8 @@ function drawAmbientGlyph(
       size = rand.range(22, 34);
       baseOpacity = rand.range(0.48, 0.72);
       colorMix = 0.82;
-      if (rand.chance(0.38)) illumination = "gold";
-      else if (rand.chance(0.16)) illumination = "cyan";
+      if (rand.chance(0.22)) illumination = "gold";
+      else if (rand.chance(0.08)) illumination = "cyan";
     } else {
       size = rand.range(18, 27);
       baseOpacity = rand.range(0.2, 0.35);
@@ -586,17 +631,16 @@ function drawAmbientGlyph(
 
   if (illumination !== "none") {
     // "A bright glyph core, soft local halo, gentle falloff, no hard outer
-    // ring" -- a blurred under-layer in the illumination colour, then the
-    // glyph itself redrawn on top in that same colour, not the ordinary
-    // bronze/ink tone. This is the only place a glow gets drawn in the
-    // ambient field at all.
+    // ring" -- and, per Gold Master direction, this must feel like
+    // understanding, not an effect: a tight, restrained core-lift with a
+    // narrow halo, not a diffuse bloom.
     const glow = illumination === "gold" ? COLORS.illuminatedGold : COLORS.livingCyan;
     ctx.save();
-    ctx.filter = "blur(2.2px)";
-    ctx.fillStyle = withAlpha(glow, opacity * 0.55);
+    ctx.filter = "blur(1.1px)";
+    ctx.fillStyle = withAlpha(glow, opacity * 0.32);
     ctx.fillText(glyph, x + jitterX, y + jitterY);
     ctx.restore();
-    ctx.fillStyle = withAlpha(glow, Math.min(1, opacity + 0.18));
+    ctx.fillStyle = withAlpha(glow, Math.min(1, opacity + 0.08));
   } else {
     const color = mix(COLORS.heritageBronze, COLORS.kuralInk, colorMix);
     ctx.fillStyle = withAlphaRgb(color, opacity);
@@ -604,9 +648,11 @@ function drawAmbientGlyph(
   ctx.fillText(glyph, x + jitterX, y + jitterY);
 }
 
-/** A single tiny filled dot -- pure procedural texture, not a letterform.
- *  "Micro dots / very fine traces / soft local haze," per the brief. No
- *  imported noise, no imagery -- one seeded circle. */
+/** A single tiny hairline mark -- pure procedural texture, not a letterform
+ *  and not a particle. Gold Master direction is explicit: avoid anything
+ *  that resembles particles or digital noise. A short stroke reads as an
+ *  ink trace or a worn mark in material; a filled dot reads as a rendered
+ *  point -- the difference is deliberate. */
 function drawMicroTrace(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -614,14 +660,22 @@ function drawMicroTrace(
   density: number,
   rand: SeededRandom
 ): void {
-  const r = rand.range(0.5, 1.6);
-  const opacity = rand.range(0.02, 0.07) * (0.5 + density * 0.5);
+  const len = rand.range(1.4, 3.4);
+  const angle = rand.range(0, Math.PI);
+  const opacity = rand.range(0.02, 0.06) * (0.5 + density * 0.5);
   const dx = rand.range(-10, 10);
   const dy = rand.range(-10, 10);
+  const x1 = x + dx;
+  const y1 = y + dy;
+  const x2 = x1 + Math.cos(angle) * len;
+  const y2 = y1 + Math.sin(angle) * len;
+  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, opacity);
+  ctx.lineWidth = 0.6;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.arc(x + dx, y + dy, r, 0, Math.PI * 2);
-  ctx.fillStyle = withAlpha(COLORS.heritageBronze, opacity);
-  ctx.fill();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
 }
 
 // ---------------------------------------------------------------------------
@@ -692,8 +746,8 @@ function drawFormationLayer(
     const targetY = height * choNode.y;
     const points = growTrunk(rand, originX, originY, targetX, targetY, 6);
     drawFormationTrunk(ctx, points, rand, {
-      minAlpha: 0.07,
-      maxAlpha: 0.31,
+      minAlpha: 0.035,
+      maxAlpha: 0.15,
       minWidth: 0.55,
       maxWidth: 1.05,
       secondaryChance: 0.38,
@@ -717,8 +771,8 @@ function drawFormationLayer(
     const targetY = height * choNode.y;
     const points = growTrunk(rand, originX, originY, targetX, targetY, 6);
     drawFormationTrunk(ctx, points, rand, {
-      minAlpha: 0.07,
-      maxAlpha: 0.31,
+      minAlpha: 0.035,
+      maxAlpha: 0.15,
       minWidth: 0.55,
       maxWidth: 1.05,
       secondaryChance: 0.38,
@@ -735,7 +789,7 @@ function drawFormationLayer(
     // A single small, precious glow at the actual convergence -- shared by
     // both families, drawn once, not once per trunk. "Occasional warm gold
     // illumination near meaningful convergence."
-    drawPathGlowPoint(ctx, targetX, targetY, COLORS.illuminatedGold, 0.22);
+    drawPathGlowPoint(ctx, targetX, targetY, COLORS.illuminatedGold, 0.11);
   }
 
   // FORMATION FAMILY 3: the system associated with சொ continues (does not
@@ -751,8 +805,8 @@ function drawFormationLayer(
       5
     );
     drawFormationTrunk(ctx, contPoints, rand, {
-      minAlpha: 0.09,
-      maxAlpha: 0.34,
+      minAlpha: 0.045,
+      maxAlpha: 0.16,
       minWidth: 0.6,
       maxWidth: 1.1,
       secondaryChance: 0.36,
@@ -767,8 +821,8 @@ function drawFormationLayer(
     const lOriginY = height * (lNode.y - 0.035);
     const lPoints = growTrunk(rand, lOriginX, lOriginY, width * cholNode.x, height * cholNode.y, 5);
     drawFormationTrunk(ctx, lPoints, rand, {
-      minAlpha: 0.08,
-      maxAlpha: 0.32,
+      minAlpha: 0.04,
+      maxAlpha: 0.15,
       minWidth: 0.55,
       maxWidth: 1.05,
       secondaryChance: 0.38,
@@ -779,7 +833,7 @@ function drawFormationLayer(
     });
     trunks.push({ points: lPoints, kind: "formation", label: "ல் root → சொல்" });
 
-    drawPathGlowPoint(ctx, width * cholNode.x, height * cholNode.y, COLORS.illuminatedGold, 0.26);
+    drawPathGlowPoint(ctx, width * cholNode.x, height * cholNode.y, COLORS.illuminatedGold, 0.13);
   }
 
   // FORMATION FAMILY 4: பயன் -- a fully INDEPENDENT root family, from a
@@ -791,8 +845,8 @@ function drawFormationLayer(
     const originY = height * 0.76;
     const points = growTrunk(rand, originX, originY, width * payanNode.x, height * payanNode.y, 6);
     drawFormationTrunk(ctx, points, rand, {
-      minAlpha: 0.07,
-      maxAlpha: 0.29,
+      minAlpha: 0.035,
+      maxAlpha: 0.14,
       minWidth: 0.55,
       maxWidth: 1.0,
       secondaryChance: 0.36,
@@ -807,7 +861,7 @@ function drawFormationLayer(
     });
     trunks.push({ points, kind: "formation", label: "பயன் root (independent)" });
 
-    drawPathGlowPoint(ctx, width * payanNode.x, height * payanNode.y, COLORS.livingCyan, 0.24);
+    drawPathGlowPoint(ctx, width * payanNode.x, height * payanNode.y, COLORS.livingCyan, 0.11);
   }
 
   // SEMANTIC TRACE: சொல் and பயன் may relate conceptually as the two ideas
@@ -876,7 +930,7 @@ function drawRootFilaments(
     const length = rand.range(30, 130) * (0.5 + density);
     const depthBudget = rand.chance(0.4) ? 2 : 1;
 
-    drawFilamentBranch(ctx, x, y, angle, length, rand, depthBudget, 0.09, 0.22);
+    drawFilamentBranch(ctx, x, y, angle, length, rand, depthBudget, 0.045, 0.13);
   }
 
   const tertiaryAttempts = 100;
@@ -890,7 +944,7 @@ function drawRootFilaments(
     const angle = rand.range(-Math.PI * 0.5, Math.PI * 0.5);
     const length = rand.range(14, 50);
 
-    drawFilamentBranch(ctx, x, y, angle, length, rand, 1, 0.03, 0.08);
+    drawFilamentBranch(ctx, x, y, angle, length, rand, 1, 0.015, 0.045);
   }
 }
 
@@ -1039,7 +1093,7 @@ function drawFormationTrunk(
       const blend = Math.max(0, 1 - dist / width);
       if (blend > 0) {
         strokeHex = illum.activationColor;
-        strokeAlpha = alpha * (0.5 + blend * 0.9);
+        strokeAlpha = alpha * (0.4 + blend * 0.45);
       }
     }
     if (illum?.resolutionColor) {
@@ -1047,7 +1101,7 @@ function drawFormationTrunk(
       if (t >= start) {
         const blend = (t - start) / (1 - start || 1);
         strokeHex = illum.resolutionColor;
-        strokeAlpha = alpha * (0.55 + blend * 0.75);
+        strokeAlpha = alpha * (0.42 + blend * 0.42);
       }
     }
 
@@ -1277,48 +1331,63 @@ function drawDebugFormationOverlay(
 // separators) is what visually ties this block back to the logo's world.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Foreground editorial block -- GOLD MASTER v1.0, locked structure. Top:
+// logo paired with குறள் [n] as one masthead unit. Large contemplation
+// space. Tamil Kural (left-aligned, primary voice). English Reflection
+// (secondary). Bottom rule. Footer. This structure, the type-scale
+// hierarchy, and the left-alignment rule are now permanent brand system --
+// do not redesign; only content values may vary between issues.
+// ---------------------------------------------------------------------------
+
 function drawForegroundKural(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   content: KuralPublishingContent,
   tamilFont: string,
-  sansFont: string
+  sansFont: string,
+  logoImage: HTMLImageElement | null
 ): void {
   const leftX = REGIONS.quietStart * width + width * 0.038;
   const rightMargin = width * 0.05;
   const maxTextWidth = width - leftX - rightMargin;
 
-  // Quiet identity line -- "குறள் 200" -- with a minimal bronze divider
-  // beneath it. Not a banner: small weight text and a short thin rule.
-  const identityY = height * 0.295;
+  // Masthead -- logo paired with the identity line as one unit, not a
+  // corner badge. Locked per Gold Master v1.0.
+  const mastheadTop = height * 0.085;
+  const logoMaxH = height * 0.072;
+  const logoMaxW = width * 0.09;
+  let identityX = leftX;
+
+  if (logoImage) {
+    const naturalW = logoImage.naturalWidth || logoImage.width;
+    const naturalH = logoImage.naturalHeight || logoImage.height;
+    if (naturalW && naturalH) {
+      const scale = Math.min(logoMaxW / naturalW, logoMaxH / naturalH, 1);
+      const w = naturalW * scale;
+      const h = naturalH * scale;
+      ctx.drawImage(logoImage, leftX, mastheadTop, w, h);
+      identityX = leftX + w + width * 0.014;
+    }
+  }
+
   ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
+  ctx.textBaseline = "middle";
   ctx.font = `500 15px ${tamilFont}`;
   ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.95);
-  ctx.fillText(`குறள் ${content.kuralNumber}`, leftX, identityY);
+  ctx.fillText(`குறள் ${content.kuralNumber}`, identityX, mastheadTop + logoMaxH / 2);
 
-  const dividerY = identityY + height * 0.018;
-  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.45);
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(leftX, dividerY);
-  ctx.lineTo(leftX + width * 0.05, dividerY);
-  ctx.stroke();
-  // A single small bronze/gold point at the end of the divider -- restrained
-  // editorial ornament, not decoration for its own sake.
-  ctx.beginPath();
-  ctx.arc(leftX + width * 0.05 + 5, dividerY, 1.6, 0, Math.PI * 2);
-  ctx.fillStyle = withAlpha(COLORS.illuminatedGold, 0.8);
-  ctx.fill();
+  // Large contemplation space -- the single most deliberate gap in the
+  // composition. Silence before the Kural, structurally, not just spacing.
+  ctx.textBaseline = "alphabetic";
 
-  // Tamil Kural -- the primary voice, in Kural Ink. Larger and more
-  // generously spaced than earlier passes; still guaranteed never to clip
-  // via the fit-shrink safety floor.
+  // Tamil Kural -- the primary voice, in Kural Ink. Guaranteed never to
+  // clip via the fit-shrink safety floor.
   const kuralLines = [content.tamilLine1, content.tamilLine2];
   const kuralSize = fitFontSize(ctx, kuralLines, tamilFont, 500, maxTextWidth, 54, 16);
   const kuralLineGap = kuralSize * 1.52;
-  const kuralY1 = height * 0.42;
+  const kuralY1 = height * 0.5;
   const kuralY2 = kuralY1 + kuralLineGap;
 
   ctx.fillStyle = COLORS.kuralInk;
@@ -1326,8 +1395,7 @@ function drawForegroundKural(
   ctx.fillText(content.tamilLine1, leftX, kuralY1);
   ctx.fillText(content.tamilLine2, leftX, kuralY2);
 
-  // English thought -- secondary voice, stronger than earlier passes
-  // (larger, heavier weight) but still clearly subordinate to the Tamil.
+  // English thought -- secondary voice, clearly subordinate to the Tamil.
   const englishLines = [content.englishLine1, content.englishLine2];
   const engSize = fitFontSize(ctx, englishLines, sansFont, 700, maxTextWidth, 22, 13);
   const engLineGap = engSize * 1.6;
@@ -1338,6 +1406,15 @@ function drawForegroundKural(
   ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.72);
   ctx.fillText(content.englishLine1, leftX, engY1);
   ctx.fillText(content.englishLine2, leftX, engY2);
+
+  // Bottom rule -- closes the block. The only rule in the locked structure.
+  const ruleY = height * 0.86;
+  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.4);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(leftX, ruleY);
+  ctx.lineTo(leftX + width * 0.05, ruleY);
+  ctx.stroke();
 }
 
 /** Shrinks font size (never below minSize) until every line fits maxWidth,
@@ -1366,9 +1443,9 @@ function fitFontSize(
 
 // ---------------------------------------------------------------------------
 // Metadata -- tertiary footer line, aligned to the same left edge as the
-// rest of the editorial block, with generous breathing room above it.
-// Small bronze diamond separators (restrained editorial ornament) replace
-// the plain "·" -- "fine rules, small points, tiny separators."
+// rest of the editorial block, directly beneath the bottom rule. Gold
+// Master v1.0 locks the footer to exactly "[series] • #[issue]" -- no
+// Paal, Iyal, Adhikaram, icons, or additional segments, ever.
 // ---------------------------------------------------------------------------
 
 function drawMetadata(
@@ -1379,63 +1456,14 @@ function drawMetadata(
   sansFont: string
 ): void {
   const leftX = REGIONS.quietStart * width + width * 0.038;
-  const y = height * 0.92;
-  const segments = [`Issue #${content.issue}`, content.series, `Kural ${content.kuralNumber}`];
+  const y = height * 0.905;
+  const text = `${content.series} \u2022 #${content.issue}`;
 
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   ctx.font = `500 13px ${sansFont}`;
   ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.85);
-
-  let x = leftX;
-  segments.forEach((segment, i) => {
-    ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.85);
-    ctx.fillText(segment, x, y);
-    x += ctx.measureText(segment).width;
-    if (i < segments.length - 1) {
-      const gap = 18;
-      const dx = x + gap / 2;
-      const s = 3;
-      ctx.save();
-      ctx.translate(dx, y - 4);
-      ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.6);
-      ctx.fillRect(-s / 2, -s / 2, s, s);
-      ctx.restore();
-      x += gap;
-    }
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Identity zone -- draws only when a real logo image is supplied. No
-// fallback mark, no "logo missing" text, no placeholder box. Art Direction
-// Pass 01B: back in the upper-right identity region per explicit direction
-// (superseding the previous pass's left-aligned placement) -- "place it in
-// the upper-right identity region." Aspect ratio always preserved; only
-// ever scaled down, never distorted, never recoloured.
-// ---------------------------------------------------------------------------
-
-function drawLogoSlot(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  logoImage: HTMLImageElement
-): void {
-  const naturalW = logoImage.naturalWidth || logoImage.width;
-  const naturalH = logoImage.naturalHeight || logoImage.height;
-  if (!naturalW || !naturalH) return;
-
-  const rightMargin = width * 0.045;
-  const maxH = height * 0.16;
-  const maxW = width * 0.15;
-  const scale = Math.min(maxW / naturalW, maxH / naturalH, 1);
-  const w = naturalW * scale;
-  const h = naturalH * scale;
-  const x = width - rightMargin - w;
-  const y = height * 0.06;
-
-  ctx.drawImage(logoImage, x, y, w, h);
+  ctx.fillText(text, leftX, y);
 }
 
 // ---------------------------------------------------------------------------
