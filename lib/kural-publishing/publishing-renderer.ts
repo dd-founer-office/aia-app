@@ -79,6 +79,127 @@ const COLORS = {
   mutedEarth: "#8C7B62",
 } as const;
 
+// ---------------------------------------------------------------------------
+// Typography System -- Gold Master v1.0 (approved "Direction F / Signature"
+// from the Typography Review Board). Four roles: Kural, Reflection, Meta,
+// Footer. Nothing below is an independent pixel choice -- every size is a
+// ratio of BASE (Footer's size), matching the approved relationship:
+//
+//   Kural = 2 x Reflection
+//   Reflection = 1.3 x Footer
+//   Meta = 1.15 x Footer
+//   Footer = Base (1x)
+//
+// BASE_SIZE_FRACTION is the one absolute number in the whole system --
+// Footer's size as a fraction of canvas height -- and it is what makes the
+// scale "responsive": every token resolves relative to actual canvas
+// height, so the same ratios hold at any output size, not just 1648x928.
+// To change the typography system going forward, edit TYPOGRAPHY_TOKENS
+// (or BASE_SIZE_FRACTION to rescale everything at once) -- never hardcode
+// a font size, weight, line-height, tracking, or family inside a draw
+// function again.
+// ---------------------------------------------------------------------------
+
+const BASE_SIZE_FRACTION = 0.014;
+
+interface TypographyToken {
+  /** Human-readable role, shown nowhere in the render -- documentation only. */
+  role: string;
+  fontFamily: "tamil" | "sans";
+  weight: number;
+  italic: boolean;
+  /** Multiple of BASE_SIZE_FRACTION * canvas height. */
+  sizeRatio: number;
+  /** Safety-floor multiple for fit-shrink text (Kural, Reflection). Text
+   *  can shrink toward this but never below it, and never above sizeRatio. */
+  minSizeRatio: number;
+  /** Multiple of the token's own *resolved* size, not of BASE. */
+  lineHeightRatio: number;
+  /** Em units, relative to the token's own resolved size. */
+  letterSpacingEm: number;
+  align: "left";
+}
+
+const TYPOGRAPHY_TOKENS = {
+  footer: {
+    role: "Footer -- tertiary credit line",
+    fontFamily: "sans",
+    weight: 500,
+    italic: false,
+    sizeRatio: 1,
+    minSizeRatio: 1,
+    lineHeightRatio: 1,
+    letterSpacingEm: 0.04,
+    align: "left",
+  },
+  meta: {
+    role: "Meta -- குறள் [n] identity label",
+    fontFamily: "tamil",
+    weight: 500,
+    italic: false,
+    sizeRatio: 1.15,
+    minSizeRatio: 1.15,
+    lineHeightRatio: 1,
+    letterSpacingEm: 0.06,
+    align: "left",
+  },
+  reflection: {
+    role: "Reflection -- English secondary voice",
+    fontFamily: "sans",
+    weight: 500,
+    italic: true,
+    sizeRatio: 1.3,
+    minSizeRatio: 1,
+    lineHeightRatio: 1.55,
+    letterSpacingEm: 0.01,
+    align: "left",
+  },
+  kural: {
+    role: "Kural -- Tamil primary voice",
+    fontFamily: "tamil",
+    weight: 500,
+    italic: false,
+    sizeRatio: 2.6,
+    minSizeRatio: 1.25,
+    lineHeightRatio: 1.52,
+    letterSpacingEm: 0,
+    align: "left",
+  },
+} as const satisfies Record<string, TypographyToken>;
+
+/** Resolves a token's target size in px for the given canvas height. This
+ *  is the size fit-shrink text starts from (Kural, Reflection) or the size
+ *  fixed-length text renders at directly (Meta, Footer). */
+function tokenSize(token: TypographyToken, height: number): number {
+  return height * BASE_SIZE_FRACTION * token.sizeRatio;
+}
+
+/** Resolves a token's safety-floor size in px -- fit-shrink text may
+ *  shrink toward this but never below it. */
+function tokenMinSize(token: TypographyToken, height: number): number {
+  return height * BASE_SIZE_FRACTION * token.minSizeRatio;
+}
+
+/** Builds the canvas font string for a token at a resolved size, reading
+ *  family/weight/italic entirely from the token -- no draw function
+ *  chooses these independently. */
+function tokenFont(token: TypographyToken, size: number, tamilFont: string, sansFont: string): string {
+  const family = token.fontFamily === "tamil" ? tamilFont : sansFont;
+  const style = token.italic ? "italic " : "";
+  return `${style}${token.weight} ${size}px ${family}`;
+}
+
+/** Applies a token's letter-spacing to the context for the given resolved
+ *  size (letterSpacingEm is relative to the token's own size, not a fixed
+ *  px value). Native CanvasRenderingContext2D.letterSpacing -- supported
+ *  in Chrome/Edge 99+ and Safari 16.4+; harmlessly ignored elsewhere, text
+ *  still renders correctly without tracking. */
+function applyTokenTracking(ctx: CanvasRenderingContext2D, token: TypographyToken, size: number): void {
+  if ("letterSpacing" in ctx) {
+    ctx.letterSpacing = `${(token.letterSpacingEm * size).toFixed(2)}px`;
+  }
+}
+
 /** Modern Tamil only -- filtered here, inside the publishing implementation,
  *  from the Kernel's shared glyph registry. Deliberately does NOT read
  *  Tamil-Brahmi or Vatteluttu, and does not touch lib/living-field/config.ts
@@ -136,7 +257,7 @@ export function renderKuralPublishing(
   drawAmbientField(ctx, width, height, tamilFont, rand, kuralSyllables, macro);
   const debugInfo = drawFormationLayer(ctx, width, height, tamilFont, rand, macro);
   drawForegroundKural(ctx, width, height, content, tamilFont, sansFont, logoImage ?? null);
-  drawMetadata(ctx, width, height, content, sansFont);
+  drawMetadata(ctx, width, height, content, tamilFont, sansFont);
 
   if (debugFormationLogic) {
     drawDebugFormationOverlay(ctx, width, height, tamilFont, sansFont, debugInfo);
@@ -1354,7 +1475,8 @@ function drawForegroundKural(
   const maxTextWidth = width - leftX - rightMargin;
 
   // Masthead -- logo paired with the identity line as one unit, not a
-  // corner badge. Locked per Gold Master v1.0.
+  // corner badge. Locked per Gold Master v1.0. Identity line uses the
+  // Meta token.
   const mastheadTop = height * 0.085;
   const logoMaxH = height * 0.072;
   const logoMaxW = width * 0.09;
@@ -1372,9 +1494,12 @@ function drawForegroundKural(
     }
   }
 
-  ctx.textAlign = "left";
+  const metaToken = TYPOGRAPHY_TOKENS.meta;
+  const metaSize = tokenSize(metaToken, height);
+  ctx.textAlign = metaToken.align;
   ctx.textBaseline = "middle";
-  ctx.font = `500 15px ${tamilFont}`;
+  ctx.font = tokenFont(metaToken, metaSize, tamilFont, sansFont);
+  applyTokenTracking(ctx, metaToken, metaSize);
   ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.95);
   ctx.fillText(`குறள் ${content.kuralNumber}`, identityX, mastheadTop + logoMaxH / 2);
 
@@ -1383,26 +1508,32 @@ function drawForegroundKural(
   ctx.textBaseline = "alphabetic";
 
   // Tamil Kural -- the primary voice, in Kural Ink. Guaranteed never to
-  // clip via the fit-shrink safety floor.
+  // clip via the fit-shrink safety floor (Kural token's minSizeRatio).
+  const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const kuralLines = [content.tamilLine1, content.tamilLine2];
-  const kuralSize = fitFontSize(ctx, kuralLines, tamilFont, 500, maxTextWidth, 54, 16);
-  const kuralLineGap = kuralSize * 1.52;
+  const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, height);
+  const kuralLineGap = kuralSize * kuralToken.lineHeightRatio;
   const kuralY1 = height * 0.5;
   const kuralY2 = kuralY1 + kuralLineGap;
 
+  ctx.textAlign = kuralToken.align;
+  ctx.font = tokenFont(kuralToken, kuralSize, tamilFont, sansFont);
+  applyTokenTracking(ctx, kuralToken, kuralSize);
   ctx.fillStyle = COLORS.kuralInk;
-  ctx.font = `500 ${kuralSize}px ${tamilFont}`;
   ctx.fillText(content.tamilLine1, leftX, kuralY1);
   ctx.fillText(content.tamilLine2, leftX, kuralY2);
 
   // English thought -- secondary voice, clearly subordinate to the Tamil.
+  const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
   const englishLines = [content.englishLine1, content.englishLine2];
-  const engSize = fitFontSize(ctx, englishLines, sansFont, 700, maxTextWidth, 22, 13);
-  const engLineGap = engSize * 1.6;
+  const engSize = fitTokenSize(ctx, reflectionToken, englishLines, tamilFont, sansFont, maxTextWidth, height);
+  const engLineGap = engSize * reflectionToken.lineHeightRatio;
   const engY1 = kuralY2 + kuralSize * 1.8;
   const engY2 = engY1 + engLineGap;
 
-  ctx.font = `700 ${engSize}px ${sansFont}`;
+  ctx.textAlign = reflectionToken.align;
+  ctx.font = tokenFont(reflectionToken, engSize, tamilFont, sansFont);
+  applyTokenTracking(ctx, reflectionToken, engSize);
   ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.72);
   ctx.fillText(content.englishLine1, leftX, engY1);
   ctx.fillText(content.englishLine2, leftX, engY2);
@@ -1417,23 +1548,28 @@ function drawForegroundKural(
   ctx.stroke();
 }
 
-/** Shrinks font size (never below minSize) until every line fits maxWidth,
- *  using the browser's own text metrics -- not an estimate. minSize is a
- *  true safety floor: the Kural can never be clipped by the canvas edge
- *  regardless of edited content length. Restores no state on its own;
- *  caller sets ctx.font again before actually drawing. */
-function fitFontSize(
+/** Shrinks a token's size (never below its own minSizeRatio floor) until
+ *  every line fits maxWidth, using the browser's own text metrics -- not
+ *  an estimate, and measured WITH the token's tracking applied, so a
+ *  tracked token (Reflection) can never be under-measured and clip once
+ *  drawn. This is the fit-shrink safety net: Kural and Reflection can
+ *  never be clipped by the canvas edge regardless of edited content
+ *  length. Restores no state on its own; caller sets ctx.font and
+ *  tracking again before actually drawing. */
+function fitTokenSize(
   ctx: CanvasRenderingContext2D,
+  token: TypographyToken,
   lines: readonly string[],
-  fontFamily: string,
-  weight: number,
+  tamilFont: string,
+  sansFont: string,
   maxWidth: number,
-  startSize: number,
-  minSize: number
+  height: number
 ): number {
-  let size = startSize;
+  let size = tokenSize(token, height);
+  const minSize = tokenMinSize(token, height);
   while (size > minSize) {
-    ctx.font = `${weight} ${size}px ${fontFamily}`;
+    ctx.font = tokenFont(token, size, tamilFont, sansFont);
+    applyTokenTracking(ctx, token, size);
     const widest = Math.max(...lines.map((l) => ctx.measureText(l).width));
     if (widest <= maxWidth) break;
     size -= 1;
@@ -1445,7 +1581,8 @@ function fitFontSize(
 // Metadata -- tertiary footer line, aligned to the same left edge as the
 // rest of the editorial block, directly beneath the bottom rule. Gold
 // Master v1.0 locks the footer to exactly "[series] • #[issue]" -- no
-// Paal, Iyal, Adhikaram, icons, or additional segments, ever.
+// Paal, Iyal, Adhikaram, icons, or additional segments, ever. Uses the
+// Footer token -- the BASE of the whole typography scale.
 // ---------------------------------------------------------------------------
 
 function drawMetadata(
@@ -1453,15 +1590,19 @@ function drawMetadata(
   width: number,
   height: number,
   content: KuralPublishingContent,
+  tamilFont: string,
   sansFont: string
 ): void {
   const leftX = REGIONS.quietStart * width + width * 0.038;
   const y = height * 0.905;
   const text = `${content.series} \u2022 #${content.issue}`;
 
-  ctx.textAlign = "left";
+  const footerToken = TYPOGRAPHY_TOKENS.footer;
+  const footerSize = tokenSize(footerToken, height);
+  ctx.textAlign = footerToken.align;
   ctx.textBaseline = "alphabetic";
-  ctx.font = `500 13px ${sansFont}`;
+  ctx.font = tokenFont(footerToken, footerSize, tamilFont, sansFont);
+  applyTokenTracking(ctx, footerToken, footerSize);
   ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.85);
   ctx.fillText(text, leftX, y);
 }
