@@ -57,18 +57,27 @@ import {
   type KuralPublishingContent,
 } from "./kural200-state";
 
+/** Locked KKA master palette (Art Direction Pass 01B), derived from the
+ *  supplied canonical logo and the new visual target -- not the original
+ *  green MVP tokens. Semantic roles, not arbitrary names:
+ *   - deepCode: the deepest language world (near-black, faint navy character)
+ *   - heritageBronze: the dominant Tamil-material colour -- aged, warm
+ *   - illuminatedGold: rare heritage illumination (meaning, continuity)
+ *   - livingCyan: rarest colour in the system -- activation, living
+ *     intelligence. Must stay precious; see drawAmbientGlyph/drawFormationNode.
+ *   - warmParchment: the editorial silence (right side), replaces the old
+ *     mint background entirely
+ *   - kuralInk: primary Tamil typography colour
+ *   - mutedEarth: metadata / tertiary information */
 const COLORS = {
-  background: "#EFF4F2",
-  foreground: "#2B2A26",
-  primary: "#328D63",
-  primaryDark: "#236345",
-  muted: "#8A8678",
+  deepCode: "#10131A",
+  heritageBronze: "#9C7A48",
+  illuminatedGold: "#D9A94E",
+  livingCyan: "#5FCBD8",
+  warmParchment: "#F1E8D6",
+  kuralInk: "#241E18",
+  mutedEarth: "#8C7B62",
 } as const;
-
-/** A deep, desaturated sage -- derived by darkening primaryDark, not an
- *  invented neon tone. Used sparingly this pass; darkness now comes mostly
- *  from overlapping glyphs, not from this colour painted as a panel. */
-const DEEP_SAGE = "#102D1F";
 
 /** Modern Tamil only -- filtered here, inside the publishing implementation,
  *  from the Kernel's shared glyph registry. Deliberately does NOT read
@@ -165,11 +174,11 @@ function drawAtmosphere(
   const colorEnd = REGIONS.denseEnd * 0.82;
 
   const base = ctx.createLinearGradient(0, 0, width, 0);
-  base.addColorStop(0, mix(DEEP_SAGE, COLORS.background, 0.3));
-  base.addColorStop(colorEnd * 0.32, mix(DEEP_SAGE, COLORS.primaryDark, 0.42));
-  base.addColorStop(colorEnd * 0.68, mix(COLORS.primary, COLORS.background, 0.45));
-  base.addColorStop(colorEnd, mix(COLORS.primary, COLORS.background, 0.88));
-  base.addColorStop(1, COLORS.background);
+  base.addColorStop(0, mix(COLORS.deepCode, COLORS.warmParchment, 0.06));
+  base.addColorStop(colorEnd * 0.32, mix(COLORS.deepCode, COLORS.heritageBronze, 0.4));
+  base.addColorStop(colorEnd * 0.68, mix(COLORS.heritageBronze, COLORS.warmParchment, 0.5));
+  base.addColorStop(colorEnd, mix(COLORS.heritageBronze, COLORS.warmParchment, 0.88));
+  base.addColorStop(1, COLORS.warmParchment);
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, width, height);
 
@@ -184,8 +193,8 @@ function drawAtmosphere(
     const r = rand.range(width * 0.1, width * 0.22);
     const darker = rand.chance(0.5);
     const tone = darker
-      ? mixAlpha(DEEP_SAGE, COLORS.primaryDark, rand.range(0, 1), rand.range(0.05, 0.11))
-      : mixAlpha(COLORS.primary, COLORS.background, rand.range(0.2, 0.6), rand.range(0.04, 0.08));
+      ? mixAlpha(COLORS.deepCode, COLORS.heritageBronze, rand.range(0, 0.5), rand.range(0.08, 0.16))
+      : mixAlpha(COLORS.heritageBronze, COLORS.warmParchment, rand.range(0.2, 0.6), rand.range(0.04, 0.08));
 
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
     grad.addColorStop(0, tone);
@@ -195,6 +204,7 @@ function drawAtmosphere(
   }
 
   drawLocalTonalVariation(ctx, width, height, colorEnd);
+  drawParchmentTexture(ctx, width, height, colorEnd);
 }
 
 /** A pure function of position, not of the seeded generator -- deliberately
@@ -229,8 +239,41 @@ function drawLocalTonalVariation(
       if (Math.abs(delta) < 0.006) continue;
       ctx.fillStyle =
         delta > 0
-          ? mixAlpha(DEEP_SAGE, COLORS.primaryDark, 0.5, delta)
-          : mixAlpha(COLORS.primary, COLORS.background, 0.5, -delta);
+          ? mixAlpha(COLORS.deepCode, COLORS.heritageBronze, 0.5, delta)
+          : mixAlpha(COLORS.heritageBronze, COLORS.warmParchment, 0.5, -delta);
+      ctx.fillRect(cx, cy, cell, cell);
+    }
+  }
+}
+
+/** Warm Parchment's own material texture -- "archival paper, soft mineral
+ *  surface, warm light," explicitly NOT "heavy paper grain, wood, grunge."
+ *  Same non-RNG position-hash technique as drawLocalTonalVariation (zero
+ *  rand draws, so it can't perturb composition), but confined to the
+ *  editorial region and at roughly a third of the amplitude -- this is
+ *  meant to be felt, not seen. Pure warm-toward-parchment variation only;
+ *  never introduces the dark tones the language side uses. */
+function drawParchmentTexture(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  colorEnd: number
+): void {
+  const cell = 46;
+  const startCol = Math.floor((colorEnd * width) / cell);
+  const cols = Math.ceil(width / cell);
+  const rows = Math.ceil(height / cell);
+  for (let r = 0; r < rows; r++) {
+    for (let c = startCol; c < cols; c++) {
+      const cx = c * cell;
+      const cy = r * cell;
+      const n = positionHash(c * 2.1 + 0.37, r * 1.6 + 0.61);
+      const delta = (n - 0.5) * 0.03;
+      if (Math.abs(delta) < 0.004) continue;
+      ctx.fillStyle =
+        delta > 0
+          ? mixAlpha(COLORS.warmParchment, COLORS.heritageBronze, 0.5, delta)
+          : mixAlpha(COLORS.warmParchment, "#FFFFFF", 0.5, -delta * 0.6);
       ctx.fillRect(cx, cy, cell, cell);
     }
   }
@@ -459,7 +502,7 @@ function drawAmbientGlyph(
   const roll = rand.next();
   let size: number;
   let baseOpacity: number;
-  let colorMix: number; // 0 = primary green, 1 = near-dark foreground
+  let colorMix: number; // 0 = heritage bronze, 1 = kural ink (near-black)
   let wide = false;
   // Semantic depth this glyph is drawn from -- see the three-depth rule
   // below. "ambient" = broad Tamil environment (A), "kuralMaterial" =
@@ -467,42 +510,53 @@ function drawAmbientGlyph(
   // the semantic survivors) is never drawn from this ambient loop at all --
   // it only ever comes from FORMATION_NODES, rendered separately.
   let depth: "ambient" | "kuralMaterial";
+  // Art Direction Pass 01B: illumination is rare and meaningful -- "light =
+  // significance." Only ever rolled for the ANCHOR tier (the rarest,
+  // highest-presence ambient mark), and even then mostly resolves to
+  // "none." Cyan is deliberately gated behind an even smaller chance than
+  // gold so it stays the rarest colour in the system, per "the cyan must
+  // remain precious."
+  let illumination: "none" | "gold" | "cyan" = "none";
 
   if (roll < pMicro) {
-    size = rand.range(4, 8); // MICRO -- the bulk of the mass
-    baseOpacity = rand.range(0.03, 0.1);
-    colorMix = 0;
+    size = rand.range(4, 8); // MICRO -- the deep archive, bulk of the mass
+    baseOpacity = rand.range(0.035, 0.11);
+    colorMix = 0.05;
     depth = "ambient"; // deep atmosphere stays the broad language environment
   } else if (roll < pMicro + pSmallMed) {
-    size = rand.range(9, 16); // SMALL / MEDIUM
-    baseOpacity = rand.range(0.08, 0.19);
-    colorMix = 0.12;
+    size = rand.range(9, 16); // SMALL / MEDIUM -- heritage field
+    baseOpacity = rand.range(0.1, 0.22);
+    colorMix = 0.28;
     depth = "ambient"; // mixes with Kural material via kuralBias below
   } else if (roll < pMicro + pSmallMed + pLarge) {
     const isAnchor = rand.chance(0.14); // genuinely rare, high-presence
     if (isAnchor) {
       size = rand.range(22, 34);
-      baseOpacity = rand.range(0.42, 0.64);
-      colorMix = 0.8;
+      baseOpacity = rand.range(0.48, 0.72);
+      colorMix = 0.82;
+      if (rand.chance(0.38)) illumination = "gold";
+      else if (rand.chance(0.16)) illumination = "cyan";
     } else {
       size = rand.range(18, 27);
-      baseOpacity = rand.range(0.15, 0.29);
-      colorMix = 0.26;
+      baseOpacity = rand.range(0.2, 0.35);
+      colorMix = 0.5;
     }
     // RULE: the more visually prominent a form becomes, the more directly
     // it must relate to the source content. LARGE and ANCHOR are both
     // high-contrast enough to read as "visual heroes," so both are always
     // Kural material, never an arbitrary ambient form -- this is the fix
-    // for "arbitrary Tamil forms receiving large size / dark contrast."
+    // for "arbitrary Tamil forms receiving large size / dark contrast," and
+    // is also why illumination is only ever rolled here: "Kural-derived
+    // material: eligible for greater clarity."
     depth = "kuralMaterial";
   } else {
     size = rand.range(42, 80); // GHOST -- rare, huge, barely there
-    baseOpacity = rand.range(0.015, 0.04);
-    colorMix = 0;
+    baseOpacity = rand.range(0.02, 0.05);
+    colorMix = 0.1;
     wide = true;
     // Large ghost forms are allowed to be ambient specifically because
     // they stay extremely low opacity -- prominence, not scale alone, is
-    // what the rule restricts.
+    // what the rule restricts. Never illuminated.
     depth = "ambient";
   }
 
@@ -525,12 +579,28 @@ function drawAmbientGlyph(
     : rand.pick(MODERN_TAMIL_VALUES);
 
   const opacity = Math.min(1, baseOpacity * (0.55 + density * 0.5));
-  const color = mix(COLORS.primary, COLORS.foreground, colorMix);
 
   ctx.font = `400 ${size}px ${tamilFont}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = withAlphaRgb(color, opacity);
+
+  if (illumination !== "none") {
+    // "A bright glyph core, soft local halo, gentle falloff, no hard outer
+    // ring" -- a blurred under-layer in the illumination colour, then the
+    // glyph itself redrawn on top in that same colour, not the ordinary
+    // bronze/ink tone. This is the only place a glow gets drawn in the
+    // ambient field at all.
+    const glow = illumination === "gold" ? COLORS.illuminatedGold : COLORS.livingCyan;
+    ctx.save();
+    ctx.filter = "blur(2.2px)";
+    ctx.fillStyle = withAlpha(glow, opacity * 0.55);
+    ctx.fillText(glyph, x + jitterX, y + jitterY);
+    ctx.restore();
+    ctx.fillStyle = withAlpha(glow, Math.min(1, opacity + 0.18));
+  } else {
+    const color = mix(COLORS.heritageBronze, COLORS.kuralInk, colorMix);
+    ctx.fillStyle = withAlphaRgb(color, opacity);
+  }
   ctx.fillText(glyph, x + jitterX, y + jitterY);
 }
 
@@ -550,7 +620,7 @@ function drawMicroTrace(
   const dy = rand.range(-10, 10);
   ctx.beginPath();
   ctx.arc(x + dx, y + dy, r, 0, Math.PI * 2);
-  ctx.fillStyle = withAlpha(COLORS.primaryDark, opacity);
+  ctx.fillStyle = withAlpha(COLORS.heritageBronze, opacity);
   ctx.fill();
 }
 
@@ -627,6 +697,13 @@ function drawFormationLayer(
       minWidth: 0.55,
       maxWidth: 1.05,
       secondaryChance: 0.38,
+      illumination: {
+        activationColor: COLORS.livingCyan,
+        activationPeak: 0.4,
+        activationWidth: 0.25,
+        resolutionColor: COLORS.illuminatedGold,
+        resolutionStart: 0.75,
+      },
     });
     trunks.push({ points, kind: "formation", label: "ச் root → சொ" });
   }
@@ -645,8 +722,20 @@ function drawFormationLayer(
       minWidth: 0.55,
       maxWidth: 1.05,
       secondaryChance: 0.38,
+      illumination: {
+        activationColor: COLORS.livingCyan,
+        activationPeak: 0.45,
+        activationWidth: 0.25,
+        resolutionColor: COLORS.illuminatedGold,
+        resolutionStart: 0.75,
+      },
     });
     trunks.push({ points, kind: "formation", label: "ஒ root → சொ" });
+
+    // A single small, precious glow at the actual convergence -- shared by
+    // both families, drawn once, not once per trunk. "Occasional warm gold
+    // illumination near meaningful convergence."
+    drawPathGlowPoint(ctx, targetX, targetY, COLORS.illuminatedGold, 0.22);
   }
 
   // FORMATION FAMILY 3: the system associated with சொ continues (does not
@@ -667,6 +756,10 @@ function drawFormationLayer(
       minWidth: 0.6,
       maxWidth: 1.1,
       secondaryChance: 0.36,
+      illumination: {
+        resolutionColor: COLORS.illuminatedGold,
+        resolutionStart: 0.7,
+      },
     });
     trunks.push({ points: contPoints, kind: "formation", label: "சொ continues → சொல்" });
 
@@ -679,8 +772,14 @@ function drawFormationLayer(
       minWidth: 0.55,
       maxWidth: 1.05,
       secondaryChance: 0.38,
+      illumination: {
+        resolutionColor: COLORS.illuminatedGold,
+        resolutionStart: 0.7,
+      },
     });
     trunks.push({ points: lPoints, kind: "formation", label: "ல் root → சொல்" });
+
+    drawPathGlowPoint(ctx, width * cholNode.x, height * cholNode.y, COLORS.illuminatedGold, 0.26);
   }
 
   // FORMATION FAMILY 4: பயன் -- a fully INDEPENDENT root family, from a
@@ -697,8 +796,18 @@ function drawFormationLayer(
       minWidth: 0.55,
       maxWidth: 1.0,
       secondaryChance: 0.36,
+      illumination: {
+        // பயன் resolves to living cyan rather than gold -- a distinct
+        // grammar for the independent semantic survivor, not a repeat of
+        // சொ/சொல்'s heritage-gold resolution. "Not a mandatory formula
+        // everywhere."
+        resolutionColor: COLORS.livingCyan,
+        resolutionStart: 0.72,
+      },
     });
     trunks.push({ points, kind: "formation", label: "பயன் root (independent)" });
+
+    drawPathGlowPoint(ctx, width * payanNode.x, height * payanNode.y, COLORS.livingCyan, 0.24);
   }
 
   // SEMANTIC TRACE: சொல் and பயன் may relate conceptually as the two ideas
@@ -812,9 +921,9 @@ function drawFilamentBranch(
 
   const peakAlpha = rand.range(minPeakAlpha, maxPeakAlpha);
   const gradient = ctx.createLinearGradient(x, y, endX, endY);
-  gradient.addColorStop(0, withAlpha(COLORS.primary, peakAlpha));
-  gradient.addColorStop(0.55, withAlpha(COLORS.primary, peakAlpha * 0.45));
-  gradient.addColorStop(1, withAlpha(COLORS.primary, 0));
+  gradient.addColorStop(0, withAlpha(COLORS.heritageBronze, peakAlpha));
+  gradient.addColorStop(0.55, withAlpha(COLORS.heritageBronze, peakAlpha * 0.45));
+  gradient.addColorStop(1, withAlpha(COLORS.heritageBronze, 0));
 
   ctx.strokeStyle = gradient;
   ctx.lineWidth = rand.range(0.5, 1.05);
@@ -881,12 +990,38 @@ function growTrunk(
  *  the background texture rather than new machinery; some die almost
  *  immediately, some run further. Returns the trunk points for the debug
  *  overlay -- no new RNG draws needed to redraw them later. */
+/** Illumination behaviour for one formation trunk. `base` is the buried
+ *  heritage-bronze tone every trunk has by default. `activation`, if set,
+ *  blends toward LIVING CYAN around `activationPeak` (a t in 0-1) -- "living
+ *  intelligence... connection... language becoming computationally alive."
+ *  `resolution`, if set, blends toward ILLUMINATED GOLD (or occasionally
+ *  cyan, for பயன்'s family) from `resolutionStart` onward, strongest right
+ *  at convergence -- "near meaningful convergence: occasional warm gold
+ *  illumination." Never both at full strength in the same place: this is
+ *  "language veins carrying intelligence," not electrical wiring lit
+ *  uniformly end to end. */
+interface TrunkIllumination {
+  activationColor?: string;
+  activationPeak?: number;
+  activationWidth?: number;
+  resolutionColor?: string;
+  resolutionStart?: number;
+}
+
 function drawFormationTrunk(
   ctx: CanvasRenderingContext2D,
   points: readonly TrunkPoint[],
   rand: SeededRandom,
-  opts: { minAlpha: number; maxAlpha: number; minWidth: number; maxWidth: number; secondaryChance: number }
+  opts: {
+    minAlpha: number;
+    maxAlpha: number;
+    minWidth: number;
+    maxWidth: number;
+    secondaryChance: number;
+    illumination?: TrunkIllumination;
+  }
 ): void {
+  const illum = opts.illumination;
   for (let i = 1; i < points.length; i++) {
     const t = i / (points.length - 1);
     const a = points[i - 1];
@@ -895,7 +1030,28 @@ function drawFormationTrunk(
     const my = (a.y + b.y) / 2 + rand.range(-7, 7);
     const alpha = opts.minAlpha + (opts.maxAlpha - opts.minAlpha) * t;
 
-    ctx.strokeStyle = withAlpha(COLORS.primary, alpha);
+    let strokeHex: string = COLORS.heritageBronze;
+    let strokeAlpha = alpha;
+    if (illum?.activationColor) {
+      const peak = illum.activationPeak ?? 0.4;
+      const width = illum.activationWidth ?? 0.28;
+      const dist = Math.abs(t - peak);
+      const blend = Math.max(0, 1 - dist / width);
+      if (blend > 0) {
+        strokeHex = illum.activationColor;
+        strokeAlpha = alpha * (0.5 + blend * 0.9);
+      }
+    }
+    if (illum?.resolutionColor) {
+      const start = illum.resolutionStart ?? 0.7;
+      if (t >= start) {
+        const blend = (t - start) / (1 - start || 1);
+        strokeHex = illum.resolutionColor;
+        strokeAlpha = alpha * (0.55 + blend * 0.75);
+      }
+    }
+
+    ctx.strokeStyle = withAlpha(strokeHex, Math.min(1, strokeAlpha));
     ctx.lineWidth = opts.minWidth + (opts.maxWidth - opts.minWidth) * t;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
@@ -909,6 +1065,28 @@ function drawFormationTrunk(
       drawFilamentBranch(ctx, b.x, b.y, branchAngle, rand.range(18, 55), rand, depthBudget, 0.05, 0.16);
     }
   }
+}
+
+/** A very few points along a real Formation Path get a small, precious
+ *  illumination halo of their own -- "small path moments." Deterministic:
+ *  only ever called at the specific t values a family designates as
+ *  meaningful (its activation peak, its resolution end), never scattered
+ *  randomly across the whole network -- "light should travel through
+ *  selected relationships, not coat the whole system." */
+function drawPathGlowPoint(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  strength: number
+): void {
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, 10);
+  grad.addColorStop(0, withAlpha(color, strength));
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(x, y, 10, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** A SEMANTIC TRACE -- diffuse, discontinuous, atmospheric. Deliberately
@@ -939,7 +1117,7 @@ function drawSemanticTrace(
     const mx = (wx + ex) / 2 + rand.range(-4, 4);
     const my = (wy + ey) / 2 + rand.range(-4, 4);
 
-    ctx.strokeStyle = withAlpha(COLORS.muted, rand.range(0.04, 0.1));
+    ctx.strokeStyle = withAlpha(COLORS.mutedEarth, rand.range(0.04, 0.1));
     ctx.lineWidth = rand.range(0.5, 0.9);
     ctx.beginPath();
     ctx.moveTo(wx, wy);
@@ -961,11 +1139,21 @@ function drawSemanticTrace(
  *  strongest version of this since it was never built from visible
  *  components at all -- "this idea survived" rather than "this was
  *  constructed." */
+/** Styling per emphasis tier, per Art Direction Pass 01B. `component`
+ *  (ச், ஒ, ல்) stays close to ordinary heritage-field weight -- embedded,
+ *  not enlarged to identify it -- but carries a whisper of living cyan in
+ *  its glow, since these are the formation participants "eligible for
+ *  subtle cyan activation." `formed` (சொ) and `emerging` (சொல்) resolve in
+ *  ILLUMINATED GOLD -- heritage, meaning, continuity. `selected` (பயன்)
+ *  resolves in LIVING CYAN instead of gold -- its own independent
+ *  resolution colour, matching its path family (see drawFormationLayer),
+ *  and visibly different from சொ/சொல் so the three survivors don't read
+ *  as identical. */
 const EMPHASIS_STYLE = {
-  component: { minSize: 16, maxSize: 21, minOpacity: 0.18, maxOpacity: 0.28, glow: 0 },
-  formed: { minSize: 22, maxSize: 27, minOpacity: 0.4, maxOpacity: 0.5, glow: 0.36 },
-  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.54, maxOpacity: 0.65, glow: 0.4 },
-  selected: { minSize: 25, maxSize: 30, minOpacity: 0.46, maxOpacity: 0.57, glow: 0.6 },
+  component: { minSize: 16, maxSize: 21, minOpacity: 0.28, maxOpacity: 0.4, glow: 0.16, glowColor: COLORS.livingCyan, textColor: COLORS.heritageBronze },
+  formed: { minSize: 22, maxSize: 27, minOpacity: 0.55, maxOpacity: 0.68, glow: 0.4, glowColor: COLORS.illuminatedGold, textColor: COLORS.illuminatedGold },
+  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.68, maxOpacity: 0.8, glow: 0.46, glowColor: COLORS.illuminatedGold, textColor: COLORS.illuminatedGold },
+  selected: { minSize: 25, maxSize: 30, minOpacity: 0.58, maxOpacity: 0.72, glow: 0.5, glowColor: COLORS.livingCyan, textColor: COLORS.livingCyan },
 } as const;
 
 function drawFormationNode(
@@ -987,15 +1175,15 @@ function drawFormationNode(
 
   if (style.glow > 0) {
     ctx.save();
-    ctx.filter = "blur(0.8px)";
+    ctx.filter = "blur(1.1px)";
     ctx.font = `400 ${size * 1.15}px ${tamilFont}`;
-    ctx.fillStyle = withAlpha(COLORS.primary, opacity * style.glow);
+    ctx.fillStyle = withAlpha(style.glowColor, opacity * style.glow);
     ctx.fillText(node.glyph, x, y);
     ctx.restore();
   }
 
   ctx.font = `400 ${size}px ${tamilFont}`;
-  ctx.fillStyle = withAlpha(COLORS.primary, opacity);
+  ctx.fillStyle = withAlpha(style.textColor, opacity);
   ctx.fillText(node.glyph, x, y);
 }
 
@@ -1024,7 +1212,7 @@ function drawDebugFormationOverlay(
   for (const trunk of info.trunks) {
     if (trunk.points.length < 2) continue;
     const isFormation = trunk.kind === "formation";
-    ctx.strokeStyle = isFormation ? withAlpha(COLORS.foreground, 0.85) : withAlpha(COLORS.muted, 0.95);
+    ctx.strokeStyle = isFormation ? withAlpha(COLORS.kuralInk, 0.85) : withAlpha(COLORS.mutedEarth, 0.95);
     ctx.lineWidth = isFormation ? 2 : 1.5;
     if (!isFormation) ctx.setLineDash([3, 4]);
     ctx.beginPath();
@@ -1039,30 +1227,30 @@ function drawDebugFormationOverlay(
     ctx.font = `600 10px ${sansFont}`;
     ctx.textAlign = "left";
     ctx.textBaseline = "bottom";
-    ctx.fillStyle = isFormation ? withAlpha(COLORS.foreground, 0.9) : withAlpha(COLORS.muted, 1);
+    ctx.fillStyle = isFormation ? withAlpha(COLORS.kuralInk, 0.9) : withAlpha(COLORS.mutedEarth, 1);
     ctx.fillText(trunk.label, origin.x + 4, origin.y - 4);
   }
 
   for (const marker of info.markers) {
     ctx.beginPath();
     ctx.arc(marker.x, marker.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = withAlpha(COLORS.background, 0.9);
+    ctx.fillStyle = withAlpha(COLORS.warmParchment, 0.9);
     ctx.fill();
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = withAlpha(COLORS.foreground, 0.95);
+    ctx.strokeStyle = withAlpha(COLORS.kuralInk, 0.95);
     ctx.stroke();
 
     ctx.font = `600 10px ${sansFont}`;
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillStyle = withAlpha(COLORS.foreground, 0.9);
+    ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.9);
     ctx.fillText(marker.label, marker.x + 8, marker.y + 6);
   }
 
   ctx.font = `700 13px ${tamilFont}`;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillStyle = withAlpha(COLORS.foreground, 0.9);
+  ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.9);
   ctx.fillText("DEBUG: Formation Logic — never exported", 12, 12);
   ctx.font = `500 11px ${sansFont}`;
   ctx.fillText("Solid = Formation Path (linguistic).  Dashed = Semantic Trace (conceptual only).", 12, 30);
@@ -1079,6 +1267,16 @@ function drawDebugFormationOverlay(
 // adds the identity line per the founder's final art direction.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Foreground editorial block -- Art Direction Pass 01B. குறள் 200 identity
+// line -> Tamil Kural (Kural Ink) -> English thought -> metadata, left-
+// aligned to one edge on Warm Parchment. The logo sits separately in the
+// upper-right identity region (drawLogoSlot, below) per this pass's
+// explicit direction, not stacked into this left-aligned column.
+// Restrained bronze/gold editorial ornament (the divider, the metadata
+// separators) is what visually ties this block back to the logo's world.
+// ---------------------------------------------------------------------------
+
 function drawForegroundKural(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1091,33 +1289,39 @@ function drawForegroundKural(
   const rightMargin = width * 0.05;
   const maxTextWidth = width - leftX - rightMargin;
 
-  // Quiet identity line -- "குறள் 200" -- with a minimal divider beneath it.
-  // Not a banner: small caps-weight text and a short thin rule, nothing more.
-  const identityY = height * 0.205;
+  // Quiet identity line -- "குறள் 200" -- with a minimal bronze divider
+  // beneath it. Not a banner: small weight text and a short thin rule.
+  const identityY = height * 0.295;
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   ctx.font = `500 15px ${tamilFont}`;
-  ctx.fillStyle = withAlpha(COLORS.muted, 0.85);
+  ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.95);
   ctx.fillText(`குறள் ${content.kuralNumber}`, leftX, identityY);
 
   const dividerY = identityY + height * 0.018;
-  ctx.strokeStyle = withAlpha(COLORS.muted, 0.35);
+  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.45);
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(leftX, dividerY);
   ctx.lineTo(leftX + width * 0.05, dividerY);
   ctx.stroke();
+  // A single small bronze/gold point at the end of the divider -- restrained
+  // editorial ornament, not decoration for its own sake.
+  ctx.beginPath();
+  ctx.arc(leftX + width * 0.05 + 5, dividerY, 1.6, 0, Math.PI * 2);
+  ctx.fillStyle = withAlpha(COLORS.illuminatedGold, 0.8);
+  ctx.fill();
 
-  // Tamil Kural -- the primary voice. Larger and more generously spaced
-  // than earlier passes; still guaranteed never to clip via the fit-shrink
-  // safety floor.
+  // Tamil Kural -- the primary voice, in Kural Ink. Larger and more
+  // generously spaced than earlier passes; still guaranteed never to clip
+  // via the fit-shrink safety floor.
   const kuralLines = [content.tamilLine1, content.tamilLine2];
   const kuralSize = fitFontSize(ctx, kuralLines, tamilFont, 500, maxTextWidth, 54, 16);
   const kuralLineGap = kuralSize * 1.52;
-  const kuralY1 = height * 0.34;
+  const kuralY1 = height * 0.42;
   const kuralY2 = kuralY1 + kuralLineGap;
 
-  ctx.fillStyle = COLORS.foreground;
+  ctx.fillStyle = COLORS.kuralInk;
   ctx.font = `500 ${kuralSize}px ${tamilFont}`;
   ctx.fillText(content.tamilLine1, leftX, kuralY1);
   ctx.fillText(content.tamilLine2, leftX, kuralY2);
@@ -1131,7 +1335,7 @@ function drawForegroundKural(
   const engY2 = engY1 + engLineGap;
 
   ctx.font = `700 ${engSize}px ${sansFont}`;
-  ctx.fillStyle = withAlpha(COLORS.foreground, 0.78);
+  ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.72);
   ctx.fillText(content.englishLine1, leftX, engY1);
   ctx.fillText(content.englishLine2, leftX, engY2);
 }
@@ -1163,6 +1367,8 @@ function fitFontSize(
 // ---------------------------------------------------------------------------
 // Metadata -- tertiary footer line, aligned to the same left edge as the
 // rest of the editorial block, with generous breathing room above it.
+// Small bronze diamond separators (restrained editorial ornament) replace
+// the plain "·" -- "fine rules, small points, tiny separators."
 // ---------------------------------------------------------------------------
 
 function drawMetadata(
@@ -1174,22 +1380,40 @@ function drawMetadata(
 ): void {
   const leftX = REGIONS.quietStart * width + width * 0.038;
   const y = height * 0.92;
-  const text = `Issue #${content.issue}   ·   ${content.series}   ·   Kural ${content.kuralNumber}`;
+  const segments = [`Issue #${content.issue}`, content.series, `Kural ${content.kuralNumber}`];
 
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   ctx.font = `500 13px ${sansFont}`;
-  ctx.fillStyle = withAlpha(COLORS.muted, 0.75);
-  ctx.fillText(text, leftX, y);
+  ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.85);
+
+  let x = leftX;
+  segments.forEach((segment, i) => {
+    ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.85);
+    ctx.fillText(segment, x, y);
+    x += ctx.measureText(segment).width;
+    if (i < segments.length - 1) {
+      const gap = 18;
+      const dx = x + gap / 2;
+      const s = 3;
+      ctx.save();
+      ctx.translate(dx, y - 4);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.6);
+      ctx.fillRect(-s / 2, -s / 2, s, s);
+      ctx.restore();
+      x += gap;
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Identity zone -- draws only when a real logo image is supplied. No
-// fallback mark, no "logo missing" text, no placeholder box. Final MVP
-// pass: repositioned above the Kural editorial block, left-aligned to the
-// same edge as குறள் 200 / the Kural / the English thought, rather than a
-// top-right corner badge -- "restrained editorial identity," not a badge.
-// Aspect ratio always preserved; only ever scaled down, never distorted.
+// fallback mark, no "logo missing" text, no placeholder box. Art Direction
+// Pass 01B: back in the upper-right identity region per explicit direction
+// (superseding the previous pass's left-aligned placement) -- "place it in
+// the upper-right identity region." Aspect ratio always preserved; only
+// ever scaled down, never distorted, never recoloured.
 // ---------------------------------------------------------------------------
 
 function drawLogoSlot(
@@ -1202,15 +1426,16 @@ function drawLogoSlot(
   const naturalH = logoImage.naturalHeight || logoImage.height;
   if (!naturalW || !naturalH) return;
 
-  const leftX = REGIONS.quietStart * width + width * 0.038;
-  const maxH = height * 0.06;
-  const maxW = width * 0.16;
+  const rightMargin = width * 0.045;
+  const maxH = height * 0.16;
+  const maxW = width * 0.15;
   const scale = Math.min(maxW / naturalW, maxH / naturalH, 1);
   const w = naturalW * scale;
   const h = naturalH * scale;
-  const y = height * 0.075;
+  const x = width - rightMargin - w;
+  const y = height * 0.06;
 
-  ctx.drawImage(logoImage, leftX, y, w, h);
+  ctx.drawImage(logoImage, x, y, w, h);
 }
 
 // ---------------------------------------------------------------------------
