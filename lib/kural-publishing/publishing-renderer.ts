@@ -117,7 +117,7 @@ const COLORS = {
 // function again.
 // ---------------------------------------------------------------------------
 
-const BASE_SIZE_FRACTION = 0.019;
+const BASE_SIZE_FRACTION = 0.023;
 
 interface TypographyToken {
   /** Human-readable role, shown nowhere in the render -- documentation only. */
@@ -696,13 +696,6 @@ function drawAmbientGlyph(
   // the semantic survivors) is never drawn from this ambient loop at all --
   // it only ever comes from FORMATION_NODES, rendered separately.
   let depth: "ambient" | "kuralMaterial";
-  // Art Direction Pass 01B: illumination is rare and meaningful -- "light =
-  // significance." Only ever rolled for the ANCHOR tier (the rarest,
-  // highest-presence ambient mark), and even then mostly resolves to
-  // "none." Cyan is deliberately gated behind an even smaller chance than
-  // gold so it stays the rarest colour in the system, per "the cyan must
-  // remain precious."
-  let illumination: "none" | "gold" | "cyan" = "none";
 
   if (roll < pMicro) {
     size = rand.range(4, 8); // MICRO -- the deep archive, bulk of the mass
@@ -720,8 +713,12 @@ function drawAmbientGlyph(
       size = rand.range(22, 34);
       baseOpacity = rand.range(0.48, 0.72);
       colorMix = 0.82;
-      if (rand.chance(0.22)) illumination = "gold";
-      else if (rand.chance(0.08)) illumination = "cyan";
+      // Reference-matched: no gold/cyan illumination in the field -- the
+      // reference image's glyphs are all quiet bronze/tan on the light
+      // ground. Anchors keep their presence through size/opacity alone.
+      // (rand rolls preserved so the downstream sequence is unchanged.)
+      rand.chance(0.22);
+      rand.chance(0.08);
     } else {
       size = rand.range(18, 27);
       baseOpacity = rand.range(0.2, 0.35);
@@ -775,22 +772,8 @@ function drawAmbientGlyph(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  if (illumination !== "none") {
-    // "A bright glyph core, soft local halo, gentle falloff, no hard outer
-    // ring" -- and, per Gold Master direction, this must feel like
-    // understanding, not an effect: a tight, restrained core-lift with a
-    // narrow halo, not a diffuse bloom.
-    const glow = illumination === "gold" ? COLORS.illuminatedGold : COLORS.livingCyan;
-    ctx.save();
-    ctx.filter = "blur(1.1px)";
-    ctx.fillStyle = withAlpha(glow, opacity * 0.32);
-    ctx.fillText(glyph, x + jitterX, y + jitterY);
-    ctx.restore();
-    ctx.fillStyle = withAlpha(glow, Math.min(1, opacity + 0.08));
-  } else {
-    const color = mix(COLORS.heritageBronze, COLORS.kuralInk, colorMix);
-    ctx.fillStyle = withAlphaRgb(color, opacity);
-  }
+  const color = mix(COLORS.heritageBronze, COLORS.kuralInk, colorMix);
+  ctx.fillStyle = withAlphaRgb(color, opacity);
   ctx.fillText(glyph, x + jitterX, y + jitterY);
 }
 
@@ -898,10 +881,10 @@ function drawFormationLayer(
       maxWidth: 1.05,
       secondaryChance: 0.38,
       illumination: {
-        activationColor: COLORS.livingCyan,
+
         activationPeak: 0.4,
         activationWidth: 0.25,
-        resolutionColor: COLORS.illuminatedGold,
+
         resolutionStart: 0.75,
       },
     });
@@ -923,10 +906,10 @@ function drawFormationLayer(
       maxWidth: 1.05,
       secondaryChance: 0.38,
       illumination: {
-        activationColor: COLORS.livingCyan,
+
         activationPeak: 0.45,
         activationWidth: 0.25,
-        resolutionColor: COLORS.illuminatedGold,
+
         resolutionStart: 0.75,
       },
     });
@@ -935,7 +918,7 @@ function drawFormationLayer(
     // A single small, precious glow at the actual convergence -- shared by
     // both families, drawn once, not once per trunk. "Occasional warm gold
     // illumination near meaningful convergence."
-    drawPathGlowPoint(ctx, targetX, targetY, COLORS.illuminatedGold, 0.11);
+    drawPathGlowPoint(ctx, targetX, targetY, COLORS.heritageBronze, 0.09);
   }
 
   // FORMATION FAMILY 3: the system associated with சொ continues (does not
@@ -957,7 +940,7 @@ function drawFormationLayer(
       maxWidth: 1.1,
       secondaryChance: 0.36,
       illumination: {
-        resolutionColor: COLORS.illuminatedGold,
+
         resolutionStart: 0.7,
       },
     });
@@ -973,13 +956,13 @@ function drawFormationLayer(
       maxWidth: 1.05,
       secondaryChance: 0.38,
       illumination: {
-        resolutionColor: COLORS.illuminatedGold,
+
         resolutionStart: 0.7,
       },
     });
     trunks.push({ points: lPoints, kind: "formation", label: "ல் root → சொல்" });
 
-    drawPathGlowPoint(ctx, width * cholNode.x, height * cholNode.y, COLORS.illuminatedGold, 0.13);
+    drawPathGlowPoint(ctx, width * cholNode.x, height * cholNode.y, COLORS.heritageBronze, 0.1);
   }
 
   // FORMATION FAMILY 4: பயன் -- a fully INDEPENDENT root family, from a
@@ -1001,13 +984,13 @@ function drawFormationLayer(
         // grammar for the independent semantic survivor, not a repeat of
         // சொ/சொல்'s heritage-gold resolution. "Not a mandatory formula
         // everywhere."
-        resolutionColor: COLORS.livingCyan,
+
         resolutionStart: 0.72,
       },
     });
     trunks.push({ points, kind: "formation", label: "பயன் root (independent)" });
 
-    drawPathGlowPoint(ctx, width * payanNode.x, height * payanNode.y, COLORS.livingCyan, 0.11);
+    drawPathGlowPoint(ctx, width * payanNode.x, height * payanNode.y, COLORS.heritageBronze, 0.09);
   }
 
   // SEMANTIC TRACE: சொல் and பயன் may relate conceptually as the two ideas
@@ -1349,12 +1332,26 @@ function drawSemanticTrace(
  *  resolution colour, matching its path family (see drawFormationLayer),
  *  and visibly different from சொ/சொல் so the three survivors don't read
  *  as identical. */
+/** Reference-matched: all formation tiers now render in the bronze/ink
+ *  family only -- no gold, no cyan -- matching the reference image's field,
+ *  where every glyph is a quiet bronze/tan mark on the light ground and
+ *  gold exists only in the editorial elements (rules, dash, dot). Glows
+ *  removed entirely (glow: 0) for the same reason. Hierarchy between the
+ *  tiers is preserved through size and opacity alone. */
 const EMPHASIS_STYLE = {
-  component: { minSize: 16, maxSize: 21, minOpacity: 0.28, maxOpacity: 0.4, glow: 0.16, glowColor: COLORS.livingCyan, textColor: COLORS.heritageBronze },
-  formed: { minSize: 22, maxSize: 27, minOpacity: 0.55, maxOpacity: 0.68, glow: 0.4, glowColor: COLORS.illuminatedGold, textColor: COLORS.illuminatedGold },
-  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.68, maxOpacity: 0.8, glow: 0.46, glowColor: COLORS.illuminatedGold, textColor: COLORS.illuminatedGold },
-  selected: { minSize: 25, maxSize: 30, minOpacity: 0.58, maxOpacity: 0.72, glow: 0.5, glowColor: COLORS.livingCyan, textColor: COLORS.livingCyan },
+  component: { minSize: 16, maxSize: 21, minOpacity: 0.28, maxOpacity: 0.4, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
+  formed: { minSize: 22, maxSize: 27, minOpacity: 0.55, maxOpacity: 0.68, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
+  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.68, maxOpacity: 0.8, glow: 0, glowColor: COLORS.heritageBronze, textColor: mix(COLORS.heritageBronze, COLORS.kuralInk, 0.35) },
+  selected: { minSize: 25, maxSize: 30, minOpacity: 0.58, maxOpacity: 0.72, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
 } as const;
+
+/** The editorial column's left edge (reference-measured, matches
+ *  drawForegroundKural's leftX). Formation nodes whose FROZEN positions
+ *  fall at/after this line are faded to near-subconscious so they never
+ *  compete with the editorial text -- founder-approved option (b):
+ *  rendering-only fade, engine node positions untouched. */
+const EDITORIAL_LEFT_FRAC = 0.532;
+const EDITORIAL_NODE_FADE = 0.14;
 
 function drawFormationNode(
   ctx: CanvasRenderingContext2D,
@@ -1368,7 +1365,8 @@ function drawFormationNode(
   const y = node.y * height;
   const style = EMPHASIS_STYLE[node.emphasis];
   const size = rand.range(style.minSize, style.maxSize);
-  const opacity = rand.range(style.minOpacity, style.maxOpacity);
+  let opacity = rand.range(style.minOpacity, style.maxOpacity);
+  if (node.x >= EDITORIAL_LEFT_FRAC) opacity *= EDITORIAL_NODE_FADE;
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
