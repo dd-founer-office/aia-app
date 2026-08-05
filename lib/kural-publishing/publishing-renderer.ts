@@ -127,7 +127,7 @@ const COLORS = {
 // function again.
 // ---------------------------------------------------------------------------
 
-const BASE_SIZE_FRACTION = 0.014;
+const BASE_SIZE_FRACTION = 0.019;
 
 interface TypographyToken {
   /** Human-readable role, shown nowhere in the render -- documentation only. */
@@ -1529,11 +1529,14 @@ function drawForegroundKural(
   ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.95);
   ctx.fillText(`குறள் ${content.kuralNumber}`, leftX, metaY);
 
-  // LONG PAUSE (9 baselines) -- authority through silence, not size.
+  // LONG PAUSE (4 baselines) -- authority through silence, not size.
+  // Recalibrated down from 9 after founder feedback that the block read
+  // as too sparse and hard to see -- the pause/hierarchy principle is
+  // unchanged, the magnitude was simply too generous in practice.
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const kuralLines = [content.tamilLine1, content.tamilLine2];
   const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, height);
-  const kuralY1 = metaY + baseline * 9;
+  const kuralY1 = metaY + baseline * 4;
   const kuralLineGap = kuralSize * kuralToken.lineHeightRatio;
   const kuralY2 = kuralY1 + kuralLineGap;
 
@@ -1544,27 +1547,27 @@ function drawForegroundKural(
   ctx.fillText(content.tamilLine1, leftX, kuralY1);
   ctx.fillText(content.tamilLine2, leftX, kuralY2);
 
-  // SHORT PAUSE (3 baselines) -- English stays grouped with the Kural as
+  // SHORT PAUSE (1.5 baselines) -- English stays grouped with the Kural as
   // one thought, softer in tone (reduced opacity) so it never competes.
   const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
   const englishLines = [content.englishLine1, content.englishLine2];
   const engSize = fitTokenSize(ctx, reflectionToken, englishLines, tamilFont, sansFont, maxTextWidth, height);
-  const engY1 = kuralY2 + baseline * 3;
+  const engY1 = kuralY2 + baseline * 1.5;
   const engLineGap = engSize * reflectionToken.lineHeightRatio;
   const engY2 = engY1 + engLineGap;
 
   ctx.textAlign = reflectionToken.align;
   ctx.font = tokenFont(reflectionToken, engSize, tamilFont, sansFont);
   applyTokenTracking(ctx, reflectionToken, engSize);
-  ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.66);
+  ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.78);
   ctx.fillText(content.englishLine1, leftX, engY1);
   ctx.fillText(content.englishLine2, leftX, engY2);
 
-  // LONG PAUSE (9 baselines) -- the reading is over; what follows is
+  // LONG PAUSE (4 baselines) -- the reading is over; what follows is
   // colophon. Rule length is proportional to the text column itself
   // (half its measure), not an arbitrary width -- long, but understated,
   // never spanning the full column.
-  const ruleY = engY2 + baseline * 9;
+  const ruleY = engY2 + baseline * 4;
   const ruleWidth = maxTextWidth * 0.5;
   ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.4);
   ctx.lineWidth = 1;
@@ -1573,8 +1576,8 @@ function drawForegroundKural(
   ctx.lineTo(leftX + ruleWidth, ruleY);
   ctx.stroke();
 
-  // Footer (2.2 baselines after the rule) -- tiny, quiet, almost disappears.
-  const footerY = ruleY + baseline * 2.2;
+  // Footer (1.5 baselines after the rule) -- tiny, quiet, almost disappears.
+  const footerY = ruleY + baseline * 1.5;
   const footerText = `${content.series} \u2022 #${content.issue}`;
   ctx.textAlign = footerToken.align;
   ctx.font = tokenFont(footerToken, footerSize, tamilFont, sansFont);
