@@ -485,17 +485,16 @@ function drawParchmentTexture(
 // so the centre doesn't read as "unrelated large letters."
 // ---------------------------------------------------------------------------
 
-/** 0 -> denseEnd: sustained abundance. denseEnd -> transitionEnd: a genuine
- *  dissolve, not a dim. Zero beyond transitionEnd, always. */
+/** Continuous exponential decay from the extreme left edge -- no plateau,
+ *  no hard stop. "Maximum glyph density only at the extreme left edge...
+ *  density decreases continuously across the entire canvas... never stop
+ *  at 40%, never stop at 60%, continue fading until the far right." This
+ *  never returns exactly zero (asymptotic decay), which is what makes the
+ *  eventual population placement in drawAmbientField a true continuous
+ *  fade rather than a boundary -- "fog disappearing into air," not a wall. */
 function baseFalloff(xFrac: number): number {
-  if (xFrac >= REGIONS.transitionEnd) return 0;
-  if (xFrac <= REGIONS.denseEnd) {
-    const t = xFrac / REGIONS.denseEnd;
-    return 0.85 + 0.15 * (1 - t);
-  }
-  const span = REGIONS.transitionEnd - REGIONS.denseEnd;
-  const t = (xFrac - REGIONS.denseEnd) / span;
-  return 0.85 * Math.pow(1 - t, 1.9);
+  const k = 7.4;
+  return Math.exp(-k * xFrac);
 }
 
 interface MacroCluster {
@@ -623,41 +622,43 @@ function drawAmbientField(
   const rowH = 17;
   const cols = Math.ceil(width / colW);
   const rows = Math.ceil(height / rowH);
-  const protectedCol = Math.ceil((REGIONS.transitionEnd * width) / colW);
 
   const pockets = buildPocketField(rand);
 
   for (let r = 0; r < rows; r++) {
     let c = 0;
     while (c < cols) {
-      if (c >= protectedCol) break; // hard stop -- silence stays silent
-
       const xFrac = (c * colW) / width;
       const yFrac = (r * rowH) / height;
       const density = densityAt(xFrac, yFrac, macro, pockets);
-      if (density <= 0.03) {
-        c += 2;
+      // A genuine "almost subconscious" threshold, not a boundary -- this
+      // only skips slots too faint to matter, it does not stop the field.
+      // Density keeps decaying continuously past this point; it just
+      // rarely clears the bar for actually placing a mark.
+      if (density <= 0.004) {
+        c += 6;
         continue;
       }
 
       const gap = Math.max(1, Math.round(rand.range(1, 3) * (1.6 - Math.min(1.5, density))));
       c += gap;
-      if (c >= protectedCol) break;
+      if (c >= cols) break;
 
       const maxClusterLen =
         density > 1.7 ? 11 : density > 1.2 ? 8 : density > 0.7 ? 5 : density > 0.35 ? 3 : 1;
       const clusterLen = rand.int(1, maxClusterLen + 1);
 
-      for (let i = 0; i < clusterLen && c < protectedCol; i++, c++) {
+      for (let i = 0; i < clusterLen && c < cols; i++, c++) {
         const cx = c * colW + colW / 2;
         const cy = r * rowH + rowH / 2;
         const cxFrac = cx / width;
         const cyFrac = cy / height;
         const d = densityAt(cxFrac, cyFrac, macro, pockets);
-        if (d <= 0.03) continue;
+        if (d <= 0.004) continue;
         // Regions that breathe -- not every slot fires even inside a dense
-        // pocket.
-        if (!rand.chance(Math.min(1, d * 0.6 + 0.16))) continue;
+        // pocket. Far to the right this naturally makes placement rare
+        // without ever forbidding it outright.
+        if (!rand.chance(Math.min(1, d * 0.6 + 0.05))) continue;
 
         drawAmbientGlyph(ctx, cx, cy, d, cxFrac, tamilFont, rand, kuralSyllables);
         // A second, even smaller pass of pure micro-dot texture layered
@@ -775,7 +776,12 @@ function drawAmbientGlyph(
     ? rand.pick(kuralSyllables)
     : rand.pick(MODERN_TAMIL_VALUES);
 
-  const opacity = Math.min(1, baseOpacity * (0.55 + density * 0.5));
+  // Opacity is now a direct, floor-less function of density -- as density
+  // continuously decays toward the right edge (see baseFalloff), opacity
+  // decays with it, genuinely toward zero, not toward some minimum
+  // presence. This is what makes far-right glyphs "almost subconscious"
+  // rather than just smaller/rarer at a constant faint brightness.
+  const opacity = Math.min(1, baseOpacity * Math.min(1, density * 1.25));
 
   ctx.font = `400 ${size}px ${tamilFont}`;
   ctx.textAlign = "center";
