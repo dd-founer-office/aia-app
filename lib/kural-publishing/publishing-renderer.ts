@@ -289,7 +289,6 @@ export function renderKuralPublishing(
   drawAmbientField(ctx, width, height, tamilFont, rand, kuralSyllables, macro);
   const debugInfo = drawFormationLayer(ctx, width, height, tamilFont, rand, macro);
   drawForegroundKural(ctx, width, height, content, tamilSerifFont, serifFont, logoImage ?? null);
-  drawMetadata(ctx, width, height, content, tamilSerifFont, serifFont);
 
   if (debugFormationLogic) {
     drawDebugFormationOverlay(ctx, width, height, tamilFont, sansFont, debugInfo);
@@ -1485,12 +1484,17 @@ function drawDebugFormationOverlay(
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Foreground editorial block -- GOLD MASTER v1.0, locked structure. Top:
-// logo paired with குறள் [n] as one masthead unit. Large contemplation
-// space. Tamil Kural (left-aligned, primary voice). English Reflection
-// (secondary). Bottom rule. Footer. This structure, the type-scale
-// hierarchy, and the left-alignment rule are now permanent brand system --
-// do not redesign; only content values may vary between issues.
+// Foreground editorial block -- baseline-grid composition. The reading
+// sequence is: குறள் [n] -> LONG PAUSE -> Tamil Kural -> SHORT PAUSE ->
+// English Reflection -> LONG PAUSE -> rule -> Footer. Every vertical gap
+// in that sequence is an integer multiple of ONE baseline unit (derived
+// from the Footer token, the base of the whole type scale) -- nothing
+// here is a manually chosen pixel offset. The Kural's authority comes
+// from the length of the pause before it, not its size or weight, which
+// are unchanged from the locked Typography System. The logo is
+// deliberately NOT part of this sequence: it is a publisher's seal,
+// positioned after the footer so it is discovered only once the reading
+// is already over, never encountered first.
 // ---------------------------------------------------------------------------
 
 function drawForegroundKural(
@@ -1499,12 +1503,8 @@ function drawForegroundKural(
   height: number,
   content: KuralPublishingContent,
   /** Named generically (matches fitTokenSize/tokenFont's own generic
-   *  params) but as of the serif typography direction, the caller always
-   *  passes the SERIF fonts here (tamilSerifFont, serifFont) -- every
-   *  TYPOGRAPHY_TOKENS role in this function still resolves via
-   *  fontFamily: "tamil" | "sans", it's just that those now point at
-   *  Noto Serif Tamil / Noto Serif rather than the ambient field's sans
-   *  fonts. See renderKuralPublishing's call site. */
+   *  params); the caller passes the serif fonts here (tamilSerifFont,
+   *  serifFont) per the locked Typography System. */
   tamilFont: string,
   sansFont: string,
   logoImage: HTMLImageElement | null
@@ -1513,46 +1513,28 @@ function drawForegroundKural(
   const rightMargin = width * 0.05;
   const maxTextWidth = width - leftX - rightMargin;
 
-  // Masthead -- logo paired with the identity line as one unit, not a
-  // corner badge. Locked per Gold Master v1.0. Identity line uses the
-  // Meta token.
-  const mastheadTop = height * 0.085;
-  const logoMaxH = height * 0.072;
-  const logoMaxW = width * 0.09;
-  let identityX = leftX;
+  // One baseline unit -- every gap below is N x this value.
+  const footerToken = TYPOGRAPHY_TOKENS.footer;
+  const footerSize = tokenSize(footerToken, height);
+  const baseline = footerSize * 1.7;
 
-  if (logoImage) {
-    const naturalW = logoImage.naturalWidth || logoImage.width;
-    const naturalH = logoImage.naturalHeight || logoImage.height;
-    if (naturalW && naturalH) {
-      const scale = Math.min(logoMaxW / naturalW, logoMaxH / naturalH, 1);
-      const w = naturalW * scale;
-      const h = naturalH * scale;
-      ctx.drawImage(logoImage, leftX, mastheadTop, w, h);
-      identityX = leftX + w + width * 0.014;
-    }
-  }
-
+  // 1. குறள் [n] -- the sequence's true first element. No logo beside it.
   const metaToken = TYPOGRAPHY_TOKENS.meta;
   const metaSize = tokenSize(metaToken, height);
+  const metaY = height * 0.13;
   ctx.textAlign = metaToken.align;
-  ctx.textBaseline = "middle";
+  ctx.textBaseline = "alphabetic";
   ctx.font = tokenFont(metaToken, metaSize, tamilFont, sansFont);
   applyTokenTracking(ctx, metaToken, metaSize);
   ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.95);
-  ctx.fillText(`குறள் ${content.kuralNumber}`, identityX, mastheadTop + logoMaxH / 2);
+  ctx.fillText(`குறள் ${content.kuralNumber}`, leftX, metaY);
 
-  // Large contemplation space -- the single most deliberate gap in the
-  // composition. Silence before the Kural, structurally, not just spacing.
-  ctx.textBaseline = "alphabetic";
-
-  // Tamil Kural -- the primary voice, in Kural Ink. Guaranteed never to
-  // clip via the fit-shrink safety floor (Kural token's minSizeRatio).
+  // LONG PAUSE (9 baselines) -- authority through silence, not size.
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const kuralLines = [content.tamilLine1, content.tamilLine2];
   const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, height);
+  const kuralY1 = metaY + baseline * 9;
   const kuralLineGap = kuralSize * kuralToken.lineHeightRatio;
-  const kuralY1 = height * 0.5;
   const kuralY2 = kuralY1 + kuralLineGap;
 
   ctx.textAlign = kuralToken.align;
@@ -1562,29 +1544,63 @@ function drawForegroundKural(
   ctx.fillText(content.tamilLine1, leftX, kuralY1);
   ctx.fillText(content.tamilLine2, leftX, kuralY2);
 
-  // English thought -- secondary voice, clearly subordinate to the Tamil.
+  // SHORT PAUSE (3 baselines) -- English stays grouped with the Kural as
+  // one thought, softer in tone (reduced opacity) so it never competes.
   const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
   const englishLines = [content.englishLine1, content.englishLine2];
   const engSize = fitTokenSize(ctx, reflectionToken, englishLines, tamilFont, sansFont, maxTextWidth, height);
+  const engY1 = kuralY2 + baseline * 3;
   const engLineGap = engSize * reflectionToken.lineHeightRatio;
-  const engY1 = kuralY2 + kuralSize * 1.8;
   const engY2 = engY1 + engLineGap;
 
   ctx.textAlign = reflectionToken.align;
   ctx.font = tokenFont(reflectionToken, engSize, tamilFont, sansFont);
   applyTokenTracking(ctx, reflectionToken, engSize);
-  ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.72);
+  ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.66);
   ctx.fillText(content.englishLine1, leftX, engY1);
   ctx.fillText(content.englishLine2, leftX, engY2);
 
-  // Bottom rule -- closes the block. The only rule in the locked structure.
-  const ruleY = height * 0.86;
+  // LONG PAUSE (9 baselines) -- the reading is over; what follows is
+  // colophon. Rule length is proportional to the text column itself
+  // (half its measure), not an arbitrary width -- long, but understated,
+  // never spanning the full column.
+  const ruleY = engY2 + baseline * 9;
+  const ruleWidth = maxTextWidth * 0.5;
   ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.4);
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(leftX, ruleY);
-  ctx.lineTo(leftX + width * 0.05, ruleY);
+  ctx.lineTo(leftX + ruleWidth, ruleY);
   ctx.stroke();
+
+  // Footer (2.2 baselines after the rule) -- tiny, quiet, almost disappears.
+  const footerY = ruleY + baseline * 2.2;
+  const footerText = `${content.series} \u2022 #${content.issue}`;
+  ctx.textAlign = footerToken.align;
+  ctx.font = tokenFont(footerToken, footerSize, tamilFont, sansFont);
+  applyTokenTracking(ctx, footerToken, footerSize);
+  ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.85);
+  ctx.fillText(footerText, leftX, footerY);
+
+  // The logo -- a publisher's seal, discovered only after the footer,
+  // never before. Small, quiet, slightly reduced opacity so it never
+  // becomes the focal point.
+  if (logoImage) {
+    const naturalW = logoImage.naturalWidth || logoImage.width;
+    const naturalH = logoImage.naturalHeight || logoImage.height;
+    if (naturalW && naturalH) {
+      const logoMaxH = baseline * 2.6;
+      const logoMaxW = width * 0.045;
+      const scale = Math.min(logoMaxW / naturalW, logoMaxH / naturalH, 1);
+      const w = naturalW * scale;
+      const h = naturalH * scale;
+      const logoY = footerY + baseline * 1.4;
+      ctx.save();
+      ctx.globalAlpha = 0.82;
+      ctx.drawImage(logoImage, leftX, logoY, w, h);
+      ctx.restore();
+    }
+  }
 }
 
 /** Shrinks a token's size (never below its own minSizeRatio floor) until
@@ -1614,36 +1630,6 @@ function fitTokenSize(
     size -= 1;
   }
   return size;
-}
-
-// ---------------------------------------------------------------------------
-// Metadata -- tertiary footer line, aligned to the same left edge as the
-// rest of the editorial block, directly beneath the bottom rule. Gold
-// Master v1.0 locks the footer to exactly "[series] • #[issue]" -- no
-// Paal, Iyal, Adhikaram, icons, or additional segments, ever. Uses the
-// Footer token -- the BASE of the whole typography scale.
-// ---------------------------------------------------------------------------
-
-function drawMetadata(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  content: KuralPublishingContent,
-  tamilFont: string,
-  sansFont: string
-): void {
-  const leftX = REGIONS.quietStart * width + width * 0.038;
-  const y = height * 0.905;
-  const text = `${content.series} \u2022 #${content.issue}`;
-
-  const footerToken = TYPOGRAPHY_TOKENS.footer;
-  const footerSize = tokenSize(footerToken, height);
-  ctx.textAlign = footerToken.align;
-  ctx.textBaseline = "alphabetic";
-  ctx.font = tokenFont(footerToken, footerSize, tamilFont, sansFont);
-  applyTokenTracking(ctx, footerToken, footerSize);
-  ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.85);
-  ctx.fillText(text, leftX, y);
 }
 
 // ---------------------------------------------------------------------------
