@@ -96,15 +96,26 @@ const COLORS = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Typography System -- Gold Master v1.0 (approved "Direction F / Signature"
-// from the Typography Review Board). Four roles: Kural, Reflection, Meta,
-// Footer. Nothing below is an independent pixel choice -- every size is a
-// ratio of BASE (Footer's size), matching the approved relationship:
+// Typography System -- Four roles: Kural, Reflection, Meta, Footer. Nothing
+// below is an independent pixel choice -- every size is a ratio of BASE
+// (Footer's size). The relational scale itself is unchanged from the
+// approved Typography Review Board relationship:
 //
 //   Kural = 2 x Reflection
 //   Reflection = 1.3 x Footer
 //   Meta = 1.15 x Footer
 //   Footer = Base (1x)
+//
+// Family/weight/style were updated from "Direction F / Signature" (sans,
+// weight 500, Reflection italic) to a serif direction (Noto Serif Tamil /
+// Noto Serif, weight 700, no italic) per explicit founder direction after
+// a Canva exploration -- this is a real supersession of Direction F's
+// values, not a refinement of it; the ratio structure is what's proven,
+// the family/weight/style are what's being iterated. See app/layout.tsx
+// for the two new fonts this required loading (--font-tamil-serif,
+// --font-serif) and KuralHeroCanvas.tsx for how they're resolved and
+// threaded through, alongside the ambient field's original sans fonts
+// (tamilFont/sansFont), which are untouched.
 //
 // BASE_SIZE_FRACTION is the one absolute number in the whole system --
 // Footer's size as a fraction of canvas height -- and it is what makes the
@@ -145,35 +156,35 @@ const TYPOGRAPHY_TOKENS = {
     sizeRatio: 1,
     minSizeRatio: 1,
     lineHeightRatio: 1,
-    letterSpacingEm: 0.04,
+    letterSpacingEm: 0.03,
     align: "left",
   },
   meta: {
     role: "Meta -- குறள் [n] identity label",
     fontFamily: "tamil",
-    weight: 500,
+    weight: 700,
     italic: false,
     sizeRatio: 1.15,
     minSizeRatio: 1.15,
     lineHeightRatio: 1,
-    letterSpacingEm: 0.06,
+    letterSpacingEm: 0.02,
     align: "left",
   },
   reflection: {
     role: "Reflection -- English secondary voice",
     fontFamily: "sans",
-    weight: 500,
-    italic: true,
+    weight: 700,
+    italic: false,
     sizeRatio: 1.3,
     minSizeRatio: 1,
     lineHeightRatio: 1.55,
-    letterSpacingEm: 0.01,
+    letterSpacingEm: 0.02,
     align: "left",
   },
   kural: {
     role: "Kural -- Tamil primary voice",
     fontFamily: "tamil",
-    weight: 500,
+    weight: 700,
     italic: false,
     sizeRatio: 2.6,
     minSizeRatio: 1.25,
@@ -229,10 +240,15 @@ export interface RenderKuralPublishingOptions {
   height: number;
   content: KuralPublishingContent;
   /** Resolved app font-family strings (see KuralHeroCanvas for how these are
-   *  read from --font-tamil-sans / --font-sans), each with its own fallback
-   *  chain already appended. */
+   *  read from --font-tamil-sans / --font-sans / --font-tamil-serif /
+   *  --font-serif), each with its own fallback chain already appended.
+   *  tamilFont/sansFont remain the ambient field's fonts (untouched by the
+   *  Typography System token change below); tamilSerifFont/serifFont are
+   *  the editorial block's fonts as of the serif typography direction. */
   tamilFont: string;
   sansFont: string;
+  tamilSerifFont: string;
+  serifFont: string;
   /** Canonical KKA logo, once it exists. Left undefined/null draws nothing --
    *  never a placeholder box or generated mark. */
   logoImage?: HTMLImageElement | null;
@@ -249,7 +265,7 @@ export function renderKuralPublishing(
   ctx: CanvasRenderingContext2D,
   opts: RenderKuralPublishingOptions
 ): void {
-  const { width, height, content, tamilFont, sansFont, logoImage, debugFormationLogic } = opts;
+  const { width, height, content, tamilFont, sansFont, tamilSerifFont, serifFont, logoImage, debugFormationLogic } = opts;
   const rand = createSeededRandom(deriveSeed(content.kuralNumber));
 
   // Real substrings of the actual verified Kural text, not invented glyphs --
@@ -272,8 +288,8 @@ export function renderKuralPublishing(
 
   drawAmbientField(ctx, width, height, tamilFont, rand, kuralSyllables, macro);
   const debugInfo = drawFormationLayer(ctx, width, height, tamilFont, rand, macro);
-  drawForegroundKural(ctx, width, height, content, tamilFont, sansFont, logoImage ?? null);
-  drawMetadata(ctx, width, height, content, tamilFont, sansFont);
+  drawForegroundKural(ctx, width, height, content, tamilSerifFont, serifFont, logoImage ?? null);
+  drawMetadata(ctx, width, height, content, tamilSerifFont, serifFont);
 
   if (debugFormationLogic) {
     drawDebugFormationOverlay(ctx, width, height, tamilFont, sansFont, debugInfo);
@@ -1482,6 +1498,13 @@ function drawForegroundKural(
   width: number,
   height: number,
   content: KuralPublishingContent,
+  /** Named generically (matches fitTokenSize/tokenFont's own generic
+   *  params) but as of the serif typography direction, the caller always
+   *  passes the SERIF fonts here (tamilSerifFont, serifFont) -- every
+   *  TYPOGRAPHY_TOKENS role in this function still resolves via
+   *  fontFamily: "tamil" | "sans", it's just that those now point at
+   *  Noto Serif Tamil / Noto Serif rather than the ambient field's sans
+   *  fonts. See renderKuralPublishing's call site. */
   tamilFont: string,
   sansFont: string,
   logoImage: HTMLImageElement | null

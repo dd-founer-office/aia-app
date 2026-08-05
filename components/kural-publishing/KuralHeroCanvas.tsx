@@ -44,6 +44,8 @@ const TAMIL_FALLBACK =
   "'Noto Sans Tamil','Nirmala UI','Tamil Sangam MN','Tamil MN',sans-serif";
 const SANS_FALLBACK =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+const TAMIL_SERIF_FALLBACK = "'Noto Serif Tamil','Tamil Sangam MN','Tamil MN',serif";
+const SERIF_FALLBACK = "Georgia,'Times New Roman',serif";
 
 function resolveFont(cssVarName: string, fallback: string): string {
   if (typeof document === "undefined") return fallback;
@@ -86,6 +88,8 @@ export default function KuralHeroCanvas({
         content,
         tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
         sansFont: resolveFont("--font-sans", SANS_FALLBACK),
+        tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
+        serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
         logoImage: logoImage ?? null,
         debugFormationLogic,
       });
@@ -163,6 +167,8 @@ export async function renderKuralPublishingForExport(
     content,
     tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
     sansFont: resolveFont("--font-sans", SANS_FALLBACK),
+    tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
+    serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
     logoImage,
     debugFormationLogic: false,
   });
