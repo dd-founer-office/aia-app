@@ -69,12 +69,28 @@ import {
  *     mint background entirely
  *   - kuralInk: primary Tamil typography colour
  *   - mutedEarth: metadata / tertiary information */
+/** Locked KKA master palette (Art Direction Pass 01B), derived from the
+ *  supplied canonical logo and the new visual target -- not the original
+ *  green MVP tokens. Semantic roles, not arbitrary names:
+ *   - deepCode: the deepest language world (near-black, faint navy character)
+ *   - heritageBronze: the dominant Tamil-material colour -- aged, warm
+ *   - illuminatedGold: rare heritage illumination (meaning, continuity)
+ *   - livingCyan: rarest colour in the system -- activation, living
+ *     intelligence. Must stay precious; see drawAmbientGlyph/drawFormationNode.
+ *   - warmParchment: the editorial silence (right side). Recalibrated to an
+ *     authentic ஓலைச்சுவடி (olai chuvadi / palm-leaf manuscript) tone --
+ *     a warm golden-tan/ochre from the cured-leaf material, not a generic
+ *     pale cream. Checked against real olai chuvadi reference photographs
+ *     before picking the value; deliberately more saturated/gold than the
+ *     previous #F1E8D6.
+ *   - kuralInk: primary Tamil typography colour
+ *   - mutedEarth: metadata / tertiary information */
 const COLORS = {
   deepCode: "#10131A",
   heritageBronze: "#9C7A48",
   illuminatedGold: "#D9A94E",
   livingCyan: "#5FCBD8",
-  warmParchment: "#F1E8D6",
+  warmParchment: "#C9A76B",
   kuralInk: "#241E18",
   mutedEarth: "#8C7B62",
 } as const;
