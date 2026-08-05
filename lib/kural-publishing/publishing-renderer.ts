@@ -57,32 +57,21 @@ import {
   type KuralPublishingContent,
 } from "./kural200-state";
 
-/** Locked KKA master palette (Art Direction Pass 01B), derived from the
- *  supplied canonical logo and the new visual target -- not the original
- *  green MVP tokens. Semantic roles, not arbitrary names:
+/** Locked KKA master palette. Semantic roles, not arbitrary names:
  *   - deepCode: the deepest language world (near-black, faint navy character)
  *   - heritageBronze: the dominant Tamil-material colour -- aged, warm
  *   - illuminatedGold: rare heritage illumination (meaning, continuity)
  *   - livingCyan: rarest colour in the system -- activation, living
  *     intelligence. Must stay precious; see drawAmbientGlyph/drawFormationNode.
- *   - warmParchment: the editorial silence (right side), replaces the old
- *     mint background entirely
- *   - kuralInk: primary Tamil typography colour
- *   - mutedEarth: metadata / tertiary information */
-/** Locked KKA master palette (Art Direction Pass 01B), derived from the
- *  supplied canonical logo and the new visual target -- not the original
- *  green MVP tokens. Semantic roles, not arbitrary names:
- *   - deepCode: the deepest language world (near-black, faint navy character)
- *   - heritageBronze: the dominant Tamil-material colour -- aged, warm
- *   - illuminatedGold: rare heritage illumination (meaning, continuity)
- *   - livingCyan: rarest colour in the system -- activation, living
- *     intelligence. Must stay precious; see drawAmbientGlyph/drawFormationNode.
- *   - warmParchment: the editorial silence (right side). Recalibrated to an
- *     authentic ஓலைச்சுவடி (olai chuvadi / palm-leaf manuscript) tone --
- *     a warm golden-tan/ochre from the cured-leaf material, not a generic
- *     pale cream. Checked against real olai chuvadi reference photographs
- *     before picking the value; deliberately more saturated/gold than the
- *     previous #F1E8D6.
+ *   - warmParchment: the editorial ground. Reference-matched: sampled
+ *     directly from the founder-approved target image (#F3E4CF at three
+ *     separate points), a light warm cream -- supersedes the previous
+ *     golden-tan olai chuvadi value per the explicit reference-match
+ *     instruction ("even the text size and weight too and the logo
+ *     placement too I need same").
+ *   - vignetteEdge: the tone the cream deepens toward at the left edge
+ *     (sampled #D1B898 mid-vignette in the same reference; drawAtmosphere
+ *     continues darker at the extreme edge).
  *   - kuralInk: primary Tamil typography colour
  *   - mutedEarth: metadata / tertiary information */
 const COLORS = {
@@ -90,7 +79,8 @@ const COLORS = {
   heritageBronze: "#9C7A48",
   illuminatedGold: "#D9A94E",
   livingCyan: "#5FCBD8",
-  warmParchment: "#C9A76B",
+  warmParchment: "#F3E4CF",
+  vignetteEdge: "#D1B898",
   kuralInk: "#241E18",
   mutedEarth: "#8C7B62",
 } as const;
@@ -153,8 +143,8 @@ const TYPOGRAPHY_TOKENS = {
     fontFamily: "sans",
     weight: 500,
     italic: false,
-    sizeRatio: 1,
-    minSizeRatio: 1,
+    sizeRatio: 0.74,
+    minSizeRatio: 0.74,
     lineHeightRatio: 1,
     letterSpacingEm: 0.03,
     align: "left",
@@ -173,10 +163,10 @@ const TYPOGRAPHY_TOKENS = {
   reflection: {
     role: "Reflection -- English secondary voice",
     fontFamily: "sans",
-    weight: 700,
-    italic: false,
-    sizeRatio: 1.3,
-    minSizeRatio: 1,
+    weight: 500,
+    italic: true,
+    sizeRatio: 0.78,
+    minSizeRatio: 0.7,
     lineHeightRatio: 1.55,
     letterSpacingEm: 0.02,
     align: "left",
@@ -319,27 +309,25 @@ function drawAtmosphere(
   height: number,
   rand: SeededRandom
 ): void {
-  // Colouring is fully resolved to the app's own background well before the
-  // dense field even ends -- everything past this point gets its depth from
-  // glyph density alone, never from a painted panel.
+  // Reference-matched ground: light warm cream everywhere, with only a
+  // soft vignette deepening toward the extreme left edge. Gradient stops
+  // are the measured fractions from the approved target image (sampled at
+  // x-fracs 0.018 / 0.09 / 0.24, fully resolved cream by ~0.4).
   const colorEnd = REGIONS.denseEnd * 0.82;
 
   const base = ctx.createLinearGradient(0, 0, width, 0);
-  base.addColorStop(0, mix(COLORS.deepCode, COLORS.warmParchment, 0.06));
-  base.addColorStop(colorEnd * 0.32, mix(COLORS.deepCode, COLORS.heritageBronze, 0.4));
-  base.addColorStop(colorEnd * 0.68, mix(COLORS.heritageBronze, COLORS.warmParchment, 0.5));
-  base.addColorStop(colorEnd, mix(COLORS.heritageBronze, COLORS.warmParchment, 0.88));
+  base.addColorStop(0, mix(COLORS.vignetteEdge, COLORS.heritageBronze, 0.4));
+  base.addColorStop(0.02, COLORS.vignetteEdge);
+  base.addColorStop(0.09, mix(COLORS.vignetteEdge, COLORS.warmParchment, 0.5));
+  base.addColorStop(0.24, mix(COLORS.vignetteEdge, COLORS.warmParchment, 0.82));
+  base.addColorStop(0.42, COLORS.warmParchment);
   base.addColorStop(1, COLORS.warmParchment);
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, width, height);
 
-  // A handful of soft, low-opacity strata patches -- support texture, not a
-  // second dark layer. Deliberately elongated and rotated, never a perfect
-  // circle: a round soft-edged bloom reads as smoke or cloud, which the
-  // brief explicitly rules out. An irregular, stretched patch reads closer
-  // to a mineral vein or aged patina -- material, not atmosphere-in-the-sky
-  // sense. Clamped well inside the dense field so nothing reads as a
-  // boundary.
+  // A handful of soft, low-opacity strata patches -- same structure and
+  // rand-call count as before (so nothing downstream reshuffles), retoned
+  // for the light ground: subtle deeper-tan patches, never dark smudges.
   const cloudClipWidth = width * Math.min(REGIONS.denseEnd * 1.05, REGIONS.quietStart);
   const cloudCount = 6;
   for (let i = 0; i < cloudCount; i++) {
@@ -350,8 +338,8 @@ function drawAtmosphere(
     const rotation = rand.range(0, Math.PI);
     const darker = rand.chance(0.62);
     const tone = darker
-      ? mixAlpha(COLORS.deepCode, COLORS.heritageBronze, rand.range(0, 0.5), rand.range(0.06, 0.12))
-      : mixAlpha(COLORS.heritageBronze, COLORS.warmParchment, rand.range(0.2, 0.6), rand.range(0.02, 0.04));
+      ? mixAlpha(COLORS.vignetteEdge, COLORS.heritageBronze, rand.range(0, 0.5), rand.range(0.04, 0.08))
+      : mixAlpha(COLORS.warmParchment, "#FFFFFF", rand.range(0.2, 0.6), rand.range(0.02, 0.04));
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -436,8 +424,8 @@ function drawLocalTonalVariation(
       if (Math.abs(delta) < 0.005) continue;
       ctx.fillStyle =
         delta > 0
-          ? mixAlpha(COLORS.deepCode, COLORS.heritageBronze, 0.5, delta)
-          : mixAlpha(COLORS.heritageBronze, COLORS.warmParchment, 0.5, -delta);
+          ? mixAlpha(COLORS.vignetteEdge, COLORS.heritageBronze, 0.35, delta * 0.7)
+          : mixAlpha(COLORS.warmParchment, "#FFFFFF", 0.5, -delta * 0.6);
       ctx.fillRect(cx, cy, cell, cell);
     }
   }
@@ -1490,17 +1478,15 @@ function drawDebugFormationOverlay(
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Foreground editorial block -- baseline-grid composition. The reading
-// sequence is: குறள் [n] -> LONG PAUSE -> Tamil Kural -> SHORT PAUSE ->
-// English Reflection -> LONG PAUSE -> rule -> Footer. Every vertical gap
-// in that sequence is an integer multiple of ONE baseline unit (derived
-// from the Footer token, the base of the whole type scale) -- nothing
-// here is a manually chosen pixel offset. The Kural's authority comes
-// from the length of the pause before it, not its size or weight, which
-// are unchanged from the locked Typography System. The logo is
-// deliberately NOT part of this sequence: it is a publisher's seal,
-// positioned after the footer so it is discovered only once the reading
-// is already over, never encountered first.
+// Foreground editorial block -- REFERENCE-MATCHED composition. Every
+// position below is a measured fraction from the founder-approved target
+// image (1672x941, essentially our aspect), sampled programmatically, not
+// eyeballed: masthead (logo + vertical gold divider + குறள் [n]) at the
+// top, full-width rule, large two-line Kural, small gold dash accent,
+// italic English reflection, closing rule, footer with a gold point
+// separator. Content text is always our real verified content -- the
+// reference's own (AI-garbled) text was never copied, only its
+// composition, sizes, and placements.
 // ---------------------------------------------------------------------------
 
 function drawForegroundKural(
@@ -1508,43 +1494,68 @@ function drawForegroundKural(
   width: number,
   height: number,
   content: KuralPublishingContent,
-  /** Named generically (matches fitTokenSize/tokenFont's own generic
-   *  params); the caller passes the serif fonts here (tamilSerifFont,
-   *  serifFont) per the locked Typography System. */
+  /** The caller passes the serif fonts here (tamilSerifFont, serifFont)
+   *  per the locked Typography System. */
   tamilFont: string,
   sansFont: string,
   logoImage: HTMLImageElement | null
 ): void {
-  const leftX = REGIONS.quietStart * width + width * 0.038;
-  const rightMargin = width * 0.05;
-  const maxTextWidth = width - leftX - rightMargin;
+  // Reference: rules span x 0.532 -> 0.937.
+  const leftX = width * 0.532;
+  const ruleRight = width * 0.937;
+  const maxTextWidth = ruleRight - leftX;
 
-  // One baseline unit -- every gap below is N x this value.
-  const footerToken = TYPOGRAPHY_TOKENS.footer;
-  const footerSize = tokenSize(footerToken, height);
-  const baseline = footerSize * 1.7;
+  // --- Masthead: logo + vertical divider + குறள் [n] -------------------
+  const logoTop = height * 0.214;
+  const logoH = height * 0.077;
+  let afterLogoX = leftX;
 
-  // 1. குறள் [n] -- the sequence's true first element. No logo beside it.
+  if (logoImage) {
+    const naturalW = logoImage.naturalWidth || logoImage.width;
+    const naturalH = logoImage.naturalHeight || logoImage.height;
+    if (naturalW && naturalH) {
+      const scale = logoH / naturalH;
+      const w = naturalW * scale;
+      ctx.drawImage(logoImage, leftX, logoTop, w, logoH);
+      afterLogoX = leftX + w;
+    }
+  }
+
+  // Thin vertical gold divider between logo and the identity label
+  // (reference: x-frac ~0.597, spanning the logo's height).
+  const dividerX = afterLogoX + width * 0.016;
+  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.65);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(dividerX, logoTop + logoH * 0.08);
+  ctx.lineTo(dividerX, logoTop + logoH * 0.92);
+  ctx.stroke();
+
   const metaToken = TYPOGRAPHY_TOKENS.meta;
   const metaSize = tokenSize(metaToken, height);
-  const metaY = height * 0.13;
   ctx.textAlign = metaToken.align;
-  ctx.textBaseline = "alphabetic";
+  ctx.textBaseline = "middle";
   ctx.font = tokenFont(metaToken, metaSize, tamilFont, sansFont);
   applyTokenTracking(ctx, metaToken, metaSize);
   ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.95);
-  ctx.fillText(`குறள் ${content.kuralNumber}`, leftX, metaY);
+  ctx.fillText(`குறள் ${content.kuralNumber}`, dividerX + width * 0.016, logoTop + logoH / 2);
+  ctx.textBaseline = "alphabetic";
 
-  // LONG PAUSE (4 baselines) -- authority through silence, not size.
-  // Recalibrated down from 9 after founder feedback that the block read
-  // as too sparse and hard to see -- the pause/hierarchy principle is
-  // unchanged, the magnitude was simply too generous in practice.
+  // --- Top rule (reference y-frac 0.323, full column width) -------------
+  const topRuleY = height * 0.323;
+  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.6);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(leftX, topRuleY);
+  ctx.lineTo(ruleRight, topRuleY);
+  ctx.stroke();
+
+  // --- Tamil Kural (reference baselines ~0.452 / +1.52 line-height) -----
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const kuralLines = [content.tamilLine1, content.tamilLine2];
   const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, height);
-  const kuralY1 = metaY + baseline * 4;
-  const kuralLineGap = kuralSize * kuralToken.lineHeightRatio;
-  const kuralY2 = kuralY1 + kuralLineGap;
+  const kuralY1 = height * 0.452;
+  const kuralY2 = kuralY1 + kuralSize * kuralToken.lineHeightRatio;
 
   ctx.textAlign = kuralToken.align;
   ctx.font = tokenFont(kuralToken, kuralSize, tamilFont, sansFont);
@@ -1553,14 +1564,21 @@ function drawForegroundKural(
   ctx.fillText(content.tamilLine1, leftX, kuralY1);
   ctx.fillText(content.tamilLine2, leftX, kuralY2);
 
-  // SHORT PAUSE (1.5 baselines) -- English stays grouped with the Kural as
-  // one thought, softer in tone (reduced opacity) so it never competes.
+  // --- Small gold dash accent (reference y-frac 0.585, ~1.6% width) -----
+  const dashY = height * 0.585;
+  ctx.strokeStyle = withAlpha(COLORS.illuminatedGold, 0.9);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(leftX, dashY);
+  ctx.lineTo(leftX + width * 0.016, dashY);
+  ctx.stroke();
+
+  // --- English Reflection, italic (reference baselines 0.64 / 0.681) ----
   const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
   const englishLines = [content.englishLine1, content.englishLine2];
   const engSize = fitTokenSize(ctx, reflectionToken, englishLines, tamilFont, sansFont, maxTextWidth, height);
-  const engY1 = kuralY2 + baseline * 1.5;
-  const engLineGap = engSize * reflectionToken.lineHeightRatio;
-  const engY2 = engY1 + engLineGap;
+  const engY1 = height * 0.64;
+  const engY2 = height * 0.681;
 
   ctx.textAlign = reflectionToken.align;
   ctx.font = tokenFont(reflectionToken, engSize, tamilFont, sansFont);
@@ -1569,47 +1587,32 @@ function drawForegroundKural(
   ctx.fillText(content.englishLine1, leftX, engY1);
   ctx.fillText(content.englishLine2, leftX, engY2);
 
-  // LONG PAUSE (4 baselines) -- the reading is over; what follows is
-  // colophon. Rule length is proportional to the text column itself
-  // (half its measure), not an arbitrary width -- long, but understated,
-  // never spanning the full column.
-  const ruleY = engY2 + baseline * 4;
-  const ruleWidth = maxTextWidth * 0.5;
-  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.4);
-  ctx.lineWidth = 1;
+  // --- Bottom rule (reference y-frac 0.779) ------------------------------
+  const bottomRuleY = height * 0.779;
+  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.6);
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(leftX, ruleY);
-  ctx.lineTo(leftX + ruleWidth, ruleY);
+  ctx.moveTo(leftX, bottomRuleY);
+  ctx.lineTo(ruleRight, bottomRuleY);
   ctx.stroke();
 
-  // Footer (1.5 baselines after the rule) -- tiny, quiet, almost disappears.
-  const footerY = ruleY + baseline * 1.5;
-  const footerText = `${content.series} \u2022 #${content.issue}`;
+  // --- Footer with gold point separator (reference baseline ~0.832) ------
+  const footerToken = TYPOGRAPHY_TOKENS.footer;
+  const footerSize = tokenSize(footerToken, height);
+  const footerY = height * 0.832;
   ctx.textAlign = footerToken.align;
   ctx.font = tokenFont(footerToken, footerSize, tamilFont, sansFont);
   applyTokenTracking(ctx, footerToken, footerSize);
-  ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.85);
-  ctx.fillText(footerText, leftX, footerY);
-
-  // The logo -- a publisher's seal, discovered only after the footer,
-  // never before. Small, quiet, slightly reduced opacity so it never
-  // becomes the focal point.
-  if (logoImage) {
-    const naturalW = logoImage.naturalWidth || logoImage.width;
-    const naturalH = logoImage.naturalHeight || logoImage.height;
-    if (naturalW && naturalH) {
-      const logoMaxH = baseline * 2.6;
-      const logoMaxW = width * 0.045;
-      const scale = Math.min(logoMaxW / naturalW, logoMaxH / naturalH, 1);
-      const w = naturalW * scale;
-      const h = naturalH * scale;
-      const logoY = footerY + baseline * 1.4;
-      ctx.save();
-      ctx.globalAlpha = 0.82;
-      ctx.drawImage(logoImage, leftX, logoY, w, h);
-      ctx.restore();
-    }
-  }
+  ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.95);
+  ctx.fillText(content.series, leftX, footerY);
+  const seriesW = ctx.measureText(content.series).width;
+  const dotX = leftX + seriesW + footerSize * 0.9;
+  ctx.beginPath();
+  ctx.arc(dotX, footerY - footerSize * 0.32, footerSize * 0.14, 0, Math.PI * 2);
+  ctx.fillStyle = withAlpha(COLORS.illuminatedGold, 0.95);
+  ctx.fill();
+  ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.95);
+  ctx.fillText(`#${content.issue}`, dotX + footerSize * 0.9, footerY);
 }
 
 /** Shrinks a token's size (never below its own minSizeRatio floor) until
