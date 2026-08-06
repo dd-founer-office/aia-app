@@ -605,8 +605,8 @@ function drawAmbientField(
 ): void {
   // A finer grid still -- more addressable slots for the micro-mass this
   // pass asks for.
-  const colW = 15;
-  const rowH = 17;
+  const colW = 19;
+  const rowH = 20;
   const cols = Math.ceil(width / colW);
   const rows = Math.ceil(height / rowH);
 
@@ -627,7 +627,7 @@ function drawAmbientField(
         continue;
       }
 
-      const gap = Math.max(2, Math.round(rand.range(1.5, 3.5) * (1.6 - Math.min(1.3, density))));
+      const gap = Math.max(3, Math.round(rand.range(2, 4) * (1.6 - Math.min(1.3, density))));
       c += gap;
       if (c >= cols) break;
 
@@ -635,7 +635,7 @@ function drawAmbientField(
         density > 1.7 ? 11 : density > 1.2 ? 8 : density > 0.7 ? 5 : density > 0.35 ? 3 : 1;
       const clusterLen = rand.int(1, maxClusterLen + 1);
 
-      for (let i = 0; i < clusterLen && c < cols; i++, c += rand.chance(0.4) ? 1 : 2) {
+      for (let i = 0; i < clusterLen && c < cols; i++, c += rand.chance(0.35) ? 2 : 3) {
         const cx = c * colW + colW / 2;
         const cy = r * rowH + rowH / 2;
         const cxFrac = cx / width;
