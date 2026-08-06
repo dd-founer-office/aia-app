@@ -143,8 +143,8 @@ const TYPOGRAPHY_TOKENS = {
     fontFamily: "sans",
     weight: 500,
     italic: false,
-    sizeRatio: 0.74,
-    minSizeRatio: 0.74,
+    sizeRatio: 0.85,
+    minSizeRatio: 0.85,
     lineHeightRatio: 1,
     letterSpacingEm: 0.03,
     align: "left",
@@ -152,10 +152,10 @@ const TYPOGRAPHY_TOKENS = {
   meta: {
     role: "Meta -- குறள் [n] identity label",
     fontFamily: "tamil",
-    weight: 700,
+    weight: 500,
     italic: false,
-    sizeRatio: 1.15,
-    minSizeRatio: 1.15,
+    sizeRatio: 0.95,
+    minSizeRatio: 0.95,
     lineHeightRatio: 1,
     letterSpacingEm: 0.02,
     align: "left",
@@ -165,8 +165,8 @@ const TYPOGRAPHY_TOKENS = {
     fontFamily: "sans",
     weight: 500,
     italic: true,
-    sizeRatio: 0.78,
-    minSizeRatio: 0.7,
+    sizeRatio: 1.05,
+    minSizeRatio: 0.9,
     lineHeightRatio: 1.55,
     letterSpacingEm: 0.02,
     align: "left",
@@ -1248,7 +1248,7 @@ function drawForegroundKural(
   const maxTextWidth = ruleRight - leftX;
 
   // --- Masthead: logo + vertical divider + குறள் [n] -------------------
-  const logoTop = height * 0.214;
+  const logoTop = height * 0.1;
   const logoH = height * 0.077;
   let afterLogoX = leftX;
 
@@ -1283,8 +1283,8 @@ function drawForegroundKural(
   ctx.fillText(`குறள் ${content.kuralNumber}`, dividerX + width * 0.016, logoTop + logoH / 2);
   ctx.textBaseline = "alphabetic";
 
-  // --- Top rule (reference y-frac 0.323, full column width) -------------
-  const topRuleY = height * 0.323;
+  // --- Top rule (tightened for thumbnail legibility -- see below) -------
+  const topRuleY = height * 0.235;
   ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.6);
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -1292,11 +1292,11 @@ function drawForegroundKural(
   ctx.lineTo(ruleRight, topRuleY);
   ctx.stroke();
 
-  // --- Tamil Kural (reference baselines ~0.452 / +1.52 line-height) -----
+  // --- Tamil Kural (primary voice, unchanged size/weight) --------------
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const kuralLines = [content.tamilLine1, content.tamilLine2];
   const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, height);
-  const kuralY1 = height * 0.452;
+  const kuralY1 = height * 0.36;
   const kuralY2 = kuralY1 + kuralSize * kuralToken.lineHeightRatio;
 
   ctx.textAlign = kuralToken.align;
@@ -1306,8 +1306,8 @@ function drawForegroundKural(
   ctx.fillText(content.tamilLine1, leftX, kuralY1);
   ctx.fillText(content.tamilLine2, leftX, kuralY2);
 
-  // --- Small gold dash accent (reference y-frac 0.585, ~1.6% width) -----
-  const dashY = height * 0.585;
+  // --- Small gold dash accent, positioned relative to the Kural's own end
+  const dashY = kuralY2 + height * 0.025;
   ctx.strokeStyle = withAlpha(COLORS.illuminatedGold, 0.9);
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -1315,12 +1315,14 @@ function drawForegroundKural(
   ctx.lineTo(leftX + width * 0.016, dashY);
   ctx.stroke();
 
-  // --- English Reflection, italic (reference baselines 0.64 / 0.681) ----
+  // --- English Reflection, italic (sizeRatio boosted 0.78->1.05 so it
+  // survives being scaled down -- e.g. a LinkedIn newsletter thumbnail --
+  // not just full-resolution viewing) ------------------------------------
   const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
   const englishLines = [content.englishLine1, content.englishLine2];
   const engSize = fitTokenSize(ctx, reflectionToken, englishLines, tamilFont, sansFont, maxTextWidth, height);
-  const engY1 = height * 0.64;
-  const engY2 = height * 0.681;
+  const engY1 = dashY + height * 0.045;
+  const engY2 = engY1 + engSize * reflectionToken.lineHeightRatio;
 
   ctx.textAlign = reflectionToken.align;
   ctx.font = tokenFont(reflectionToken, engSize, tamilFont, sansFont);
@@ -1329,8 +1331,8 @@ function drawForegroundKural(
   ctx.fillText(content.englishLine1, leftX, engY1);
   ctx.fillText(content.englishLine2, leftX, engY2);
 
-  // --- Bottom rule (reference y-frac 0.779) ------------------------------
-  const bottomRuleY = height * 0.779;
+  // --- Bottom rule, positioned relative to where English actually ends --
+  const bottomRuleY = engY2 + height * 0.06;
   ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.6);
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -1338,10 +1340,10 @@ function drawForegroundKural(
   ctx.lineTo(ruleRight, bottomRuleY);
   ctx.stroke();
 
-  // --- Footer with gold point separator (reference baseline ~0.832) ------
+  // --- Footer with gold point separator (sizeRatio boosted 0.74->0.85) --
   const footerToken = TYPOGRAPHY_TOKENS.footer;
   const footerSize = tokenSize(footerToken, height);
-  const footerY = height * 0.832;
+  const footerY = bottomRuleY + height * 0.045;
   ctx.textAlign = footerToken.align;
   ctx.font = tokenFont(footerToken, footerSize, tamilFont, sansFont);
   applyTokenTracking(ctx, footerToken, footerSize);
