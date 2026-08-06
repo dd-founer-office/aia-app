@@ -74,23 +74,28 @@ export interface FormationPath {
   toId: string;
 }
 
-/** Reference-match pass: f-chol and f-payan's x positions moved left
- *  (0.565 -> 0.49, 0.605 -> 0.455) -- an explicit, founder-authorized
- *  exception to this file's otherwise-strict freeze. Both had drifted
- *  inside the editorial column (>= 0.532) once that column was
- *  reference-matched to a different x-position than earlier passes
- *  assumed; a renderer-only opacity fade was tried first as a safer
- *  option, but the founder asked for the actual relocation instead.
- *  Emphasis tiers, glyph identities, and every FORMATION_PATHS edge are
- *  unchanged -- only where these two nodes sit in space moved. c-l, c-ch,
- *  c-o, f-cho are untouched (already clear of the column). */
+/** Two explicit, founder-authorized exceptions to this file's otherwise-
+ *  strict freeze:
+ *
+ *  1. Reference-match pass: f-chol and f-payan's x positions moved left
+ *     (0.565 -> 0.49, 0.605 -> 0.455). Both had drifted inside the
+ *     editorial column once that column was reference-matched to a
+ *     different x-position than earlier passes assumed.
+ *
+ *  2. Field-rebalance pass (this one): ALL SIX nodes' x-positions rescaled
+ *     down by a factor of 0.54 (old max x=0.5 -> new max x=0.27), because
+ *     the Living Language field itself shrank from ~53% to 30% of the
+ *     canvas width -- "adjust the words formed accordingly," per explicit
+ *     direction. y-positions, emphasis tiers, glyph identities, and every
+ *     FORMATION_PATHS edge are unchanged in both passes -- only where
+ *     nodes sit in x moved, proportionally, to stay inside the field. */
 export const FORMATION_NODES: readonly FormationNode[] = [
-  { id: "c-ch", glyph: "ச்", x: 0.3, y: 0.34, emphasis: "component" },
-  { id: "c-o", glyph: "ஒ", x: 0.315, y: 0.63, emphasis: "component" },
-  { id: "c-l", glyph: "ல்", x: 0.5, y: 0.605, emphasis: "component" },
-  { id: "f-cho", glyph: "சொ", x: 0.445, y: 0.49, emphasis: "formed" },
-  { id: "f-chol", glyph: "சொல்", x: 0.49, y: 0.4, emphasis: "emerging" },
-  { id: "f-payan", glyph: "பயன்", x: 0.455, y: 0.565, emphasis: "selected" },
+  { id: "c-ch", glyph: "ச்", x: 0.162, y: 0.34, emphasis: "component" },
+  { id: "c-o", glyph: "ஒ", x: 0.17, y: 0.63, emphasis: "component" },
+  { id: "c-l", glyph: "ல்", x: 0.27, y: 0.605, emphasis: "component" },
+  { id: "f-cho", glyph: "சொ", x: 0.24, y: 0.49, emphasis: "formed" },
+  { id: "f-chol", glyph: "சொல்", x: 0.265, y: 0.4, emphasis: "emerging" },
+  { id: "f-payan", glyph: "பயன்", x: 0.246, y: 0.565, emphasis: "selected" },
 ];
 
 export const FORMATION_PATHS: readonly FormationPath[] = [
@@ -107,11 +112,20 @@ export const FORMATION_PATHS: readonly FormationPath[] = [
  *                              the root-filament texture live here.
  *   transitionEnd (= quietStart) -> edge: structural silence -- zero
  *                              ambient glyphs, ever. Not a low-opacity
- *                              approximation of quiet; an actual absence. */
+ *                              approximation of quiet; an actual absence.
+ *
+ *  Rescaled from the original 0.46/0.63/0.63 (the field used to occupy
+ *  ~53-63% of the canvas) to fit inside a 30% field width, per explicit
+ *  founder direction: "30% is living language space, 70% the text space,"
+ *  with the field's dense->quiet story rescaled to still fully complete
+ *  within that narrower space rather than being cut off abruptly. Scale
+ *  factor 0.476 applied uniformly (0.30 / the old 0.63 quietStart) so the
+ *  internal proportions of the story (how much is "dense," how much is
+ *  "transition") are unchanged -- only the space it plays out in shrank. */
 export const REGIONS = {
-  denseEnd: 0.46,
-  transitionEnd: 0.63,
-  quietStart: 0.63,
+  denseEnd: 0.219,
+  transitionEnd: 0.3,
+  quietStart: 0.3,
 } as const;
 
 /** Derives the deterministic layout seed from the Kural number, per the

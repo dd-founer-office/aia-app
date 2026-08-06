@@ -221,26 +221,38 @@ function applyTokenTracking(ctx: CanvasRenderingContext2D, token: TypographyToke
  *  explicit direction to bring the full Living Field script system into
  *  this tool (previously deliberately modern-Tamil-only -- see the one-day
  *  MVP's original commit -- but never revisited against what the Kernel
- *  itself already does elsewhere). Combined into one flat pool of
- *  individual glyphs, each tagged with which script it came from --
- *  proportions fall out naturally from each set's real size (247 : 24 : 21),
- *  the same principle the original ambient-letter-field exploration used
- *  (one shuffled deck of all 292, not three separately-weighted pools).
- *  This pool is read ONLY for pure ambient draws; Kural-derived material
- *  (the "more prominent = must relate to real content" rule) stays Modern
- *  Tamil exclusively, since Tamil-Brahmi/Vatteluttu forms cannot truthfully
- *  represent substrings of a Modern Tamil verse. */
+ *  itself already does elsewhere). This pool is read ONLY for pure
+ *  ambient draws; Kural-derived material (the "more prominent = must
+ *  relate to real content" rule) stays Modern Tamil exclusively, since
+ *  Tamil-Brahmi/Vatteluttu forms cannot truthfully represent substrings
+ *  of a Modern Tamil verse.
+ *
+ *  Modern Tamil is split into two sub-pools rather than one flat 247, to
+ *  support the field's compositional narrative (see the complexity-wave
+ *  comment in drawAmbientGlyph): buildModernTamil247() constructs the set
+ *  in a fixed, known order -- 12 vowels, then 18 pulli consonants, then
+ *  216 consonant+vowel-sign (uyirmei) compounds, then ஃ -- so the split
+ *  is a plain slice, not a re-derivation. */
 type AmbientScript = "modern" | "brahmi" | "vatteluttu";
 interface AmbientGlyph {
   glyph: Glyph;
   script: AmbientScript;
 }
 
-const AMBIENT_GLYPH_POOL: readonly AmbientGlyph[] = [
-  ...MODERN_TAMIL.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "modern" })),
+const MODERN_SIMPLE: readonly Glyph[] = [
+  ...MODERN_TAMIL.glyphs.slice(0, 30), // 12 vowels + 18 pulli consonants
+  MODERN_TAMIL.glyphs[246], // ஃ (aytham)
+];
+const MODERN_COMPOUND: readonly Glyph[] = MODERN_TAMIL.glyphs.slice(30, 246); // 216 uyirmei compounds
+
+const HISTORICAL_POOL: readonly AmbientGlyph[] = [
   ...TAMIL_BRAHMI.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "brahmi" })),
   ...VATTELUTTU.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "vatteluttu" })),
 ];
+// Preserves the same overall historical-script share as before (45 of the
+// original 292-glyph combined pool), even though selection is no longer
+// one flat pick across all scripts.
+const HISTORICAL_SHARE = HISTORICAL_POOL.length / (MODERN_TAMIL.glyphs.length + HISTORICAL_POOL.length);
 
 export interface RenderKuralPublishingOptions {
   width: number;
@@ -479,7 +491,12 @@ function drawParchmentTexture(
  *  eventual population placement in drawAmbientField a true continuous
  *  fade rather than a boundary -- "fog disappearing into air," not a wall. */
 function baseFalloff(xFrac: number): number {
-  const k = 7.4;
+  // Rescaled from 7.4 -- the field's usable width shrank from ~63% to 30%
+  // of the canvas (see REGIONS in kural200-state.ts), so the decay had to
+  // steepen proportionally for the SAME dense-to-quiet story to still
+  // complete by the new boundary rather than reading as "cut off abruptly
+  // while still fairly dense," which was explicitly not what was wanted.
+  const k = 15.5;
   return Math.exp(-k * xFrac);
 }
 
@@ -775,8 +792,29 @@ function drawAmbientGlyph(
   let ambient: AmbientGlyph;
   if (useKuralMaterial) {
     ambient = { glyph: { kind: "text", value: rand.pick(kuralSyllables) }, script: "modern" };
+  } else if (rand.chance(HISTORICAL_SHARE)) {
+    ambient = rand.pick(HISTORICAL_POOL);
   } else {
-    ambient = rand.pick(AMBIENT_GLYPH_POOL);
+    // COMPLEXITY WAVE -- the field's own compositional narrative, per
+    // explicit founder direction: "lots and lots of dense words [at the
+    // edge], then individual letters show up, then it becomes uyirmei
+    // letters, then it becomes words, then the words form the Kural."
+    // fieldFrac 0->0.4: dense uyirmei compounds thinning into bare simple
+    // letters (vowels, pulli consonants) -- "dense words" giving way to
+    // "individual letters." fieldFrac 0.4->1: simple letters recombining
+    // back into uyirmei compounds as the field nears the text column --
+    // "becomes uyirmei letters again." What happens after that (kuralBias
+    // above, already existing) carries the story the rest of the way:
+    // real Kural-derived syllables, then the Kural itself in the
+    // editorial column -- "then words, then the words form the Kural."
+    const fieldFrac = Math.min(1, xFrac / REGIONS.quietStart);
+    const compoundBias =
+      fieldFrac < 0.4
+        ? 1 - (fieldFrac / 0.4) * 0.85
+        : 0.15 + ((fieldFrac - 0.4) / 0.6) * 0.7;
+    ambient = rand.chance(compoundBias)
+      ? { glyph: rand.pick(MODERN_COMPOUND), script: "modern" }
+      : { glyph: rand.pick(MODERN_SIMPLE), script: "modern" };
   }
 
   // Optical Calibration Version C, revised for the starfield model:
@@ -1046,12 +1084,14 @@ const EMPHASIS_STYLE = {
   selected: { minSize: 25, maxSize: 30, minOpacity: 0.58, maxOpacity: 0.72, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
 } as const;
 
-/** The editorial column's left edge (reference-measured, matches
- *  drawForegroundKural's leftX). Formation nodes whose FROZEN positions
- *  fall at/after this line are faded to near-subconscious so they never
- *  compete with the editorial text -- founder-approved option (b):
- *  rendering-only fade, engine node positions untouched. */
-const EDITORIAL_LEFT_FRAC = 0.532;
+/** The field/editorial boundary. Rescaled from 0.532 to 0.3, matching
+ *  REGIONS.quietStart in kural200-state.ts -- "30% is living language
+ *  space, 70% the text space." Formation nodes whose positions fall
+ *  at/after this line (there shouldn't be any now that all six were
+ *  rescaled into the narrower field, but this stays as a general
+ *  safeguard) are faded to near-subconscious so they never compete with
+ *  the editorial text. */
+const EDITORIAL_LEFT_FRAC = 0.3;
 const EDITORIAL_NODE_FADE = 0.14;
 
 function drawFormationNode(
@@ -1199,8 +1239,11 @@ function drawForegroundKural(
   sansFont: string,
   logoImage: HTMLImageElement | null
 ): void {
-  // Reference: rules span x 0.532 -> 0.937.
-  const leftX = width * 0.532;
+  // Field/text split rebalanced: field occupies 0-30%, text starts at 32%
+  // (a small buffer past the field's own boundary) -- "30% is living
+  // language space, 70% the text space." Right edge (0.937) unchanged;
+  // the column is simply much wider now, which is the intended effect.
+  const leftX = width * 0.32;
   const ruleRight = width * 0.937;
   const maxTextWidth = ruleRight - leftX;
 
