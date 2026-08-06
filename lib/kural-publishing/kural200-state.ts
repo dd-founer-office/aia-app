@@ -74,28 +74,28 @@ export interface FormationPath {
   toId: string;
 }
 
-/** Two explicit, founder-authorized exceptions to this file's otherwise-
+/** Three explicit, founder-authorized exceptions to this file's otherwise-
  *  strict freeze:
  *
- *  1. Reference-match pass: f-chol and f-payan's x positions moved left
- *     (0.565 -> 0.49, 0.605 -> 0.455). Both had drifted inside the
- *     editorial column once that column was reference-matched to a
- *     different x-position than earlier passes assumed.
+ *  1. Reference-match pass: f-chol and f-payan's x positions moved left.
  *
- *  2. Field-rebalance pass (this one): ALL SIX nodes' x-positions rescaled
- *     down by a factor of 0.54 (old max x=0.5 -> new max x=0.27), because
- *     the Living Language field itself shrank from ~53% to 30% of the
- *     canvas width -- "adjust the words formed accordingly," per explicit
- *     direction. y-positions, emphasis tiers, glyph identities, and every
- *     FORMATION_PATHS edge are unchanged in both passes -- only where
- *     nodes sit in x moved, proportionally, to stay inside the field. */
+ *  2. Field-rebalance pass: all six nodes rescaled into a 30%-wide field.
+ *
+ *  3. Gold Master Sprint 02 (this one): rescaled again as the field
+ *     expanded back out to span the full canvas, positioned to sit in the
+ *     dense-fragments zone (x < ~0.4) before the Kural resolves around
+ *     x=0.45 -- ச்/ஒ/ல்/சொ/சொல்/பயன் are themselves fragments that
+ *     almost-complete, part of the same "language struggling to survive"
+ *     story, not a separate system. y-positions, emphasis tiers, glyph
+ *     identities, and every FORMATION_PATHS edge are unchanged across all
+ *     three passes -- only x has ever moved, proportionally. */
 export const FORMATION_NODES: readonly FormationNode[] = [
-  { id: "c-ch", glyph: "ச்", x: 0.162, y: 0.34, emphasis: "component" },
-  { id: "c-o", glyph: "ஒ", x: 0.17, y: 0.63, emphasis: "component" },
-  { id: "c-l", glyph: "ல்", x: 0.27, y: 0.605, emphasis: "component" },
-  { id: "f-cho", glyph: "சொ", x: 0.24, y: 0.49, emphasis: "formed" },
-  { id: "f-chol", glyph: "சொல்", x: 0.265, y: 0.4, emphasis: "emerging" },
-  { id: "f-payan", glyph: "பயன்", x: 0.246, y: 0.565, emphasis: "selected" },
+  { id: "c-ch", glyph: "ச்", x: 0.228, y: 0.34, emphasis: "component" },
+  { id: "c-o", glyph: "ஒ", x: 0.239, y: 0.63, emphasis: "component" },
+  { id: "c-l", glyph: "ல்", x: 0.38, y: 0.605, emphasis: "component" },
+  { id: "f-cho", glyph: "சொ", x: 0.338, y: 0.49, emphasis: "formed" },
+  { id: "f-chol", glyph: "சொல்", x: 0.373, y: 0.4, emphasis: "emerging" },
+  { id: "f-payan", glyph: "பயன்", x: 0.346, y: 0.565, emphasis: "selected" },
 ];
 
 export const FORMATION_PATHS: readonly FormationPath[] = [
@@ -110,22 +110,22 @@ export const FORMATION_PATHS: readonly FormationPath[] = [
  *   denseEnd -> transitionEnd: connection -> formation -> selection --
  *                              density genuinely falls, Formation Paths and
  *                              the root-filament texture live here.
- *   transitionEnd (= quietStart) -> edge: structural silence -- zero
- *                              ambient glyphs, ever. Not a low-opacity
- *                              approximation of quiet; an actual absence.
+ *   transitionEnd (= quietStart) -> edge: near-silence, not silence.
  *
- *  Rescaled from the original 0.46/0.63/0.63 (the field used to occupy
- *  ~53-63% of the canvas) to fit inside a 30% field width, per explicit
- *  founder direction: "30% is living language space, 70% the text space,"
- *  with the field's dense->quiet story rescaled to still fully complete
- *  within that narrower space rather than being cut off abruptly. Scale
- *  factor 0.476 applied uniformly (0.30 / the old 0.63 quietStart) so the
- *  internal proportions of the story (how much is "dense," how much is
- *  "transition") are unchanged -- only the space it plays out in shrank. */
+ *  GOLD MASTER SPRINT 02: there is no longer a "field zone" separate from
+ *  a "text zone." The field IS the canvas -- language dissolving across
+ *  the ENTIRE width, continuing (very faintly, never at exactly zero)
+ *  even behind and past the Kural itself. quietStart no longer means
+ *  "structural silence, zero glyphs ever" -- baseFalloff() in the
+ *  renderer is a pure continuous decay with no hard floor built in
+ *  anywhere in this file anymore. These three numbers now only govern
+ *  the SHAPE of the resolution curve (macro cluster reach, how quickly
+ *  large/prominent forms suppress, how quickly Kural-material bias ramps
+ *  in) -- not a boundary anything gets clipped at. */
 export const REGIONS = {
-  denseEnd: 0.219,
-  transitionEnd: 0.3,
-  quietStart: 0.3,
+  denseEnd: 0.28,
+  transitionEnd: 0.97,
+  quietStart: 0.97,
 } as const;
 
 /** Derives the deterministic layout seed from the Kural number, per the

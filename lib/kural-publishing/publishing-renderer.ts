@@ -491,12 +491,12 @@ function drawParchmentTexture(
  *  eventual population placement in drawAmbientField a true continuous
  *  fade rather than a boundary -- "fog disappearing into air," not a wall. */
 function baseFalloff(xFrac: number): number {
-  // Rescaled from 7.4 -- the field's usable width shrank from ~63% to 30%
-  // of the canvas (see REGIONS in kural200-state.ts), so the decay had to
-  // steepen proportionally for the SAME dense-to-quiet story to still
-  // complete by the new boundary rather than reading as "cut off abruptly
-  // while still fairly dense," which was explicitly not what was wanted.
-  const k = 15.5;
+  // GOLD MASTER SPRINT 02: the field is the whole canvas now, not a 30%
+  // strip. Retuned so density is still meaningfully present (a few
+  // percent of max) right where the Kural resolves (~x=0.45), and never
+  // reaches a hard zero even at the far edge -- "the field continues,
+  // still present, still dissolving, never abruptly ending."
+  const k = 6.0;
   return Math.exp(-k * xFrac);
 }
 
@@ -635,11 +635,14 @@ function drawAmbientField(
       const xFrac = (c * colW) / width;
       const yFrac = (r * rowH) / height;
       const density = densityAt(xFrac, yFrac, macro, pockets);
-      // A genuine "almost subconscious" threshold, not a boundary -- this
-      // only skips slots too faint to matter, it does not stop the field.
-      // Density keeps decaying continuously past this point; it just
-      // rarely clears the bar for actually placing a mark.
-      if (density <= 0.004) {
+      // GOLD MASTER SPRINT 02: lowered from 0.004 to genuinely let the
+      // far edge of a full-canvas field still occasionally place a mark,
+      // not just skip forever -- "still present, still dissolving, never
+      // abruptly ending" has to be true all the way to x=1, not just
+      // true in theory. This is still a skip for slots too faint to
+      // matter at all, not a boundary -- density keeps decaying
+      // continuously past this point regardless.
+      if (density <= 0.0006) {
         c += 6;
         continue;
       }
@@ -652,13 +655,13 @@ function drawAmbientField(
         density > 1.7 ? 11 : density > 1.2 ? 8 : density > 0.7 ? 5 : density > 0.35 ? 3 : 1;
       const clusterLen = rand.int(1, maxClusterLen + 1);
 
-      for (let i = 0; i < clusterLen && c < cols; i++, c += rand.chance(0.35) ? 2 : 3) {
+      for (let i = 0; i < clusterLen && c < cols; i++, c += density > 1.5 ? (rand.chance(0.5) ? 1 : 2) : rand.chance(0.35) ? 2 : 3) {
         const cx = c * colW + colW / 2;
         const cy = r * rowH + rowH / 2;
         const cxFrac = cx / width;
         const cyFrac = cy / height;
         const d = densityAt(cxFrac, cyFrac, macro, pockets);
-        if (d <= 0.004) continue;
+        if (d <= 0.0006) continue;
         // Regions that breathe -- not every slot fires even inside a dense
         // pocket. Far to the right this naturally makes placement rare
         // without ever forbidding it outright.
@@ -1197,35 +1200,19 @@ function drawDebugFormationOverlay(
   ctx.restore();
 }
 
-// ---------------------------------------------------------------------------
-// Foreground editorial block -- Final MVP pass. A deliberate vertical
-// hierarchy (logo -> குறள் 200 identity line -> Tamil Kural -> English
-// thought -> metadata), all left-aligned to the same edge. Kural display
-// rule (left-aligned, never centered) and the safety-floor sizing are
-// unchanged from earlier passes; this pass increases scale/presence and
-// adds the identity line per the founder's final art direction.
-// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Foreground editorial block -- Art Direction Pass 01B. குறள் 200 identity
-// line -> Tamil Kural (Kural Ink) -> English thought -> metadata, left-
-// aligned to one edge on Warm Parchment. The logo sits separately in the
-// upper-right identity region (drawLogoSlot, below) per this pass's
-// explicit direction, not stacked into this left-aligned column.
-// Restrained bronze/gold editorial ornament (the divider, the metadata
-// separators) is what visually ties this block back to the logo's world.
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Foreground editorial block -- REFERENCE-MATCHED composition. Every
-// position below is a measured fraction from the founder-approved target
-// image (1672x941, essentially our aspect), sampled programmatically, not
-// eyeballed: masthead (logo + vertical gold divider + குறள் [n]) at the
-// top, full-width rule, large two-line Kural, small gold dash accent,
-// italic English reflection, closing rule, footer with a gold point
-// separator. Content text is always our real verified content -- the
-// reference's own (AI-garbled) text was never copied, only its
-// composition, sizes, and placements.
+// GOLD MASTER SPRINT 02 -- the Kural does not sit in an editorial column
+// beside the field. It sits INSIDE the same field everything else is
+// dissolving in, and is the one thing in it that resolved. No masthead,
+// no rules, no divider, no boxed column -- "the moment you draw a line to
+// separate language from text, you've rebuilt the exact wall this idea
+// exists to dissolve." குறள் [n] is the smallest fragment that also
+// happened to survive, sitting close enough to read as part of the same
+// small miracle, not a caption introducing it. English is a whisper
+// written in the margin after reading the sentence. The logo is
+// discovered last, alone, small, near the close of the page -- never
+// paired with anything, never announced.
 // ---------------------------------------------------------------------------
 
 function drawForegroundKural(
@@ -1239,64 +1226,30 @@ function drawForegroundKural(
   sansFont: string,
   logoImage: HTMLImageElement | null
 ): void {
-  // Field/text split rebalanced: field occupies 0-30%, text starts at 32%
-  // (a small buffer past the field's own boundary) -- "30% is living
-  // language space, 70% the text space." Right edge (0.937) unchanged;
-  // the column is simply much wider now, which is the intended effect.
-  const leftX = width * 0.32;
-  const ruleRight = width * 0.937;
-  const maxTextWidth = ruleRight - leftX;
+  // The Kural resolves inside the field, not after a boundary the field
+  // stops at -- left-aligned per the locked Kural display rule, but its
+  // left edge is a resolution point in the field, not a column edge.
+  const leftX = width * 0.45;
+  const maxTextWidth = width - leftX - width * 0.04;
 
-  // --- Masthead: logo + vertical divider + குறள் [n] -------------------
-  const logoTop = height * 0.1;
-  const logoH = height * 0.1155; // 50% bigger, per explicit direction
-  let afterLogoX = leftX;
-
-  if (logoImage) {
-    const naturalW = logoImage.naturalWidth || logoImage.width;
-    const naturalH = logoImage.naturalHeight || logoImage.height;
-    if (naturalW && naturalH) {
-      const scale = logoH / naturalH;
-      const w = naturalW * scale;
-      ctx.drawImage(logoImage, leftX, logoTop, w, logoH);
-      afterLogoX = leftX + w;
-    }
-  }
-
-  // Thin vertical gold divider between logo and the identity label
-  // (reference: x-frac ~0.597, spanning the logo's height).
-  const dividerX = afterLogoX + width * 0.016;
-  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.65);
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(dividerX, logoTop + logoH * 0.08);
-  ctx.lineTo(dividerX, logoTop + logoH * 0.92);
-  ctx.stroke();
-
+  // குறள் [n] -- the smallest fragment that also survived, sitting just
+  // above the Kural as part of the same small miracle, not a masthead.
   const metaToken = TYPOGRAPHY_TOKENS.meta;
   const metaSize = tokenSize(metaToken, height);
+  const metaY = height * 0.375;
   ctx.textAlign = metaToken.align;
-  ctx.textBaseline = "middle";
+  ctx.textBaseline = "alphabetic";
   ctx.font = tokenFont(metaToken, metaSize, tamilFont, sansFont);
   applyTokenTracking(ctx, metaToken, metaSize);
-  ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.95);
-  ctx.fillText(`குறள் ${content.kuralNumber}`, dividerX + width * 0.016, logoTop + logoH / 2);
-  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.85);
+  ctx.fillText(`குறள் ${content.kuralNumber}`, leftX, metaY);
 
-  // --- Top rule (tightened for thumbnail legibility -- see below) -------
-  const topRuleY = height * 0.235;
-  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.6);
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(leftX, topRuleY);
-  ctx.lineTo(ruleRight, topRuleY);
-  ctx.stroke();
-
-  // --- Tamil Kural (primary voice, unchanged size/weight) --------------
+  // The Kural -- the one complete sentence. Unchanged size, weight, and
+  // ink from every prior pass; only where it sits in the page changed.
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const kuralLines = [content.tamilLine1, content.tamilLine2];
   const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, height);
-  const kuralY1 = height * 0.36;
+  const kuralY1 = height * 0.44;
   const kuralY2 = kuralY1 + kuralSize * kuralToken.lineHeightRatio;
 
   ctx.textAlign = kuralToken.align;
@@ -1306,57 +1259,50 @@ function drawForegroundKural(
   ctx.fillText(content.tamilLine1, leftX, kuralY1);
   ctx.fillText(content.tamilLine2, leftX, kuralY2);
 
-  // --- Small gold dash accent, positioned relative to the Kural's own end
-  const dashY = kuralY2 + height * 0.025;
-  ctx.strokeStyle = withAlpha(COLORS.illuminatedGold, 0.9);
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(leftX, dashY);
-  ctx.lineTo(leftX + width * 0.016, dashY);
-  ctx.stroke();
-
-  // --- English Reflection, italic (sizeRatio boosted 0.78->1.05 so it
-  // survives being scaled down -- e.g. a LinkedIn newsletter thumbnail --
-  // not just full-resolution viewing) ------------------------------------
+  // English -- a whisper written in the margin after reading the
+  // sentence, not a second voice competing for the eye. Close beneath,
+  // not a formally separated row.
   const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
   const englishLines = [content.englishLine1, content.englishLine2];
   const engSize = fitTokenSize(ctx, reflectionToken, englishLines, tamilFont, sansFont, maxTextWidth, height);
-  const engY1 = dashY + height * 0.045;
+  const engY1 = kuralY2 + height * 0.055;
   const engY2 = engY1 + engSize * reflectionToken.lineHeightRatio;
 
   ctx.textAlign = reflectionToken.align;
   ctx.font = tokenFont(reflectionToken, engSize, tamilFont, sansFont);
   applyTokenTracking(ctx, reflectionToken, engSize);
-  ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.78);
+  ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.62);
   ctx.fillText(content.englishLine1, leftX, engY1);
   ctx.fillText(content.englishLine2, leftX, engY2);
 
-  // --- Bottom rule, positioned relative to where English actually ends --
-  const bottomRuleY = engY2 + height * 0.06;
-  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, 0.6);
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(leftX, bottomRuleY);
-  ctx.lineTo(ruleRight, bottomRuleY);
-  ctx.stroke();
-
-  // --- Footer with gold point separator (sizeRatio boosted 0.74->0.85) --
+  // Footer -- present, but unimportant. The smallest thing near the
+  // Kural's close, no separator, no ornament.
   const footerToken = TYPOGRAPHY_TOKENS.footer;
   const footerSize = tokenSize(footerToken, height);
-  const footerY = bottomRuleY + height * 0.045;
+  const footerY = engY2 + height * 0.06;
   ctx.textAlign = footerToken.align;
   ctx.font = tokenFont(footerToken, footerSize, tamilFont, sansFont);
   applyTokenTracking(ctx, footerToken, footerSize);
-  ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.95);
-  ctx.fillText(content.series, leftX, footerY);
-  const seriesW = ctx.measureText(content.series).width;
-  const dotX = leftX + seriesW + footerSize * 0.9;
-  ctx.beginPath();
-  ctx.arc(dotX, footerY - footerSize * 0.32, footerSize * 0.14, 0, Math.PI * 2);
-  ctx.fillStyle = withAlpha(COLORS.illuminatedGold, 0.95);
-  ctx.fill();
-  ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.95);
-  ctx.fillText(`#${content.issue}`, dotX + footerSize * 0.9, footerY);
+  ctx.fillStyle = withAlpha(COLORS.mutedEarth, 0.85);
+  ctx.fillText(`${content.series} \u2022 #${content.issue}`, leftX, footerY);
+
+  // The logo -- discovered last, alone, small, near the close of the
+  // page. Never paired with anything, never at the top, never announced.
+  if (logoImage) {
+    const naturalW = logoImage.naturalWidth || logoImage.width;
+    const naturalH = logoImage.naturalHeight || logoImage.height;
+    if (naturalW && naturalH) {
+      const logoH = height * 0.05;
+      const scale = logoH / naturalH;
+      const w = naturalW * scale;
+      const logoX = leftX;
+      const logoY = footerY + height * 0.05;
+      ctx.save();
+      ctx.globalAlpha = 0.8;
+      ctx.drawImage(logoImage, logoX, logoY, w, logoH);
+      ctx.restore();
+    }
+  }
 }
 
 /** Shrinks a token's size (never below its own minSizeRatio floor) until
