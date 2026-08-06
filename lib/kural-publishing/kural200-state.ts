@@ -74,13 +74,23 @@ export interface FormationPath {
   toId: string;
 }
 
+/** Reference-match pass: f-chol and f-payan's x positions moved left
+ *  (0.565 -> 0.49, 0.605 -> 0.455) -- an explicit, founder-authorized
+ *  exception to this file's otherwise-strict freeze. Both had drifted
+ *  inside the editorial column (>= 0.532) once that column was
+ *  reference-matched to a different x-position than earlier passes
+ *  assumed; a renderer-only opacity fade was tried first as a safer
+ *  option, but the founder asked for the actual relocation instead.
+ *  Emphasis tiers, glyph identities, and every FORMATION_PATHS edge are
+ *  unchanged -- only where these two nodes sit in space moved. c-l, c-ch,
+ *  c-o, f-cho are untouched (already clear of the column). */
 export const FORMATION_NODES: readonly FormationNode[] = [
   { id: "c-ch", glyph: "ச்", x: 0.3, y: 0.34, emphasis: "component" },
   { id: "c-o", glyph: "ஒ", x: 0.315, y: 0.63, emphasis: "component" },
   { id: "c-l", glyph: "ல்", x: 0.5, y: 0.605, emphasis: "component" },
   { id: "f-cho", glyph: "சொ", x: 0.445, y: 0.49, emphasis: "formed" },
-  { id: "f-chol", glyph: "சொல்", x: 0.565, y: 0.43, emphasis: "emerging" },
-  { id: "f-payan", glyph: "பயன்", x: 0.605, y: 0.6, emphasis: "selected" },
+  { id: "f-chol", glyph: "சொல்", x: 0.49, y: 0.4, emphasis: "emerging" },
+  { id: "f-payan", glyph: "பயன்", x: 0.455, y: 0.565, emphasis: "selected" },
 ];
 
 export const FORMATION_PATHS: readonly FormationPath[] = [
