@@ -222,7 +222,8 @@ function applyTokenTracking(ctx: CanvasRenderingContext2D, token: TypographyToke
  *  this tool (previously deliberately modern-Tamil-only -- see the one-day
  *  MVP's original commit -- but never revisited against what the Kernel
  *  itself already does elsewhere). MILESTONE 01 reads from these pools
- *  according to the explicit six-zone system (see MILESTONE_ZONES /
+ *  according to the explicit five-state Formation Grammar system
+ *  (see MILESTONE_ZONES /
  *  pickMilestoneZone) rather than a continuous wave. */
 type AmbientScript = "modern" | "brahmi" | "vatteluttu";
 interface AmbientGlyph {
@@ -630,7 +631,7 @@ function densityAt(
   return Math.max(0, Math.min(2.6, base * bump * pocket * clearing * kuralClearing));
 }
 
-/** MILESTONE 01 -- Living Language Evolution. Six zones, left to right,
+/** MILESTONE 01/2 -- Living Language Evolution / Formation Grammar. Zones, left to right,
  *  each a real linguistic stage: random Tamil-Brahmi, random Vatteluttu,
  *  random Modern Tamil, then narrowing to what THIS Kural actually needs
  *  -- its exact மெய்/உயிர் letters, then its exact உயிர்மெய் compounds,
@@ -668,17 +669,27 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
   return { exactLetters, exactCompounds, words };
 }
 
-/** Six zones, boundaries as fractions of canvas width. Blending happens in
- *  the last 35% of each zone's span, per the standing "no visible
- *  boundary" principle -- probability crossfades into the next zone's
- *  pool rather than a hard cut. */
+/** GOLD MASTER MILESTONE 2 -- Formation Grammar. Five explicit states,
+ *  restructured from Milestone 1's six sequential zones per the founder's
+ *  new grouping: State 1 (Ancient Memory) mixes Tamil-Brahmi, Vatteluttu,
+ *  and Modern Tamil TOGETHER in the same region, rather than as three
+ *  separate consecutive zones -- "random, unrelated, no meaning." States
+ *  2-5 (Modern Tamil Letters / Required Letters / Uyirmei Formation /
+ *  Word Formation) map directly onto Milestone 1's modern/exactLetters/
+ *  exactCompounds/words pools, which needed no changes -- only the
+ *  grouping and boundaries did. Locked and untouched by this milestone:
+ *  baseFalloff, drawAtmosphere, the placement grid, and every opacity/
+ *  size formula -- "do not modify density, background, fade behaviour,
+ *  overall field composition." This only changes WHICH POOL a glyph's
+ *  characters draw from at a given position, never whether/how brightly
+ *  it draws. Blending in the last 35% of each state's span is unchanged
+ *  from Milestone 1 -- still no hard boundaries. */
 const MILESTONE_ZONES = [
-  { name: "brahmi", lo: 0, hi: 0.14 },
-  { name: "vatteluttu", lo: 0.14, hi: 0.28 },
-  { name: "modern", lo: 0.28, hi: 0.45 },
-  { name: "exactLetters", lo: 0.45, hi: 0.6 },
-  { name: "exactCompounds", lo: 0.6, hi: 0.76 },
-  { name: "words", lo: 0.76, hi: 1.0 },
+  { name: "ancientMemory", lo: 0, hi: 0.22 },
+  { name: "modernOnly", lo: 0.22, hi: 0.4 },
+  { name: "requiredLetters", lo: 0.4, hi: 0.58 },
+  { name: "uyirmeiFormation", lo: 0.58, hi: 0.76 },
+  { name: "wordFormation", lo: 0.76, hi: 1.0 },
 ] as const;
 
 function pickMilestoneZone(xFrac: number, rand: SeededRandom): (typeof MILESTONE_ZONES)[number]["name"] {
@@ -811,7 +822,8 @@ function drawAmbientGlyph(
   // by spatial zone (see pickMilestoneZone below), not by how visually
   // prominent its size tier is -- the old "large/anchor tiers must always
   // be Kural material" rule belonged to the previous continuous-wave
-  // system and is superseded by the explicit six-zone one.
+  // system and is superseded by the explicit zone system (now five
+  // states, per GOLD MASTER Milestone 2's Formation Grammar restructure).
 
   // STARFIELD MODEL: stars aren't wildly uneven in size -- some shine,
   // some sit quiet, but the sky doesn't contain a handful of letters 10x
@@ -858,29 +870,43 @@ function drawAmbientGlyph(
   const jitterX = rand.range(-jitterRange, jitterRange);
   const jitterY = rand.range(-jitterRange, jitterRange);
 
-  // MILESTONE 01 -- Living Language Evolution. Six real linguistic
-  // stages, left to right: random Tamil-Brahmi, random Vatteluttu,
-  // random Modern Tamil, this Kural's exact மெய்/உயிர் letters, this
-  // Kural's exact உயிர்மெய் compounds, this Kural's actual words. Zone
+  // GOLD MASTER MILESTONE 2 -- Formation Grammar. Five states, left to
+  // right: (1) Ancient Memory -- Tamil-Brahmi, Vatteluttu, and Modern
+  // Tamil MIXED together, random, unrelated; (2) Modern Tamil Letters --
+  // ancient scripts fade out, still random, no words; (3) Required
+  // Letters -- only this Kural's exact மெய்/உயிர் units remain probable;
+  // (4) Uyirmei Formation -- this Kural's exact உயிர்மெய் compounds;
+  // (5) Word Formation -- this Kural's actual words, still floating
+  // independently, never arranged into sentence structure. Zone
   // boundaries blend into each other (see pickMilestoneZone) rather than
   // cutting hard -- "no visible boundary" still holds even though the
-  // stages themselves are now explicit and literal, not a continuous
-  // wave. The completed Kural itself is never assembled here; see
+  // stages themselves are explicit and literal, not a continuous wave.
+  // The completed Kural itself is never assembled here; see
   // renderKuralPublishing, which does not call drawForegroundKural this
-  // milestone -- "only the journey is shown."
+  // milestone -- "stop at the word level."
   const zone = pickMilestoneZone(xFrac, rand);
   let ambient: AmbientGlyph;
-  if (zone === "brahmi") {
-    ambient = rand.pick(HISTORICAL_POOL.filter((g) => g.script === "brahmi"));
-  } else if (zone === "vatteluttu") {
-    ambient = rand.pick(HISTORICAL_POOL.filter((g) => g.script === "vatteluttu"));
-  } else if (zone === "modern") {
+  if (zone === "ancientMemory") {
+    // "Contains Tamil-Brahmi, Vatteluttu, Modern Tamil. Random.
+    // Unrelated." -- an equal three-way roll per glyph, not proportional
+    // to each script's real character-set size, so all three are
+    // genuinely visible as a mix rather than Modern Tamil's 247 drowning
+    // out Brahmi's 24 and Vatteluttu's 21.
+    const scriptRoll = rand.next();
+    if (scriptRoll < 1 / 3) {
+      ambient = rand.pick(HISTORICAL_POOL.filter((g) => g.script === "brahmi"));
+    } else if (scriptRoll < 2 / 3) {
+      ambient = rand.pick(HISTORICAL_POOL.filter((g) => g.script === "vatteluttu"));
+    } else {
+      ambient = { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
+    }
+  } else if (zone === "modernOnly") {
     ambient = { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
-  } else if (zone === "exactLetters" && zonePools.exactLetters.length > 0) {
+  } else if (zone === "requiredLetters" && zonePools.exactLetters.length > 0) {
     ambient = { glyph: { kind: "text", value: rand.pick(zonePools.exactLetters) }, script: "modern" };
-  } else if (zone === "exactCompounds" && zonePools.exactCompounds.length > 0) {
+  } else if (zone === "uyirmeiFormation" && zonePools.exactCompounds.length > 0) {
     ambient = { glyph: { kind: "text", value: rand.pick(zonePools.exactCompounds) }, script: "modern" };
-  } else if (zone === "words" && zonePools.words.length > 0) {
+  } else if (zone === "wordFormation" && zonePools.words.length > 0) {
     ambient = { glyph: { kind: "text", value: rand.pick(zonePools.words) }, script: "modern" };
   } else {
     // Defensive fallback only -- e.g. a future Kural with no உயிர்மெய்
@@ -914,7 +940,7 @@ function drawAmbientGlyph(
   // is just an illegible smear, which would defeat the entire point of
   // this milestone (proving the field can show "words forming"). Words
   // get a real size floor so they read as words, not noise.
-  const isWord = zone === "words" && ambient.glyph.kind === "text" && ambient.glyph.value.length > 1;
+  const isWord = zone === "wordFormation" && ambient.glyph.kind === "text" && ambient.glyph.value.length > 1;
   const calibratedSize = isWord ? Math.max(size * 1.8, 16) : size;
 
   // Opacity is now a direct, floor-less function of density -- as density
