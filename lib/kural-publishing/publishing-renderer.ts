@@ -526,13 +526,13 @@ function buildMacroClusters(rand: SeededRandom): MacroCluster[] {
     });
   }
 
-  const count = 6;
+  const count = 8;
   for (let i = 0; i < count; i++) {
     clusters.push({
-      cx: rand.range(0.02, REGIONS.denseEnd * 0.92),
+      cx: rand.range(0.02, 0.72),
       cy: rand.range(0.05, 0.95),
-      r: rand.range(0.1, 0.26),
-      strength: rand.range(0.3, 0.75),
+      r: rand.range(0.08, 0.22),
+      strength: rand.range(0.25, 0.75),
     });
   }
   return clusters;
@@ -559,7 +559,12 @@ function buildPocketField(rand: SeededRandom): number[][] {
   const field: number[][] = [];
   for (let r = 0; r < POCKET_ROWS; r++) {
     const row: number[] = [];
-    for (let c = 0; c < POCKET_COLS; c++) row.push(rand.range(0.45, 1.65));
+    // GOLD MASTER SPRINT 03: widened from 0.45-1.65 to 0.12-2.3 -- genuine
+    // near-empty patches alongside genuinely denser ones, not a narrow
+    // range that reads as smooth variance. "Some areas are dense. Some
+    // are empty." The disappearance should feel organic and archaeological,
+    // not like an even fade.
+    for (let c = 0; c < POCKET_COLS; c++) row.push(rand.range(0.12, 2.3));
     field.push(row);
   }
   return field;
@@ -596,6 +601,28 @@ function clearingAt(xFrac: number, yFrac: number): number {
   return Math.max(0.15, factor);
 }
 
+/** GOLD MASTER SPRINT 03: "the only object that feels perfectly preserved
+ *  ... its ink is deeper, its edges are cleaner." Not a size or weight
+ *  change (both locked) -- a density clearing over the Kural's own two
+ *  lines specifically, so nothing in the field ever sits directly behind
+ *  or through its actual letterforms. The field still shows in the
+ *  margins around it (above குறள் [n], between the lines, below toward
+ *  English) -- only the two exact bands the Kural itself occupies clear. */
+const KURAL_CLEAR_X = 0.45;
+const KURAL_CLEAR_Y1 = 0.44;
+const KURAL_CLEAR_Y2 = 0.531;
+const KURAL_CLEAR_RADIUS_Y = 0.035;
+
+function kuralClearingAt(xFrac: number, yFrac: number): number {
+  if (xFrac < KURAL_CLEAR_X) return 1;
+  const r2 = KURAL_CLEAR_RADIUS_Y * KURAL_CLEAR_RADIUS_Y * 0.5;
+  const dy1 = yFrac - KURAL_CLEAR_Y1;
+  const dy2 = yFrac - KURAL_CLEAR_Y2;
+  const dip1 = 0.9 * Math.exp(-(dy1 * dy1) / r2);
+  const dip2 = 0.9 * Math.exp(-(dy2 * dy2) / r2);
+  return Math.max(0.05, 1 - Math.max(dip1, dip2));
+}
+
 function densityAt(
   xFrac: number,
   yFrac: number,
@@ -607,7 +634,8 @@ function densityAt(
   const bump = 1 + macroBumpAt(macro, xFrac, yFrac);
   const pocket = pocketMultiplierAt(pockets, xFrac, yFrac);
   const clearing = clearingAt(xFrac, yFrac);
-  return Math.max(0, Math.min(2.6, base * bump * pocket * clearing));
+  const kuralClearing = kuralClearingAt(xFrac, yFrac);
+  return Math.max(0, Math.min(2.6, base * bump * pocket * clearing * kuralClearing));
 }
 
 function drawAmbientField(
@@ -781,9 +809,14 @@ function drawAmbientGlyph(
   // stays a broad Tamil environment. kuralMaterial-depth glyphs always draw
   // from the real Kural text; ambient-depth glyphs mix in Kural material
   // increasingly as xFrac grows, per "MID LEFT: mix, CENTRE: mostly Kural
-  // material."
+  // material." GOLD MASTER SPRINT 03: a touch of position-based noise
+  // (not rand -- this must never perturb the composition sequence) is
+  // folded into the ramp so the increase in certainty doesn't read as a
+  // clean mathematical line -- "an invisible resolution flow... the
+  // viewer should never consciously notice it."
+  const kuralBiasNoise = (positionHash(x * 0.01, y * 0.01) - 0.5) * 0.12;
   const kuralBias = kuralSyllables.length > 0
-    ? Math.max(0, Math.min(0.68, (xFrac - REGIONS.denseEnd * 0.35) / (REGIONS.denseEnd * 1.1)))
+    ? Math.max(0, Math.min(0.68, (xFrac - REGIONS.denseEnd * 0.35) / (REGIONS.denseEnd * 1.1) + kuralBiasNoise))
     : 0;
   const useKuralMaterial =
     kuralSyllables.length > 0 && (depth === "kuralMaterial" || rand.chance(kuralBias));
@@ -811,10 +844,12 @@ function drawAmbientGlyph(
     // real Kural-derived syllables, then the Kural itself in the
     // editorial column -- "then words, then the words form the Kural."
     const fieldFrac = Math.min(1, xFrac / REGIONS.quietStart);
-    const compoundBias =
-      fieldFrac < 0.4
+    const compoundBiasNoise = (positionHash(x * 0.013 + 5, y * 0.013 + 5) - 0.5) * 0.14;
+    const compoundBias = Math.max(0.05, Math.min(0.95,
+      (fieldFrac < 0.4
         ? 1 - (fieldFrac / 0.4) * 0.85
-        : 0.15 + ((fieldFrac - 0.4) / 0.6) * 0.7;
+        : 0.15 + ((fieldFrac - 0.4) / 0.6) * 0.7) + compoundBiasNoise
+    ));
     ambient = rand.chance(compoundBias)
       ? { glyph: rand.pick(MODERN_COMPOUND), script: "modern" }
       : { glyph: rand.pick(MODERN_SIMPLE), script: "modern" };
