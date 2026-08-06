@@ -657,13 +657,17 @@ function drawAmbientField(
   }
 }
 
-/** Four population strata (micro/tiny, small/medium, large, ghost), plus a
- *  rare "anchor" carved out of the large tier for genuine high-presence
- *  marks. Weighted heavily toward the tiny end -- per founder direction,
- *  roughly 65/25/8/2 as a visual-hierarchy target. Large-tier probability
- *  is actively suppressed as xFrac moves into the transition zone, folding
- *  that mass back into the micro tier, so the centre stops reading as
- *  scattered oversized letters. As xFrac increases, glyph choice is
+/** Four population strata (micro/tiny, small/medium, large, distant-giant),
+ *  plus a rare "anchor" carved out of the large tier for genuine
+ *  high-presence marks. Weighted heavily toward the tiny end -- per
+ *  founder direction, roughly 65/25/8/2 as a visual-hierarchy target.
+ *  STARFIELD MODEL: size varies only modestly across all four strata
+ *  (roughly 6-19px, not the old 4-80px) -- "stars aren't wildly uneven in
+ *  size; some shine, some sit quiet." Brightness (opacity), not scale, is
+ *  what carries the "some shine, some quiet" hierarchy. Large-tier
+ *  probability is actively suppressed as xFrac moves into the transition
+ *  zone, folding that mass back into the micro tier, so the centre stops
+ *  reading as scattered letters. As xFrac increases, glyph choice is
  *  increasingly drawn from the real Kural syllables rather than the full
  *  modern-Tamil set -- content narrows as density falls. */
 function drawAmbientGlyph(
@@ -697,21 +701,28 @@ function drawAmbientGlyph(
   // it only ever comes from FORMATION_NODES, rendered separately.
   let depth: "ambient" | "kuralMaterial";
 
+  // STARFIELD MODEL: stars aren't wildly uneven in size -- some shine,
+  // some sit quiet, but the sky doesn't contain a handful of letters 10x
+  // the size of their neighbours. Size range compressed from the old
+  // 4-80px (~20x variance) to roughly 6-19px (~3x) across every tier;
+  // "shine vs quiet" is now carried almost entirely by opacity/brightness,
+  // not scale. The old GHOST tier (42-80px) is gone outright -- there is
+  // no star that dwarfs the rest of the sky.
   if (roll < pMicro) {
-    size = rand.range(4, 8); // MICRO -- the deep archive, bulk of the mass
-    baseOpacity = rand.range(0.035, 0.11);
+    size = rand.range(6, 9); // quiet, distant stars -- the bulk of the sky
+    baseOpacity = rand.range(0.03, 0.12);
     colorMix = 0.05;
     depth = "ambient"; // deep atmosphere stays the broad language environment
   } else if (roll < pMicro + pSmallMed) {
-    size = rand.range(9, 16); // SMALL / MEDIUM -- heritage field
-    baseOpacity = rand.range(0.1, 0.22);
+    size = rand.range(8, 12); // ordinary stars -- a little closer, a little steadier
+    baseOpacity = rand.range(0.08, 0.24);
     colorMix = 0.28;
     depth = "ambient"; // mixes with Kural material via kuralBias below
   } else if (roll < pMicro + pSmallMed + pLarge) {
     const isAnchor = rand.chance(0.14); // genuinely rare, high-presence
     if (isAnchor) {
-      size = rand.range(22, 34);
-      baseOpacity = rand.range(0.48, 0.72);
+      size = rand.range(13, 18); // a star that shines -- brighter, only modestly bigger
+      baseOpacity = rand.range(0.5, 0.75);
       colorMix = 0.82;
       // Reference-matched: no gold/cyan illumination in the field -- the
       // reference image's glyphs are all quiet bronze/tan on the light
@@ -720,8 +731,8 @@ function drawAmbientGlyph(
       rand.chance(0.22);
       rand.chance(0.08);
     } else {
-      size = rand.range(18, 27);
-      baseOpacity = rand.range(0.2, 0.35);
+      size = rand.range(11, 15);
+      baseOpacity = rand.range(0.22, 0.4);
       colorMix = 0.5;
     }
     // RULE: the more visually prominent a form becomes, the more directly
@@ -733,13 +744,12 @@ function drawAmbientGlyph(
     // material: eligible for greater clarity."
     depth = "kuralMaterial";
   } else {
-    size = rand.range(42, 80); // GHOST -- rare, huge, barely there
-    baseOpacity = rand.range(0.02, 0.05);
+    size = rand.range(14, 20); // a distant giant -- still barely bigger than
+    baseOpacity = rand.range(0.02, 0.05); // its neighbours, just very dim
     colorMix = 0.1;
     wide = true;
-    // Large ghost forms are allowed to be ambient specifically because
-    // they stay extremely low opacity -- prominence, not scale alone, is
-    // what the rule restricts. Never illuminated.
+    // Rare, very faint, and only slightly larger -- prominence stays about
+    // brightness, not scale, even for the field's biggest marks.
     depth = "ambient";
   }
 
@@ -769,25 +779,23 @@ function drawAmbientGlyph(
     ambient = rand.pick(AMBIENT_GLYPH_POOL);
   }
 
-  // Optical Calibration Version C (locked, carried over from the Living
-  // Field Kernel): historical scripts read visually quieter than Modern
-  // Tamil at the same nominal size, so both Tamil-Brahmi and Vatteluttu
-  // get +12.5% on size and opacity to compensate. Brahmi additionally
-  // renders at font-weight 500 rather than 400 for the same reason --
-  // the only weight Noto Sans Brahmi actually ships is 400, so this asks
-  // the browser's own synthetic-bold fallback for the extra weight
-  // rather than a real loaded weight; harmless, and it's the closest
-  // approximation available.
+  // Optical Calibration Version C, revised for the starfield model:
+  // historical scripts read visually quieter than Modern Tamil at the
+  // same nominal size, so both Tamil-Brahmi and Vatteluttu get a
+  // brightness (opacity) floor to compensate -- size is deliberately left
+  // untouched now, per "don't increase font size... stars aren't wildly
+  // uneven in size." Brahmi additionally renders at font-weight 500
+  // rather than 400 for the same reason -- the only weight Noto Sans
+  // Brahmi actually ships is 400, so this asks the browser's own
+  // synthetic-bold fallback for the extra weight rather than a real
+  // loaded weight; harmless, and it's the closest approximation available.
   const isHistorical = ambient.script !== "modern";
-  // A straight 12.5% multiplier alone was invisible in practice -- most of
-  // the ambient population lands in the tiny MICRO tier (4-8px), where
-  // 12.5% more is still unreadable as a distinct letterform. Historical
-  // scripts are rare enough in the pool (~15% of ambient picks) that
-  // giving them a real visibility floor doesn't change the overall
-  // tiny-dominant texture -- it just makes the ones that DO appear
-  // actually recognizable, which was the whole point of bringing the
-  // scripts in at all.
-  const calibratedSize = isHistorical ? Math.max(size * 1.125, 13) : size;
+  // Starfield rule: visibility comes from brightness, not scale -- so
+  // historical scripts get NO size adjustment at all now (previously a
+  // 12.5%-plus-floor size boost, which directly contradicted "don't
+  // increase font size"). They stay exactly the size their tier already
+  // gave them; what makes them findable is a genuine brightness floor.
+  const calibratedSize = size;
 
   // Opacity is now a direct, floor-less function of density -- as density
   // continuously decays toward the right edge (see baseFalloff), opacity
@@ -795,7 +803,7 @@ function drawAmbientGlyph(
   // presence. This is what makes far-right glyphs "almost subconscious"
   // rather than just smaller/rarer at a constant faint brightness.
   const baseCalibratedOpacity = isHistorical
-    ? Math.max(baseOpacity * 1.125, 0.24)
+    ? Math.max(baseOpacity * 1.3, 0.22)
     : baseOpacity;
   const opacity = Math.min(1, baseCalibratedOpacity * Math.min(1, density * 1.25));
 
