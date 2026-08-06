@@ -221,38 +221,19 @@ function applyTokenTracking(ctx: CanvasRenderingContext2D, token: TypographyToke
  *  explicit direction to bring the full Living Field script system into
  *  this tool (previously deliberately modern-Tamil-only -- see the one-day
  *  MVP's original commit -- but never revisited against what the Kernel
- *  itself already does elsewhere). This pool is read ONLY for pure
- *  ambient draws; Kural-derived material (the "more prominent = must
- *  relate to real content" rule) stays Modern Tamil exclusively, since
- *  Tamil-Brahmi/Vatteluttu forms cannot truthfully represent substrings
- *  of a Modern Tamil verse.
- *
- *  Modern Tamil is split into two sub-pools rather than one flat 247, to
- *  support the field's compositional narrative (see the complexity-wave
- *  comment in drawAmbientGlyph): buildModernTamil247() constructs the set
- *  in a fixed, known order -- 12 vowels, then 18 pulli consonants, then
- *  216 consonant+vowel-sign (uyirmei) compounds, then ஃ -- so the split
- *  is a plain slice, not a re-derivation. */
+ *  itself already does elsewhere). MILESTONE 01 reads from these pools
+ *  according to the explicit six-zone system (see MILESTONE_ZONES /
+ *  pickMilestoneZone) rather than a continuous wave. */
 type AmbientScript = "modern" | "brahmi" | "vatteluttu";
 interface AmbientGlyph {
   glyph: Glyph;
   script: AmbientScript;
 }
 
-const MODERN_SIMPLE: readonly Glyph[] = [
-  ...MODERN_TAMIL.glyphs.slice(0, 30), // 12 vowels + 18 pulli consonants
-  MODERN_TAMIL.glyphs[246], // ஃ (aytham)
-];
-const MODERN_COMPOUND: readonly Glyph[] = MODERN_TAMIL.glyphs.slice(30, 246); // 216 uyirmei compounds
-
 const HISTORICAL_POOL: readonly AmbientGlyph[] = [
   ...TAMIL_BRAHMI.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "brahmi" })),
   ...VATTELUTTU.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "vatteluttu" })),
 ];
-// Preserves the same overall historical-script share as before (45 of the
-// original 292-glyph combined pool), even though selection is no longer
-// one flat pick across all scripts.
-const HISTORICAL_SHARE = HISTORICAL_POOL.length / (MODERN_TAMIL.glyphs.length + HISTORICAL_POOL.length);
 
 export interface RenderKuralPublishingOptions {
   width: number;
@@ -288,7 +269,7 @@ export function renderKuralPublishing(
   ctx: CanvasRenderingContext2D,
   opts: RenderKuralPublishingOptions
 ): void {
-  const { width, height, content, tamilFont, sansFont, tamilSerifFont, serifFont, brahmiFont, logoImage, debugFormationLogic } = opts;
+  const { width, height, content, tamilFont, brahmiFont } = opts;
   const rand = createSeededRandom(deriveSeed(content.kuralNumber));
 
   // Real substrings of the actual verified Kural text, not invented glyphs --
@@ -297,6 +278,11 @@ export function renderKuralPublishing(
   const kuralSyllables = extractTamilSyllables(
     `${content.tamilLine1} ${content.tamilLine2}`
   );
+
+  // MILESTONE 01 -- this Kural's exact மெய்/உயிர் units, exact உயிர்மெய்
+  // compounds, and actual words, all derived from the real content (see
+  // buildMilestoneZonePools's doc comment).
+  const zonePools = buildMilestoneZonePools(kuralSyllables, content);
 
   ctx.clearRect(0, 0, width, height);
   drawAtmosphere(ctx, width, height);
@@ -309,13 +295,16 @@ export function renderKuralPublishing(
   // wherever this pass doesn't intentionally change something.
   const macro = buildMacroClusters(rand);
 
-  drawAmbientField(ctx, width, height, tamilFont, brahmiFont, rand, kuralSyllables, macro);
-  const debugInfo = drawFormationLayer(ctx, width, height, tamilFont, rand);
-  drawForegroundKural(ctx, width, height, content, tamilSerifFont, serifFont, logoImage ?? null);
+  drawAmbientField(ctx, width, height, tamilFont, brahmiFont, rand, kuralSyllables, zonePools, macro);
+  drawFormationLayer(ctx, width, height, tamilFont, rand);
 
-  if (debugFormationLogic) {
-    drawDebugFormationOverlay(ctx, width, height, tamilFont, sansFont, debugInfo);
-  }
+  // MILESTONE 01 SCOPE: "No typography. No editorial block. No logo. No
+  // footer... The completed Kural is NOT rendered. Only the journey is
+  // shown." drawForegroundKural and the debug overlay are deliberately
+  // not called this milestone -- both still exist, untouched, ready to
+  // return once a future milestone explicitly asks for the editorial
+  // layer back. Nothing about them was changed; they are simply not
+  // part of this deliverable.
 }
 
 /** Splits Tamil text into orthographic syllables (an independent vowel, or
@@ -491,12 +480,15 @@ function drawParchmentTexture(
  *  eventual population placement in drawAmbientField a true continuous
  *  fade rather than a boundary -- "fog disappearing into air," not a wall. */
 function baseFalloff(xFrac: number): number {
-  // GOLD MASTER SPRINT 02: the field is the whole canvas now, not a 30%
-  // strip. Retuned so density is still meaningfully present (a few
-  // percent of max) right where the Kural resolves (~x=0.45), and never
-  // reaches a hard zero even at the far edge -- "the field continues,
-  // still present, still dissolving, never abruptly ending."
-  const k = 6.0;
+  // MILESTONE 01: retuned from 6.0. That decay was tuned for a page where
+  // the Kural itself was the payoff at the far end, so the field could
+  // fade to near-nothing approaching it. This milestone has NO Kural --
+  // the exact-letters/exact-compounds/words zones ARE the payoff, and
+  // need genuine visible population for the evolution to actually read,
+  // not just be structurally correct at near-zero opacity. Flattened so
+  // density only drops to roughly a fifth of its start value by the far
+  // edge, not a few tenths of a percent.
+  const k = 1.8;
   return Math.exp(-k * xFrac);
 }
 
@@ -638,6 +630,76 @@ function densityAt(
   return Math.max(0, Math.min(2.6, base * bump * pocket * clearing * kuralClearing));
 }
 
+/** MILESTONE 01 -- Living Language Evolution. Six zones, left to right,
+ *  each a real linguistic stage: random Tamil-Brahmi, random Vatteluttu,
+ *  random Modern Tamil, then narrowing to what THIS Kural actually needs
+ *  -- its exact மெய்/உயிர் letters, then its exact உயிர்மெய் compounds,
+ *  then its actual words. All derived from `content` at render time
+ *  (never hardcoded to Kural 200 specifically), the same principle
+ *  extractTamilSyllables already uses -- if the control panel content
+ *  changes, these zones recompute correctly.
+ *
+ *  The completed Kural is never rendered as editorial text this
+ *  milestone -- see renderKuralPublishing, which does not call
+ *  drawForegroundKural at all right now. Only the journey is shown. */
+interface MilestoneZonePools {
+  exactLetters: readonly string[]; // this Kural's பயிர்/மெய் units (single-char, or consonant+pulli)
+  exactCompounds: readonly string[]; // this Kural's real உயிர்மெய் compounds
+  words: readonly string[]; // this Kural's actual words, whitespace-split
+}
+
+function buildMilestoneZonePools(kuralSyllables: readonly string[], content: KuralPublishingContent): MilestoneZonePools {
+  const PULLI = "\u0BCD";
+  const exactLetters: string[] = [];
+  const exactCompounds: string[] = [];
+  for (const s of kuralSyllables) {
+    const isUyir = s.length === 1; // independent vowel
+    const isMei = s.length === 2 && s[1] === PULLI; // consonant + virama (dead consonant)
+    const isBareConsonant = s.length === 1; // shares length 1 with isUyir; both are "atomic units," not compounds
+    if (isUyir || isMei || isBareConsonant) {
+      if (!exactLetters.includes(s)) exactLetters.push(s);
+    } else if (!exactCompounds.includes(s)) {
+      exactCompounds.push(s);
+    }
+  }
+  const words = `${content.tamilLine1} ${content.tamilLine2}`
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+  return { exactLetters, exactCompounds, words };
+}
+
+/** Six zones, boundaries as fractions of canvas width. Blending happens in
+ *  the last 35% of each zone's span, per the standing "no visible
+ *  boundary" principle -- probability crossfades into the next zone's
+ *  pool rather than a hard cut. */
+const MILESTONE_ZONES = [
+  { name: "brahmi", lo: 0, hi: 0.14 },
+  { name: "vatteluttu", lo: 0.14, hi: 0.28 },
+  { name: "modern", lo: 0.28, hi: 0.45 },
+  { name: "exactLetters", lo: 0.45, hi: 0.6 },
+  { name: "exactCompounds", lo: 0.6, hi: 0.76 },
+  { name: "words", lo: 0.76, hi: 1.0 },
+] as const;
+
+function pickMilestoneZone(xFrac: number, rand: SeededRandom): (typeof MILESTONE_ZONES)[number]["name"] {
+  let idx = MILESTONE_ZONES.length - 1;
+  for (let i = 0; i < MILESTONE_ZONES.length; i++) {
+    if (xFrac < MILESTONE_ZONES[i].hi || i === MILESTONE_ZONES.length - 1) {
+      idx = i;
+      break;
+    }
+  }
+  const zone = MILESTONE_ZONES[idx];
+  const span = zone.hi - zone.lo;
+  const progress = span > 0 ? (xFrac - zone.lo) / span : 1;
+  const blendStart = 0.65;
+  if (progress > blendStart && idx < MILESTONE_ZONES.length - 1) {
+    const blendT = (progress - blendStart) / (1 - blendStart);
+    if (rand.chance(Math.min(1, blendT))) return MILESTONE_ZONES[idx + 1].name;
+  }
+  return zone.name;
+}
+
 function drawAmbientField(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -646,8 +708,10 @@ function drawAmbientField(
   brahmiFont: string,
   rand: SeededRandom,
   kuralSyllables: readonly string[],
+  zonePools: MilestoneZonePools,
   macro: readonly MacroCluster[]
 ): void {
+
   // A finer grid still -- more addressable slots for the micro-mass this
   // pass asks for.
   const colW = 19;
@@ -695,7 +759,7 @@ function drawAmbientField(
         // without ever forbidding it outright.
         if (!rand.chance(Math.min(1, d * 0.6 + 0.05))) continue;
 
-        drawAmbientGlyph(ctx, cx, cy, d, cxFrac, tamilFont, brahmiFont, rand, kuralSyllables);
+        drawAmbientGlyph(ctx, cx, cy, d, cxFrac, tamilFont, brahmiFont, rand, kuralSyllables, zonePools);
         // A second, even smaller pass of pure micro-dot texture layered
         // right alongside the glyphs -- "atmospheric texture" without any
         // imported imagery: fine traces, not letters.
@@ -727,7 +791,8 @@ function drawAmbientGlyph(
   tamilFont: string,
   brahmiFont: string,
   rand: SeededRandom,
-  kuralSyllables: readonly string[]
+  kuralSyllables: readonly string[],
+  zonePools: MilestoneZonePools
 ): void {
   // Suppress LARGE/GHOST probability as the field moves toward the
   // formation region -- their mass folds back into MICRO instead.
@@ -742,12 +807,11 @@ function drawAmbientGlyph(
   let baseOpacity: number;
   let colorMix: number; // 0 = heritage bronze, 1 = kural ink (near-black)
   let wide = false;
-  // Semantic depth this glyph is drawn from -- see the three-depth rule
-  // below. "ambient" = broad Tamil environment (A), "kuralMaterial" =
-  // forms actually present in Kural 200 (B). Category C (சொ/சொல்/பயன்,
-  // the semantic survivors) is never drawn from this ambient loop at all --
-  // it only ever comes from FORMATION_NODES, rendered separately.
-  let depth: "ambient" | "kuralMaterial";
+  // MILESTONE 01: which CONTENT a glyph draws from is now governed purely
+  // by spatial zone (see pickMilestoneZone below), not by how visually
+  // prominent its size tier is -- the old "large/anchor tiers must always
+  // be Kural material" rule belonged to the previous continuous-wave
+  // system and is superseded by the explicit six-zone one.
 
   // STARFIELD MODEL: stars aren't wildly uneven in size -- some shine,
   // some sit quiet, but the sky doesn't contain a handful of letters 10x
@@ -760,12 +824,10 @@ function drawAmbientGlyph(
     size = rand.range(6, 9); // quiet, distant stars -- the bulk of the sky
     baseOpacity = rand.range(0.03, 0.12);
     colorMix = 0.05;
-    depth = "ambient"; // deep atmosphere stays the broad language environment
   } else if (roll < pMicro + pSmallMed) {
     size = rand.range(8, 12); // ordinary stars -- a little closer, a little steadier
     baseOpacity = rand.range(0.08, 0.24);
     colorMix = 0.28;
-    depth = "ambient"; // mixes with Kural material via kuralBias below
   } else if (roll < pMicro + pSmallMed + pLarge) {
     const isAnchor = rand.chance(0.14); // genuinely rare, high-presence
     if (isAnchor) {
@@ -783,14 +845,6 @@ function drawAmbientGlyph(
       baseOpacity = rand.range(0.22, 0.4);
       colorMix = 0.5;
     }
-    // RULE: the more visually prominent a form becomes, the more directly
-    // it must relate to the source content. LARGE and ANCHOR are both
-    // high-contrast enough to read as "visual heroes," so both are always
-    // Kural material, never an arbitrary ambient form -- this is the fix
-    // for "arbitrary Tamil forms receiving large size / dark contrast," and
-    // is also why illumination is only ever rolled here: "Kural-derived
-    // material: eligible for greater clarity."
-    depth = "kuralMaterial";
   } else {
     size = rand.range(14, 20); // a distant giant -- still barely bigger than
     baseOpacity = rand.range(0.02, 0.05); // its neighbours, just very dim
@@ -798,61 +852,44 @@ function drawAmbientGlyph(
     wide = true;
     // Rare, very faint, and only slightly larger -- prominence stays about
     // brightness, not scale, even for the field's biggest marks.
-    depth = "ambient";
   }
 
   const jitterRange = wide ? 30 : 7;
   const jitterX = rand.range(-jitterRange, jitterRange);
   const jitterY = rand.range(-jitterRange, jitterRange);
 
-  // Content narrows toward the actual Kural as density falls -- deep field
-  // stays a broad Tamil environment. kuralMaterial-depth glyphs always draw
-  // from the real Kural text; ambient-depth glyphs mix in Kural material
-  // increasingly as xFrac grows, per "MID LEFT: mix, CENTRE: mostly Kural
-  // material." GOLD MASTER SPRINT 03: a touch of position-based noise
-  // (not rand -- this must never perturb the composition sequence) is
-  // folded into the ramp so the increase in certainty doesn't read as a
-  // clean mathematical line -- "an invisible resolution flow... the
-  // viewer should never consciously notice it."
-  const kuralBiasNoise = (positionHash(x * 0.01, y * 0.01) - 0.5) * 0.12;
-  const kuralBias = kuralSyllables.length > 0
-    ? Math.max(0, Math.min(0.68, (xFrac - REGIONS.denseEnd * 0.35) / (REGIONS.denseEnd * 1.1) + kuralBiasNoise))
-    : 0;
-  const useKuralMaterial =
-    kuralSyllables.length > 0 && (depth === "kuralMaterial" || rand.chance(kuralBias));
-
-  // Kural-derived material is always real Modern Tamil text -- a
-  // Tamil-Brahmi or Vatteluttu form cannot truthfully stand in for a
-  // substring of a Modern Tamil verse, so historical scripts are only
-  // ever drawn from the pure-ambient branch below.
+  // MILESTONE 01 -- Living Language Evolution. Six real linguistic
+  // stages, left to right: random Tamil-Brahmi, random Vatteluttu,
+  // random Modern Tamil, this Kural's exact மெய்/உயிர் letters, this
+  // Kural's exact உயிர்மெய் compounds, this Kural's actual words. Zone
+  // boundaries blend into each other (see pickMilestoneZone) rather than
+  // cutting hard -- "no visible boundary" still holds even though the
+  // stages themselves are now explicit and literal, not a continuous
+  // wave. The completed Kural itself is never assembled here; see
+  // renderKuralPublishing, which does not call drawForegroundKural this
+  // milestone -- "only the journey is shown."
+  const zone = pickMilestoneZone(xFrac, rand);
   let ambient: AmbientGlyph;
-  if (useKuralMaterial) {
-    ambient = { glyph: { kind: "text", value: rand.pick(kuralSyllables) }, script: "modern" };
-  } else if (rand.chance(HISTORICAL_SHARE)) {
-    ambient = rand.pick(HISTORICAL_POOL);
+  if (zone === "brahmi") {
+    ambient = rand.pick(HISTORICAL_POOL.filter((g) => g.script === "brahmi"));
+  } else if (zone === "vatteluttu") {
+    ambient = rand.pick(HISTORICAL_POOL.filter((g) => g.script === "vatteluttu"));
+  } else if (zone === "modern") {
+    ambient = { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
+  } else if (zone === "exactLetters" && zonePools.exactLetters.length > 0) {
+    ambient = { glyph: { kind: "text", value: rand.pick(zonePools.exactLetters) }, script: "modern" };
+  } else if (zone === "exactCompounds" && zonePools.exactCompounds.length > 0) {
+    ambient = { glyph: { kind: "text", value: rand.pick(zonePools.exactCompounds) }, script: "modern" };
+  } else if (zone === "words" && zonePools.words.length > 0) {
+    ambient = { glyph: { kind: "text", value: rand.pick(zonePools.words) }, script: "modern" };
   } else {
-    // COMPLEXITY WAVE -- the field's own compositional narrative, per
-    // explicit founder direction: "lots and lots of dense words [at the
-    // edge], then individual letters show up, then it becomes uyirmei
-    // letters, then it becomes words, then the words form the Kural."
-    // fieldFrac 0->0.4: dense uyirmei compounds thinning into bare simple
-    // letters (vowels, pulli consonants) -- "dense words" giving way to
-    // "individual letters." fieldFrac 0.4->1: simple letters recombining
-    // back into uyirmei compounds as the field nears the text column --
-    // "becomes uyirmei letters again." What happens after that (kuralBias
-    // above, already existing) carries the story the rest of the way:
-    // real Kural-derived syllables, then the Kural itself in the
-    // editorial column -- "then words, then the words form the Kural."
-    const fieldFrac = Math.min(1, xFrac / REGIONS.quietStart);
-    const compoundBiasNoise = (positionHash(x * 0.013 + 5, y * 0.013 + 5) - 0.5) * 0.14;
-    const compoundBias = Math.max(0.05, Math.min(0.95,
-      (fieldFrac < 0.4
-        ? 1 - (fieldFrac / 0.4) * 0.85
-        : 0.15 + ((fieldFrac - 0.4) / 0.6) * 0.7) + compoundBiasNoise
-    ));
-    ambient = rand.chance(compoundBias)
-      ? { glyph: rand.pick(MODERN_COMPOUND), script: "modern" }
-      : { glyph: rand.pick(MODERN_SIMPLE), script: "modern" };
+    // Defensive fallback only -- e.g. a future Kural with no உயிர்மெய்
+    // compounds at all would otherwise have nothing to draw from in
+    // that zone. Falls back to this Kural's syllables generally, then
+    // to plain Modern Tamil, never to an empty draw.
+    ambient = kuralSyllables.length > 0
+      ? { glyph: { kind: "text", value: rand.pick(kuralSyllables) }, script: "modern" }
+      : { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
   }
 
   // Optical Calibration Version C, revised for the starfield model:
@@ -871,16 +908,25 @@ function drawAmbientGlyph(
   // 12.5%-plus-floor size boost, which directly contradicted "don't
   // increase font size"). They stay exactly the size their tier already
   // gave them; what makes them findable is a genuine brightness floor.
-  const calibratedSize = size;
+  //
+  // MILESTONE 01 exception: multi-character WORDS are a different case
+  // entirely -- a whole word rendered at a single letter's 6-20px size
+  // is just an illegible smear, which would defeat the entire point of
+  // this milestone (proving the field can show "words forming"). Words
+  // get a real size floor so they read as words, not noise.
+  const isWord = zone === "words" && ambient.glyph.kind === "text" && ambient.glyph.value.length > 1;
+  const calibratedSize = isWord ? Math.max(size * 1.8, 16) : size;
 
   // Opacity is now a direct, floor-less function of density -- as density
   // continuously decays toward the right edge (see baseFalloff), opacity
   // decays with it, genuinely toward zero, not toward some minimum
   // presence. This is what makes far-right glyphs "almost subconscious"
   // rather than just smaller/rarer at a constant faint brightness.
-  const baseCalibratedOpacity = isHistorical
-    ? Math.max(baseOpacity * 1.3, 0.22)
-    : baseOpacity;
+  const baseCalibratedOpacity = isWord
+    ? Math.max(baseOpacity * 1.6, 0.18)
+    : isHistorical
+      ? Math.max(baseOpacity * 1.3, 0.22)
+      : baseOpacity;
   const opacity = Math.min(1, baseCalibratedOpacity * Math.min(1, density * 1.25));
 
   const color = mix(COLORS.heritageBronze, COLORS.kuralInk, colorMix);
@@ -1175,6 +1221,10 @@ function drawFormationNode(
 // see KuralHeroCanvas.renderKuralPublishingForExport.
 // ---------------------------------------------------------------------------
 
+// MILESTONE 01: not called this milestone (see renderKuralPublishing) --
+// no editorial block means nothing for the debug overlay to annotate.
+// Kept intact, untouched, for when a future milestone re-enables it.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawDebugFormationOverlay(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1250,6 +1300,12 @@ function drawDebugFormationOverlay(
 // paired with anything, never announced.
 // ---------------------------------------------------------------------------
 
+// MILESTONE 01: not called this milestone (see renderKuralPublishing) --
+// "no typography, no editorial block, no logo, no footer... only the
+// journey is shown." The Sprint 01-03 composition below is fully intact
+// and unchanged, ready to return exactly as-is once a future milestone
+// asks for the editorial layer back.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawForegroundKural(
   ctx: CanvasRenderingContext2D,
   width: number,
