@@ -143,8 +143,8 @@ const TYPOGRAPHY_TOKENS = {
     fontFamily: "sans",
     weight: 500,
     italic: false,
-    sizeRatio: 0.85,
-    minSizeRatio: 0.85,
+    sizeRatio: 1.275,
+    minSizeRatio: 1.275,
     lineHeightRatio: 1,
     letterSpacingEm: 0.03,
     align: "left",
@@ -154,8 +154,8 @@ const TYPOGRAPHY_TOKENS = {
     fontFamily: "tamil",
     weight: 500,
     italic: false,
-    sizeRatio: 0.95,
-    minSizeRatio: 0.95,
+    sizeRatio: 1.425,
+    minSizeRatio: 1.425,
     lineHeightRatio: 1,
     letterSpacingEm: 0.02,
     align: "left",
@@ -165,8 +165,8 @@ const TYPOGRAPHY_TOKENS = {
     fontFamily: "sans",
     weight: 500,
     italic: true,
-    sizeRatio: 1.05,
-    minSizeRatio: 0.9,
+    sizeRatio: 1.575,
+    minSizeRatio: 1.35,
     lineHeightRatio: 1.55,
     letterSpacingEm: 0.02,
     align: "left",
@@ -1249,7 +1249,7 @@ function drawForegroundKural(
 
   // --- Masthead: logo + vertical divider + குறள் [n] -------------------
   const logoTop = height * 0.1;
-  const logoH = height * 0.077;
+  const logoH = height * 0.1155; // 50% bigger, per explicit direction
   let afterLogoX = leftX;
 
   if (logoImage) {
