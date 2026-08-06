@@ -266,7 +266,7 @@ export function renderKuralPublishing(
   );
 
   ctx.clearRect(0, 0, width, height);
-  drawAtmosphere(ctx, width, height, rand);
+  drawAtmosphere(ctx, width, height);
 
   // Built once, at the exact point in the RNG sequence pass 04 already built
   // it (immediately before the ambient field's own pocket noise) -- shared
@@ -306,8 +306,7 @@ function extractTamilSyllables(text: string): string[] {
 function drawAtmosphere(
   ctx: CanvasRenderingContext2D,
   width: number,
-  height: number,
-  rand: SeededRandom
+  height: number
 ): void {
   // Reference-matched ground: light warm cream everywhere, with only a
   // soft vignette deepening toward the extreme left edge. Gradient stops
@@ -325,34 +324,12 @@ function drawAtmosphere(
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, width, height);
 
-  // A handful of soft, low-opacity strata patches -- same structure and
-  // rand-call count as before (so nothing downstream reshuffles), retoned
-  // for the light ground: subtle deeper-tan patches, never dark smudges.
-  const cloudClipWidth = width * Math.min(REGIONS.denseEnd * 1.05, REGIONS.quietStart);
-  const cloudCount = 6;
-  for (let i = 0; i < cloudCount; i++) {
-    const cx = rand.range(-width * 0.05, width * REGIONS.denseEnd * 0.75);
-    const cy = rand.range(height * 0.05, height * 0.95);
-    const r = rand.range(width * 0.055, width * 0.11);
-    const stretch = rand.range(1.3, 2.1);
-    const rotation = rand.range(0, Math.PI);
-    const darker = rand.chance(0.62);
-    const tone = darker
-      ? mixAlpha(COLORS.vignetteEdge, COLORS.heritageBronze, rand.range(0, 0.5), rand.range(0.04, 0.08))
-      : mixAlpha(COLORS.warmParchment, "#FFFFFF", rand.range(0.2, 0.6), rand.range(0.02, 0.04));
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(rotation);
-    ctx.scale(stretch, 1);
-    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-    grad.addColorStop(0, tone);
-    grad.addColorStop(0.7, tone);
-    grad.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(-cloudClipWidth, -height, cloudClipWidth * 2, height * 2);
-    ctx.restore();
-  }
+  // No elongated "vein" strata patches, and no darker-toned variant --
+  // removed entirely per founder direction. Against the light reference
+  // ground, even a low-opacity darkened patch read as a visible shadow
+  // shape, not texture. Depth now comes only from drawLocalTonalVariation
+  // and drawParchmentTexture below -- fine, cell-based grain with no
+  // large-scale shape to be seen as an artifact.
 
   drawLocalTonalVariation(ctx, width, height, colorEnd);
   drawParchmentTexture(ctx, width, height, colorEnd);
