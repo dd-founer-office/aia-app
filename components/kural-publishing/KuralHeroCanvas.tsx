@@ -46,6 +46,11 @@ const SANS_FALLBACK =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 const TAMIL_SERIF_FALLBACK = "'Noto Serif Tamil','Tamil Sangam MN','Tamil MN',serif";
 const SERIF_FALLBACK = "Georgia,'Times New Roman',serif";
+// No safe cross-platform fallback exists for Brahmi -- if the web font
+// hasn't loaded, glyphs render as tofu/boxes on most systems. That is a
+// known, accepted limitation (see lib/living-field/glyphs.ts), not
+// something a fallback chain can paper over.
+const BRAHMI_FALLBACK = "'Noto Sans Brahmi',sans-serif";
 
 function resolveFont(cssVarName: string, fallback: string): string {
   if (typeof document === "undefined") return fallback;
@@ -90,6 +95,7 @@ export default function KuralHeroCanvas({
         sansFont: resolveFont("--font-sans", SANS_FALLBACK),
         tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
         serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
+        brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
         logoImage: logoImage ?? null,
         debugFormationLogic,
       });
@@ -169,6 +175,7 @@ export async function renderKuralPublishingForExport(
     sansFont: resolveFont("--font-sans", SANS_FALLBACK),
     tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
     serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
+    brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
     logoImage,
     debugFormationLogic: false,
   });

@@ -47,7 +47,7 @@
  * renderer version -> byte-identical canvas output.
  */
 
-import { MODERN_TAMIL } from "@/lib/living-field/glyphs";
+import { MODERN_TAMIL, TAMIL_BRAHMI, VATTELUTTU, type Glyph, type GlyphPath } from "@/lib/living-field/glyphs";
 import { createSeededRandom, type SeededRandom } from "./seeded-random";
 import {
   deriveSeed,
@@ -217,13 +217,30 @@ function applyTokenTracking(ctx: CanvasRenderingContext2D, token: TypographyToke
   }
 }
 
-/** Modern Tamil only -- filtered here, inside the publishing implementation,
- *  from the Kernel's shared glyph registry. Deliberately does NOT read
- *  Tamil-Brahmi or Vatteluttu, and does not touch lib/living-field/config.ts
- *  or glyphs.ts to achieve that; the filter lives entirely on this side. */
-const MODERN_TAMIL_VALUES: readonly string[] = MODERN_TAMIL.glyphs
-  .filter((g): g is { kind: "text"; value: string } => g.kind === "text")
-  .map((g) => g.value);
+/** All three scripts of one continuous civilization, per the founder's
+ *  explicit direction to bring the full Living Field script system into
+ *  this tool (previously deliberately modern-Tamil-only -- see the one-day
+ *  MVP's original commit -- but never revisited against what the Kernel
+ *  itself already does elsewhere). Combined into one flat pool of
+ *  individual glyphs, each tagged with which script it came from --
+ *  proportions fall out naturally from each set's real size (247 : 24 : 21),
+ *  the same principle the original ambient-letter-field exploration used
+ *  (one shuffled deck of all 292, not three separately-weighted pools).
+ *  This pool is read ONLY for pure ambient draws; Kural-derived material
+ *  (the "more prominent = must relate to real content" rule) stays Modern
+ *  Tamil exclusively, since Tamil-Brahmi/Vatteluttu forms cannot truthfully
+ *  represent substrings of a Modern Tamil verse. */
+type AmbientScript = "modern" | "brahmi" | "vatteluttu";
+interface AmbientGlyph {
+  glyph: Glyph;
+  script: AmbientScript;
+}
+
+const AMBIENT_GLYPH_POOL: readonly AmbientGlyph[] = [
+  ...MODERN_TAMIL.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "modern" })),
+  ...TAMIL_BRAHMI.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "brahmi" })),
+  ...VATTELUTTU.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "vatteluttu" })),
+];
 
 export interface RenderKuralPublishingOptions {
   width: number;
@@ -231,14 +248,18 @@ export interface RenderKuralPublishingOptions {
   content: KuralPublishingContent;
   /** Resolved app font-family strings (see KuralHeroCanvas for how these are
    *  read from --font-tamil-sans / --font-sans / --font-tamil-serif /
-   *  --font-serif), each with its own fallback chain already appended.
-   *  tamilFont/sansFont remain the ambient field's fonts (untouched by the
-   *  Typography System token change below); tamilSerifFont/serifFont are
-   *  the editorial block's fonts as of the serif typography direction. */
+   *  --font-serif / --font-brahmi), each with its own fallback chain
+   *  already appended. tamilFont/sansFont/brahmiFont are the ambient
+   *  field's fonts (untouched by the Typography System token change
+   *  below); tamilSerifFont/serifFont are the editorial block's fonts as
+   *  of the serif typography direction. There is no fallback font for
+   *  Vatteluttu because it needs none -- it never renders as text, only
+   *  as traced vector paths (see drawPathGlyph). */
   tamilFont: string;
   sansFont: string;
   tamilSerifFont: string;
   serifFont: string;
+  brahmiFont: string;
   /** Canonical KKA logo, once it exists. Left undefined/null draws nothing --
    *  never a placeholder box or generated mark. */
   logoImage?: HTMLImageElement | null;
@@ -255,7 +276,7 @@ export function renderKuralPublishing(
   ctx: CanvasRenderingContext2D,
   opts: RenderKuralPublishingOptions
 ): void {
-  const { width, height, content, tamilFont, sansFont, tamilSerifFont, serifFont, logoImage, debugFormationLogic } = opts;
+  const { width, height, content, tamilFont, sansFont, tamilSerifFont, serifFont, brahmiFont, logoImage, debugFormationLogic } = opts;
   const rand = createSeededRandom(deriveSeed(content.kuralNumber));
 
   // Real substrings of the actual verified Kural text, not invented glyphs --
@@ -276,7 +297,7 @@ export function renderKuralPublishing(
   // wherever this pass doesn't intentionally change something.
   const macro = buildMacroClusters(rand);
 
-  drawAmbientField(ctx, width, height, tamilFont, rand, kuralSyllables, macro);
+  drawAmbientField(ctx, width, height, tamilFont, brahmiFont, rand, kuralSyllables, macro);
   const debugInfo = drawFormationLayer(ctx, width, height, tamilFont, rand, macro);
   drawForegroundKural(ctx, width, height, content, tamilSerifFont, serifFont, logoImage ?? null);
 
@@ -577,6 +598,7 @@ function drawAmbientField(
   width: number,
   height: number,
   tamilFont: string,
+  brahmiFont: string,
   rand: SeededRandom,
   kuralSyllables: readonly string[],
   macro: readonly MacroCluster[]
@@ -625,7 +647,7 @@ function drawAmbientField(
         // without ever forbidding it outright.
         if (!rand.chance(Math.min(1, d * 0.6 + 0.05))) continue;
 
-        drawAmbientGlyph(ctx, cx, cy, d, cxFrac, tamilFont, rand, kuralSyllables);
+        drawAmbientGlyph(ctx, cx, cy, d, cxFrac, tamilFont, brahmiFont, rand, kuralSyllables);
         // A second, even smaller pass of pure micro-dot texture layered
         // right alongside the glyphs -- "atmospheric texture" without any
         // imported imagery: fine traces, not letters.
@@ -651,6 +673,7 @@ function drawAmbientGlyph(
   density: number,
   xFrac: number,
   tamilFont: string,
+  brahmiFont: string,
   rand: SeededRandom,
   kuralSyllables: readonly string[]
 ): void {
@@ -734,24 +757,83 @@ function drawAmbientGlyph(
     : 0;
   const useKuralMaterial =
     kuralSyllables.length > 0 && (depth === "kuralMaterial" || rand.chance(kuralBias));
-  const glyph = useKuralMaterial
-    ? rand.pick(kuralSyllables)
-    : rand.pick(MODERN_TAMIL_VALUES);
+
+  // Kural-derived material is always real Modern Tamil text -- a
+  // Tamil-Brahmi or Vatteluttu form cannot truthfully stand in for a
+  // substring of a Modern Tamil verse, so historical scripts are only
+  // ever drawn from the pure-ambient branch below.
+  let ambient: AmbientGlyph;
+  if (useKuralMaterial) {
+    ambient = { glyph: { kind: "text", value: rand.pick(kuralSyllables) }, script: "modern" };
+  } else {
+    ambient = rand.pick(AMBIENT_GLYPH_POOL);
+  }
+
+  // Optical Calibration Version C (locked, carried over from the Living
+  // Field Kernel): historical scripts read visually quieter than Modern
+  // Tamil at the same nominal size, so both Tamil-Brahmi and Vatteluttu
+  // get +12.5% on size and opacity to compensate. Brahmi additionally
+  // renders at font-weight 500 rather than 400 for the same reason --
+  // the only weight Noto Sans Brahmi actually ships is 400, so this asks
+  // the browser's own synthetic-bold fallback for the extra weight
+  // rather than a real loaded weight; harmless, and it's the closest
+  // approximation available.
+  const isHistorical = ambient.script !== "modern";
+  const calibratedSize = isHistorical ? size * 1.125 : size;
 
   // Opacity is now a direct, floor-less function of density -- as density
   // continuously decays toward the right edge (see baseFalloff), opacity
   // decays with it, genuinely toward zero, not toward some minimum
   // presence. This is what makes far-right glyphs "almost subconscious"
   // rather than just smaller/rarer at a constant faint brightness.
-  const opacity = Math.min(1, baseOpacity * Math.min(1, density * 1.25));
-
-  ctx.font = `400 ${size}px ${tamilFont}`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  const baseCalibratedOpacity = isHistorical ? baseOpacity * 1.125 : baseOpacity;
+  const opacity = Math.min(1, baseCalibratedOpacity * Math.min(1, density * 1.25));
 
   const color = mix(COLORS.heritageBronze, COLORS.kuralInk, colorMix);
   ctx.fillStyle = withAlphaRgb(color, opacity);
-  ctx.fillText(glyph, x + jitterX, y + jitterY);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  if (ambient.glyph.kind === "path") {
+    ctx.save();
+    ctx.translate(x + jitterX, y + jitterY);
+    drawPathGlyph(ctx, ambient.glyph.value, calibratedSize);
+    ctx.restore();
+  } else {
+    const weight = ambient.script === "brahmi" ? 500 : 400;
+    const family = ambient.script === "brahmi" ? brahmiFont : tamilFont;
+    ctx.font = `${weight} ${calibratedSize}px ${family}`;
+    ctx.fillText(ambient.glyph.value, x + jitterX, y + jitterY);
+  }
+}
+
+/** Draws a Vatteluttu letterform from its traced outline. Identical
+ *  technique to the Living Field Kernel's own renderer and the original
+ *  ambient-letter-field exploration: points are in a 0-10 unit box,
+ *  normalized to size-scaled coordinates centered on the current
+ *  translation, filled with the even-odd rule so interior holes (letter
+ *  counters) render as true gaps rather than solid fill. Caller is
+ *  expected to have already translated to the glyph's origin and set
+ *  fillStyle; this only builds and fills the path. */
+function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: number): void {
+  ctx.beginPath();
+  shape.outer.forEach((p, i) => {
+    const px = (p[0] / 10 - 0.5) * size;
+    const py = (p[1] / 10 - 0.5) * size;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+  ctx.closePath();
+  shape.holes.forEach((hole) => {
+    hole.forEach((p, i) => {
+      const px = (p[0] / 10 - 0.5) * size;
+      const py = (p[1] / 10 - 0.5) * size;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.closePath();
+  });
+  ctx.fill("evenodd");
 }
 
 /** A single tiny hairline mark -- pure procedural texture, not a letterform

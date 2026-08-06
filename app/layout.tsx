@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Serif_Display, DM_Sans, Noto_Sans_Tamil, Noto_Serif_Tamil, Noto_Serif } from "next/font/google";
+import { DM_Serif_Display, DM_Sans, Noto_Sans_Tamil, Noto_Serif_Tamil, Noto_Serif, Noto_Sans_Brahmi } from "next/font/google";
 import "./globals.css";
 import LivingField from "@/components/field/LivingField";
 
@@ -27,6 +27,12 @@ const notoSerifTamil = Noto_Serif_Tamil({
   variable: "--font-tamil-serif",
 });
 
+const notoSansBrahmi = Noto_Sans_Brahmi({
+  subsets: ["brahmi"],
+  weight: "400",
+  variable: "--font-brahmi",
+});
+
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
   weight: ["400", "500", "700"],
@@ -46,7 +52,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`h-full antialiased ${dmSans.variable} ${dmSerifDisplay.variable} ${notoSansTamil.variable} ${notoSerifTamil.variable} ${notoSerif.variable}`}
+      className={`h-full antialiased ${dmSans.variable} ${dmSerifDisplay.variable} ${notoSansTamil.variable} ${notoSerifTamil.variable} ${notoSerif.variable} ${notoSansBrahmi.variable}`}
     >
       <body className="min-h-full flex flex-col">
         <LivingField />
