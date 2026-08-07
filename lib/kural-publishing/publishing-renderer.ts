@@ -643,10 +643,51 @@ function densityAt(
  *  The completed Kural is never rendered as editorial text this
  *  milestone -- see renderKuralPublishing, which does not call
  *  drawForegroundKural at all right now. Only the journey is shown. */
+/** GOLD MASTER MILESTONE 2 REBOOT: one placed word or formation-stage's
+ *  approximate on-canvas footprint, in pixels, centre-anchored (matches
+ *  drawAmbientGlyph's textAlign="center"/textBaseline="middle"). Used only
+ *  to check "does the NEXT candidate word overlap any word already
+ *  committed this pass" -- see placedWordBoxes in drawAmbientField and
+ *  wordWouldOverlap below. */
+interface PlacedWordBox {
+  x: number;
+  y: number;
+  halfW: number;
+  halfH: number;
+}
+
+/** A small padding margin is added on top of the raw measured overlap so
+ *  words get real breathing room, not just technically-non-touching
+ *  edges -- "each word deserves space." */
+const WORD_OVERLAP_PADDING = 6;
+
+function wordWouldOverlap(box: PlacedWordBox, placed: readonly PlacedWordBox[]): boolean {
+  for (const p of placed) {
+    const dx = Math.abs(box.x - p.x);
+    const dy = Math.abs(box.y - p.y);
+    if (dx < box.halfW + p.halfW + WORD_OVERLAP_PADDING && dy < box.halfH + p.halfH + WORD_OVERLAP_PADDING) {
+      return true;
+    }
+  }
+  return false;
+}
+
 interface MilestoneZonePools {
   exactLetters: readonly string[]; // this Kural's பயிர்/மெய் units (single-char, or consonant+pulli)
   exactCompounds: readonly string[]; // this Kural's real உயிர்மெய் compounds
   words: readonly string[]; // this Kural's actual words, whitespace-split
+  /** GOLD MASTER MILESTONE 2 REBOOT: every real word's progressive
+   *  grapheme-safe prefixes, e.g. இதனை -> [இ, இத, இதனை]. Built by
+   *  segmenting each word with the same grapheme regex extractTamilSyllables
+   *  uses (never a raw character slice, which could sever a consonant from
+   *  its own vowel sign mid-glyph and draw something invalid) and taking
+   *  every cumulative prefix of that grapheme sequence. Region 4 (Formation)
+   *  picks a random prefix from a random word's stage list -- "different
+   *  words may be at different stages... every transformation remains
+   *  readable." The full word itself is the last stage in each list, so
+   *  Region 4 and Region 5 read from the same underlying data, just at
+   *  different points in it. */
+  wordFormationStages: readonly (readonly string[])[];
 }
 
 function buildMilestoneZonePools(kuralSyllables: readonly string[], content: KuralPublishingContent): MilestoneZonePools {
@@ -666,41 +707,40 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
   const words = `${content.tamilLine1} ${content.tamilLine2}`
     .split(/\s+/)
     .filter((w) => w.length > 0);
-  return { exactLetters, exactCompounds, words };
+
+  const wordFormationStages: (readonly string[])[] = words.map((word) => {
+    const graphemes = extractTamilSyllables(word);
+    const stages: string[] = [];
+    let acc = "";
+    for (const g of graphemes) {
+      acc += g;
+      stages.push(acc);
+    }
+    return stages.length > 0 ? stages : [word];
+  });
+
+  return { exactLetters, exactCompounds, words, wordFormationStages };
 }
 
-/** GOLD MASTER MILESTONE 2A -- Convergence Refinement. The zone LIST,
- *  boundaries, and blending logic below are exactly as Milestone 2 left
- *  them -- untouched, per "do not discard any existing work." The only
- *  change is WHAT METRIC decides which zone a point falls into: instead
- *  of xFrac (which implied a left-to-right reading direction), it's now
- *  radial distance from a fixed point representing where the Kural
- *  itself sits -- "the Kural should become the gravitational centre of
- *  the page... formation should happen from every direction." See
- *  radialConvergenceFrac() below, and its call site in drawAmbientGlyph. */
-const CONVERGENCE_CENTER_X = 0.47;
-const CONVERGENCE_CENTER_Y = 0.47;
-
-/** 0 = farthest corner from the convergence centre (least resolved --
- *  Ancient Memory). 1 = exactly at the centre (most resolved -- Word
- *  Formation). Deliberately the inverse of raw distance, so it can feed
- *  MILESTONE_ZONES' existing lo=0..hi=1 ordering with no changes to that
- *  list or pickMilestoneZone's blending logic at all. Distance is
- *  computed in real pixel space (not raw x/yFrac) and normalized against
- *  the actual farthest corner, so the convergence reads as a genuine
- *  circle -- "roots, rivers, neurons, constellations" -- not an ellipse
- *  squashed by the canvas's own aspect ratio. */
-function radialConvergenceFrac(x: number, y: number, width: number, height: number): number {
-  const cx = CONVERGENCE_CENTER_X * width;
-  const cy = CONVERGENCE_CENTER_Y * height;
-  const dx = x - cx;
-  const dy = y - cy;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  const maxDx = Math.max(cx, width - cx);
-  const maxDy = Math.max(cy, height - cy);
-  const maxDist = Math.sqrt(maxDx * maxDx + maxDy * maxDy);
-  const normalized = maxDist > 0 ? Math.min(1, dist / maxDist) : 0;
-  return 1 - normalized;
+/** GOLD MASTER MILESTONE 2 REBOOT -- The Evolution of Language. The zone
+ *  LIST, boundaries, and blending logic below are exactly as Milestone 2
+ *  left them -- untouched, per "do not discard any existing work." What
+ *  metric decides zone membership has changed TWICE now: Milestone 2 used
+ *  xFrac (implied a left-to-right reading direction -- rejected). 2A used
+ *  radial distance from one fixed point (implied language "rushing toward
+ *  a destination," explicitly rejected this reboot: "NOT convergence...
+ *  NOT iron filings pulled by a magnet"). This version uses distance from
+ *  the NEAREST canvas edge instead -- "outer regions" (all four, not one
+ *  corner) are Ancient Memory, and resolution grows inward from every
+ *  side into a broad interior band, not toward a single point. That
+ *  interior is an actual band of space, not a coordinate, which is also
+ *  structurally why this can't collapse into "one dense cluster" the way
+ *  2A did -- there is no single (x,y) everything is pulled toward. See
+ *  edgeGrowthFrac() below, and its call site in drawAmbientGlyph. */
+function edgeGrowthFrac(x: number, y: number, width: number, height: number): number {
+  const distToEdge = Math.min(x, width - x, y, height - y);
+  const maxPossible = Math.min(width, height) / 2;
+  return maxPossible > 0 ? Math.min(1, distToEdge / maxPossible) : 0;
 }
 
 /** GOLD MASTER MILESTONE 2 -- Formation Grammar. Five explicit states,
@@ -719,7 +759,7 @@ function radialConvergenceFrac(x: number, y: number, width: number, height: numb
  *  it draws. Blending in the last 35% of each state's span is unchanged
  *  from Milestone 1 -- still no hard boundaries. As of Milestone 2A, the
  *  "position" fed in is radial distance from the Kural's centre, not
- *  xFrac -- see radialConvergenceFrac above. */
+ *  xFrac -- see edgeGrowthFrac above. */
 const MILESTONE_ZONES = [
   { name: "ancientMemory", lo: 0, hi: 0.22 },
   { name: "modernOnly", lo: 0.22, hi: 0.4 },
@@ -728,17 +768,17 @@ const MILESTONE_ZONES = [
   { name: "wordFormation", lo: 0.76, hi: 1.0 },
 ] as const;
 
-function pickMilestoneZone(radialFrac: number, rand: SeededRandom): (typeof MILESTONE_ZONES)[number]["name"] {
+function pickMilestoneZone(growthFrac: number, rand: SeededRandom): (typeof MILESTONE_ZONES)[number]["name"] {
   let idx = MILESTONE_ZONES.length - 1;
   for (let i = 0; i < MILESTONE_ZONES.length; i++) {
-    if (radialFrac < MILESTONE_ZONES[i].hi || i === MILESTONE_ZONES.length - 1) {
+    if (growthFrac < MILESTONE_ZONES[i].hi || i === MILESTONE_ZONES.length - 1) {
       idx = i;
       break;
     }
   }
   const zone = MILESTONE_ZONES[idx];
   const span = zone.hi - zone.lo;
-  const progress = span > 0 ? (radialFrac - zone.lo) / span : 1;
+  const progress = span > 0 ? (growthFrac - zone.lo) / span : 1;
   const blendStart = 0.65;
   if (progress > blendStart && idx < MILESTONE_ZONES.length - 1) {
     const blendT = (progress - blendStart) / (1 - blendStart);
@@ -758,6 +798,31 @@ function drawAmbientField(
   zonePools: MilestoneZonePools,
   macro: readonly MacroCluster[]
 ): void {
+  // GOLD MASTER MILESTONE 2 REBOOT: "words should NEVER overlap, never
+  // stack, never become a cloud." Tracked for the lifetime of this one
+  // field-drawing pass -- every Region 4/5 word-like placement checks
+  // against every box already placed before it, and only commits if
+  // clear. Never reset mid-pass; this is what makes the guarantee global
+  // across the whole canvas, not just locally per-cluster.
+  const placedWordBoxes: PlacedWordBox[] = [];
+
+  // Formation Nodes (ச்/ஒ/ல்/சொ/சொல்/பயன்) are drawn by a SEPARATE system
+  // (drawFormationLayer, called after this function returns) at fixed
+  // positions from kural200-state.ts -- the ambient word-placement below
+  // has no way to know they exist unless told. Pre-seeded here so words
+  // correctly avoid colliding with them too, not just with each other.
+  // Sized off each node's own emphasis tier max size, with generous
+  // padding since Tamil glyphs can render wider than their nominal size.
+  for (const node of FORMATION_NODES) {
+    const style = EMPHASIS_STYLE[node.emphasis];
+    const approxHalf = style.maxSize * 1.1;
+    placedWordBoxes.push({
+      x: node.x * width,
+      y: node.y * height,
+      halfW: approxHalf,
+      halfH: approxHalf,
+    });
+  }
 
   // A finer grid still -- more addressable slots for the micro-mass this
   // pass asks for.
@@ -806,7 +871,7 @@ function drawAmbientField(
         // without ever forbidding it outright.
         if (!rand.chance(Math.min(1, d * 0.6 + 0.05))) continue;
 
-        drawAmbientGlyph(ctx, cx, cy, width, height, d, cxFrac, tamilFont, brahmiFont, rand, kuralSyllables, zonePools);
+        drawAmbientGlyph(ctx, cx, cy, width, height, d, cxFrac, tamilFont, brahmiFont, rand, kuralSyllables, zonePools, placedWordBoxes);
         // A second, even smaller pass of pure micro-dot texture layered
         // right alongside the glyphs -- "atmospheric texture" without any
         // imported imagery: fine traces, not letters.
@@ -841,7 +906,8 @@ function drawAmbientGlyph(
   brahmiFont: string,
   rand: SeededRandom,
   kuralSyllables: readonly string[],
-  zonePools: MilestoneZonePools
+  zonePools: MilestoneZonePools,
+  placedWordBoxes: PlacedWordBox[]
 ): void {
   // Suppress LARGE/GHOST probability as the field moves toward the
   // formation region -- their mass folds back into MICRO instead.
@@ -922,8 +988,8 @@ function drawAmbientGlyph(
   // The completed Kural itself is never assembled here; see
   // renderKuralPublishing, which does not call drawForegroundKural this
   // milestone -- "stop at the word level."
-  const radialFrac = radialConvergenceFrac(x, y, width, height);
-  const zone = pickMilestoneZone(radialFrac, rand);
+  const growthFrac = edgeGrowthFrac(x, y, width, height);
+  const zone = pickMilestoneZone(growthFrac, rand);
   let ambient: AmbientGlyph;
   if (zone === "ancientMemory") {
     // "Contains Tamil-Brahmi, Vatteluttu, Modern Tamil. Random.
@@ -943,8 +1009,14 @@ function drawAmbientGlyph(
     ambient = { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
   } else if (zone === "requiredLetters" && zonePools.exactLetters.length > 0) {
     ambient = { glyph: { kind: "text", value: rand.pick(zonePools.exactLetters) }, script: "modern" };
-  } else if (zone === "uyirmeiFormation" && zonePools.exactCompounds.length > 0) {
-    ambient = { glyph: { kind: "text", value: rand.pick(zonePools.exactCompounds) }, script: "modern" };
+  } else if (zone === "uyirmeiFormation" && zonePools.wordFormationStages.length > 0) {
+    // Region 4 -- Formation: a random word, at a random point in its own
+    // grapheme-safe progressive growth (இ -> இத -> இதனை). Every stage is
+    // a real, valid prefix -- never a severed glyph -- because it was
+    // built from extractTamilSyllables' grapheme segmentation, not a raw
+    // character slice.
+    const stages = rand.pick(zonePools.wordFormationStages);
+    ambient = { glyph: { kind: "text", value: rand.pick(stages) }, script: "modern" };
   } else if (zone === "wordFormation" && zonePools.words.length > 0) {
     ambient = { glyph: { kind: "text", value: rand.pick(zonePools.words) }, script: "modern" };
   } else {
@@ -979,7 +1051,10 @@ function drawAmbientGlyph(
   // is just an illegible smear, which would defeat the entire point of
   // this milestone (proving the field can show "words forming"). Words
   // get a real size floor so they read as words, not noise.
-  const isWord = zone === "wordFormation" && ambient.glyph.kind === "text" && ambient.glyph.value.length > 1;
+  const isWord =
+    (zone === "wordFormation" || zone === "uyirmeiFormation") &&
+    ambient.glyph.kind === "text" &&
+    ambient.glyph.value.length > 1;
   const calibratedSize = isWord ? Math.max(size * 1.8, 16) : size;
 
   // Opacity is now a direct, floor-less function of density -- as density
@@ -1004,6 +1079,29 @@ function drawAmbientGlyph(
     ctx.translate(x + jitterX, y + jitterY);
     drawPathGlyph(ctx, ambient.glyph.value, calibratedSize);
     ctx.restore();
+  } else if (isWord) {
+    // GOLD MASTER MILESTONE 2 REBOOT: "words should NEVER overlap, never
+    // stack, never become a cloud. Each word deserves space." Set the
+    // font FIRST so measureText reflects the real size/weight this word
+    // would actually draw at, then check the resulting footprint against
+    // every word already committed this pass. If it collides, this
+    // candidate simply never gets drawn -- "some words are only half
+    // formed, some nearly complete" already licenses an attempt not
+    // completing; skipping silently is exactly that, not a bug.
+    const weight = ambient.script === "brahmi" ? 500 : 400;
+    const family = ambient.script === "brahmi" ? brahmiFont : tamilFont;
+    ctx.font = `${weight} ${calibratedSize}px ${family}`;
+    const measured = ctx.measureText(ambient.glyph.value);
+    const candidate: PlacedWordBox = {
+      x: x + jitterX,
+      y: y + jitterY,
+      halfW: measured.width / 2,
+      halfH: calibratedSize * 0.6,
+    };
+    if (!wordWouldOverlap(candidate, placedWordBoxes)) {
+      ctx.fillText(ambient.glyph.value, candidate.x, candidate.y);
+      placedWordBoxes.push(candidate);
+    }
   } else {
     const weight = ambient.script === "brahmi" ? 500 : 400;
     const family = ambient.script === "brahmi" ? brahmiFont : tamilFont;
