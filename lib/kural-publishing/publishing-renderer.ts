@@ -669,6 +669,40 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
   return { exactLetters, exactCompounds, words };
 }
 
+/** GOLD MASTER MILESTONE 2A -- Convergence Refinement. The zone LIST,
+ *  boundaries, and blending logic below are exactly as Milestone 2 left
+ *  them -- untouched, per "do not discard any existing work." The only
+ *  change is WHAT METRIC decides which zone a point falls into: instead
+ *  of xFrac (which implied a left-to-right reading direction), it's now
+ *  radial distance from a fixed point representing where the Kural
+ *  itself sits -- "the Kural should become the gravitational centre of
+ *  the page... formation should happen from every direction." See
+ *  radialConvergenceFrac() below, and its call site in drawAmbientGlyph. */
+const CONVERGENCE_CENTER_X = 0.47;
+const CONVERGENCE_CENTER_Y = 0.47;
+
+/** 0 = farthest corner from the convergence centre (least resolved --
+ *  Ancient Memory). 1 = exactly at the centre (most resolved -- Word
+ *  Formation). Deliberately the inverse of raw distance, so it can feed
+ *  MILESTONE_ZONES' existing lo=0..hi=1 ordering with no changes to that
+ *  list or pickMilestoneZone's blending logic at all. Distance is
+ *  computed in real pixel space (not raw x/yFrac) and normalized against
+ *  the actual farthest corner, so the convergence reads as a genuine
+ *  circle -- "roots, rivers, neurons, constellations" -- not an ellipse
+ *  squashed by the canvas's own aspect ratio. */
+function radialConvergenceFrac(x: number, y: number, width: number, height: number): number {
+  const cx = CONVERGENCE_CENTER_X * width;
+  const cy = CONVERGENCE_CENTER_Y * height;
+  const dx = x - cx;
+  const dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const maxDx = Math.max(cx, width - cx);
+  const maxDy = Math.max(cy, height - cy);
+  const maxDist = Math.sqrt(maxDx * maxDx + maxDy * maxDy);
+  const normalized = maxDist > 0 ? Math.min(1, dist / maxDist) : 0;
+  return 1 - normalized;
+}
+
 /** GOLD MASTER MILESTONE 2 -- Formation Grammar. Five explicit states,
  *  restructured from Milestone 1's six sequential zones per the founder's
  *  new grouping: State 1 (Ancient Memory) mixes Tamil-Brahmi, Vatteluttu,
@@ -683,7 +717,9 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
  *  overall field composition." This only changes WHICH POOL a glyph's
  *  characters draw from at a given position, never whether/how brightly
  *  it draws. Blending in the last 35% of each state's span is unchanged
- *  from Milestone 1 -- still no hard boundaries. */
+ *  from Milestone 1 -- still no hard boundaries. As of Milestone 2A, the
+ *  "position" fed in is radial distance from the Kural's centre, not
+ *  xFrac -- see radialConvergenceFrac above. */
 const MILESTONE_ZONES = [
   { name: "ancientMemory", lo: 0, hi: 0.22 },
   { name: "modernOnly", lo: 0.22, hi: 0.4 },
@@ -692,17 +728,17 @@ const MILESTONE_ZONES = [
   { name: "wordFormation", lo: 0.76, hi: 1.0 },
 ] as const;
 
-function pickMilestoneZone(xFrac: number, rand: SeededRandom): (typeof MILESTONE_ZONES)[number]["name"] {
+function pickMilestoneZone(radialFrac: number, rand: SeededRandom): (typeof MILESTONE_ZONES)[number]["name"] {
   let idx = MILESTONE_ZONES.length - 1;
   for (let i = 0; i < MILESTONE_ZONES.length; i++) {
-    if (xFrac < MILESTONE_ZONES[i].hi || i === MILESTONE_ZONES.length - 1) {
+    if (radialFrac < MILESTONE_ZONES[i].hi || i === MILESTONE_ZONES.length - 1) {
       idx = i;
       break;
     }
   }
   const zone = MILESTONE_ZONES[idx];
   const span = zone.hi - zone.lo;
-  const progress = span > 0 ? (xFrac - zone.lo) / span : 1;
+  const progress = span > 0 ? (radialFrac - zone.lo) / span : 1;
   const blendStart = 0.65;
   if (progress > blendStart && idx < MILESTONE_ZONES.length - 1) {
     const blendT = (progress - blendStart) / (1 - blendStart);
@@ -770,7 +806,7 @@ function drawAmbientField(
         // without ever forbidding it outright.
         if (!rand.chance(Math.min(1, d * 0.6 + 0.05))) continue;
 
-        drawAmbientGlyph(ctx, cx, cy, d, cxFrac, tamilFont, brahmiFont, rand, kuralSyllables, zonePools);
+        drawAmbientGlyph(ctx, cx, cy, width, height, d, cxFrac, tamilFont, brahmiFont, rand, kuralSyllables, zonePools);
         // A second, even smaller pass of pure micro-dot texture layered
         // right alongside the glyphs -- "atmospheric texture" without any
         // imported imagery: fine traces, not letters.
@@ -797,6 +833,8 @@ function drawAmbientGlyph(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
+  width: number,
+  height: number,
   density: number,
   xFrac: number,
   tamilFont: string,
@@ -884,7 +922,8 @@ function drawAmbientGlyph(
   // The completed Kural itself is never assembled here; see
   // renderKuralPublishing, which does not call drawForegroundKural this
   // milestone -- "stop at the word level."
-  const zone = pickMilestoneZone(xFrac, rand);
+  const radialFrac = radialConvergenceFrac(x, y, width, height);
+  const zone = pickMilestoneZone(radialFrac, rand);
   let ambient: AmbientGlyph;
   if (zone === "ancientMemory") {
     // "Contains Tamil-Brahmi, Vatteluttu, Modern Tamil. Random.
