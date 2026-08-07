@@ -991,6 +991,14 @@ function drawAmbientGlyph(
   const growthFrac = edgeGrowthFrac(x, y, width, height);
   const zone = pickMilestoneZone(growthFrac, rand);
   let ambient: AmbientGlyph;
+  // GOLD MASTER MILESTONE 04 -- Law 8/9 made visual: only requiredLetters,
+  // uyirmeiFormation, and wordFormation ever draw content that is
+  // genuinely tied to this Kural. ancientMemory and modernOnly (and the
+  // defensive fallback) are, by definition, "everything else" -- the
+  // content Law 9 says must quietly return to memory as resolution
+  // happens nearby. This flag is what lets the opacity/colour step below
+  // tell those two cases apart.
+  let isRequired = false;
   if (zone === "ancientMemory") {
     // "Contains Tamil-Brahmi, Vatteluttu, Modern Tamil. Random.
     // Unrelated." -- an equal three-way roll per glyph, not proportional
@@ -1009,6 +1017,7 @@ function drawAmbientGlyph(
     ambient = { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
   } else if (zone === "requiredLetters" && zonePools.exactLetters.length > 0) {
     ambient = { glyph: { kind: "text", value: rand.pick(zonePools.exactLetters) }, script: "modern" };
+    isRequired = true;
   } else if (zone === "uyirmeiFormation" && zonePools.wordFormationStages.length > 0) {
     // Region 4 -- Formation: a random word, at a random point in its own
     // grapheme-safe progressive growth (இ -> இத -> இதனை). Every stage is
@@ -1017,8 +1026,10 @@ function drawAmbientGlyph(
     // character slice.
     const stages = rand.pick(zonePools.wordFormationStages);
     ambient = { glyph: { kind: "text", value: rand.pick(stages) }, script: "modern" };
+    isRequired = true;
   } else if (zone === "wordFormation" && zonePools.words.length > 0) {
     ambient = { glyph: { kind: "text", value: rand.pick(zonePools.words) }, script: "modern" };
+    isRequired = true;
   } else {
     // Defensive fallback only -- e.g. a future Kural with no உயிர்மெய்
     // compounds at all would otherwise have nothing to draw from in
@@ -1067,9 +1078,24 @@ function drawAmbientGlyph(
     : isHistorical
       ? Math.max(baseOpacity * 1.3, 0.22)
       : baseOpacity;
-  const opacity = Math.min(1, baseCalibratedOpacity * Math.min(1, density * 1.25));
 
-  const color = mix(COLORS.heritageBronze, COLORS.kuralInk, colorMix);
+  // GOLD MASTER MILESTONE 04 -- Law 9, Elimination, made visual: "everything
+  // that is no longer required simply returns to the Living Language
+  // Field... the page should become quieter, not emptier." Required
+  // content (isRequired) is exempt -- per Law 8/"Recognition," it gains
+  // confidence through being SELECTED more often as growthFrac increases
+  // (already true via pickMilestoneZone's blending), not through being
+  // rendered brighter or bigger here. Everything else quietly loses
+  // certainty as growthFrac increases: opacity eases down (never to zero
+  // -- memory doesn't vanish, it just quiets) and colour eases back
+  // toward bronze, away from ink, so unrelated marks read as
+  // less-certain even when they still happen to appear near a place
+  // where something is resolving.
+  const certaintyLoss = isRequired ? 1 : 1 - growthFrac * 0.55;
+  const opacity = Math.min(1, baseCalibratedOpacity * Math.min(1, density * 1.25) * certaintyLoss);
+  const colorMixDecayed = isRequired ? colorMix : colorMix * certaintyLoss;
+
+  const color = mix(COLORS.heritageBronze, COLORS.kuralInk, colorMixDecayed);
   ctx.fillStyle = withAlphaRgb(color, opacity);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
