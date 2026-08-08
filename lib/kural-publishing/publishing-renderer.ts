@@ -33,7 +33,7 @@
  * see pass 04's own header for that): every glyph belongs to one of three
  * semantic depths -- AMBIENT (broad modern-Tamil environment), KURAL
  * MATERIAL (real substrings of the actual Kural 200 text), or SEMANTIC
- * SURVIVOR (சொ/சொல்/பயன், rendered only via FORMATION_NODES, never from
+ * SURVIVOR (the formation nodes -- see deriveFormationNodes, rendered only
  * the ambient loop). The rule: the more visually prominent a form becomes,
  * the more directly it must relate to the source content -- so the
  * high-contrast LARGE/ANCHOR ambient tiers are now always Kural material,
@@ -51,7 +51,6 @@ import { MODERN_TAMIL, TAMIL_BRAHMI, VATTELUTTU, type Glyph, type GlyphPath } fr
 import { createSeededRandom, type SeededRandom } from "./seeded-random";
 import {
   deriveSeed,
-  FORMATION_NODES,
   REGIONS,
   type FormationNode,
   type KuralPublishingContent,
@@ -285,6 +284,11 @@ export function renderKuralPublishing(
   // buildMilestoneZonePools's doc comment).
   const zonePools = buildMilestoneZonePools(kuralSyllables, content);
 
+  // GOLD MASTER, explicit founder-authorized: the six Formation Nodes are
+  // no longer static, Kural-200-specific data -- derived fresh from
+  // whatever content is actually loaded (see deriveFormationNodes).
+  const formationNodes = deriveFormationNodes(content);
+
   ctx.clearRect(0, 0, width, height);
   drawAtmosphere(ctx, width, height);
 
@@ -294,10 +298,10 @@ export function renderKuralPublishing(
   // "connect clusters" instead of guessing at where they are. This ordering
   // is what keeps this pass's composition byte-identical to pass 04's
   // wherever this pass doesn't intentionally change something.
-  const macro = buildMacroClusters(rand);
+  const macro = buildMacroClusters(rand, formationNodes);
 
-  drawAmbientField(ctx, width, height, tamilFont, brahmiFont, rand, kuralSyllables, zonePools, macro);
-  drawFormationLayer(ctx, width, height, tamilFont, rand);
+  drawAmbientField(ctx, width, height, tamilFont, brahmiFont, rand, kuralSyllables, zonePools, macro, formationNodes);
+  drawFormationLayer(ctx, width, height, tamilFont, rand, formationNodes);
 
   // MILESTONE 01 SCOPE: "No typography. No editorial block. No logo. No
   // footer... The completed Kural is NOT rendered. Only the journey is
@@ -502,18 +506,18 @@ interface MacroCluster {
 
 /** "Clusters within clusters" -- irregular topography, not a flat density
  *  value across the left field. One cluster is fixed (not random) around
- *  the சொல்/பயன் formation nodes specifically, so that region always has
- *  accumulated material to be "selected" from, regardless of seed; the rest
- *  are seeded and vary with content. */
-function buildMacroClusters(rand: SeededRandom): MacroCluster[] {
+ *  the "formed"/"selected" formation nodes specifically, so that region
+ *  always has accumulated material to be "selected" from, regardless of
+ *  seed or content; the rest are seeded and vary with content. */
+function buildMacroClusters(rand: SeededRandom, nodes: readonly FormationNode[]): MacroCluster[] {
   const clusters: MacroCluster[] = [];
 
-  const payanNode = FORMATION_NODES.find((n) => n.id === "f-payan");
-  const cholNode = FORMATION_NODES.find((n) => n.id === "f-chol");
-  if (payanNode && cholNode) {
+  const selNode = nodes.find((n) => n.id === "sel");
+  const f2Node = nodes.find((n) => n.id === "f-2") ?? nodes.find((n) => n.id === "f-1");
+  if (selNode && f2Node) {
     clusters.push({
-      cx: (payanNode.x + cholNode.x) / 2,
-      cy: (payanNode.y + cholNode.y) / 2,
+      cx: (selNode.x + f2Node.x) / 2,
+      cy: (selNode.y + f2Node.y) / 2,
       r: 0.1,
       strength: 0.4,
     });
@@ -582,9 +586,9 @@ function pocketMultiplierAt(field: number[][], xFrac: number, yFrac: number): nu
 const CLEARING_RADIUS = 0.05;
 const CLEARING_STRENGTH = 0.55;
 
-function clearingAt(xFrac: number, yFrac: number): number {
+function clearingAt(xFrac: number, yFrac: number, nodes: readonly FormationNode[]): number {
   let factor = 1;
-  for (const node of FORMATION_NODES) {
+  for (const node of nodes) {
     const dx = xFrac - node.x;
     const dy = (yFrac - node.y) * 0.6;
     const d2 = dx * dx + dy * dy;
@@ -620,13 +624,14 @@ function densityAt(
   xFrac: number,
   yFrac: number,
   macro: readonly MacroCluster[],
-  pockets: number[][]
+  pockets: number[][],
+  nodes: readonly FormationNode[]
 ): number {
   const base = baseFalloff(xFrac);
   if (base <= 0) return 0;
   const bump = 1 + macroBumpAt(macro, xFrac, yFrac);
   const pocket = pocketMultiplierAt(pockets, xFrac, yFrac);
-  const clearing = clearingAt(xFrac, yFrac);
+  const clearing = clearingAt(xFrac, yFrac, nodes);
   const kuralClearing = kuralClearingAt(xFrac, yFrac);
   return Math.max(0, Math.min(2.6, base * bump * pocket * clearing * kuralClearing));
 }
@@ -690,42 +695,44 @@ interface MilestoneZonePools {
   wordFormationStages: readonly (readonly string[])[];
 }
 
-function buildMilestoneZonePools(kuralSyllables: readonly string[], content: KuralPublishingContent): MilestoneZonePools {
-  const PULLI = "\u0BCD";
-  // The 12 real, independent உயிர் letters -- the only characters a bare
-  // single-code-point grapheme can legitimately be classified as உயிர்.
-  // Everything else that shows up as a single character (த, க, ப, ய, ல...)
-  // is NOT a separate "bare consonant" category -- it is மெய் + the
-  // implicit vowel அ, which Tamil never marks visibly (unlike இ, உ, ஏ,
-  // etc., which all get their own visible sign). A plain "த" IS a complete
-  // உயிர்மெய் letter, specifically the அ-vowel case, not an atomic unit
-  // alongside real உயிர். Length alone cannot distinguish "இ" from "த" --
-  // both are one code point -- so the vowel set has to be checked explicitly.
-  const UYIR_SET = new Set(["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"]);
-  // The visible bound vowel sign -> its own independent உயிர் letter.
-  // அ has no entry because அ has no visible sign at all -- that absence
-  // IS how an implicit-அ உயிர்மெய் is recognized (see atomicPartsOf).
-  const VOWEL_SIGN_TO_INDEPENDENT: Record<string, string> = {
-    "\u0BBE": "ஆ", "\u0BBF": "இ", "\u0BC0": "ஈ", "\u0BC1": "உ", "\u0BC2": "ஊ",
-    "\u0BC6": "எ", "\u0BC7": "ஏ", "\u0BC8": "ஐ", "\u0BCA": "ஒ", "\u0BCB": "ஓ", "\u0BCC": "ஔ",
-  };
-  // GOLD MASTER, direct founder request: "the background must contain
-  // all these uyir and mei letters" -- த் + அ = த, ன் + ஐ = னை, verified
-  // together turn by turn before this was written. For any உயிர்மெய்
-  // grapheme, returns its real [மெய் pulli-form, உயிர் independent-form]
-  // pair. For an already-atomic grapheme (a real உயிர், or a மெய் already
-  // in pulli form), returns it unchanged -- there is nothing further to
-  // decompose.
-  function atomicPartsOf(grapheme: string): readonly string[] {
-    if (UYIR_SET.has(grapheme)) return [grapheme];
-    if (grapheme.length === 2 && grapheme[1] === PULLI) return [grapheme];
-    if (grapheme.length === 1) return [grapheme + PULLI, "அ"]; // implicit-அ case
-    const base = grapheme[0];
-    const sign = grapheme.slice(1);
-    const uyir = VOWEL_SIGN_TO_INDEPENDENT[sign];
-    return uyir ? [base + PULLI, uyir] : [grapheme];
-  }
+// The 12 real, independent உயிர் letters -- the only characters a bare
+// single-code-point grapheme can legitimately be classified as உயிர்.
+// Everything else that shows up as a single character (த, க, ப, ய, ல...)
+// is NOT a separate "bare consonant" category -- it is மெய் + the
+// implicit vowel அ, which Tamil never marks visibly (unlike இ, உ, ஏ,
+// etc., which all get their own visible sign). A plain "த" IS a complete
+// உயிர்மெய் letter, specifically the அ-vowel case, not an atomic unit
+// alongside real உயிர். Length alone cannot distinguish "இ" from "த" --
+// both are one code point -- so the vowel set has to be checked explicitly.
+const PULLI = "\u0BCD";
+const UYIR_SET = new Set(["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"]);
+// The visible bound vowel sign -> its own independent உயிர் letter.
+// அ has no entry because அ has no visible sign at all -- that absence
+// IS how an implicit-அ உயிர்மெய் is recognized (see atomicPartsOf).
+const VOWEL_SIGN_TO_INDEPENDENT: Record<string, string> = {
+  "\u0BBE": "ஆ", "\u0BBF": "இ", "\u0BC0": "ஈ", "\u0BC1": "உ", "\u0BC2": "ஊ",
+  "\u0BC6": "எ", "\u0BC7": "ஏ", "\u0BC8": "ஐ", "\u0BCA": "ஒ", "\u0BCB": "ஓ", "\u0BCC": "ஔ",
+};
+// GOLD MASTER, direct founder request: "the background must contain
+// all these uyir and mei letters" -- த் + அ = த, ன் + ஐ = னை, verified
+// together turn by turn before this was written. For any உயிர்மெய்
+// grapheme, returns its real [மெய் pulli-form, உயிர் independent-form]
+// pair. For an already-atomic grapheme (a real உயிர், or a மெய் already
+// in pulli form), returns it unchanged -- there is nothing further to
+// decompose. Module-level (not local to buildMilestoneZonePools) because
+// deriveFormationNodes needs the identical logic -- one source of truth
+// for what "atomic" means, not two copies that could drift apart.
+function atomicPartsOf(grapheme: string): readonly string[] {
+  if (UYIR_SET.has(grapheme)) return [grapheme];
+  if (grapheme.length === 2 && grapheme[1] === PULLI) return [grapheme];
+  if (grapheme.length === 1) return [grapheme + PULLI, "அ"]; // implicit-அ case
+  const base = grapheme[0];
+  const sign = grapheme.slice(1);
+  const uyir = VOWEL_SIGN_TO_INDEPENDENT[sign];
+  return uyir ? [base + PULLI, uyir] : [grapheme];
+}
 
+function buildMilestoneZonePools(kuralSyllables: readonly string[], content: KuralPublishingContent): MilestoneZonePools {
   const exactLetters: string[] = [];
   const exactCompounds: string[] = [];
   for (const s of kuralSyllables) {
@@ -761,6 +768,85 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
   });
 
   return { exactLetters, exactCompounds, words, wordFormationStages };
+}
+
+/** GOLD MASTER, explicit founder-authorized replacement for the old
+ *  hardcoded FORMATION_NODES: derives the same SHAPE of formation story
+ *  (two components merging into a formed fragment, extending into an
+ *  emerging fragment, plus one independent selected word -- exactly the
+ *  ச்+ஒ->சொ->சொல் / பயன் structure the original data always had) from
+ *  whichever Kural's content is actually loaded, instead of always
+ *  showing Kural 200's own words regardless of content. Confirmed
+ *  necessary directly: rendering Kural 517 with the old static data
+ *  showed சொல்/பயன் -- words with nothing to do with the loaded verse.
+ *
+ *  Positions are the same six fixed slots the field has used since the
+ *  last rescale (still inside the dense-fragments zone) -- only WHICH
+ *  glyphs occupy them is now dynamic, not where they sit. Deterministic:
+ *  always the first real word for the component/formed/emerging chain,
+ *  always the next distinct word for "selected," so the same content
+ *  always produces the same six nodes. */
+function deriveFormationNodes(content: KuralPublishingContent): readonly FormationNode[] {
+  const positions: { id: string; x: number; y: number; emphasis: FormationNode["emphasis"] }[] = [
+    { id: "c-1", x: 0.228, y: 0.34, emphasis: "component" },
+    { id: "c-2", x: 0.239, y: 0.63, emphasis: "component" },
+    { id: "c-3", x: 0.38, y: 0.605, emphasis: "component" },
+    { id: "f-1", x: 0.338, y: 0.49, emphasis: "formed" },
+    { id: "f-2", x: 0.373, y: 0.4, emphasis: "emerging" },
+    { id: "sel", x: 0.346, y: 0.565, emphasis: "selected" },
+  ];
+
+  const words = `${content.tamilLine1} ${content.tamilLine2}`
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+  const wordA = words[0];
+  const wordB = words.find((w) => w !== wordA) ?? words[0];
+
+  if (!wordA) {
+    // Defensive fallback only -- content should never actually be empty,
+    // but never render nothing rather than crash.
+    return [];
+  }
+
+  const graphemesA = extractTamilSyllables(wordA);
+  const firstGrapheme = graphemesA[0] ?? wordA;
+  const atoms = atomicPartsOf(firstGrapheme);
+  const nodes: FormationNode[] = [];
+
+  if (atoms.length === 2) {
+    // The common case: the first grapheme is a real உயிர்மெய், so it has
+    // two genuine atomic parts -- exactly the ச்+ஒ->சொ shape.
+    nodes.push({ id: "c-1", glyph: atoms[0], x: positions[0].x, y: positions[0].y, emphasis: "component" });
+    nodes.push({ id: "c-2", glyph: atoms[1], x: positions[1].x, y: positions[1].y, emphasis: "component" });
+  } else {
+    // The first grapheme was already atomic (a real உயிர், or already a
+    // pulli-form மெய்) -- nothing to decompose, so it stands alone as
+    // its own single component rather than manufacturing a second one
+    // that doesn't linguistically exist.
+    nodes.push({ id: "c-1", glyph: atoms[0], x: positions[0].x, y: positions[0].y, emphasis: "component" });
+  }
+
+  // A third component, if this Kural's real content offers one: the
+  // grapheme immediately after the first, shown as its own atomic root
+  // (matching ல்'s original role -- a separate root joining the chain,
+  // not part of the same உயிர்மெய்).
+  if (graphemesA[1]) {
+    const secondAtoms = atomicPartsOf(graphemesA[1]);
+    nodes.push({ id: "c-3", glyph: secondAtoms[0], x: positions[2].x, y: positions[2].y, emphasis: "component" });
+  }
+
+  nodes.push({ id: "f-1", glyph: firstGrapheme, x: positions[3].x, y: positions[3].y, emphasis: "formed" });
+
+  const twoGraphemePrefix = graphemesA.slice(0, 2).join("");
+  if (twoGraphemePrefix && twoGraphemePrefix !== firstGrapheme) {
+    nodes.push({ id: "f-2", glyph: twoGraphemePrefix, x: positions[4].x, y: positions[4].y, emphasis: "emerging" });
+  }
+
+  if (wordB) {
+    nodes.push({ id: "sel", glyph: wordB, x: positions[5].x, y: positions[5].y, emphasis: "selected" });
+  }
+
+  return nodes;
 }
 
 /** GOLD MASTER MILESTONE 2 REBOOT -- The Evolution of Language. The zone
@@ -837,7 +923,8 @@ function drawAmbientField(
   rand: SeededRandom,
   kuralSyllables: readonly string[],
   zonePools: MilestoneZonePools,
-  macro: readonly MacroCluster[]
+  macro: readonly MacroCluster[],
+  nodes: readonly FormationNode[]
 ): void {
   // GOLD MASTER MILESTONE 2 REBOOT: "words should NEVER overlap, never
   // stack, never become a cloud." Tracked for the lifetime of this one
@@ -854,7 +941,7 @@ function drawAmbientField(
   // correctly avoid colliding with them too, not just with each other.
   // Sized off each node's own emphasis tier max size, with generous
   // padding since Tamil glyphs can render wider than their nominal size.
-  for (const node of FORMATION_NODES) {
+  for (const node of nodes) {
     const style = EMPHASIS_STYLE[node.emphasis];
     const approxHalf = style.maxSize * 1.1;
     placedWordBoxes.push({
@@ -879,7 +966,7 @@ function drawAmbientField(
     while (c < cols) {
       const xFrac = (c * colW) / width;
       const yFrac = (r * rowH) / height;
-      const density = densityAt(xFrac, yFrac, macro, pockets);
+      const density = densityAt(xFrac, yFrac, macro, pockets, nodes);
       // GOLD MASTER SPRINT 02: lowered from 0.004 to genuinely let the
       // far edge of a full-canvas field still occasionally place a mark,
       // not just skip forever -- "still present, still dissolving, never
@@ -905,7 +992,7 @@ function drawAmbientField(
         const cy = r * rowH + rowH / 2;
         const cxFrac = cx / width;
         const cyFrac = cy / height;
-        const d = densityAt(cxFrac, cyFrac, macro, pockets);
+        const d = densityAt(cxFrac, cyFrac, macro, pockets, nodes);
         if (d <= 0.0006) continue;
         // Regions that breathe -- not every slot fires even inside a dense
         // pocket. Far to the right this naturally makes placement rare
@@ -1274,9 +1361,9 @@ function drawFormationLayer(
   width: number,
   height: number,
   tamilFont: string,
-  rand: SeededRandom
+  rand: SeededRandom,
+  nodes: readonly FormationNode[]
 ): FormationDebugInfo {
-  const nodeById = new Map(FORMATION_NODES.map((n) => [n.id, n]));
   const trunks: FormationTrunkRecord[] = [];
   const markers: { x: number; y: number; label: string }[] = [];
 
@@ -1286,53 +1373,37 @@ function drawFormationLayer(
   // direction ("remove the formation vein") -- it drew nothing but
   // decorative connecting lines, exactly what was asked to go.
 
-  const choNode = nodeById.get("f-cho");
-  const cholNode = nodeById.get("f-chol");
-  const payanNode = nodeById.get("f-payan");
+  // GOLD MASTER: node lookups are role-based now (formed/emerging/
+  // selected), not by the old Kural-200-specific ids ("f-cho"/"f-chol"/
+  // "f-payan") -- deriveFormationNodes generates different glyphs and ids
+  // for different content, but the emphasis roles are always present in
+  // the same shape, so keying off role is what actually generalizes.
+  const formedNode = nodes.find((n) => n.emphasis === "formed");
+  const emergingNode = nodes.find((n) => n.emphasis === "emerging");
+  const selectedNode = nodes.find((n) => n.emphasis === "selected");
 
-  // FORMATION FAMILY 1: ச் -- a root originating inside the language mass
-  // near ச், not exactly at it (per "should not know exactly where a
-  // relationship begins"), growing toward the சொ convergence.
-  // Line removed per founder direction ("remove the formation vein") --
-  // the relationship still exists (see FORMATION_PATHS / kural200-state.ts,
-  // fully unchanged) but is no longer drawn as a connecting stroke. Only
-  // the glyphs themselves (drawFormationNode, below) and their small
-  // convergence marks remain visible.
-
-  // FORMATION FAMILY 2: ஒ -- its own independent root, converging on the
-  // same சொ point from a different direction.
-  if (choNode) {
-    // A single small, precious glow at the convergence point -- "occasional
-    // warm gold illumination near meaningful convergence," kept even
-    // though the connecting lines are gone; it marks the glyph itself as
-    // a place something happened, without drawing how.
-    drawPathGlowPoint(ctx, width * choNode.x, height * choNode.y, COLORS.heritageBronze, 0.09);
+  // FORMATION FAMILY: the formed fragment's convergence point -- "a single
+  // small, precious glow... it marks the glyph itself as a place something
+  // happened, without drawing how." Line removed per founder direction
+  // ("remove the formation vein"); only the glyphs themselves
+  // (drawFormationNode, below) and their small convergence marks remain.
+  if (formedNode) {
+    drawPathGlowPoint(ctx, width * formedNode.x, height * formedNode.y, COLORS.heritageBronze, 0.09);
   }
 
-  // FORMATION FAMILY 3: the system associated with சொ continues (does not
-  // stop at the first convergence) while a separate ல் root joins it, both
-  // resolving toward சொல்.
-  if (cholNode) {
-    drawPathGlowPoint(ctx, width * cholNode.x, height * cholNode.y, COLORS.heritageBronze, 0.1);
+  // The system continues extending past the first convergence.
+  if (emergingNode) {
+    drawPathGlowPoint(ctx, width * emergingNode.x, height * emergingNode.y, COLORS.heritageBronze, 0.1);
   }
 
-  // FORMATION FAMILY 4: பயன் -- a fully INDEPENDENT root family, from a
-  // deep origin nowhere near ச்/ஒ/ல்/சொ/சொல். பயன் is a semantic
-  // survivor, not something சொல் linguistically forms -- see the
-  // deliberate absence of any trunk between them below.
-  if (payanNode) {
-    drawPathGlowPoint(ctx, width * payanNode.x, height * payanNode.y, COLORS.heritageBronze, 0.09);
+  // The selected node -- a fully INDEPENDENT survivor, not something the
+  // formed/emerging chain linguistically produces. Deliberately no trunk
+  // or trace drawn between them, per the same founder direction.
+  if (selectedNode) {
+    drawPathGlowPoint(ctx, width * selectedNode.x, height * selectedNode.y, COLORS.heritageBronze, 0.09);
   }
 
-  // SEMANTIC TRACE: சொல் and பயன் may relate conceptually as the two ideas
-  // that survive the Kural, but that is NOT a linguistic construction --
-  // rendered as diffuse, discontinuous wisps, never a single connecting
-  // stroke, so it can never read as a Formation Path.
-  // Semantic trace line also removed -- சொல்/பயன்'s conceptual (not
-  // linguistic) relationship still exists in kural200-state.ts, just no
-  // longer drawn as wisps between them.
-
-  for (const node of FORMATION_NODES) {
+  for (const node of nodes) {
     drawFormationNode(ctx, node, width, height, tamilFont, rand);
     markers.push({ x: node.x * width, y: node.y * height, label: `${node.glyph} (${node.emphasis})` });
   }
@@ -1390,12 +1461,21 @@ function drawPathGlowPoint(
  *  where every glyph is a quiet bronze/tan mark on the light ground and
  *  gold exists only in the editorial elements (rules, dash, dot). Glows
  *  removed entirely (glow: 0) for the same reason. Hierarchy between the
- *  tiers is preserved through size and opacity alone. */
+ *  tiers is preserved through size and opacity alone.
+ *
+ *  Sizes brought down to the starfield model's own range (roughly 6-19px
+ *  -- see "Starfield model: brightness carries hierarchy, not size") --
+ *  these were locked before that pass existed and never revisited, which
+ *  is why formation nodes visually dominated the field at up to 35px next
+ *  to a starfield capped at 19px. Direct founder report on real content:
+ *  "so sol payan and all in bigger font size." Hierarchy among the four
+ *  tiers now lives mostly in opacity, the same principle the rest of the
+ *  field already uses. */
 const EMPHASIS_STYLE = {
-  component: { minSize: 16, maxSize: 21, minOpacity: 0.28, maxOpacity: 0.4, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
-  formed: { minSize: 22, maxSize: 27, minOpacity: 0.55, maxOpacity: 0.68, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
-  emerging: { minSize: 29, maxSize: 35, minOpacity: 0.68, maxOpacity: 0.8, glow: 0, glowColor: COLORS.heritageBronze, textColor: mix(COLORS.heritageBronze, COLORS.kuralInk, 0.35) },
-  selected: { minSize: 25, maxSize: 30, minOpacity: 0.58, maxOpacity: 0.72, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
+  component: { minSize: 9, maxSize: 12, minOpacity: 0.28, maxOpacity: 0.4, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
+  formed: { minSize: 11, maxSize: 14, minOpacity: 0.55, maxOpacity: 0.68, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
+  emerging: { minSize: 13, maxSize: 17, minOpacity: 0.68, maxOpacity: 0.8, glow: 0, glowColor: COLORS.heritageBronze, textColor: mix(COLORS.heritageBronze, COLORS.kuralInk, 0.35) },
+  selected: { minSize: 12, maxSize: 16, minOpacity: 0.58, maxOpacity: 0.72, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
 } as const;
 
 /** The field/editorial boundary. Rescaled from 0.532 to 0.3, matching

@@ -74,35 +74,21 @@ export interface FormationPath {
   toId: string;
 }
 
-/** Three explicit, founder-authorized exceptions to this file's otherwise-
- *  strict freeze:
- *
- *  1. Reference-match pass: f-chol and f-payan's x positions moved left.
- *
- *  2. Field-rebalance pass: all six nodes rescaled into a 30%-wide field.
- *
- *  3. Gold Master Sprint 02 (this one): rescaled again as the field
- *     expanded back out to span the full canvas, positioned to sit in the
- *     dense-fragments zone (x < ~0.4) before the Kural resolves around
- *     x=0.45 -- ச்/ஒ/ல்/சொ/சொல்/பயன் are themselves fragments that
- *     almost-complete, part of the same "language struggling to survive"
- *     story, not a separate system. y-positions, emphasis tiers, glyph
- *     identities, and every FORMATION_PATHS edge are unchanged across all
- *     three passes -- only x has ever moved, proportionally. */
-export const FORMATION_NODES: readonly FormationNode[] = [
-  { id: "c-ch", glyph: "ச்", x: 0.228, y: 0.34, emphasis: "component" },
-  { id: "c-o", glyph: "ஒ", x: 0.239, y: 0.63, emphasis: "component" },
-  { id: "c-l", glyph: "ல்", x: 0.38, y: 0.605, emphasis: "component" },
-  { id: "f-cho", glyph: "சொ", x: 0.338, y: 0.49, emphasis: "formed" },
-  { id: "f-chol", glyph: "சொல்", x: 0.373, y: 0.4, emphasis: "emerging" },
-  { id: "f-payan", glyph: "பயன்", x: 0.346, y: 0.565, emphasis: "selected" },
-];
-
-export const FORMATION_PATHS: readonly FormationPath[] = [
-  { fromId: "c-ch", toId: "f-cho" },
-  { fromId: "c-o", toId: "f-cho" },
-  { fromId: "f-cho", toId: "f-chol" },
-];
+/** GOLD MASTER, explicit founder-authorized architectural change: the six
+ *  Formation Nodes (ச்/ஒ/ல்/சொ/சொல்/பயன் and their positions) used to be
+ *  hardcoded here, specifically for Kural 200. That meant switching to any
+ *  other Kural still rendered Kural-200-specific glyphs (சொல், பயன்) that
+ *  had nothing to do with the loaded content -- confirmed directly against
+ *  a Kural 517 render, which showed exactly this. FORMATION_NODES and
+ *  FORMATION_PATHS are no longer exported from this file. They are now
+ *  derived per-render from whatever content is actually loaded -- see
+ *  deriveFormationNodes / deriveFormationPaths in publishing-renderer.ts,
+ *  which builds an analogous two-component-merge-then-extend story (the
+ *  same shape ச்+ஒ->சொ->சொல் always had) from the real first word of
+ *  whichever Kural is current, using the same grapheme/atomic-decomposition
+ *  machinery already used elsewhere in that file. The FormationNode /
+ *  FormationPath types above are unchanged and still the shared contract
+ *  between the two files. */
 
 /** Spatial regions as fractions of canvas width.
  *   0 -> denseEnd:            sustained abundance -- density stays high,
