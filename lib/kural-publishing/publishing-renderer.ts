@@ -52,7 +52,6 @@ import { createSeededRandom, type SeededRandom } from "./seeded-random";
 import {
   deriveSeed,
   REGIONS,
-  type FormationNode,
   type KuralPublishingContent,
 } from "./kural200-state";
 
@@ -269,47 +268,45 @@ export function renderKuralPublishing(
   ctx: CanvasRenderingContext2D,
   opts: RenderKuralPublishingOptions
 ): void {
-  const { width, height, content, tamilFont, brahmiFont } = opts;
+  const { width, height, content, tamilFont, sansFont, tamilSerifFont, serifFont, brahmiFont } = opts;
   const rand = createSeededRandom(deriveSeed(content.kuralNumber));
 
   // Real substrings of the actual verified Kural text, not invented glyphs --
-  // used to bias what the field shows as it approaches the formation region,
-  // per "content becomes MORE specific as the field becomes LESS dense."
+  // used throughout the field so its content is always tied to what's
+  // actually loaded, never fabricated.
   const kuralSyllables = extractTamilSyllables(
     `${content.tamilLine1} ${content.tamilLine2}`
   );
 
-  // MILESTONE 01 -- this Kural's exact மெய்/உயிர் units, exact உயிர்மெய்
-  // compounds, and actual words, all derived from the real content (see
+  // This Kural's exact மெய்/உயிர் units, exact உயிர்மெய் compounds, and
+  // actual words, all derived from the real content (see
   // buildMilestoneZonePools's doc comment).
   const zonePools = buildMilestoneZonePools(kuralSyllables, content);
-
-  // GOLD MASTER, explicit founder-authorized: the six Formation Nodes are
-  // no longer static, Kural-200-specific data -- derived fresh from
-  // whatever content is actually loaded (see deriveFormationNodes).
-  const formationNodes = deriveFormationNodes(content);
 
   ctx.clearRect(0, 0, width, height);
   drawAtmosphere(ctx, width, height);
 
-  // Built once, at the exact point in the RNG sequence pass 04 already built
-  // it (immediately before the ambient field's own pocket noise) -- shared
-  // with the formation layer below so secondary paths can genuinely
-  // "connect clusters" instead of guessing at where they are. This ordering
-  // is what keeps this pass's composition byte-identical to pass 04's
-  // wherever this pass doesn't intentionally change something.
-  const macro = buildMacroClusters(rand, formationNodes);
+  // GOLD MASTER, RAINFALL / FILTRATION MODEL -- explicit founder direction,
+  // approved directly against a chosen reference: five vertical stages
+  // (memory -> letters -> uyirmei -> words -> sentence), no dividers,
+  // memory density edge-based throughout (Spatial Constitution Law A/C
+  // unchanged), certainty running vertically instead of by distance from
+  // one point or one edge. Supersedes the edge-growth radial model and
+  // the separate Formation Node overlay entirely -- the five stages ARE
+  // the formation story now, not a system layered on top of it.
+  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools);
 
-  drawAmbientField(ctx, width, height, tamilFont, brahmiFont, rand, kuralSyllables, zonePools, macro, formationNodes);
-  drawFormationLayer(ctx, width, height, tamilFont, rand, formationNodes);
+  // The fifth stage, rendered directly: the assembled Kural. Explicit,
+  // deliberate reversal of "do not build the Kural yet" -- approved
+  // directly against the same reference, which showed the complete
+  // sentence at the bottom of this exact five-stage structure.
+  const sentenceBand = STAGES.find((s) => s.name === "sentence")!;
+  drawAssembledSentence(ctx, width, height, content, tamilSerifFont, serifFont, sentenceBand);
 
-  // MILESTONE 01 SCOPE: "No typography. No editorial block. No logo. No
-  // footer... The completed Kural is NOT rendered. Only the journey is
-  // shown." drawForegroundKural and the debug overlay are deliberately
-  // not called this milestone -- both still exist, untouched, ready to
-  // return once a future milestone explicitly asks for the editorial
-  // layer back. Nothing about them was changed; they are simply not
-  // part of this deliverable.
+  // tamilSerifFont/serifFont are consumed by drawAssembledSentence above;
+  // sansFont is not currently used by this pipeline but stays part of the
+  // options contract for parity with every other render entry point.
+  void sansFont;
 }
 
 /** Splits Tamil text into orthographic syllables (an independent vowel, or
@@ -469,185 +466,16 @@ function drawParchmentTexture(
 }
 
 // ---------------------------------------------------------------------------
-// Ambient field -- a true micro-language mass. Population is dominated by
-// tiny/micro marks (per founder direction: roughly 65% micro/tiny, 25%
-// small/medium, 8% large, 2% ghost, as a visual-hierarchy target, not an
-// exact quota). Darkness is local and irregular (macro clusters + fine
-// pockets), and large glyphs are actively suppressed in the transition zone
-// so the centre doesn't read as "unrelated large letters."
+// GOLD MASTER, RAINFALL / FILTRATION MODEL: two independent fields, not
+// one. Memory density stays edge-based (Spatial Constitution Law A/C) --
+// dense at every edge equally, thinning toward the interior, exponential
+// decay, never reaching exactly zero. Certainty is the separate axis that
+// runs vertically now (see STAGES, defined further below, alongside the
+// functions that use it) -- like rain filtering through soil: the soil
+// itself doesn't favour any side; what changes with depth is how filtered
+// the water passing through it has become.
 // ---------------------------------------------------------------------------
 
-/** Continuous exponential decay from the extreme left edge -- no plateau,
- *  no hard stop. "Maximum glyph density only at the extreme left edge...
- *  density decreases continuously across the entire canvas... never stop
- *  at 40%, never stop at 60%, continue fading until the far right." This
- *  never returns exactly zero (asymptotic decay), which is what makes the
- *  eventual population placement in drawAmbientField a true continuous
- *  fade rather than a boundary -- "fog disappearing into air," not a wall. */
-function baseFalloff(xFrac: number): number {
-  // MILESTONE 01: retuned from 6.0. That decay was tuned for a page where
-  // the Kural itself was the payoff at the far end, so the field could
-  // fade to near-nothing approaching it. This milestone has NO Kural --
-  // the exact-letters/exact-compounds/words zones ARE the payoff, and
-  // need genuine visible population for the evolution to actually read,
-  // not just be structurally correct at near-zero opacity. Flattened so
-  // density only drops to roughly a fifth of its start value by the far
-  // edge, not a few tenths of a percent.
-  const k = 1.8;
-  return Math.exp(-k * xFrac);
-}
-
-interface MacroCluster {
-  cx: number;
-  cy: number;
-  r: number;
-  strength: number;
-}
-
-/** "Clusters within clusters" -- irregular topography, not a flat density
- *  value across the left field. One cluster is fixed (not random) around
- *  the "formed"/"selected" formation nodes specifically, so that region
- *  always has accumulated material to be "selected" from, regardless of
- *  seed or content; the rest are seeded and vary with content. */
-function buildMacroClusters(rand: SeededRandom, nodes: readonly FormationNode[]): MacroCluster[] {
-  const clusters: MacroCluster[] = [];
-
-  const selNode = nodes.find((n) => n.id === "sel");
-  const f2Node = nodes.find((n) => n.id === "f-2") ?? nodes.find((n) => n.id === "f-1");
-  if (selNode && f2Node) {
-    clusters.push({
-      cx: (selNode.x + f2Node.x) / 2,
-      cy: (selNode.y + f2Node.y) / 2,
-      r: 0.1,
-      strength: 0.4,
-    });
-  }
-
-  const count = 8;
-  for (let i = 0; i < count; i++) {
-    clusters.push({
-      cx: rand.range(0.02, 0.72),
-      cy: rand.range(0.05, 0.95),
-      r: rand.range(0.08, 0.22),
-      strength: rand.range(0.25, 0.75),
-    });
-  }
-  return clusters;
-}
-
-function macroBumpAt(clusters: readonly MacroCluster[], xFrac: number, yFrac: number): number {
-  let bump = 0;
-  for (const c of clusters) {
-    const dx = xFrac - c.cx;
-    const dy = (yFrac - c.cy) * 0.6; // clusters read wider than tall
-    const d2 = dx * dx + dy * dy;
-    bump += c.strength * Math.exp(-d2 / (c.r * c.r * 0.5));
-  }
-  return bump;
-}
-
-/** Fine pocket grid -- small clearings and denser patches within a macro
- *  cluster, looked up with light neighbour-averaging so edges blend rather
- *  than showing a visible grid. */
-const POCKET_COLS = 13;
-const POCKET_ROWS = 8;
-
-function buildPocketField(rand: SeededRandom): number[][] {
-  const field: number[][] = [];
-  for (let r = 0; r < POCKET_ROWS; r++) {
-    const row: number[] = [];
-    // GOLD MASTER SPRINT 03: widened from 0.45-1.65 to 0.12-2.3 -- genuine
-    // near-empty patches alongside genuinely denser ones, not a narrow
-    // range that reads as smooth variance. "Some areas are dense. Some
-    // are empty." The disappearance should feel organic and archaeological,
-    // not like an even fade.
-    for (let c = 0; c < POCKET_COLS; c++) row.push(rand.range(0.12, 2.3));
-    field.push(row);
-  }
-  return field;
-}
-
-function pocketMultiplierAt(field: number[][], xFrac: number, yFrac: number): number {
-  const fc = Math.min(POCKET_COLS - 1, Math.max(0, Math.floor(xFrac * POCKET_COLS)));
-  const fr = Math.min(POCKET_ROWS - 1, Math.max(0, Math.floor(yFrac * POCKET_ROWS)));
-  const rightC = Math.min(POCKET_COLS - 1, fc + 1);
-  const belowR = Math.min(POCKET_ROWS - 1, fr + 1);
-  return (field[fr][fc] * 2 + field[fr][rightC] + field[belowR][fc]) / 4;
-}
-
-/** Final MVP pass: a small local clearing around every Formation Node
- *  position -- "immediately around each survivor... create a subtle local
- *  clearing... reduce unrelated ambient glyph competition." A pure spatial
- *  density multiplier, not a change to glyph categorisation or the
- *  Kural-bias logic (both frozen this pass) -- it only thins out whatever
- *  would otherwise land in that small radius. This is the direct fix for
- *  survivor glyphs (சொ especially) previously reading as duplicated by
- *  nearby ambient/Kural-material text sitting right on top of them. */
-const CLEARING_RADIUS = 0.05;
-const CLEARING_STRENGTH = 0.55;
-
-function clearingAt(xFrac: number, yFrac: number, nodes: readonly FormationNode[]): number {
-  let factor = 1;
-  for (const node of nodes) {
-    const dx = xFrac - node.x;
-    const dy = (yFrac - node.y) * 0.6;
-    const d2 = dx * dx + dy * dy;
-    const dip = CLEARING_STRENGTH * Math.exp(-d2 / (CLEARING_RADIUS * CLEARING_RADIUS * 0.5));
-    factor = Math.min(factor, 1 - dip);
-  }
-  return Math.max(0.15, factor);
-}
-
-/** GOLD MASTER SPRINT 03: "the only object that feels perfectly preserved
- *  ... its ink is deeper, its edges are cleaner." Not a size or weight
- *  change (both locked) -- a density clearing over the Kural's own two
- *  lines specifically, so nothing in the field ever sits directly behind
- *  or through its actual letterforms. The field still shows in the
- *  margins around it (above குறள் [n], between the lines, below toward
- *  English) -- only the two exact bands the Kural itself occupies clear. */
-const KURAL_CLEAR_X = 0.45;
-const KURAL_CLEAR_Y1 = 0.44;
-const KURAL_CLEAR_Y2 = 0.531;
-const KURAL_CLEAR_RADIUS_Y = 0.035;
-
-function kuralClearingAt(xFrac: number, yFrac: number): number {
-  if (xFrac < KURAL_CLEAR_X) return 1;
-  const r2 = KURAL_CLEAR_RADIUS_Y * KURAL_CLEAR_RADIUS_Y * 0.5;
-  const dy1 = yFrac - KURAL_CLEAR_Y1;
-  const dy2 = yFrac - KURAL_CLEAR_Y2;
-  const dip1 = 0.9 * Math.exp(-(dy1 * dy1) / r2);
-  const dip2 = 0.9 * Math.exp(-(dy2 * dy2) / r2);
-  return Math.max(0.05, 1 - Math.max(dip1, dip2));
-}
-
-function densityAt(
-  xFrac: number,
-  yFrac: number,
-  macro: readonly MacroCluster[],
-  pockets: number[][],
-  nodes: readonly FormationNode[]
-): number {
-  const base = baseFalloff(xFrac);
-  if (base <= 0) return 0;
-  const bump = 1 + macroBumpAt(macro, xFrac, yFrac);
-  const pocket = pocketMultiplierAt(pockets, xFrac, yFrac);
-  const clearing = clearingAt(xFrac, yFrac, nodes);
-  const kuralClearing = kuralClearingAt(xFrac, yFrac);
-  return Math.max(0, Math.min(2.6, base * bump * pocket * clearing * kuralClearing));
-}
-
-/** MILESTONE 01/2 -- Living Language Evolution / Formation Grammar. Zones, left to right,
- *  each a real linguistic stage: random Tamil-Brahmi, random Vatteluttu,
- *  random Modern Tamil, then narrowing to what THIS Kural actually needs
- *  -- its exact மெய்/உயிர் letters, then its exact உயிர்மெய் compounds,
- *  then its actual words. All derived from `content` at render time
- *  (never hardcoded to Kural 200 specifically), the same principle
- *  extractTamilSyllables already uses -- if the control panel content
- *  changes, these zones recompute correctly.
- *
- *  The completed Kural is never rendered as editorial text this
- *  milestone -- see renderKuralPublishing, which does not call
- *  drawForegroundKural at all right now. Only the journey is shown. */
 /** GOLD MASTER MILESTONE 2 REBOOT: one placed word or formation-stage's
  *  approximate on-canvas footprint, in pixels, centre-anchored (matches
  *  drawAmbientGlyph's textAlign="center"/textBaseline="middle"). Used only
@@ -770,499 +598,217 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
   return { exactLetters, exactCompounds, words, wordFormationStages };
 }
 
-/** GOLD MASTER, explicit founder-authorized replacement for the old
- *  hardcoded FORMATION_NODES: derives the same SHAPE of formation story
- *  (two components merging into a formed fragment, extending into an
- *  emerging fragment, plus one independent selected word -- exactly the
- *  ச்+ஒ->சொ->சொல் / பயன் structure the original data always had) from
- *  whichever Kural's content is actually loaded, instead of always
- *  showing Kural 200's own words regardless of content. Confirmed
- *  necessary directly: rendering Kural 517 with the old static data
- *  showed சொல்/பயன் -- words with nothing to do with the loaded verse.
- *
- *  Positions are the same six fixed slots the field has used since the
- *  last rescale (still inside the dense-fragments zone) -- only WHICH
- *  glyphs occupy them is now dynamic, not where they sit. Deterministic:
- *  always the first real word for the component/formed/emerging chain,
- *  always the next distinct word for "selected," so the same content
- *  always produces the same six nodes. */
-function deriveFormationNodes(content: KuralPublishingContent): readonly FormationNode[] {
-  const positions: { id: string; x: number; y: number; emphasis: FormationNode["emphasis"] }[] = [
-    { id: "c-1", x: 0.228, y: 0.34, emphasis: "component" },
-    { id: "c-2", x: 0.239, y: 0.63, emphasis: "component" },
-    { id: "c-3", x: 0.38, y: 0.605, emphasis: "component" },
-    { id: "f-1", x: 0.338, y: 0.49, emphasis: "formed" },
-    { id: "f-2", x: 0.373, y: 0.4, emphasis: "emerging" },
-    { id: "sel", x: 0.346, y: 0.565, emphasis: "selected" },
-  ];
+// ---------------------------------------------------------------------------
+// GOLD MASTER, RAINFALL / FILTRATION MODEL. Five vertical stages, top to
+// bottom -- the actual linguistic laws made spatial, per explicit founder
+// direction ("language begins as enormous undifferentiated memory at the
+// upper field, progressively resolves... the Kural is the surviving
+// sentence near the lower region"). No divider anywhere: each stage
+// occupies a real, mostly-flat zone (approved directly against a
+// reference the founder chose), and only the boundary between consecutive
+// stages softens -- not a continuous blend across the whole canvas, which
+// an earlier exploration tried and the founder rejected as reading too
+// uniform/foggy, losing the reference's clarity.
+//
+// Nothing here moves. Per the Spatial Constitution's Law D, still in
+// force: a stage's rules only ever decide how certain a FIXED position
+// looks: this function computes grid positions once per stage and never
+// repositions anything afterward.
+// ---------------------------------------------------------------------------
 
-  const words = `${content.tamilLine1} ${content.tamilLine2}`
-    .split(/\s+/)
-    .filter((w) => w.length > 0);
-  const wordA = words[0];
-  const wordB = words.find((w) => w !== wordA) ?? words[0];
+const STAGES = [
+  { lo: 0.0, hi: 0.2, name: "memory" as const },
+  { lo: 0.2, hi: 0.4, name: "letters" as const },
+  { lo: 0.4, hi: 0.6, name: "uyirmei" as const },
+  { lo: 0.6, hi: 0.82, name: "words" as const },
+  { lo: 0.82, hi: 1.0, name: "sentence" as const },
+];
 
-  if (!wordA) {
-    // Defensive fallback only -- content should never actually be empty,
-    // but never render nothing rather than crash.
-    return [];
-  }
-
-  const graphemesA = extractTamilSyllables(wordA);
-  const firstGrapheme = graphemesA[0] ?? wordA;
-  const atoms = atomicPartsOf(firstGrapheme);
-  const nodes: FormationNode[] = [];
-
-  if (atoms.length === 2) {
-    // The common case: the first grapheme is a real உயிர்மெய், so it has
-    // two genuine atomic parts -- exactly the ச்+ஒ->சொ shape.
-    nodes.push({ id: "c-1", glyph: atoms[0], x: positions[0].x, y: positions[0].y, emphasis: "component" });
-    nodes.push({ id: "c-2", glyph: atoms[1], x: positions[1].x, y: positions[1].y, emphasis: "component" });
-  } else {
-    // The first grapheme was already atomic (a real உயிர், or already a
-    // pulli-form மெய்) -- nothing to decompose, so it stands alone as
-    // its own single component rather than manufacturing a second one
-    // that doesn't linguistically exist.
-    nodes.push({ id: "c-1", glyph: atoms[0], x: positions[0].x, y: positions[0].y, emphasis: "component" });
-  }
-
-  // A third component, if this Kural's real content offers one: the
-  // grapheme immediately after the first, shown as its own atomic root
-  // (matching ல்'s original role -- a separate root joining the chain,
-  // not part of the same உயிர்மெய்).
-  if (graphemesA[1]) {
-    const secondAtoms = atomicPartsOf(graphemesA[1]);
-    nodes.push({ id: "c-3", glyph: secondAtoms[0], x: positions[2].x, y: positions[2].y, emphasis: "component" });
-  }
-
-  nodes.push({ id: "f-1", glyph: firstGrapheme, x: positions[3].x, y: positions[3].y, emphasis: "formed" });
-
-  const twoGraphemePrefix = graphemesA.slice(0, 2).join("");
-  if (twoGraphemePrefix && twoGraphemePrefix !== firstGrapheme) {
-    nodes.push({ id: "f-2", glyph: twoGraphemePrefix, x: positions[4].x, y: positions[4].y, emphasis: "emerging" });
-  }
-
-  if (wordB) {
-    nodes.push({ id: "sel", glyph: wordB, x: positions[5].x, y: positions[5].y, emphasis: "selected" });
-  }
-
-  return nodes;
+function applyGlow(ctx: CanvasRenderingContext2D, color: string, blur: number): void {
+  // GOLD MASTER, explicit reversal of Sprint 01's "no glow, no gimmicks" --
+  // approved directly against a reference the founder chose, which used
+  // glow specifically to mark resolving/resolved content. Kept modest
+  // (small blur radius, bronze/gold family only, never on raw memory).
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
 }
 
-/** GOLD MASTER MILESTONE 2 REBOOT -- The Evolution of Language. The zone
- *  LIST, boundaries, and blending logic below are exactly as Milestone 2
- *  left them -- untouched, per "do not discard any existing work." What
- *  metric decides zone membership has changed TWICE now: Milestone 2 used
- *  xFrac (implied a left-to-right reading direction -- rejected). 2A used
- *  radial distance from one fixed point (implied language "rushing toward
- *  a destination," explicitly rejected this reboot: "NOT convergence...
- *  NOT iron filings pulled by a magnet"). This version uses distance from
- *  the NEAREST canvas edge instead -- "outer regions" (all four, not one
- *  corner) are Ancient Memory, and resolution grows inward from every
- *  side into a broad interior band, not toward a single point. That
- *  interior is an actual band of space, not a coordinate, which is also
- *  structurally why this can't collapse into "one dense cluster" the way
- *  2A did -- there is no single (x,y) everything is pulled toward. See
- *  edgeGrowthFrac() below, and its call site in drawAmbientGlyph. */
-function edgeGrowthFrac(x: number, y: number, width: number, height: number): number {
-  const distToEdge = Math.min(x, width - x, y, height - y);
-  const maxPossible = Math.min(width, height) / 2;
-  return maxPossible > 0 ? Math.min(1, distToEdge / maxPossible) : 0;
+function clearGlow(ctx: CanvasRenderingContext2D): void {
+  ctx.shadowColor = "rgba(0,0,0,0)";
+  ctx.shadowBlur = 0;
 }
 
-/** GOLD MASTER MILESTONE 2 -- Formation Grammar. Five explicit states,
- *  restructured from Milestone 1's six sequential zones per the founder's
- *  new grouping: State 1 (Ancient Memory) mixes Tamil-Brahmi, Vatteluttu,
- *  and Modern Tamil TOGETHER in the same region, rather than as three
- *  separate consecutive zones -- "random, unrelated, no meaning." States
- *  2-5 (Modern Tamil Letters / Required Letters / Uyirmei Formation /
- *  Word Formation) map directly onto Milestone 1's modern/exactLetters/
- *  exactCompounds/words pools, which needed no changes -- only the
- *  grouping and boundaries did. Locked and untouched by this milestone:
- *  baseFalloff, drawAtmosphere, the placement grid, and every opacity/
- *  size formula -- "do not modify density, background, fade behaviour,
- *  overall field composition." This only changes WHICH POOL a glyph's
- *  characters draw from at a given position, never whether/how brightly
- *  it draws. Blending in the last 35% of each state's span is unchanged
- *  from Milestone 1 -- still no hard boundaries. As of Milestone 2A, the
- *  "position" fed in is radial distance from the Kural's centre, not
- *  xFrac -- see edgeGrowthFrac above. */
-const MILESTONE_ZONES = [
-  { name: "ancientMemory", lo: 0, hi: 0.22 },
-  { name: "modernOnly", lo: 0.22, hi: 0.4 },
-  { name: "requiredLetters", lo: 0.4, hi: 0.58 },
-  { name: "uyirmeiFormation", lo: 0.58, hi: 0.76 },
-  { name: "wordFormation", lo: 0.76, hi: 1.0 },
-] as const;
+/** The background memory layer -- present through the FULL canvas height,
+ *  including behind the words and sentence stages, per explicit founder
+ *  direction ("background memory texture at depth... present through the
+ *  full height"). Density stays edge-based (Spatial Constitution Law A/C,
+ *  unchanged): dense at every edge equally, thinning toward the interior,
+ *  exponential decay, never reaching exactly zero. This is the "soil" in
+ *  the rainfall metaphor -- it does not vary by stage or favour any side. */
+function drawMemoryLayer(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  tamilFont: string,
+  brahmiFont: string,
+  rand: SeededRandom
+): void {
+  const cols = 48;
+  const rows = 30;
+  for (let ri = 0; ri < rows; ri++) {
+    for (let ci = 0; ci < cols; ci++) {
+      const gx = ((ci + 0.5) / cols) * width + rand.range(-14, 14);
+      const gy = ((ri + 0.5) / rows) * height + rand.range(-10, 10);
+      const d = Math.min(gx, width - gx, gy, height - gy);
+      const norm = Math.min(width, height) * 0.42;
+      const ef = norm > 0 ? Math.min(1, d / norm) : 0;
+      const density = Math.exp(-1.6 * ef);
+      if (!rand.chance(Math.min(1, density * 0.7))) continue;
 
-function pickMilestoneZone(growthFrac: number, rand: SeededRandom): (typeof MILESTONE_ZONES)[number]["name"] {
-  let idx = MILESTONE_ZONES.length - 1;
-  for (let i = 0; i < MILESTONE_ZONES.length; i++) {
-    if (growthFrac < MILESTONE_ZONES[i].hi || i === MILESTONE_ZONES.length - 1) {
-      idx = i;
-      break;
+      const isHistorical = rand.chance(HISTORICAL_POOL.length / (MODERN_TAMIL.glyphs.length + HISTORICAL_POOL.length));
+      const ambient: AmbientGlyph = isHistorical ? rand.pick(HISTORICAL_POOL) : { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
+      const size = rand.range(6, 9);
+      const opacity = rand.range(0.04, 0.13);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = withAlpha(COLORS.heritageBronze, opacity);
+      if (ambient.glyph.kind === "path") {
+        ctx.save();
+        ctx.translate(gx, gy);
+        drawPathGlyph(ctx, ambient.glyph.value, size);
+        ctx.restore();
+      } else {
+        const weight = ambient.script === "brahmi" ? 500 : 400;
+        const family = ambient.script === "brahmi" ? brahmiFont : tamilFont;
+        ctx.font = `${weight} ${size}px ${family}`;
+        ctx.fillText(ambient.glyph.value, gx, gy);
+      }
     }
   }
-  const zone = MILESTONE_ZONES[idx];
-  const span = zone.hi - zone.lo;
-  const progress = span > 0 ? (growthFrac - zone.lo) / span : 1;
-  const blendStart = 0.65;
-  if (progress > blendStart && idx < MILESTONE_ZONES.length - 1) {
-    const blendT = (progress - blendStart) / (1 - blendStart);
-    if (rand.chance(Math.min(1, blendT))) return MILESTONE_ZONES[idx + 1].name;
-  }
-  return zone.name;
 }
 
-function drawAmbientField(
+/** One evenly-gridded stage: letters, uyirmei, or words. Positions are a
+ *  loose grid (per explicit founder direction: "evenly gridded... close to
+ *  the reference," not the earlier organic/clustered scatter), jittered
+ *  only slightly so it reads as considered rather than mechanical. Size
+ *  and opacity are held close to uniform WITHIN a stage -- hierarchy comes
+ *  from stage-to-stage differences, not variation inside one stage. */
+function drawGriddedStage(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  band: { lo: number; hi: number },
+  items: readonly string[],
+  rand: SeededRandom,
+  opts: {
+    tamilFont: string;
+    fontFamily: "sans-serif" | "serif";
+    size: number;
+    opacity: number;
+    color: string;
+    weight: number;
+    glow: boolean;
+    cols: number;
+    rows: number;
+    fillFraction: number;
+    allowOverlapGuard: boolean;
+  }
+): void {
+  if (items.length === 0) return;
+  const positions: { x: number; y: number }[] = [];
+  for (let ri = 0; ri < opts.rows; ri++) {
+    for (let ci = 0; ci < opts.cols; ci++) {
+      const gx = ((ci + 0.5) / opts.cols) * width * 0.9 + width * 0.05;
+      const gy = (band.lo + ((ri + 0.5) / opts.rows) * (band.hi - band.lo)) * height;
+      positions.push({ x: gx, y: gy });
+    }
+  }
+  // Deterministic shuffle (seeded rand, not Math.random) -- which grid
+  // slots get used varies by content/seed without needing a new layout
+  // system.
+  for (let i = positions.length - 1; i > 0; i--) {
+    const j = Math.floor(rand.range(0, i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+
+  const used = Math.max(items.length, Math.min(positions.length, Math.round(positions.length * opts.fillFraction)));
+  const placedBoxes: PlacedWordBox[] = [];
+  let itemIdx = 0;
+
+  for (let i = 0; i < used && i < positions.length; i++) {
+    const { x: gx, y: gy } = positions[i];
+    const jx = gx + rand.range(-18, 18);
+    const jy = gy + rand.range(-14, 14);
+    // Cycle through the real item list rather than always picking
+    // randomly, so every distinct item (e.g. every real word) actually
+    // appears at least once instead of some being left out by chance.
+    const value = items[itemIdx % items.length];
+    itemIdx++;
+
+    if (opts.allowOverlapGuard) {
+      ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+      const measured = ctx.measureText(value);
+      const box: PlacedWordBox = { x: jx, y: jy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
+      if (wordWouldOverlap(box, placedBoxes)) continue;
+      placedBoxes.push(box);
+    }
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+    ctx.fillStyle = withAlpha(opts.color, opts.opacity);
+    if (opts.glow) applyGlow(ctx, withAlpha(COLORS.illuminatedGold, 0.55), opts.size * 0.3);
+    ctx.fillText(value, jx, jy);
+    if (opts.glow) clearGlow(ctx);
+  }
+}
+
+/** The whole Living Field for this pass: background memory (full height,
+ *  edge-density) plus the four upper/mid stages gridded within their own
+ *  bands. The fifth stage (the assembled sentence) is drawn separately by
+ *  drawAssembledSentence, called from renderKuralPublishing, since it
+ *  uses the locked Kural typography token rather than the field's own
+ *  glyph system. */
+function drawLivingField(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   tamilFont: string,
   brahmiFont: string,
   rand: SeededRandom,
-  kuralSyllables: readonly string[],
-  zonePools: MilestoneZonePools,
-  macro: readonly MacroCluster[],
-  nodes: readonly FormationNode[]
+  zonePools: MilestoneZonePools
 ): void {
-  // GOLD MASTER MILESTONE 2 REBOOT: "words should NEVER overlap, never
-  // stack, never become a cloud." Tracked for the lifetime of this one
-  // field-drawing pass -- every Region 4/5 word-like placement checks
-  // against every box already placed before it, and only commits if
-  // clear. Never reset mid-pass; this is what makes the guarantee global
-  // across the whole canvas, not just locally per-cluster.
-  const placedWordBoxes: PlacedWordBox[] = [];
+  drawMemoryLayer(ctx, width, height, tamilFont, brahmiFont, rand);
 
-  // Formation Nodes (ச்/ஒ/ல்/சொ/சொல்/பயன்) are drawn by a SEPARATE system
-  // (drawFormationLayer, called after this function returns) at fixed
-  // positions from kural200-state.ts -- the ambient word-placement below
-  // has no way to know they exist unless told. Pre-seeded here so words
-  // correctly avoid colliding with them too, not just with each other.
-  // Sized off each node's own emphasis tier max size, with generous
-  // padding since Tamil glyphs can render wider than their nominal size.
-  for (const node of nodes) {
-    const style = EMPHASIS_STYLE[node.emphasis];
-    const approxHalf = style.maxSize * 1.1;
-    placedWordBoxes.push({
-      x: node.x * width,
-      y: node.y * height,
-      halfW: approxHalf,
-      halfH: approxHalf,
-    });
-  }
+  const lettersBand = STAGES.find((s) => s.name === "letters")!;
+  const letterItems = zonePools.exactLetters.length > 0 ? zonePools.exactLetters : ["அ"];
+  drawGriddedStage(ctx, width, height, lettersBand, letterItems, rand, {
+    tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
+    weight: 500, glow: false, cols: 12, rows: 3, fillFraction: 0.55, allowOverlapGuard: false,
+  });
 
-  // A finer grid still -- more addressable slots for the micro-mass this
-  // pass asks for.
-  const colW = 19;
-  const rowH = 20;
-  const cols = Math.ceil(width / colW);
-  const rows = Math.ceil(height / rowH);
+  const uyirmeiBand = STAGES.find((s) => s.name === "uyirmei")!;
+  const uyirmeiItems = zonePools.exactCompounds.length > 0 ? zonePools.exactCompounds : ["அ"];
+  drawGriddedStage(ctx, width, height, uyirmeiBand, uyirmeiItems, rand, {
+    tamilFont, fontFamily: "serif", size: 20, opacity: 0.5, color: mix(COLORS.heritageBronze, COLORS.illuminatedGold, 0.55),
+    weight: 500, glow: true, cols: 11, rows: 3, fillFraction: 0.6, allowOverlapGuard: false,
+  });
 
-  const pockets = buildPocketField(rand);
-
-  for (let r = 0; r < rows; r++) {
-    let c = 0;
-    while (c < cols) {
-      const xFrac = (c * colW) / width;
-      const yFrac = (r * rowH) / height;
-      const density = densityAt(xFrac, yFrac, macro, pockets, nodes);
-      // GOLD MASTER SPRINT 02: lowered from 0.004 to genuinely let the
-      // far edge of a full-canvas field still occasionally place a mark,
-      // not just skip forever -- "still present, still dissolving, never
-      // abruptly ending" has to be true all the way to x=1, not just
-      // true in theory. This is still a skip for slots too faint to
-      // matter at all, not a boundary -- density keeps decaying
-      // continuously past this point regardless.
-      if (density <= 0.0006) {
-        c += 6;
-        continue;
-      }
-
-      const gap = Math.max(3, Math.round(rand.range(2, 4) * (1.6 - Math.min(1.3, density))));
-      c += gap;
-      if (c >= cols) break;
-
-      const maxClusterLen =
-        density > 1.7 ? 11 : density > 1.2 ? 8 : density > 0.7 ? 5 : density > 0.35 ? 3 : 1;
-      const clusterLen = rand.int(1, maxClusterLen + 1);
-
-      for (let i = 0; i < clusterLen && c < cols; i++, c += density > 1.5 ? (rand.chance(0.5) ? 1 : 2) : rand.chance(0.35) ? 2 : 3) {
-        const cx = c * colW + colW / 2;
-        const cy = r * rowH + rowH / 2;
-        const cxFrac = cx / width;
-        const cyFrac = cy / height;
-        const d = densityAt(cxFrac, cyFrac, macro, pockets, nodes);
-        if (d <= 0.0006) continue;
-        // Regions that breathe -- not every slot fires even inside a dense
-        // pocket. Far to the right this naturally makes placement rare
-        // without ever forbidding it outright.
-        if (!rand.chance(Math.min(1, d * 0.6 + 0.05))) continue;
-
-        drawAmbientGlyph(ctx, cx, cy, width, height, d, cxFrac, tamilFont, brahmiFont, rand, kuralSyllables, zonePools, placedWordBoxes);
-        // A second, even smaller pass of pure micro-dot texture layered
-        // right alongside the glyphs -- "atmospheric texture" without any
-        // imported imagery: fine traces, not letters.
-        if (rand.chance(0.22)) drawMicroTrace(ctx, cx, cy, d, rand);
-      }
-    }
-  }
+  const wordsBand = STAGES.find((s) => s.name === "words")!;
+  // Every real distinct word, once each -- not budget-capped. An earlier
+  // exploration over-applied the word-collision lesson from the previous
+  // milestone; the actual problem was the same few words repeating dozens
+  // of times, not that every distinct word appeared. A short Kural's
+  // full, real vocabulary shown once each is completeness, not crowding.
+  const wordItems = zonePools.words.length > 0 ? zonePools.words : ["சொல்"];
+  const wcols = 4;
+  const wrows = Math.ceil(wordItems.length / wcols);
+  drawGriddedStage(ctx, width, height, wordsBand, wordItems, rand, {
+    tamilFont, fontFamily: "serif", size: 30, opacity: 0.92, color: COLORS.illuminatedGold,
+    weight: 700, glow: true, cols: wcols, rows: wrows, fillFraction: 1, allowOverlapGuard: true,
+  });
 }
 
-/** Four population strata (micro/tiny, small/medium, large, distant-giant),
- *  plus a rare "anchor" carved out of the large tier for genuine
- *  high-presence marks. Weighted heavily toward the tiny end -- per
- *  founder direction, roughly 65/25/8/2 as a visual-hierarchy target.
- *  STARFIELD MODEL: size varies only modestly across all four strata
- *  (roughly 6-19px, not the old 4-80px) -- "stars aren't wildly uneven in
- *  size; some shine, some sit quiet." Brightness (opacity), not scale, is
- *  what carries the "some shine, some quiet" hierarchy. Large-tier
- *  probability is actively suppressed as xFrac moves into the transition
- *  zone, folding that mass back into the micro tier, so the centre stops
- *  reading as scattered letters. As xFrac increases, glyph choice is
- *  increasingly drawn from the real Kural syllables rather than the full
- *  modern-Tamil set -- content narrows as density falls. */
-function drawAmbientGlyph(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  density: number,
-  xFrac: number,
-  tamilFont: string,
-  brahmiFont: string,
-  rand: SeededRandom,
-  kuralSyllables: readonly string[],
-  zonePools: MilestoneZonePools,
-  placedWordBoxes: PlacedWordBox[]
-): void {
-  // Suppress LARGE/GHOST probability as the field moves toward the
-  // formation region -- their mass folds back into MICRO instead.
-  const centreSuppress = Math.max(0, Math.min(1, (xFrac - REGIONS.denseEnd * 0.4) / (REGIONS.denseEnd * 0.9)));
-  const pMicro = 0.65 + 0.08 * centreSuppress;
-  const pSmallMed = 0.25 + 0.02 * centreSuppress;
-  const pLarge = Math.max(0.01, 0.08 - 0.08 * centreSuppress);
-  // pGhost is whatever remains.
-
-  const roll = rand.next();
-  let size: number;
-  let baseOpacity: number;
-  let colorMix: number; // 0 = heritage bronze, 1 = kural ink (near-black)
-  let wide = false;
-  // MILESTONE 01: which CONTENT a glyph draws from is now governed purely
-  // by spatial zone (see pickMilestoneZone below), not by how visually
-  // prominent its size tier is -- the old "large/anchor tiers must always
-  // be Kural material" rule belonged to the previous continuous-wave
-  // system and is superseded by the explicit zone system (now five
-  // states, per GOLD MASTER Milestone 2's Formation Grammar restructure).
-
-  // STARFIELD MODEL: stars aren't wildly uneven in size -- some shine,
-  // some sit quiet, but the sky doesn't contain a handful of letters 10x
-  // the size of their neighbours. Size range compressed from the old
-  // 4-80px (~20x variance) to roughly 6-19px (~3x) across every tier;
-  // "shine vs quiet" is now carried almost entirely by opacity/brightness,
-  // not scale. The old GHOST tier (42-80px) is gone outright -- there is
-  // no star that dwarfs the rest of the sky.
-  if (roll < pMicro) {
-    size = rand.range(6, 9); // quiet, distant stars -- the bulk of the sky
-    baseOpacity = rand.range(0.03, 0.12);
-    colorMix = 0.05;
-  } else if (roll < pMicro + pSmallMed) {
-    size = rand.range(8, 12); // ordinary stars -- a little closer, a little steadier
-    baseOpacity = rand.range(0.08, 0.24);
-    colorMix = 0.28;
-  } else if (roll < pMicro + pSmallMed + pLarge) {
-    const isAnchor = rand.chance(0.14); // genuinely rare, high-presence
-    if (isAnchor) {
-      size = rand.range(13, 18); // a star that shines -- brighter, only modestly bigger
-      baseOpacity = rand.range(0.5, 0.75);
-      colorMix = 0.82;
-      // Reference-matched: no gold/cyan illumination in the field -- the
-      // reference image's glyphs are all quiet bronze/tan on the light
-      // ground. Anchors keep their presence through size/opacity alone.
-      // (rand rolls preserved so the downstream sequence is unchanged.)
-      rand.chance(0.22);
-      rand.chance(0.08);
-    } else {
-      size = rand.range(11, 15);
-      baseOpacity = rand.range(0.22, 0.4);
-      colorMix = 0.5;
-    }
-  } else {
-    size = rand.range(14, 20); // a distant giant -- still barely bigger than
-    baseOpacity = rand.range(0.02, 0.05); // its neighbours, just very dim
-    colorMix = 0.1;
-    wide = true;
-    // Rare, very faint, and only slightly larger -- prominence stays about
-    // brightness, not scale, even for the field's biggest marks.
-  }
-
-  const jitterRange = wide ? 30 : 7;
-  const jitterX = rand.range(-jitterRange, jitterRange);
-  const jitterY = rand.range(-jitterRange, jitterRange);
-
-  // GOLD MASTER MILESTONE 2 -- Formation Grammar. Five states, left to
-  // right: (1) Ancient Memory -- Tamil-Brahmi, Vatteluttu, and Modern
-  // Tamil MIXED together, random, unrelated; (2) Modern Tamil Letters --
-  // ancient scripts fade out, still random, no words; (3) Required
-  // Letters -- only this Kural's exact மெய்/உயிர் units remain probable;
-  // (4) Uyirmei Formation -- this Kural's exact உயிர்மெய் compounds;
-  // (5) Word Formation -- this Kural's actual words, still floating
-  // independently, never arranged into sentence structure. Zone
-  // boundaries blend into each other (see pickMilestoneZone) rather than
-  // cutting hard -- "no visible boundary" still holds even though the
-  // stages themselves are explicit and literal, not a continuous wave.
-  // The completed Kural itself is never assembled here; see
-  // renderKuralPublishing, which does not call drawForegroundKural this
-  // milestone -- "stop at the word level."
-  const growthFrac = edgeGrowthFrac(x, y, width, height);
-  const zone = pickMilestoneZone(growthFrac, rand);
-  let ambient: AmbientGlyph;
-  // GOLD MASTER MILESTONE 04 -- Law 8/9 made visual: only requiredLetters,
-  // uyirmeiFormation, and wordFormation ever draw content that is
-  // genuinely tied to this Kural. ancientMemory and modernOnly (and the
-  // defensive fallback) are, by definition, "everything else" -- the
-  // content Law 9 says must quietly return to memory as resolution
-  // happens nearby. This flag is what lets the opacity/colour step below
-  // tell those two cases apart.
-  let isRequired = false;
-  if (zone === "ancientMemory") {
-    // "Contains Tamil-Brahmi, Vatteluttu, Modern Tamil. Random.
-    // Unrelated." -- an equal three-way roll per glyph, not proportional
-    // to each script's real character-set size, so all three are
-    // genuinely visible as a mix rather than Modern Tamil's 247 drowning
-    // out Brahmi's 24 and Vatteluttu's 21.
-    const scriptRoll = rand.next();
-    if (scriptRoll < 1 / 3) {
-      ambient = rand.pick(HISTORICAL_POOL.filter((g) => g.script === "brahmi"));
-    } else if (scriptRoll < 2 / 3) {
-      ambient = rand.pick(HISTORICAL_POOL.filter((g) => g.script === "vatteluttu"));
-    } else {
-      ambient = { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
-    }
-  } else if (zone === "modernOnly") {
-    ambient = { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
-  } else if (zone === "requiredLetters" && zonePools.exactLetters.length > 0) {
-    ambient = { glyph: { kind: "text", value: rand.pick(zonePools.exactLetters) }, script: "modern" };
-    isRequired = true;
-  } else if (zone === "uyirmeiFormation" && zonePools.wordFormationStages.length > 0) {
-    // Region 4 -- Formation: a random word, at a random point in its own
-    // grapheme-safe progressive growth (இ -> இத -> இதனை). Every stage is
-    // a real, valid prefix -- never a severed glyph -- because it was
-    // built from extractTamilSyllables' grapheme segmentation, not a raw
-    // character slice.
-    const stages = rand.pick(zonePools.wordFormationStages);
-    ambient = { glyph: { kind: "text", value: rand.pick(stages) }, script: "modern" };
-    isRequired = true;
-  } else if (zone === "wordFormation" && zonePools.words.length > 0) {
-    ambient = { glyph: { kind: "text", value: rand.pick(zonePools.words) }, script: "modern" };
-    isRequired = true;
-  } else {
-    // Defensive fallback only -- e.g. a future Kural with no உயிர்மெய்
-    // compounds at all would otherwise have nothing to draw from in
-    // that zone. Falls back to this Kural's syllables generally, then
-    // to plain Modern Tamil, never to an empty draw.
-    ambient = kuralSyllables.length > 0
-      ? { glyph: { kind: "text", value: rand.pick(kuralSyllables) }, script: "modern" }
-      : { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
-  }
-
-  // Optical Calibration Version C, revised for the starfield model:
-  // historical scripts read visually quieter than Modern Tamil at the
-  // same nominal size, so both Tamil-Brahmi and Vatteluttu get a
-  // brightness (opacity) floor to compensate -- size is deliberately left
-  // untouched now, per "don't increase font size... stars aren't wildly
-  // uneven in size." Brahmi additionally renders at font-weight 500
-  // rather than 400 for the same reason -- the only weight Noto Sans
-  // Brahmi actually ships is 400, so this asks the browser's own
-  // synthetic-bold fallback for the extra weight rather than a real
-  // loaded weight; harmless, and it's the closest approximation available.
-  const isHistorical = ambient.script !== "modern";
-  // Starfield rule: visibility comes from brightness, not scale -- so
-  // historical scripts get NO size adjustment at all now (previously a
-  // 12.5%-plus-floor size boost, which directly contradicted "don't
-  // increase font size"). They stay exactly the size their tier already
-  // gave them; what makes them findable is a genuine brightness floor.
-  //
-  // MILESTONE 01 exception: multi-character WORDS are a different case
-  // entirely -- a whole word rendered at a single letter's 6-20px size
-  // is just an illegible smear, which would defeat the entire point of
-  // this milestone (proving the field can show "words forming"). Words
-  // get a real size floor so they read as words, not noise.
-  const isWord =
-    (zone === "wordFormation" || zone === "uyirmeiFormation") &&
-    ambient.glyph.kind === "text" &&
-    ambient.glyph.value.length > 1;
-  const calibratedSize = isWord ? Math.max(size * 1.8, 16) : size;
-
-  // Opacity is now a direct, floor-less function of density -- as density
-  // continuously decays toward the right edge (see baseFalloff), opacity
-  // decays with it, genuinely toward zero, not toward some minimum
-  // presence. This is what makes far-right glyphs "almost subconscious"
-  // rather than just smaller/rarer at a constant faint brightness.
-  const baseCalibratedOpacity = isWord
-    ? Math.max(baseOpacity * 1.6, 0.18)
-    : isHistorical
-      ? Math.max(baseOpacity * 1.3, 0.22)
-      : baseOpacity;
-
-  // GOLD MASTER MILESTONE 04 -- Law 9, Elimination, made visual: "everything
-  // that is no longer required simply returns to the Living Language
-  // Field... the page should become quieter, not emptier." Required
-  // content (isRequired) is exempt -- per Law 8/"Recognition," it gains
-  // confidence through being SELECTED more often as growthFrac increases
-  // (already true via pickMilestoneZone's blending), not through being
-  // rendered brighter or bigger here. Everything else quietly loses
-  // certainty as growthFrac increases: opacity eases down (never to zero
-  // -- memory doesn't vanish, it just quiets) and colour eases back
-  // toward bronze, away from ink, so unrelated marks read as
-  // less-certain even when they still happen to appear near a place
-  // where something is resolving.
-  const certaintyLoss = isRequired ? 1 : 1 - growthFrac * 0.55;
-  const opacity = Math.min(1, baseCalibratedOpacity * Math.min(1, density * 1.25) * certaintyLoss);
-  const colorMixDecayed = isRequired ? colorMix : colorMix * certaintyLoss;
-
-  const color = mix(COLORS.heritageBronze, COLORS.kuralInk, colorMixDecayed);
-  ctx.fillStyle = withAlphaRgb(color, opacity);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  if (ambient.glyph.kind === "path") {
-    ctx.save();
-    ctx.translate(x + jitterX, y + jitterY);
-    drawPathGlyph(ctx, ambient.glyph.value, calibratedSize);
-    ctx.restore();
-  } else if (isWord) {
-    // GOLD MASTER MILESTONE 2 REBOOT: "words should NEVER overlap, never
-    // stack, never become a cloud. Each word deserves space." Set the
-    // font FIRST so measureText reflects the real size/weight this word
-    // would actually draw at, then check the resulting footprint against
-    // every word already committed this pass. If it collides, this
-    // candidate simply never gets drawn -- "some words are only half
-    // formed, some nearly complete" already licenses an attempt not
-    // completing; skipping silently is exactly that, not a bug.
-    const weight = ambient.script === "brahmi" ? 500 : 400;
-    const family = ambient.script === "brahmi" ? brahmiFont : tamilFont;
-    ctx.font = `${weight} ${calibratedSize}px ${family}`;
-    const measured = ctx.measureText(ambient.glyph.value);
-    const candidate: PlacedWordBox = {
-      x: x + jitterX,
-      y: y + jitterY,
-      halfW: measured.width / 2,
-      halfH: calibratedSize * 0.6,
-    };
-    if (!wordWouldOverlap(candidate, placedWordBoxes)) {
-      ctx.fillText(ambient.glyph.value, candidate.x, candidate.y);
-      placedWordBoxes.push(candidate);
-    }
-  } else {
-    const weight = ambient.script === "brahmi" ? 500 : 400;
-    const family = ambient.script === "brahmi" ? brahmiFont : tamilFont;
-    ctx.font = `${weight} ${calibratedSize}px ${family}`;
-    ctx.fillText(ambient.glyph.value, x + jitterX, y + jitterY);
-  }
-}
 
 /** Draws a Vatteluttu letterform from its traced outline. Identical
  *  technique to the Living Field Kernel's own renderer and the original
@@ -1293,307 +839,44 @@ function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: nu
   ctx.fill("evenodd");
 }
 
-/** A single tiny hairline mark -- pure procedural texture, not a letterform
- *  and not a particle. Gold Master direction is explicit: avoid anything
- *  that resembles particles or digital noise. A short stroke reads as an
- *  ink trace or a worn mark in material; a filled dot reads as a rendered
- *  point -- the difference is deliberate. */
-function drawMicroTrace(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  density: number,
-  rand: SeededRandom
-): void {
-  const len = rand.range(1.4, 3.4);
-  const angle = rand.range(0, Math.PI);
-  const opacity = rand.range(0.02, 0.06) * (0.5 + density * 0.5);
-  const dx = rand.range(-10, 10);
-  const dy = rand.range(-10, 10);
-  const x1 = x + dx;
-  const y1 = y + dy;
-  const x2 = x1 + Math.cos(angle) * len;
-  const y2 = y1 + Math.sin(angle) * len;
-  ctx.strokeStyle = withAlpha(COLORS.heritageBronze, opacity);
-  ctx.lineWidth = 0.6;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-}
-
-// ---------------------------------------------------------------------------
-// Formation Paths -- the structural system, not decoration behind letters.
-// Three tiers: TERTIARY (many, hairline, very faint, local), SECONDARY
-// (moderate, visible on inspection, connect clusters), PRIMARY (3-5,
-// clearly discoverable, the actual linguistic/emergence journeys). Paths
-// are drawn before glyphs, so glyph clusters naturally occlude parts of
-// them -- "some paths should disappear behind glyph clusters."
-// ---------------------------------------------------------------------------
-
-/** A point along a grown trunk or scattered trace -- used only to let the
- *  debug overlay redraw the exact same shapes at high contrast. No extra
- *  RNG draws happen when redrawing these, so debug rendering never touches
- *  determinism and stays fully decoupled from export. */
-interface TrunkPoint {
-  x: number;
-  y: number;
-}
-
-/** One grown Formation Path family -- kept for the debug overlay's type,
- *  though `trunks` is always empty now that path lines aren't drawn (see
- *  "remove the formation vein"). `kind` distinguished an actual linguistic
- *  construction from an atmospheric Semantic Trace when both still drew. */
-interface FormationTrunkRecord {
-  points: TrunkPoint[];
-  kind: "formation" | "semantic";
-  label: string;
-}
-
-export interface FormationDebugInfo {
-  trunks: FormationTrunkRecord[];
-  markers: { x: number; y: number; label: string }[];
-}
-
-function drawFormationLayer(
+/** GOLD MASTER, RAINFALL / FILTRATION MODEL -- the assembled Kural itself,
+ *  rendered directly in the "sentence" stage's band. This is a deliberate,
+ *  explicit reversal of the "do not build the Kural yet" rule every prior
+ *  milestone in this arc enforced -- approved directly against a reference
+ *  the founder chose, which showed the complete sentence at the bottom of
+ *  exactly this five-stage structure. Simplified compared to the old
+ *  drawForegroundKural (still preserved below, unchanged, unused): no
+ *  logo, no meta label, no English, no footer, no rules -- this stage
+ *  shows only the two Tamil lines, reusing the locked Kural typography
+ *  token (size/weight unchanged) for visual consistency with every other
+ *  pass that has ever rendered this text. */
+function drawAssembledSentence(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  tamilFont: string,
-  rand: SeededRandom,
-  nodes: readonly FormationNode[]
-): FormationDebugInfo {
-  const trunks: FormationTrunkRecord[] = [];
-  const markers: { x: number; y: number; label: string }[] = [];
-
-  ctx.lineCap = "round";
-
-  // Background root filament network removed entirely per founder
-  // direction ("remove the formation vein") -- it drew nothing but
-  // decorative connecting lines, exactly what was asked to go.
-
-  // GOLD MASTER: node lookups are role-based now (formed/emerging/
-  // selected), not by the old Kural-200-specific ids ("f-cho"/"f-chol"/
-  // "f-payan") -- deriveFormationNodes generates different glyphs and ids
-  // for different content, but the emphasis roles are always present in
-  // the same shape, so keying off role is what actually generalizes.
-  const formedNode = nodes.find((n) => n.emphasis === "formed");
-  const emergingNode = nodes.find((n) => n.emphasis === "emerging");
-  const selectedNode = nodes.find((n) => n.emphasis === "selected");
-
-  // FORMATION FAMILY: the formed fragment's convergence point -- "a single
-  // small, precious glow... it marks the glyph itself as a place something
-  // happened, without drawing how." Line removed per founder direction
-  // ("remove the formation vein"); only the glyphs themselves
-  // (drawFormationNode, below) and their small convergence marks remain.
-  if (formedNode) {
-    drawPathGlowPoint(ctx, width * formedNode.x, height * formedNode.y, COLORS.heritageBronze, 0.09);
-  }
-
-  // The system continues extending past the first convergence.
-  if (emergingNode) {
-    drawPathGlowPoint(ctx, width * emergingNode.x, height * emergingNode.y, COLORS.heritageBronze, 0.1);
-  }
-
-  // The selected node -- a fully INDEPENDENT survivor, not something the
-  // formed/emerging chain linguistically produces. Deliberately no trunk
-  // or trace drawn between them, per the same founder direction.
-  if (selectedNode) {
-    drawPathGlowPoint(ctx, width * selectedNode.x, height * selectedNode.y, COLORS.heritageBronze, 0.09);
-  }
-
-  for (const node of nodes) {
-    drawFormationNode(ctx, node, width, height, tamilFont, rand);
-    markers.push({ x: node.x * width, y: node.y * height, label: `${node.glyph} (${node.emphasis})` });
-  }
-
-  return { trunks, markers };
-}
-
-
-/** A very few points along a real Formation Path get a small, precious
- *  illumination halo of their own -- "small path moments." Deterministic:
- *  only ever called at the specific t values a family designates as
- *  meaningful (its activation peak, its resolution end), never scattered
- *  randomly across the whole network -- "light should travel through
- *  selected relationships, not coat the whole system." */
-function drawPathGlowPoint(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  color: string,
-  strength: number
-): void {
-  const grad = ctx.createRadialGradient(x, y, 0, x, y, 10);
-  grad.addColorStop(0, withAlpha(color, strength));
-  grad.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(x, y, 10, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-
-/** Styling per emphasis tier. `component` (ச், ஒ, ல்) is deliberately
- *  close to ordinary ambient weight -- embedded, not enlarged to identify
- *  it, per "do not enlarge them simply to identify them," and gets no
- *  glow. Each subsequent tier gains a little presence, never becoming
- *  heading-like. `formed`/`emerging`/`selected` all get a very subtle soft
- *  under-layer via a slight canvas blur -- convergence communicated
- *  through "local glow/contrast only if extremely subtle," per the brief,
- *  rather than through any drawn node/circle. `selected` (பயன்) keeps the
- *  strongest version of this since it was never built from visible
- *  components at all -- "this idea survived" rather than "this was
- *  constructed." */
-/** Styling per emphasis tier, per Art Direction Pass 01B. `component`
- *  (ச், ஒ, ல்) stays close to ordinary heritage-field weight -- embedded,
- *  not enlarged to identify it -- but carries a whisper of living cyan in
- *  its glow, since these are the formation participants "eligible for
- *  subtle cyan activation." `formed` (சொ) and `emerging` (சொல்) resolve in
- *  ILLUMINATED GOLD -- heritage, meaning, continuity. `selected` (பயன்)
- *  resolves in LIVING CYAN instead of gold -- its own independent
- *  resolution colour, matching its path family (see drawFormationLayer),
- *  and visibly different from சொ/சொல் so the three survivors don't read
- *  as identical. */
-/** Reference-matched: all formation tiers now render in the bronze/ink
- *  family only -- no gold, no cyan -- matching the reference image's field,
- *  where every glyph is a quiet bronze/tan mark on the light ground and
- *  gold exists only in the editorial elements (rules, dash, dot). Glows
- *  removed entirely (glow: 0) for the same reason. Hierarchy between the
- *  tiers is preserved through size and opacity alone.
- *
- *  Sizes brought down to the starfield model's own range (roughly 6-19px
- *  -- see "Starfield model: brightness carries hierarchy, not size") --
- *  these were locked before that pass existed and never revisited, which
- *  is why formation nodes visually dominated the field at up to 35px next
- *  to a starfield capped at 19px. Direct founder report on real content:
- *  "so sol payan and all in bigger font size." Hierarchy among the four
- *  tiers now lives mostly in opacity, the same principle the rest of the
- *  field already uses. */
-const EMPHASIS_STYLE = {
-  component: { minSize: 9, maxSize: 12, minOpacity: 0.28, maxOpacity: 0.4, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
-  formed: { minSize: 11, maxSize: 14, minOpacity: 0.55, maxOpacity: 0.68, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
-  emerging: { minSize: 13, maxSize: 17, minOpacity: 0.68, maxOpacity: 0.8, glow: 0, glowColor: COLORS.heritageBronze, textColor: mix(COLORS.heritageBronze, COLORS.kuralInk, 0.35) },
-  selected: { minSize: 12, maxSize: 16, minOpacity: 0.58, maxOpacity: 0.72, glow: 0, glowColor: COLORS.heritageBronze, textColor: COLORS.heritageBronze },
-} as const;
-
-/** The field/editorial boundary. Rescaled from 0.532 to 0.3, matching
- *  REGIONS.quietStart in kural200-state.ts -- "30% is living language
- *  space, 70% the text space." Formation nodes whose positions fall
- *  at/after this line (there shouldn't be any now that all six were
- *  rescaled into the narrower field, but this stays as a general
- *  safeguard) are faded to near-subconscious so they never compete with
- *  the editorial text. */
-const EDITORIAL_LEFT_FRAC = 0.3;
-const EDITORIAL_NODE_FADE = 0.14;
-
-function drawFormationNode(
-  ctx: CanvasRenderingContext2D,
-  node: FormationNode,
-  width: number,
-  height: number,
-  tamilFont: string,
-  rand: SeededRandom
-): void {
-  const x = node.x * width;
-  const y = node.y * height;
-  const style = EMPHASIS_STYLE[node.emphasis];
-  const size = rand.range(style.minSize, style.maxSize);
-  let opacity = rand.range(style.minOpacity, style.maxOpacity);
-  if (node.x >= EDITORIAL_LEFT_FRAC) opacity *= EDITORIAL_NODE_FADE;
-
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  if (style.glow > 0) {
-    ctx.save();
-    ctx.filter = "blur(1.1px)";
-    ctx.font = `400 ${size * 1.15}px ${tamilFont}`;
-    ctx.fillStyle = withAlpha(style.glowColor, opacity * style.glow);
-    ctx.fillText(node.glyph, x, y);
-    ctx.restore();
-  }
-
-  ctx.font = `400 ${size}px ${tamilFont}`;
-  ctx.fillStyle = withAlpha(style.textColor, opacity);
-  ctx.fillText(node.glyph, x, y);
-}
-
-// ---------------------------------------------------------------------------
-// Debug overlay -- INTERNAL, development-only. Redraws the grown trunks
-// (using the exact points already computed above -- no new RNG draws, so
-// this never touches determinism) at high contrast, colour-coded by kind
-// so FORMATION PATHS and SEMANTIC TRACES are visually distinguishable, plus
-// a labelled marker at every node and trunk origin. Purely additive:
-// nothing below it is altered. Callers must only ever pass
-// debugFormationLogic: true on a live preview, never on the export path --
-// see KuralHeroCanvas.renderKuralPublishingForExport.
-// ---------------------------------------------------------------------------
-
-// MILESTONE 01: not called this milestone (see renderKuralPublishing) --
-// no editorial block means nothing for the debug overlay to annotate.
-// Kept intact, untouched, for when a future milestone re-enables it.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function drawDebugFormationOverlay(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
+  content: KuralPublishingContent,
   tamilFont: string,
   sansFont: string,
-  info: FormationDebugInfo
+  band: { lo: number; hi: number }
 ): void {
-  ctx.save();
-  ctx.lineCap = "round";
+  const kuralToken = TYPOGRAPHY_TOKENS.kural;
+  const maxTextWidth = width * 0.86;
+  const lines = [content.tamilLine1, content.tamilLine2];
+  const size = fitTokenSize(ctx, kuralToken, lines, tamilFont, sansFont, maxTextWidth, height);
+  const lineGap = size * kuralToken.lineHeightRatio;
+  const cy = (band.lo + band.hi) / 2 * height;
+  const y1 = cy - lineGap / 2 + size * 0.32;
+  const y2 = y1 + lineGap;
 
-  for (const trunk of info.trunks) {
-    if (trunk.points.length < 2) continue;
-    const isFormation = trunk.kind === "formation";
-    ctx.strokeStyle = isFormation ? withAlpha(COLORS.kuralInk, 0.85) : withAlpha(COLORS.mutedEarth, 0.95);
-    ctx.lineWidth = isFormation ? 2 : 1.5;
-    if (!isFormation) ctx.setLineDash([3, 4]);
-    ctx.beginPath();
-    ctx.moveTo(trunk.points[0].x, trunk.points[0].y);
-    for (let i = 1; i < trunk.points.length; i++) {
-      ctx.lineTo(trunk.points[i].x, trunk.points[i].y);
-    }
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    const origin = trunk.points[0];
-    ctx.font = `600 10px ${sansFont}`;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "bottom";
-    ctx.fillStyle = isFormation ? withAlpha(COLORS.kuralInk, 0.9) : withAlpha(COLORS.mutedEarth, 1);
-    ctx.fillText(trunk.label, origin.x + 4, origin.y - 4);
-  }
-
-  for (const marker of info.markers) {
-    ctx.beginPath();
-    ctx.arc(marker.x, marker.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = withAlpha(COLORS.warmParchment, 0.9);
-    ctx.fill();
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = withAlpha(COLORS.kuralInk, 0.95);
-    ctx.stroke();
-
-    ctx.font = `600 10px ${sansFont}`;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.9);
-    ctx.fillText(marker.label, marker.x + 8, marker.y + 6);
-  }
-
-  ctx.font = `700 13px ${tamilFont}`;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.9);
-  ctx.fillText("DEBUG: Formation Logic — never exported", 12, 12);
-  ctx.font = `500 11px ${sansFont}`;
-  ctx.fillText("Solid = Formation Path (linguistic).  Dashed = Semantic Trace (conceptual only).", 12, 30);
-
-  ctx.restore();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = tokenFont(kuralToken, size, tamilFont, sansFont);
+  applyTokenTracking(ctx, kuralToken, size);
+  ctx.fillStyle = COLORS.kuralInk;
+  ctx.fillText(content.tamilLine1, width / 2, y1);
+  ctx.fillText(content.tamilLine2, width / 2, y2);
 }
+
 
 
 // ---------------------------------------------------------------------------
@@ -1774,10 +1057,4 @@ function withAlpha(hex: string, alpha: number): string {
   const clamped = Math.max(0, Math.min(1, alpha));
   const [r, g, b] = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${clamped})`;
-}
-
-/** Same as withAlpha, but for an "rgb(r, g, b)" string produced by mix(). */
-function withAlphaRgb(rgbStr: string, alpha: number): string {
-  const inner = rgbStr.slice(rgbStr.indexOf("(") + 1, rgbStr.indexOf(")"));
-  return `rgba(${inner}, ${Math.max(0, Math.min(1, alpha))})`;
 }
