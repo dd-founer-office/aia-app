@@ -696,12 +696,36 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
   // single-code-point grapheme can legitimately be classified as உயிர்.
   // Everything else that shows up as a single character (த, க, ப, ய, ல...)
   // is NOT a separate "bare consonant" category -- it is மெய் + the
-  // implicit வ vowel அ, which Tamil never marks visibly (unlike இ, உ, ஏ,
+  // implicit vowel அ, which Tamil never marks visibly (unlike இ, உ, ஏ,
   // etc., which all get their own visible sign). A plain "த" IS a complete
   // உயிர்மெய் letter, specifically the அ-vowel case, not an atomic unit
   // alongside real உயிர். Length alone cannot distinguish "இ" from "த" --
   // both are one code point -- so the vowel set has to be checked explicitly.
   const UYIR_SET = new Set(["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"]);
+  // The visible bound vowel sign -> its own independent உயிர் letter.
+  // அ has no entry because அ has no visible sign at all -- that absence
+  // IS how an implicit-அ உயிர்மெய் is recognized (see atomicPartsOf).
+  const VOWEL_SIGN_TO_INDEPENDENT: Record<string, string> = {
+    "\u0BBE": "ஆ", "\u0BBF": "இ", "\u0BC0": "ஈ", "\u0BC1": "உ", "\u0BC2": "ஊ",
+    "\u0BC6": "எ", "\u0BC7": "ஏ", "\u0BC8": "ஐ", "\u0BCA": "ஒ", "\u0BCB": "ஓ", "\u0BCC": "ஔ",
+  };
+  // GOLD MASTER, direct founder request: "the background must contain
+  // all these uyir and mei letters" -- த் + அ = த, ன் + ஐ = னை, verified
+  // together turn by turn before this was written. For any உயிர்மெய்
+  // grapheme, returns its real [மெய் pulli-form, உயிர் independent-form]
+  // pair. For an already-atomic grapheme (a real உயிர், or a மெய் already
+  // in pulli form), returns it unchanged -- there is nothing further to
+  // decompose.
+  function atomicPartsOf(grapheme: string): readonly string[] {
+    if (UYIR_SET.has(grapheme)) return [grapheme];
+    if (grapheme.length === 2 && grapheme[1] === PULLI) return [grapheme];
+    if (grapheme.length === 1) return [grapheme + PULLI, "அ"]; // implicit-அ case
+    const base = grapheme[0];
+    const sign = grapheme.slice(1);
+    const uyir = VOWEL_SIGN_TO_INDEPENDENT[sign];
+    return uyir ? [base + PULLI, uyir] : [grapheme];
+  }
+
   const exactLetters: string[] = [];
   const exactCompounds: string[] = [];
   for (const s of kuralSyllables) {
@@ -713,6 +737,12 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
       // Covers both a bare consonant (மெய் + implicit அ) and any explicit
       // consonant+vowel-sign form -- both are genuinely உயிர்மெய்.
       exactCompounds.push(s);
+      // Its real atomic parts also belong in exactLetters -- "the
+      // background must contain all these uyir and mei letters," not
+      // just the ones that happen to already stand alone in the text.
+      for (const atom of atomicPartsOf(s)) {
+        if (!exactLetters.includes(atom)) exactLetters.push(atom);
+      }
     }
   }
   const words = `${content.tamilLine1} ${content.tamilLine2}`
