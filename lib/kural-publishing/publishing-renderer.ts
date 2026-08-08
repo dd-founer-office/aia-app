@@ -673,7 +673,7 @@ function wordWouldOverlap(box: PlacedWordBox, placed: readonly PlacedWordBox[]):
 }
 
 interface MilestoneZonePools {
-  exactLetters: readonly string[]; // this Kural's பயிர்/மெய் units (single-char, or consonant+pulli)
+  exactLetters: readonly string[]; // this Kural's true உயிர்/மெய் units only -- a real independent vowel, or a consonant+pulli (dead consonant). A bare single-character consonant (மெய்+implicit அ) is NOT in this list; see exactCompounds.
   exactCompounds: readonly string[]; // this Kural's real உயிர்மெய் compounds
   words: readonly string[]; // this Kural's actual words, whitespace-split
   /** GOLD MASTER MILESTONE 2 REBOOT: every real word's progressive
@@ -692,15 +692,26 @@ interface MilestoneZonePools {
 
 function buildMilestoneZonePools(kuralSyllables: readonly string[], content: KuralPublishingContent): MilestoneZonePools {
   const PULLI = "\u0BCD";
+  // The 12 real, independent உயிர் letters -- the only characters a bare
+  // single-code-point grapheme can legitimately be classified as உயிர்.
+  // Everything else that shows up as a single character (த, க, ப, ய, ல...)
+  // is NOT a separate "bare consonant" category -- it is மெய் + the
+  // implicit வ vowel அ, which Tamil never marks visibly (unlike இ, உ, ஏ,
+  // etc., which all get their own visible sign). A plain "த" IS a complete
+  // உயிர்மெய் letter, specifically the அ-vowel case, not an atomic unit
+  // alongside real உயிர். Length alone cannot distinguish "இ" from "த" --
+  // both are one code point -- so the vowel set has to be checked explicitly.
+  const UYIR_SET = new Set(["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"]);
   const exactLetters: string[] = [];
   const exactCompounds: string[] = [];
   for (const s of kuralSyllables) {
-    const isUyir = s.length === 1; // independent vowel
+    const isUyir = s.length === 1 && UYIR_SET.has(s); // one of the 12 real independent vowels
     const isMei = s.length === 2 && s[1] === PULLI; // consonant + virama (dead consonant)
-    const isBareConsonant = s.length === 1; // shares length 1 with isUyir; both are "atomic units," not compounds
-    if (isUyir || isMei || isBareConsonant) {
+    if (isUyir || isMei) {
       if (!exactLetters.includes(s)) exactLetters.push(s);
     } else if (!exactCompounds.includes(s)) {
+      // Covers both a bare consonant (மெய் + implicit அ) and any explicit
+      // consonant+vowel-sign form -- both are genuinely உயிர்மெய்.
       exactCompounds.push(s);
     }
   }
