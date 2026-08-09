@@ -298,8 +298,7 @@ export function renderKuralPublishing(
   // reason -- ready to return exactly as it is once Stage 2 is approved.
   drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools);
 
-  // const sentenceBand = STAGES.find((s) => s.name === "sentence")!;
-  // drawAssembledSentence(ctx, width, height, content, tamilSerifFont, serifFont, sentenceBand);
+  // drawAssembledSentence(ctx, width, height, content, tamilSerifFont, serifFont);
 
   // tamilSerifFont/serifFont/sansFont/content are not consumed while the
   // sentence stage above stays commented out -- kept in the destructure
@@ -662,13 +661,44 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
 // repositions anything afterward.
 // ---------------------------------------------------------------------------
 
-const STAGES = [
-  { lo: 0.0, hi: 0.2, name: "memory" as const },
-  { lo: 0.2, hi: 0.4, name: "letters" as const },
-  { lo: 0.4, hi: 0.6, name: "uyirmei" as const },
-  { lo: 0.6, hi: 0.82, name: "words" as const },
-  { lo: 0.82, hi: 1.0, name: "sentence" as const },
-];
+// GOLD MASTER, direct founder correction: the five stages were living in
+// horizontal Y-bands (top-to-bottom, per the earlier-approved Rainfall/
+// Filtration story), while the memory layer itself was already genuinely
+// four-edge symmetric -- two different spatial logics running at once,
+// with letters only ever appearing in a horizontal strip regardless of
+// how close a point was to the left/right edges. Founder chose explicitly
+// to abandon the vertical story and go fully radial: every stage now
+// resolves by distance from the NEAREST edge, in every direction equally,
+// matching the same principle Stage 1's memory layer already uses.
+//
+// Each stage is a "ring" in edge-distance space (ef: 0 = right at an
+// edge, 1 = the deepest interior point) rather than a Y range. Rings
+// blend rather than cutting hard, and each later stage's ring sits
+// closer to the interior than the one before it -- letters closer than
+// memory, uyirmei closer than letters, words closer than uyirmei, with
+// the sentence itself reserved for the deepest interior (see
+// drawAssembledSentence, still not called this milestone).
+const STAGE_RINGS = {
+  letters: { peakLo: 0.16, peakHi: 0.42, fadeOutHi: 0.62 },
+  uyirmei: { peakLo: 0.36, peakHi: 0.6, fadeOutHi: 0.8 },
+  words: { peakLo: 0.56, peakHi: 0.82, fadeOutHi: 0.96 },
+} as const;
+
+function smoothstep(lo: number, hi: number, x: number): number {
+  if (lo === hi) return x < lo ? 0 : 1;
+  const t = Math.max(0, Math.min(1, (x - lo) / (hi - lo)));
+  return t * t * (3 - 2 * t);
+}
+
+/** A ring's acceptance strength at a given edge-distance fraction: rises
+ *  from 0 at peakLo, holds near 1 through the peak band, eases back down
+ *  to 0 by fadeOutHi -- a bump, not a step, so no stage has a hard
+ *  boundary where it starts or stops appearing. */
+function ringStrength(ef: number, ring: { peakLo: number; peakHi: number; fadeOutHi: number }): number {
+  const risingEdge = smoothstep(ring.peakLo, ring.peakHi, ef);
+  const fallingEdge = 1 - smoothstep(ring.peakHi, ring.fadeOutHi, ef);
+  return Math.min(risingEdge, fallingEdge);
+}
 
 function applyGlow(ctx: CanvasRenderingContext2D, color: string, blur: number): void {
   // GOLD MASTER, explicit reversal of Sprint 01's "no glow, no gimmicks" --
@@ -779,17 +809,20 @@ function drawMemoryLayer(
   }
 }
 
-/** One evenly-gridded stage: letters, uyirmei, or words. Positions are a
- *  loose grid (per explicit founder direction: "evenly gridded... close to
- *  the reference," not the earlier organic/clustered scatter), jittered
- *  only slightly so it reads as considered rather than mechanical. Size
- *  and opacity are held close to uniform WITHIN a stage -- hierarchy comes
- *  from stage-to-stage differences, not variation inside one stage. */
-function drawGriddedStage(
+/** One stage's content, placed radially across the WHOLE canvas -- not a
+ *  Y-band. Uses the same guaranteed-no-overlap technique as
+ *  drawMemoryLayer (a grid sized comfortably larger than the glyph, with
+ *  jitter bounded well inside half a cell), but acceptance at each cell
+ *  is governed by that cell's position in the stage's edge-distance ring
+ *  (see ringStrength) rather than a fixed vertical range. Size and
+ *  opacity stay close to uniform within a stage -- hierarchy comes from
+ *  stage-to-stage differences and ring position, not variation within
+ *  one placement. */
+function drawRadialStage(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  band: { lo: number; hi: number },
+  ring: { peakLo: number; peakHi: number; fadeOutHi: number },
   items: readonly string[],
   rand: SeededRandom,
   opts: {
@@ -800,67 +833,63 @@ function drawGriddedStage(
     color: string;
     weight: number;
     glow: boolean;
-    cols: number;
-    rows: number;
-    fillFraction: number;
+    cellW: number;
+    cellH: number;
     allowOverlapGuard: boolean;
   }
 ): void {
   if (items.length === 0) return;
-  const positions: { x: number; y: number }[] = [];
-  for (let ri = 0; ri < opts.rows; ri++) {
-    for (let ci = 0; ci < opts.cols; ci++) {
-      const gx = ((ci + 0.5) / opts.cols) * width * 0.9 + width * 0.05;
-      const gy = (band.lo + ((ri + 0.5) / opts.rows) * (band.hi - band.lo)) * height;
-      positions.push({ x: gx, y: gy });
-    }
-  }
-  // Deterministic shuffle (seeded rand, not Math.random) -- which grid
-  // slots get used varies by content/seed without needing a new layout
-  // system.
-  for (let i = positions.length - 1; i > 0; i--) {
-    const j = Math.floor(rand.range(0, i + 1));
-    [positions[i], positions[j]] = [positions[j], positions[i]];
-  }
 
-  const used = Math.max(items.length, Math.min(positions.length, Math.round(positions.length * opts.fillFraction)));
+  const cols = Math.ceil(width / opts.cellW);
+  const rows = Math.ceil(height / opts.cellH);
+  const jitterX = opts.cellW * 0.32;
+  const jitterY = opts.cellH * 0.32;
   const placedBoxes: PlacedWordBox[] = [];
   let itemIdx = 0;
 
-  for (let i = 0; i < used && i < positions.length; i++) {
-    const { x: gx, y: gy } = positions[i];
-    const jx = gx + rand.range(-18, 18);
-    const jy = gy + rand.range(-14, 14);
-    // Cycle through the real item list rather than always picking
-    // randomly, so every distinct item (e.g. every real word) actually
-    // appears at least once instead of some being left out by chance.
-    const value = items[itemIdx % items.length];
-    itemIdx++;
+  for (let ri = 0; ri < rows; ri++) {
+    for (let ci = 0; ci < cols; ci++) {
+      const gx = (ci + 0.5) * opts.cellW + rand.range(-jitterX, jitterX);
+      const gy = (ri + 0.5) * opts.cellH + rand.range(-jitterY, jitterY);
+      if (gx < 4 || gx > width - 4 || gy < 4 || gy > height - 4) continue;
 
-    if (opts.allowOverlapGuard) {
+      const d = Math.min(gx, width - gx, gy, height - gy);
+      const norm = Math.min(width, height) * 0.46;
+      const ef = norm > 0 ? Math.min(1, d / norm) : 0;
+      const strength = ringStrength(ef, ring);
+      if (!rand.chance(strength)) continue;
+
+      // Cycle through the real item list rather than always picking
+      // randomly, so every distinct item (e.g. every real word) actually
+      // appears at least once instead of some being left out by chance.
+      const value = items[itemIdx % items.length];
+      itemIdx++;
+
+      if (opts.allowOverlapGuard) {
+        ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+        const measured = ctx.measureText(value);
+        const box: PlacedWordBox = { x: gx, y: gy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
+        if (wordWouldOverlap(box, placedBoxes)) continue;
+        placedBoxes.push(box);
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
-      const measured = ctx.measureText(value);
-      const box: PlacedWordBox = { x: jx, y: jy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
-      if (wordWouldOverlap(box, placedBoxes)) continue;
-      placedBoxes.push(box);
+      ctx.fillStyle = withAlpha(opts.color, opts.opacity * (0.6 + 0.4 * strength));
+      if (opts.glow) applyGlow(ctx, withAlpha(COLORS.illuminatedGold, 0.55), opts.size * 0.3);
+      ctx.fillText(value, gx, gy);
+      if (opts.glow) clearGlow(ctx);
     }
-
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
-    ctx.fillStyle = withAlpha(opts.color, opts.opacity);
-    if (opts.glow) applyGlow(ctx, withAlpha(COLORS.illuminatedGold, 0.55), opts.size * 0.3);
-    ctx.fillText(value, jx, jy);
-    if (opts.glow) clearGlow(ctx);
   }
 }
 
-/** The whole Living Field for this pass: background memory (full height,
- *  edge-density) plus the four upper/mid stages gridded within their own
- *  bands. The fifth stage (the assembled sentence) is drawn separately by
- *  drawAssembledSentence, called from renderKuralPublishing, since it
- *  uses the locked Kural typography token rather than the field's own
- *  glyph system. */
+/** The whole Living Field for this pass: background memory (full canvas,
+ *  edge-density) plus the four resolution stages, each its own ring in
+ *  edge-distance space rather than a Y-band. The fifth stage (the
+ *  assembled sentence) is drawn separately by drawAssembledSentence,
+ *  called from renderKuralPublishing, since it uses the locked Kural
+ *  typography token rather than the field's own glyph system. */
 function drawLivingField(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -875,34 +904,31 @@ function drawLivingField(
   // MILESTONE 04 / STAGE 2 -- Letter Recognition: உயிர் + மெய் only (real
   // independent vowels and dead consonants this Kural actually uses --
   // zonePools.exactLetters, not the உயிர்மெய் compounds, which stay a
-  // later stage). Uses the same reserved band the five-stage layout
-  // already set aside for "letters" (STAGES, 0.2-0.4 of height) -- no
-  // new canvas space needed, per "using this space itself."
-  const lettersBand = STAGES.find((s) => s.name === "letters")!;
+  // later stage). Now radial (STAGE_RINGS.letters), matching the same
+  // edge-distance principle Stage 1's memory layer already uses -- no
+  // top/bottom favouring, resolution grows inward from every direction.
   const letterItems = zonePools.exactLetters.length > 0 ? zonePools.exactLetters : ["அ"];
-  drawGriddedStage(ctx, width, height, lettersBand, letterItems, rand, {
+  drawRadialStage(ctx, width, height, STAGE_RINGS.letters, letterItems, rand, {
     tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
-    weight: 500, glow: false, cols: 12, rows: 3, fillFraction: 0.55, allowOverlapGuard: false,
+    weight: 500, glow: false, cellW: 60, cellH: 52, allowOverlapGuard: false,
   });
 
   // MILESTONE 04 SCOPE: three more layers still to come (uyirmei, words,
   // sentence) -- kept intact and unchanged below, not deleted, ready to
-  // return one at a time as each is explicitly approved.
+  // return one at a time as each is explicitly approved. Both remaining
+  // gridded stages are already re-parameterized for the radial model
+  // (STAGE_RINGS), so re-enabling them needs no further rework.
   //
-  // const uyirmeiBand = STAGES.find((s) => s.name === "uyirmei")!;
   // const uyirmeiItems = zonePools.exactCompounds.length > 0 ? zonePools.exactCompounds : ["அ"];
-  // drawGriddedStage(ctx, width, height, uyirmeiBand, uyirmeiItems, rand, {
+  // drawRadialStage(ctx, width, height, STAGE_RINGS.uyirmei, uyirmeiItems, rand, {
   //   tamilFont, fontFamily: "serif", size: 20, opacity: 0.5, color: mix(COLORS.heritageBronze, COLORS.illuminatedGold, 0.55),
-  //   weight: 500, glow: true, cols: 11, rows: 3, fillFraction: 0.6, allowOverlapGuard: false,
+  //   weight: 500, glow: true, cellW: 66, cellH: 58, allowOverlapGuard: false,
   // });
   //
-  // const wordsBand = STAGES.find((s) => s.name === "words")!;
   // const wordItems = zonePools.words.length > 0 ? zonePools.words : ["சொல்"];
-  // const wcols = 4;
-  // const wrows = Math.ceil(wordItems.length / wcols);
-  // drawGriddedStage(ctx, width, height, wordsBand, wordItems, rand, {
+  // drawRadialStage(ctx, width, height, STAGE_RINGS.words, wordItems, rand, {
   //   tamilFont, fontFamily: "serif", size: 30, opacity: 0.92, color: COLORS.illuminatedGold,
-  //   weight: 700, glow: true, cols: wcols, rows: wrows, fillFraction: 1, allowOverlapGuard: true,
+  //   weight: 700, glow: true, cellW: 130, cellH: 100, allowOverlapGuard: true,
   // });
 }
 
@@ -950,6 +976,12 @@ function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: nu
 // MILESTONE 04 / STAGE 1: not called this milestone -- "do not build
 // the next stages yet." Kept intact, unchanged, ready to return once
 // the sentence stage is explicitly approved again.
+// MILESTONE 04, RADIAL MODEL: repositioned to the canvas CENTRE -- the
+// deepest interior point in edge-distance terms -- instead of a Y-band
+// near the bottom. Consistent with every other stage now resolving by
+// distance from the nearest edge rather than vertical position; this
+// keeps the whole system honest even though this stage is still not
+// called this milestone.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawAssembledSentence(
   ctx: CanvasRenderingContext2D,
@@ -957,15 +989,14 @@ function drawAssembledSentence(
   height: number,
   content: KuralPublishingContent,
   tamilFont: string,
-  sansFont: string,
-  band: { lo: number; hi: number }
+  sansFont: string
 ): void {
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const maxTextWidth = width * 0.86;
   const lines = [content.tamilLine1, content.tamilLine2];
   const size = fitTokenSize(ctx, kuralToken, lines, tamilFont, sansFont, maxTextWidth, height);
   const lineGap = size * kuralToken.lineHeightRatio;
-  const cy = (band.lo + band.hi) / 2 * height;
+  const cy = height / 2;
   const y1 = cy - lineGap / 2 + size * 0.32;
   const y2 = y1 + lineGap;
 
