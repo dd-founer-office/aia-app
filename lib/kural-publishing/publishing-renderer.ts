@@ -55,7 +55,6 @@ import { TAMIL_BRAHMI, VATTELUTTU, type Glyph, type GlyphPath } from "@/lib/livi
 import { createSeededRandom, type SeededRandom } from "./seeded-random";
 import {
   deriveSeed,
-  REGIONS,
   type KuralPublishingContent,
 } from "./kural200-state";
 
@@ -329,26 +328,60 @@ function extractTamilSyllables(text: string): string[] {
 // layer; the language mass is what should read as dark and deep.
 // ---------------------------------------------------------------------------
 
+/** Distance to the nearest canvas edge, SMOOTHED. A hard Math.min(x, w-x,
+ *  y, h-y) is mathematically correct as "nearest edge distance" and works
+ *  fine for the glyph density (placement is discrete and jittered, which
+ *  hides the underlying shape) -- but for a continuous colour fill, that
+ *  same hard min produces genuinely rectangular, hard-cornered level-set
+ *  contours, especially visible on a wide landscape canvas. Confirmed
+ *  directly: the first version of this fix rendered a visible boxed frame
+ *  -- exactly the kind of hard boundary this whole project has worked to
+ *  eliminate. Smoothed via a soft-minimum (log-sum-exp) instead, which
+ *  rounds the corners into a genuine vignette while still treating every
+ *  edge equally -- no edge is weighted differently from another, only the
+ *  hard corner of the min() itself is softened. */
+function softEdgeDistance(x: number, y: number, width: number, height: number, softness: number): number {
+  const dl = x;
+  const dr = width - x;
+  const dt = y;
+  const db = height - y;
+  const sum = Math.exp(-dl / softness) + Math.exp(-dr / softness) + Math.exp(-dt / softness) + Math.exp(-db / softness);
+  return -softness * Math.log(sum);
+}
+
 function drawAtmosphere(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number
 ): void {
-  // Reference-matched ground: light warm cream everywhere, with only a
-  // soft vignette deepening toward the extreme left edge. Gradient stops
-  // are the measured fractions from the approved target image (sampled at
-  // x-fracs 0.018 / 0.09 / 0.24, fully resolved cream by ~0.4).
-  const colorEnd = REGIONS.denseEnd * 0.82;
-
-  const base = ctx.createLinearGradient(0, 0, width, 0);
-  base.addColorStop(0, mix(COLORS.vignetteEdge, COLORS.heritageBronze, 0.4));
-  base.addColorStop(0.02, COLORS.vignetteEdge);
-  base.addColorStop(0.09, mix(COLORS.vignetteEdge, COLORS.warmParchment, 0.5));
-  base.addColorStop(0.24, mix(COLORS.vignetteEdge, COLORS.warmParchment, 0.82));
-  base.addColorStop(0.42, COLORS.warmParchment);
-  base.addColorStop(1, COLORS.warmParchment);
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, width, height);
+  // FIX, direct founder correction, second pass: the first fix attempt
+  // used a discrete multi-stop colour lookup (matching the old gradient's
+  // stops exactly), which read fine as a smooth native CSS gradient but
+  // produced clearly visible BANDING once rendered as flat-filled grid
+  // cells -- confirmed directly by rendering it. Replaced with a single
+  // continuous smoothstep between exactly two colours -- no discrete
+  // thresholds anywhere, so no band edges can exist. Distance is still
+  // the smoothed nearest-edge metric (Spatial Constitution Law A,
+  // softEdgeDistance above), and cell size is reduced so the remaining
+  // per-cell flat-fill quantization is well below the threshold of
+  // visibility.
+  const norm = Math.min(width, height) * 0.5;
+  const softness = Math.min(width, height) * 0.16;
+  const cell = 10;
+  const cols = Math.ceil(width / cell);
+  const rows = Math.ceil(height / cell);
+  const edgeColor = mix(COLORS.vignetteEdge, COLORS.heritageBronze, 0.22);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cx = c * cell;
+      const cy = r * cell;
+      const d = softEdgeDistance(cx, cy, width, height, softness);
+      const t = norm > 0 ? Math.min(1, Math.max(0, d / norm)) : 1;
+      const smooth = t * t * (3 - 2 * t); // smoothstep -- continuous, no seams
+      ctx.fillStyle = mix(edgeColor, COLORS.warmParchment, smooth);
+      ctx.fillRect(cx, cy, cell, cell);
+    }
+  }
 
   // No elongated "vein" strata patches, and no darker-toned variant --
   // removed entirely per founder direction. Against the light reference
@@ -357,8 +390,8 @@ function drawAtmosphere(
   // and drawParchmentTexture below -- fine, cell-based grain with no
   // large-scale shape to be seen as an artifact.
 
-  drawLocalTonalVariation(ctx, width, height, colorEnd);
-  drawParchmentTexture(ctx, width, height, colorEnd);
+  drawLocalTonalVariation(ctx, width, height);
+  drawParchmentTexture(ctx, width, height);
 }
 
 /** A pure function of position, not of the seeded generator -- deliberately
@@ -410,18 +443,26 @@ function organicDepth(px: number, py: number): number {
 function drawLocalTonalVariation(
   ctx: CanvasRenderingContext2D,
   width: number,
-  height: number,
-  colorEnd: number
+  height: number
 ): void {
+  // FIX, same founder correction as drawAtmosphere above: was
+  // xFrac/colorEnd-based and only ever iterated columns up to
+  // colorEnd*width -- i.e. only ever ran in the left portion of the
+  // canvas at all. Now fades by the same smoothed nearest-edge distance
+  // as the base gradient and covers every cell, matching Spatial
+  // Constitution Law A.
+  const norm = Math.min(width, height) * 0.55;
+  const softness = Math.min(width, height) * 0.16;
   const cell = 13;
-  const cols = Math.ceil((colorEnd * width) / cell);
+  const cols = Math.ceil(width / cell);
   const rows = Math.ceil(height / cell);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cx = c * cell;
       const cy = r * cell;
-      const xFrac = cx / width;
-      const fade = Math.max(0, 1 - xFrac / colorEnd);
+      const d = softEdgeDistance(cx, cy, width, height, softness);
+      const ef = norm > 0 ? Math.min(1, Math.max(0, d / norm)) : 0;
+      const fade = Math.max(0, 1 - ef / 0.42);
       const n = organicDepth(cx, cy);
       const delta = (n - 0.5) * 0.1 * fade;
       if (Math.abs(delta) < 0.005) continue;
@@ -437,22 +478,25 @@ function drawLocalTonalVariation(
 /** Warm Parchment's own material texture -- "archival paper, soft mineral
  *  surface, warm light," explicitly NOT "heavy paper grain, wood, grunge."
  *  Same non-RNG position-hash technique as drawLocalTonalVariation (zero
- *  rand draws, so it can't perturb composition), but confined to the
- *  editorial region and at roughly a third of the amplitude -- this is
- *  meant to be felt, not seen. Pure warm-toward-parchment variation only;
- *  never introduces the dark tones the language side uses. */
+ *  rand draws, so it can't perturb composition). FIX, same founder
+ *  correction: previously confined to whichever columns
+ *  drawLocalTonalVariation's left-only pass DIDN'T cover (a
+ *  right-portion-only complement to a left-portion-only vignette) -- now
+ *  covers the full canvas, since fine grain was never inherently
+ *  directional in the first place; there was no reason it should have
+ *  been limited to part of the canvas once the vignette itself stopped
+ *  being left-only. Pure warm-toward-parchment variation only; never
+ *  introduces the dark tones the vignette uses. */
 function drawParchmentTexture(
   ctx: CanvasRenderingContext2D,
   width: number,
-  height: number,
-  colorEnd: number
+  height: number
 ): void {
   const cell = 18;
-  const startCol = Math.floor((colorEnd * width) / cell);
   const cols = Math.ceil(width / cell);
   const rows = Math.ceil(height / cell);
   for (let r = 0; r < rows; r++) {
-    for (let c = startCol; c < cols; c++) {
+    for (let c = 0; c < cols; c++) {
       const cx = c * cell;
       const cy = r * cell;
       const n = smoothNoise(cx + 2200, cy + 1500, 58);
@@ -1083,11 +1127,22 @@ function fitTokenSize(
 // Colour helpers
 // ---------------------------------------------------------------------------
 
-function hexToRgb(hex: string): [number, number, number] {
+function hexToRgb(color: string): [number, number, number] {
+  // FIX: accepts both "#RRGGBB" hex and "rgb(r, g, b)" strings -- mix()
+  // returns the latter, and this function is sometimes called on mix()'s
+  // own output (chained/double blending). Without this, that chain
+  // silently produced NaN channels -> a solid black fill, confirmed
+  // directly by rendering it.
+  if (color.startsWith("rgb")) {
+    const parts = color.match(/[\d.]+/g);
+    if (parts && parts.length >= 3) {
+      return [parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10)];
+    }
+  }
   return [
-    parseInt(hex.slice(1, 3), 16),
-    parseInt(hex.slice(3, 5), 16),
-    parseInt(hex.slice(5, 7), 16),
+    parseInt(color.slice(1, 3), 16),
+    parseInt(color.slice(3, 5), 16),
+    parseInt(color.slice(5, 7), 16),
   ];
 }
 
