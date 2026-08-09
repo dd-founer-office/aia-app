@@ -662,7 +662,6 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
 // repositions anything afterward.
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const STAGES = [
   { lo: 0.0, hi: 0.2, name: "memory" as const },
   { lo: 0.2, hi: 0.4, name: "letters" as const },
@@ -786,10 +785,6 @@ function drawMemoryLayer(
  *  only slightly so it reads as considered rather than mechanical. Size
  *  and opacity are held close to uniform WITHIN a stage -- hierarchy comes
  *  from stage-to-stage differences, not variation inside one stage. */
-// MILESTONE 04 / STAGE 1: not called this milestone -- kept intact,
-// unchanged, ready to return for the letters/uyirmei/words stages once
-// Stage 2+ is approved (see the commented calls inside drawLivingField).
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawGriddedStage(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -877,19 +872,22 @@ function drawLivingField(
 ): void {
   drawMemoryLayer(ctx, width, height, brahmiFont, rand);
 
-  // MILESTONE 04 / STAGE 1 SCOPE: "Do NOT build the next stages yet...
-  // Implement ONLY Stage 1 and render it. Then stop." The letters,
-  // uyirmei, and words stages below are deliberately not called this
-  // milestone so Stage 1 can be reviewed in isolation -- all three are
-  // fully intact and unchanged, ready to return exactly as they are once
-  // Stage 2 is explicitly approved.
-  //
-  // const lettersBand = STAGES.find((s) => s.name === "letters")!;
-  // const letterItems = zonePools.exactLetters.length > 0 ? zonePools.exactLetters : ["அ"];
-  // drawGriddedStage(ctx, width, height, lettersBand, letterItems, rand, {
-  //   tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
-  //   weight: 500, glow: false, cols: 12, rows: 3, fillFraction: 0.55, allowOverlapGuard: false,
-  // });
+  // MILESTONE 04 / STAGE 2 -- Letter Recognition: உயிர் + மெய் only (real
+  // independent vowels and dead consonants this Kural actually uses --
+  // zonePools.exactLetters, not the உயிர்மெய் compounds, which stay a
+  // later stage). Uses the same reserved band the five-stage layout
+  // already set aside for "letters" (STAGES, 0.2-0.4 of height) -- no
+  // new canvas space needed, per "using this space itself."
+  const lettersBand = STAGES.find((s) => s.name === "letters")!;
+  const letterItems = zonePools.exactLetters.length > 0 ? zonePools.exactLetters : ["அ"];
+  drawGriddedStage(ctx, width, height, lettersBand, letterItems, rand, {
+    tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
+    weight: 500, glow: false, cols: 12, rows: 3, fillFraction: 0.55, allowOverlapGuard: false,
+  });
+
+  // MILESTONE 04 SCOPE: three more layers still to come (uyirmei, words,
+  // sentence) -- kept intact and unchanged below, not deleted, ready to
+  // return one at a time as each is explicitly approved.
   //
   // const uyirmeiBand = STAGES.find((s) => s.name === "uyirmei")!;
   // const uyirmeiItems = zonePools.exactCompounds.length > 0 ? zonePools.exactCompounds : ["அ"];
@@ -906,8 +904,6 @@ function drawLivingField(
   //   tamilFont, fontFamily: "serif", size: 30, opacity: 0.92, color: COLORS.illuminatedGold,
   //   weight: 700, glow: true, cols: wcols, rows: wrows, fillFraction: 1, allowOverlapGuard: true,
   // });
-  void tamilFont;
-  void zonePools;
 }
 
 
