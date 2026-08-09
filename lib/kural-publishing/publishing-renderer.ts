@@ -47,7 +47,11 @@
  * renderer version -> byte-identical canvas output.
  */
 
-import { MODERN_TAMIL, TAMIL_BRAHMI, VATTELUTTU, type Glyph, type GlyphPath } from "@/lib/living-field/glyphs";
+// MODERN_TAMIL is not imported -- MILESTONE 04 / STAGE 1 is Brahmi/
+// Vatteluttu only, no modern Tamil ("this stage is purely glyph ->
+// memory... nothing has become a modern letter yet"). It will return
+// once Stage 2 (Letter Recognition) is approved and reintroduces it.
+import { TAMIL_BRAHMI, VATTELUTTU, type Glyph, type GlyphPath } from "@/lib/living-field/glyphs";
 import { createSeededRandom, type SeededRandom } from "./seeded-random";
 import {
   deriveSeed,
@@ -286,27 +290,25 @@ export function renderKuralPublishing(
   ctx.clearRect(0, 0, width, height);
   drawAtmosphere(ctx, width, height);
 
-  // GOLD MASTER, RAINFALL / FILTRATION MODEL -- explicit founder direction,
-  // approved directly against a chosen reference: five vertical stages
-  // (memory -> letters -> uyirmei -> words -> sentence), no dividers,
-  // memory density edge-based throughout (Spatial Constitution Law A/C
-  // unchanged), certainty running vertically instead of by distance from
-  // one point or one edge. Supersedes the edge-growth radial model and
-  // the separate Formation Node overlay entirely -- the five stages ARE
-  // the formation story now, not a system layered on top of it.
+  // MILESTONE 04 / STAGE 1 -- Memory Field only. "Do NOT build the next
+  // stages yet... Implement ONLY Stage 1 and render it. Then stop."
+  // drawLivingField currently draws only the memory layer (letters/
+  // uyirmei/words are commented out inside it, not deleted -- see that
+  // function). The assembled-sentence stage below is fully intact and
+  // unchanged but deliberately not called this milestone, for the same
+  // reason -- ready to return exactly as it is once Stage 2 is approved.
   drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools);
 
-  // The fifth stage, rendered directly: the assembled Kural. Explicit,
-  // deliberate reversal of "do not build the Kural yet" -- approved
-  // directly against the same reference, which showed the complete
-  // sentence at the bottom of this exact five-stage structure.
-  const sentenceBand = STAGES.find((s) => s.name === "sentence")!;
-  drawAssembledSentence(ctx, width, height, content, tamilSerifFont, serifFont, sentenceBand);
+  // const sentenceBand = STAGES.find((s) => s.name === "sentence")!;
+  // drawAssembledSentence(ctx, width, height, content, tamilSerifFont, serifFont, sentenceBand);
 
-  // tamilSerifFont/serifFont are consumed by drawAssembledSentence above;
-  // sansFont is not currently used by this pipeline but stays part of the
-  // options contract for parity with every other render entry point.
+  // tamilSerifFont/serifFont/sansFont/content are not consumed while the
+  // sentence stage above stays commented out -- kept in the destructure
+  // so re-enabling that line is a one-line change, not a signature edit.
   void sansFont;
+  void tamilSerifFont;
+  void serifFont;
+  void content;
 }
 
 /** Splits Tamil text into orthographic syllables (an independent vowel, or
@@ -616,6 +618,7 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
 // repositions anything afterward.
 // ---------------------------------------------------------------------------
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const STAGES = [
   { lo: 0.0, hi: 0.2, name: "memory" as const },
   { lo: 0.2, hi: 0.4, name: "letters" as const },
@@ -638,49 +641,95 @@ function clearGlow(ctx: CanvasRenderingContext2D): void {
   ctx.shadowBlur = 0;
 }
 
-/** The background memory layer -- present through the FULL canvas height,
- *  including behind the words and sentence stages, per explicit founder
- *  direction ("background memory texture at depth... present through the
- *  full height"). Density stays edge-based (Spatial Constitution Law A/C,
- *  unchanged): dense at every edge equally, thinning toward the interior,
- *  exponential decay, never reaching exactly zero. This is the "soil" in
- *  the rainfall metaphor -- it does not vary by stage or favour any side. */
+/** MILESTONE 04 / STAGE 1 -- Memory Field. Complete rebuild per explicit,
+ *  detailed founder spec, superseding the earlier mixed-script/size-varied
+ *  version entirely:
+ *
+ *  - Tamil-Brahmi + Vatteluttu ONLY. No modern Tamil at this stage --
+ *    "this stage is purely glyph -> memory," recognition hasn't happened
+ *    yet, so nothing here is allowed to already look like a modern letter.
+ *  - ONE fixed size, ONE basic weight, for every glyph, no exceptions.
+ *    Depth is opacity ONLY -- explicitly not blur, not scale.
+ *  - Guaranteed no overlap: placement uses a grid sized so a glyph plus
+ *    its jitter radius can never reach a neighbouring cell's glyph, so no
+ *    pairwise distance checks are needed and performance stays bounded.
+ *    Jitter is large enough relative to the cell that the grid itself
+ *    never reads as a grid -- "the viewer should not be able to trace a
+ *    designed path" -- while staying small enough that adjacency across
+ *    cells can't collide.
+ *  - True four-edge density (Spatial Constitution Law A/C): dense at
+ *    every edge and corner equally, quieter toward the interior, never
+ *    reaching zero anywhere -- "memory never reaches zero."
+ *  - Brahmi and Vatteluttu carry EQUAL status -- selected via a flat 50/50
+ *    roll, not proportional to either script's real character-set size
+ *    (which would let one dominate), and neither gets a size or opacity
+ *    boost over the other. */
 function drawMemoryLayer(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  tamilFont: string,
   brahmiFont: string,
   rand: SeededRandom
 ): void {
-  const cols = 48;
-  const rows = 30;
+  const FIXED_SIZE = 11;
+  const FIXED_WEIGHT = 500;
+  const brahmiGlyphs = HISTORICAL_POOL.filter((g) => g.script === "brahmi");
+  const vatteluttuGlyphs = HISTORICAL_POOL.filter((g) => g.script === "vatteluttu");
+
+  // Cell sized comfortably larger than the fixed glyph so that even at
+  // maximum jitter, adjacent cells' glyphs cannot touch -- this is what
+  // makes "no overlap" a guarantee rather than a probability.
+  const cellW = 30;
+  const cellH = 26;
+  const cols = Math.ceil(width / cellW);
+  const rows = Math.ceil(height / cellH);
+  // Jitter kept well inside half a cell width/height so neighbouring
+  // cells' glyphs, even fully jittered toward each other, still clear
+  // the fixed glyph size with margin.
+  const jitterX = cellW * 0.32;
+  const jitterY = cellH * 0.32;
+
   for (let ri = 0; ri < rows; ri++) {
     for (let ci = 0; ci < cols; ci++) {
-      const gx = ((ci + 0.5) / cols) * width + rand.range(-14, 14);
-      const gy = ((ri + 0.5) / rows) * height + rand.range(-10, 10);
-      const d = Math.min(gx, width - gx, gy, height - gy);
-      const norm = Math.min(width, height) * 0.42;
-      const ef = norm > 0 ? Math.min(1, d / norm) : 0;
-      const density = Math.exp(-1.6 * ef);
-      if (!rand.chance(Math.min(1, density * 0.7))) continue;
+      const gx = (ci + 0.5) * cellW + rand.range(-jitterX, jitterX);
+      const gy = (ri + 0.5) * cellH + rand.range(-jitterY, jitterY);
+      if (gx < 4 || gx > width - 4 || gy < 4 || gy > height - 4) continue;
 
-      const isHistorical = rand.chance(HISTORICAL_POOL.length / (MODERN_TAMIL.glyphs.length + HISTORICAL_POOL.length));
-      const ambient: AmbientGlyph = isHistorical ? rand.pick(HISTORICAL_POOL) : { glyph: rand.pick(MODERN_TAMIL.glyphs), script: "modern" };
-      const size = rand.range(6, 9);
-      const opacity = rand.range(0.04, 0.13);
+      // Four-edge density: distance to the NEAREST edge, not one favoured
+      // side. Exponential decay, asymptotic -- never exactly zero.
+      const d = Math.min(gx, width - gx, gy, height - gy);
+      const norm = Math.min(width, height) * 0.46;
+      const ef = norm > 0 ? Math.min(1, d / norm) : 0;
+      const density = Math.exp(-1.55 * ef);
+
+      // High population target -- most cells that pass the edge-density
+      // roll actually place a glyph, so the field reads as substantially
+      // populated rather than sparse, per "substantially denser than the
+      // current version... should immediately see a large population."
+      if (!rand.chance(Math.min(1, density * 0.92 + 0.06))) continue;
+
+      const isBrahmi = rand.chance(0.5); // equal status, flat roll
+      const pool = isBrahmi ? brahmiGlyphs : vatteluttuGlyphs;
+      if (pool.length === 0) continue;
+      const ambient = rand.pick(pool);
+
+      // Opacity is the ONLY depth signal -- many distinguishable levels
+      // of presence (clearly visible down to barely perceptible), tied
+      // to the same edge-density value so edges read as more present and
+      // the interior quieter, without ever hitting a hard floor of zero.
+      const opacity = 0.05 + density * 0.5 + rand.range(-0.04, 0.04);
+      const clampedOpacity = Math.max(0.04, Math.min(0.62, opacity));
+
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = withAlpha(COLORS.heritageBronze, opacity);
+      ctx.fillStyle = withAlpha(COLORS.heritageBronze, clampedOpacity);
       if (ambient.glyph.kind === "path") {
         ctx.save();
         ctx.translate(gx, gy);
-        drawPathGlyph(ctx, ambient.glyph.value, size);
+        drawPathGlyph(ctx, ambient.glyph.value, FIXED_SIZE);
         ctx.restore();
       } else {
-        const weight = ambient.script === "brahmi" ? 500 : 400;
-        const family = ambient.script === "brahmi" ? brahmiFont : tamilFont;
-        ctx.font = `${weight} ${size}px ${family}`;
+        ctx.font = `${FIXED_WEIGHT} ${FIXED_SIZE}px ${brahmiFont}`;
         ctx.fillText(ambient.glyph.value, gx, gy);
       }
     }
@@ -693,6 +742,10 @@ function drawMemoryLayer(
  *  only slightly so it reads as considered rather than mechanical. Size
  *  and opacity are held close to uniform WITHIN a stage -- hierarchy comes
  *  from stage-to-stage differences, not variation inside one stage. */
+// MILESTONE 04 / STAGE 1: not called this milestone -- kept intact,
+// unchanged, ready to return for the letters/uyirmei/words stages once
+// Stage 2+ is approved (see the commented calls inside drawLivingField).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawGriddedStage(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -778,35 +831,39 @@ function drawLivingField(
   rand: SeededRandom,
   zonePools: MilestoneZonePools
 ): void {
-  drawMemoryLayer(ctx, width, height, tamilFont, brahmiFont, rand);
+  drawMemoryLayer(ctx, width, height, brahmiFont, rand);
 
-  const lettersBand = STAGES.find((s) => s.name === "letters")!;
-  const letterItems = zonePools.exactLetters.length > 0 ? zonePools.exactLetters : ["அ"];
-  drawGriddedStage(ctx, width, height, lettersBand, letterItems, rand, {
-    tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
-    weight: 500, glow: false, cols: 12, rows: 3, fillFraction: 0.55, allowOverlapGuard: false,
-  });
-
-  const uyirmeiBand = STAGES.find((s) => s.name === "uyirmei")!;
-  const uyirmeiItems = zonePools.exactCompounds.length > 0 ? zonePools.exactCompounds : ["அ"];
-  drawGriddedStage(ctx, width, height, uyirmeiBand, uyirmeiItems, rand, {
-    tamilFont, fontFamily: "serif", size: 20, opacity: 0.5, color: mix(COLORS.heritageBronze, COLORS.illuminatedGold, 0.55),
-    weight: 500, glow: true, cols: 11, rows: 3, fillFraction: 0.6, allowOverlapGuard: false,
-  });
-
-  const wordsBand = STAGES.find((s) => s.name === "words")!;
-  // Every real distinct word, once each -- not budget-capped. An earlier
-  // exploration over-applied the word-collision lesson from the previous
-  // milestone; the actual problem was the same few words repeating dozens
-  // of times, not that every distinct word appeared. A short Kural's
-  // full, real vocabulary shown once each is completeness, not crowding.
-  const wordItems = zonePools.words.length > 0 ? zonePools.words : ["சொல்"];
-  const wcols = 4;
-  const wrows = Math.ceil(wordItems.length / wcols);
-  drawGriddedStage(ctx, width, height, wordsBand, wordItems, rand, {
-    tamilFont, fontFamily: "serif", size: 30, opacity: 0.92, color: COLORS.illuminatedGold,
-    weight: 700, glow: true, cols: wcols, rows: wrows, fillFraction: 1, allowOverlapGuard: true,
-  });
+  // MILESTONE 04 / STAGE 1 SCOPE: "Do NOT build the next stages yet...
+  // Implement ONLY Stage 1 and render it. Then stop." The letters,
+  // uyirmei, and words stages below are deliberately not called this
+  // milestone so Stage 1 can be reviewed in isolation -- all three are
+  // fully intact and unchanged, ready to return exactly as they are once
+  // Stage 2 is explicitly approved.
+  //
+  // const lettersBand = STAGES.find((s) => s.name === "letters")!;
+  // const letterItems = zonePools.exactLetters.length > 0 ? zonePools.exactLetters : ["அ"];
+  // drawGriddedStage(ctx, width, height, lettersBand, letterItems, rand, {
+  //   tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
+  //   weight: 500, glow: false, cols: 12, rows: 3, fillFraction: 0.55, allowOverlapGuard: false,
+  // });
+  //
+  // const uyirmeiBand = STAGES.find((s) => s.name === "uyirmei")!;
+  // const uyirmeiItems = zonePools.exactCompounds.length > 0 ? zonePools.exactCompounds : ["அ"];
+  // drawGriddedStage(ctx, width, height, uyirmeiBand, uyirmeiItems, rand, {
+  //   tamilFont, fontFamily: "serif", size: 20, opacity: 0.5, color: mix(COLORS.heritageBronze, COLORS.illuminatedGold, 0.55),
+  //   weight: 500, glow: true, cols: 11, rows: 3, fillFraction: 0.6, allowOverlapGuard: false,
+  // });
+  //
+  // const wordsBand = STAGES.find((s) => s.name === "words")!;
+  // const wordItems = zonePools.words.length > 0 ? zonePools.words : ["சொல்"];
+  // const wcols = 4;
+  // const wrows = Math.ceil(wordItems.length / wcols);
+  // drawGriddedStage(ctx, width, height, wordsBand, wordItems, rand, {
+  //   tamilFont, fontFamily: "serif", size: 30, opacity: 0.92, color: COLORS.illuminatedGold,
+  //   weight: 700, glow: true, cols: wcols, rows: wrows, fillFraction: 1, allowOverlapGuard: true,
+  // });
+  void tamilFont;
+  void zonePools;
 }
 
 
@@ -850,6 +907,10 @@ function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: nu
  *  shows only the two Tamil lines, reusing the locked Kural typography
  *  token (size/weight unchanged) for visual consistency with every other
  *  pass that has ever rendered this text. */
+// MILESTONE 04 / STAGE 1: not called this milestone -- "do not build
+// the next stages yet." Kept intact, unchanged, ready to return once
+// the sentence stage is explicitly approved again.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawAssembledSentence(
   ctx: CanvasRenderingContext2D,
   width: number,
