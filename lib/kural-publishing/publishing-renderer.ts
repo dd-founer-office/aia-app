@@ -744,7 +744,10 @@ function drawMemoryLayer(
   brahmiFont: string,
   rand: SeededRandom
 ): void {
-  const FIXED_SIZE = 11;
+  // GOLD MASTER: reduced from 11 -- explicit founder instruction to make
+  // Layer 1 physically smaller so Layer 3 (uyirmei) has visual room
+  // without disturbing the centre space reserved for the Kural/metadata.
+  const FIXED_SIZE = 8;
   const FIXED_WEIGHT = 500;
   const brahmiGlyphs = HISTORICAL_POOL.filter((g) => g.script === "brahmi");
   const vatteluttuGlyphs = HISTORICAL_POOL.filter((g) => g.script === "vatteluttu");
@@ -836,7 +839,14 @@ function drawRadialStage(
     cellW: number;
     cellH: number;
     allowOverlapGuard: boolean;
-  }
+  },
+  // GOLD MASTER: shared across multiple drawRadialStage calls (letters,
+  // uyirmei, ...) so overlap is checked between STAGES, not just within
+  // one -- explicit founder thumb rule: "no letter must be overlapped,"
+  // full stop, not "no letter overlaps another letter in the same
+  // layer." Each caller passes the SAME array; defaults to a fresh one
+  // so any future standalone caller keeps working unchanged.
+  sharedPlacedBoxes: PlacedWordBox[] = []
 ): void {
   if (items.length === 0) return;
 
@@ -844,7 +854,6 @@ function drawRadialStage(
   const rows = Math.ceil(height / opts.cellH);
   const jitterX = opts.cellW * 0.32;
   const jitterY = opts.cellH * 0.32;
-  const placedBoxes: PlacedWordBox[] = [];
   let itemIdx = 0;
 
   for (let ri = 0; ri < rows; ri++) {
@@ -869,8 +878,8 @@ function drawRadialStage(
         ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
         const measured = ctx.measureText(value);
         const box: PlacedWordBox = { x: gx, y: gy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
-        if (wordWouldOverlap(box, placedBoxes)) continue;
-        placedBoxes.push(box);
+        if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
+        sharedPlacedBoxes.push(box);
       }
 
       ctx.textAlign = "center";
@@ -901,35 +910,55 @@ function drawLivingField(
 ): void {
   drawMemoryLayer(ctx, width, height, brahmiFont, rand);
 
+  // GOLD MASTER, explicit founder thumb rule: "no letter must be
+  // overlapped" -- not just within one layer, across all of them. One
+  // shared box-tracking array, passed to every drawRadialStage call
+  // below, so Layer 3 genuinely checks against Layer 2's placements
+  // too, not just its own.
+  const sharedBoxes: PlacedWordBox[] = [];
+
   // MILESTONE 04 / STAGE 2 -- Letter Recognition: உயிர் + மெய் only (real
   // independent vowels and dead consonants this Kural actually uses --
   // zonePools.exactLetters, not the உயிர்மெய் compounds, which stay a
-  // later stage). Now radial (STAGE_RINGS.letters), matching the same
-  // edge-distance principle Stage 1's memory layer already uses -- no
-  // top/bottom favouring, resolution grows inward from every direction.
+  // later stage). Radial (STAGE_RINGS.letters) -- no top/bottom
+  // favouring, resolution grows inward from every direction.
   const letterItems = zonePools.exactLetters.length > 0 ? zonePools.exactLetters : ["அ"];
   drawRadialStage(ctx, width, height, STAGE_RINGS.letters, letterItems, rand, {
     tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
-    weight: 500, glow: false, cellW: 60, cellH: 52, allowOverlapGuard: false,
-  });
+    weight: 500, glow: false, cellW: 60, cellH: 52, allowOverlapGuard: true,
+  }, sharedBoxes);
 
-  // MILESTONE 04 SCOPE: three more layers still to come (uyirmei, words,
-  // sentence) -- kept intact and unchanged below, not deleted, ready to
-  // return one at a time as each is explicitly approved. Both remaining
-  // gridded stages are already re-parameterized for the radial model
-  // (STAGE_RINGS), so re-enabling them needs no further rework.
-  //
-  // const uyirmeiItems = zonePools.exactCompounds.length > 0 ? zonePools.exactCompounds : ["அ"];
-  // drawRadialStage(ctx, width, height, STAGE_RINGS.uyirmei, uyirmeiItems, rand, {
-  //   tamilFont, fontFamily: "serif", size: 20, opacity: 0.5, color: mix(COLORS.heritageBronze, COLORS.illuminatedGold, 0.55),
-  //   weight: 500, glow: true, cellW: 66, cellH: 58, allowOverlapGuard: false,
-  // });
+  // MILESTONE 04 / STAGE 3 -- Uyirmei Formation. GOLD MASTER, explicit
+  // founder plan: every item drawn here is a real உயிர்மெய் compound
+  // this Kural actually uses (zonePools.exactCompounds), each one
+  // genuinely decomposable into real உயிர்+மெய் components (verified via
+  // atomicPartsOf, the same decomposition checked turn by turn against
+  // the reference table earlier) -- "born from the uyir and mei" is a
+  // real content guarantee, not just a label. Placement itself is
+  // radial, its own ring closer to the centre than letters
+  // (STAGE_RINGS.uyirmei), matching Layer 2's own mechanism -- not
+  // anchored next to specific component positions. Quiet bronze, no
+  // gold, no glow, matching Layer 1/2's own restraint. Reserved centre
+  // space (for the Kural/metadata later) stays untouched, since
+  // STAGE_RINGS.uyirmei's own fadeOutHi already keeps it short of the
+  // deepest interior.
+  const uyirmeiItems = zonePools.exactCompounds.filter((c) => atomicPartsOf(c).length === 2);
+  if (uyirmeiItems.length > 0) {
+    drawRadialStage(ctx, width, height, STAGE_RINGS.uyirmei, uyirmeiItems, rand, {
+      tamilFont, fontFamily: "serif", size: 19, opacity: 0.42, color: COLORS.heritageBronze,
+      weight: 500, glow: false, cellW: 64, cellH: 56, allowOverlapGuard: true,
+    }, sharedBoxes);
+  }
+
+  // MILESTONE 04 SCOPE: two more layers still to come (words, sentence)
+  // -- kept intact and unchanged below, not deleted, ready to return one
+  // at a time as each is explicitly approved.
   //
   // const wordItems = zonePools.words.length > 0 ? zonePools.words : ["சொல்"];
   // drawRadialStage(ctx, width, height, STAGE_RINGS.words, wordItems, rand, {
   //   tamilFont, fontFamily: "serif", size: 30, opacity: 0.92, color: COLORS.illuminatedGold,
   //   weight: 700, glow: true, cellW: 130, cellH: 100, allowOverlapGuard: true,
-  // });
+  // }, sharedBoxes);
 }
 
 
