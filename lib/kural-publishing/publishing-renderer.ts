@@ -836,6 +836,33 @@ function drawMemoryLayer(
   const jitterX = cellW * 0.32;
   const jitterY = cellH * 0.32;
 
+  // GOLD MASTER: Layer 1 confined to its own region -- explicit founder
+  // correction. Previously spanned the whole canvas edge-to-edge at
+  // fading density (per the Spatial Constitution's "memory never
+  // reaches zero, present everywhere" principle, in force since Stage
+  // 1) -- direct founder report: this made Layer 1's marks show up in
+  // the same screen regions Layers 2/3/4 also occupy, reading as if
+  // Brahmi/Vatteluttu were "occupying all layers" rather than being its
+  // own distinct band. This is a real, explicit reversal of that
+  // earlier principle, not a quiet tweak -- said plainly here rather
+  // than left implicit. fadeOutHi sits right at letters' own peakLo
+  // (0.14), so Layer 1 hands off to letters with the same soft, no-hard-
+  // edge transition every other layer boundary already uses, rather
+  // than stopping dead.
+  const confineRing = { peakLo: 0, peakHi: 0, fadeOutHi: STAGE_RINGS.letters.peakLo };
+
+  // GOLD MASTER: "each belonging letter should appear only once" --
+  // explicit founder correction, no repetition. Tracks which ancient
+  // glyph IDENTITIES (not modern letters -- see below) have already
+  // been highlighted anywhere on the canvas; a second occurrence of the
+  // same ancient letter still draws (as an ordinary, unhighlighted
+  // background mark) but never gets bolded/darkened twice. Keyed by
+  // script+index rather than by modern-letter-equivalent, since the two
+  // ambiguous Brahmi entries (𑀏/𑀑) each cover two modern letters --
+  // tracking by the ancient glyph's own identity is the one definition
+  // of "the same letter" that stays unambiguous for every entry.
+  const highlightedOnce = new Set<string>();
+
   for (let ri = 0; ri < rows; ri++) {
     for (let ci = 0; ci < cols; ci++) {
       const gx = (ci + 0.5) * cellW + rand.range(-jitterX, jitterX);
@@ -848,6 +875,7 @@ function drawMemoryLayer(
       const norm = Math.min(width, height) * 0.46;
       const ef = norm > 0 ? Math.min(1, d / norm) : 0;
       const density = Math.exp(-1.55 * ef);
+      const confine = ringStrength(ef, confineRing);
 
       // GOLD MASTER, THE HERO: "a quiet clearing around it" -- explicit
       // founder agreement. Smoothly suppresses acceptance near/inside
@@ -859,7 +887,7 @@ function drawMemoryLayer(
       // roll actually place a glyph, so the field reads as substantially
       // populated rather than sparse, per "substantially denser than the
       // current version... should immediately see a large population."
-      if (!rand.chance(Math.min(1, density * 0.92 + 0.06) * clearing)) continue;
+      if (!rand.chance(Math.min(1, density * 0.92 + 0.06) * clearing * confine)) continue;
 
       const isBrahmi = rand.chance(0.5); // equal status, flat roll
       const pool = isBrahmi ? brahmiGlyphs : vatteluttuGlyphs;
@@ -882,7 +910,11 @@ function drawMemoryLayer(
       // against the founder's own reference, cross-checked against real
       // Tamil alphabetical order before being trusted.
       const equivalents = isBrahmi ? BRAHMI_TO_MODERN[idx] : VATTELUTTU_TO_MODERN[idx];
-      const belongsToKural = equivalents?.some((eq) => zonePools.exactLetters.includes(eq)) ?? false;
+      const identityKey = `${isBrahmi ? "b" : "v"}${idx}`;
+      const belongsToKural =
+        (equivalents?.some((eq) => zonePools.exactLetters.includes(eq)) ?? false) &&
+        !highlightedOnce.has(identityKey);
+      if (belongsToKural) highlightedOnce.add(identityKey);
 
       // Opacity is the ONLY depth signal -- many distinguishable levels
       // of presence (clearly visible down to barely perceptible), tied
