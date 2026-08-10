@@ -289,24 +289,20 @@ export function renderKuralPublishing(
   ctx.clearRect(0, 0, width, height);
   drawAtmosphere(ctx, width, height);
 
-  // MILESTONE 04 / STAGE 1 -- Memory Field only. "Do NOT build the next
-  // stages yet... Implement ONLY Stage 1 and render it. Then stop."
-  // drawLivingField currently draws only the memory layer (letters/
-  // uyirmei/words are commented out inside it, not deleted -- see that
-  // function). The assembled-sentence stage below is fully intact and
-  // unchanged but deliberately not called this milestone, for the same
-  // reason -- ready to return exactly as it is once Stage 2 is approved.
-  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content);
+  // GOLD MASTER, THE HERO -- layout computed FIRST, before any field
+  // content draws, so the field can genuinely know where the Kural will
+  // sit and thin around it (kuralClearingFactor, threaded through
+  // drawLivingField below) rather than the Kural being stamped on top of
+  // a field that had no idea it was coming.
+  const kuralLayout = computeKuralLayout(ctx, width, height, content, tamilSerifFont, serifFont);
 
-  // drawAssembledSentence(ctx, width, height, content, tamilSerifFont, serifFont);
+  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout.box);
 
-  // tamilSerifFont/serifFont/sansFont/content are not consumed while the
-  // sentence stage above stays commented out -- kept in the destructure
-  // so re-enabling that line is a one-line change, not a signature edit.
+  // The hero itself, drawn last -- on top of the (now cleared-around)
+  // field, real typeset text, no glow, uniform weight throughout.
+  drawKuralHero(ctx, content, kuralLayout, tamilSerifFont, serifFont);
+
   void sansFont;
-  void tamilSerifFont;
-  void serifFont;
-  void content;
 }
 
 /** Splits Tamil text into orthographic syllables (an independent vowel, or
@@ -747,7 +743,8 @@ function drawMemoryLayer(
   width: number,
   height: number,
   brahmiFont: string,
-  rand: SeededRandom
+  rand: SeededRandom,
+  kuralBox: KuralLayout["box"]
 ): void {
   // GOLD MASTER: reduced 11 -> 8 -> 6 across two passes -- explicit
   // founder instruction each time, most recently to free up visual room
@@ -784,11 +781,17 @@ function drawMemoryLayer(
       const ef = norm > 0 ? Math.min(1, d / norm) : 0;
       const density = Math.exp(-1.55 * ef);
 
+      // GOLD MASTER, THE HERO: "a quiet clearing around it" -- explicit
+      // founder agreement. Smoothly suppresses acceptance near/inside
+      // the Kural's real measured footprint (computeKuralLayout), never
+      // a hard edge.
+      const clearing = kuralClearingFactor(gx, gy, kuralBox);
+
       // High population target -- most cells that pass the edge-density
       // roll actually place a glyph, so the field reads as substantially
       // populated rather than sparse, per "substantially denser than the
       // current version... should immediately see a large population."
-      if (!rand.chance(Math.min(1, density * 0.92 + 0.06))) continue;
+      if (!rand.chance(Math.min(1, density * 0.92 + 0.06) * clearing)) continue;
 
       const isBrahmi = rand.chance(0.5); // equal status, flat roll
       const pool = isBrahmi ? brahmiGlyphs : vatteluttuGlyphs;
@@ -846,6 +849,7 @@ function drawRadialStage(
     cellH: number;
     allowOverlapGuard: boolean;
   },
+  kuralBox: KuralLayout["box"],
   // GOLD MASTER: shared across multiple drawRadialStage calls (letters,
   // uyirmei, ...) so overlap is checked between STAGES, not just within
   // one -- explicit founder thumb rule: "no letter must be overlapped,"
@@ -872,7 +876,13 @@ function drawRadialStage(
       const norm = Math.min(width, height) * 0.46;
       const ef = norm > 0 ? Math.min(1, d / norm) : 0;
       const strength = ringStrength(ef, ring);
-      if (!rand.chance(strength)) continue;
+      // GOLD MASTER, THE HERO: same quiet-clearing suppression as
+      // drawMemoryLayer, applied here too -- letters/uyirmei/words must
+      // thin around the Kural's real footprint exactly as memory does,
+      // or the clearing would only be visible in the background layer
+      // and every other layer would still collide with the hero.
+      const clearing = kuralClearingFactor(gx, gy, kuralBox);
+      if (!rand.chance(strength * clearing)) continue;
 
       // Cycle through the real item list rather than always picking
       // randomly, so every distinct item (e.g. every real word) actually
@@ -922,9 +932,10 @@ function drawLivingField(
   brahmiFont: string,
   rand: SeededRandom,
   zonePools: MilestoneZonePools,
-  content: KuralPublishingContent
+  content: KuralPublishingContent,
+  kuralBox: KuralLayout["box"]
 ): void {
-  drawMemoryLayer(ctx, width, height, brahmiFont, rand);
+  drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox);
 
   // GOLD MASTER, explicit founder thumb rule: "no letter must be
   // overlapped" -- not just within one layer, across all of them. One
@@ -942,7 +953,7 @@ function drawLivingField(
   drawRadialStage(ctx, width, height, STAGE_RINGS.letters, letterItems, rand, {
     tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
     weight: 500, glow: false, cellW: 60, cellH: 52, allowOverlapGuard: true,
-  }, sharedBoxes);
+  }, kuralBox, sharedBoxes);
 
   // MILESTONE 04 / STAGE 3 -- Uyirmei Formation. GOLD MASTER, explicit
   // founder plan: every item drawn here is a real உயிர்மெய் compound
@@ -963,7 +974,7 @@ function drawLivingField(
     drawRadialStage(ctx, width, height, STAGE_RINGS.uyirmei, uyirmeiItems, rand, {
       tamilFont, fontFamily: "serif", size: 19, opacity: 0.42, color: COLORS.heritageBronze,
       weight: 500, glow: false, cellW: 64, cellH: 56, allowOverlapGuard: true,
-    }, sharedBoxes);
+    }, kuralBox, sharedBoxes);
   }
 
   // MILESTONE 04 SCOPE: two more layers still to come (words, sentence)
@@ -994,7 +1005,7 @@ function drawLivingField(
     drawRadialStage(ctx, width, height, STAGE_RINGS.words, LAYER4_WORDS_KURAL_675, rand, {
       tamilFont, fontFamily: "serif", size: 24, opacity: 0.56, color: COLORS.heritageBronze,
       weight: 500, glow: false, cellW: 90, cellH: 78, allowOverlapGuard: true,
-    }, sharedBoxes);
+    }, kuralBox, sharedBoxes);
   }
 
   // MILESTONE 04 SCOPE: one more layer still to come (the assembled
@@ -1042,15 +1053,111 @@ function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: nu
  *  shows only the two Tamil lines, reusing the locked Kural typography
  *  token (size/weight unchanged) for visual consistency with every other
  *  pass that has ever rendered this text. */
-// MILESTONE 04 / STAGE 1: not called this milestone -- "do not build
-// the next stages yet." Kept intact, unchanged, ready to return once
-// the sentence stage is explicitly approved again.
-// MILESTONE 04, RADIAL MODEL: repositioned to the canvas CENTRE -- the
-// deepest interior point in edge-distance terms -- instead of a Y-band
-// near the bottom. Consistent with every other stage now resolving by
-// distance from the nearest edge rather than vertical position; this
-// keeps the whole system honest even though this stage is still not
-// called this milestone.
+
+/** GOLD MASTER, THE HERO -- computed once, before anything else draws,
+ *  so the surrounding field can genuinely know where the Kural will sit
+ *  and thin around it (see kuralClearingFactor below), rather than the
+ *  Kural being drawn on top of a field that had no idea it was coming.
+ *
+ *  True left alignment, per explicit founder correction against a
+ *  reference image: BOTH lines share the exact same left x -- not each
+ *  line independently centered. Line 1 (4 words) is necessarily wider
+ *  than line 2 (3 words); that is the block's own right edge, not
+ *  something to normalize away. What gets centered on the canvas is the
+ *  block's own bounding box (spanning from the shared left edge to
+ *  line 1's right edge) -- the only way to honour both "left-aligned"
+ *  and "respects the same reserved centre zone every other layer
+ *  already does," which a naive text-align:left starting exactly at
+ *  canvas-center would not: that would lean the whole block right of
+ *  where the reserved zone actually is. */
+interface KuralLayout {
+  leftX: number;
+  y1: number;
+  y2: number;
+  size: number;
+  box: { x0: number; y0: number; x1: number; y1b: number };
+}
+
+function computeKuralLayout(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  content: KuralPublishingContent,
+  tamilFont: string,
+  sansFont: string
+): KuralLayout {
+  const kuralToken = TYPOGRAPHY_TOKENS.kural;
+  const maxTextWidth = width * 0.72; // narrower than before -- room for the block to stay centred with margin either side
+  const lines = [content.tamilLine1, content.tamilLine2];
+  const size = fitTokenSize(ctx, kuralToken, lines, tamilFont, sansFont, maxTextWidth, height);
+
+  ctx.font = tokenFont(kuralToken, size, tamilFont, sansFont);
+  applyTokenTracking(ctx, kuralToken, size);
+  const width1 = ctx.measureText(content.tamilLine1).width;
+  const width2 = ctx.measureText(content.tamilLine2).width;
+  const blockWidth = Math.max(width1, width2); // line 1 in practice -- 4 words vs. 3
+
+  const leftX = (width - blockWidth) / 2;
+  const lineGap = size * kuralToken.lineHeightRatio;
+  const cy = height / 2;
+  const y1 = cy - lineGap / 2 + size * 0.32;
+  const y2 = y1 + lineGap;
+
+  // Bounding box for the clearing effect -- generous vertical padding
+  // (ascender/descender headroom fillText's own metrics don't capture),
+  // modest horizontal padding.
+  const padX = size * 0.4;
+  const padTop = size * 0.85;
+  const padBottom = size * 0.35;
+  return {
+    leftX,
+    y1,
+    y2,
+    size,
+    box: {
+      x0: leftX - padX,
+      y0: y1 - padTop,
+      x1: leftX + blockWidth + padX,
+      y1b: y2 + padBottom,
+    },
+  };
+}
+
+/** How strongly a given point should be suppressed for sitting inside or
+ *  near the Kural's own footprint -- 0 = fully suppressed (never place
+ *  ambient content here, so nothing can visually collide with the
+ *  ink), rising smoothly to 1 well outside the box. Explicit founder
+ *  agreement: "a quiet clearing around it" -- gradual, not a hard-edged
+ *  panel boundary, which every constitution in this project has argued
+ *  against. */
+function kuralClearingFactor(x: number, y: number, box: KuralLayout["box"]): number {
+  const featherX = (box.x1 - box.x0) * 0.18;
+  const featherY = (box.y1b - box.y0) * 0.35;
+  const dx = x < box.x0 ? box.x0 - x : x > box.x1 ? x - box.x1 : 0;
+  const dy = y < box.y0 ? box.y0 - y : y > box.y1b ? y - box.y1b : 0;
+  if (dx === 0 && dy === 0) return 0; // inside the box -- fully clear
+  const t = Math.min(1, Math.max(dx / featherX, dy / featherY));
+  return t * t * (3 - 2 * t); // smoothstep -- gradual, no hard edge
+}
+
+/** The hero itself. Real typeset text via fillText -- not glyph-by-glyph
+ *  field placement like every other layer -- is itself the deliberate
+ *  technique contrast that marks this as the one thing that survived,
+ *  per explicit founder agreement. No glow (agreed: "pure survival, zero
+ *  decoration"). No internal weight hierarchy between words -- explicit
+ *  founder disagreement with giving செயல் extra emphasis; every word
+ *  renders at identical weight and colour, uniformly. */
+function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingContent, layout: KuralLayout, tamilFont: string, sansFont: string): void {
+  const kuralToken = TYPOGRAPHY_TOKENS.kural;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = tokenFont(kuralToken, layout.size, tamilFont, sansFont);
+  applyTokenTracking(ctx, kuralToken, layout.size);
+  ctx.fillStyle = COLORS.kuralInk;
+  ctx.fillText(content.tamilLine1, layout.leftX, layout.y1);
+  ctx.fillText(content.tamilLine2, layout.leftX, layout.y2);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawAssembledSentence(
   ctx: CanvasRenderingContext2D,
