@@ -294,15 +294,23 @@ export function renderKuralPublishing(
   // sit and thin around it (kuralClearingFactor, threaded through
   // drawLivingField below) rather than the Kural being stamped on top of
   // a field that had no idea it was coming.
-  const kuralLayout = computeKuralLayout(ctx, width, height, content, tamilSerifFont, serifFont);
+  // GOLD MASTER: explicit founder instruction -- Noto Sans Tamil for the
+  // Kural, not Noto Serif Tamil. Passing tamilFont/sansFont (the sans
+  // pair) into the "tamil" font slot instead of tamilSerifFont/serifFont.
+  const kuralLayout = computeKuralLayout(ctx, width, height, content, tamilFont, sansFont);
 
   drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout.box);
 
   // The hero itself, drawn last -- on top of the (now cleared-around)
   // field, real typeset text, no glow, uniform weight throughout.
-  drawKuralHero(ctx, content, kuralLayout, tamilSerifFont, serifFont);
+  drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont);
 
-  void sansFont;
+  // tamilSerifFont/serifFont are not consumed now that the Kural uses
+  // Noto Sans Tamil instead -- kept in the destructure for parity with
+  // the options contract (the editorial block, if it returns, still
+  // uses the serif pair).
+  void tamilSerifFont;
+  void serifFont;
 }
 
 /** Splits Tamil text into orthographic syllables (an independent vowel, or
