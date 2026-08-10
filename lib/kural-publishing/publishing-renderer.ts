@@ -297,7 +297,7 @@ export function renderKuralPublishing(
   // GOLD MASTER: explicit founder instruction -- Noto Sans Tamil for the
   // Kural, not Noto Serif Tamil. Passing tamilFont/sansFont (the sans
   // pair) into the "tamil" font slot instead of tamilSerifFont/serifFont.
-  const kuralLayout = computeKuralLayout(ctx, width, height, content, tamilFont, sansFont);
+  const kuralLayout = computeHeroLayout(ctx, width, height, content, tamilFont, sansFont);
 
   drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout.box);
 
@@ -752,7 +752,7 @@ function drawMemoryLayer(
   height: number,
   brahmiFont: string,
   rand: SeededRandom,
-  kuralBox: KuralLayout["box"]
+  kuralBox: HeroLayout["box"]
 ): void {
   // GOLD MASTER: reduced 11 -> 8 -> 6 across two passes -- explicit
   // founder instruction each time, most recently to free up visual room
@@ -791,7 +791,7 @@ function drawMemoryLayer(
 
       // GOLD MASTER, THE HERO: "a quiet clearing around it" -- explicit
       // founder agreement. Smoothly suppresses acceptance near/inside
-      // the Kural's real measured footprint (computeKuralLayout), never
+      // the hero's real measured footprint (computeHeroLayout), never
       // a hard edge.
       const clearing = kuralClearingFactor(gx, gy, kuralBox);
 
@@ -857,7 +857,7 @@ function drawRadialStage(
     cellH: number;
     allowOverlapGuard: boolean;
   },
-  kuralBox: KuralLayout["box"],
+  kuralBox: HeroLayout["box"],
   // GOLD MASTER: shared across multiple drawRadialStage calls (letters,
   // uyirmei, ...) so overlap is checked between STAGES, not just within
   // one -- explicit founder thumb rule: "no letter must be overlapped,"
@@ -941,7 +941,7 @@ function drawLivingField(
   rand: SeededRandom,
   zonePools: MilestoneZonePools,
   content: KuralPublishingContent,
-  kuralBox: KuralLayout["box"]
+  kuralBox: HeroLayout["box"]
 ): void {
   drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox);
 
@@ -1078,67 +1078,144 @@ function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: nu
  *  already does," which a naive text-align:left starting exactly at
  *  canvas-center would not: that would lean the whole block right of
  *  where the reserved zone actually is. */
-interface KuralLayout {
+interface HeroLayout {
   leftX: number;
-  y1: number;
-  y2: number;
-  size: number;
+  kuralY1: number;
+  kuralY2: number;
+  kuralSize: number;
+  reflectionLines: readonly string[];
+  reflectionYs: readonly number[];
+  reflectionSize: number;
+  metaText: string;
+  metaY: number;
+  metaSize: number;
   box: { x0: number; y0: number; x1: number; y1b: number };
 }
 
-function computeKuralLayout(
+/** GOLD MASTER, THE HERO, EXTENDED -- Kural + English reflection line +
+ *  identity/series/issue metadata line, all sharing the SAME left edge
+ *  (the same "universal, left-aligned" rule the founder locked for the
+ *  Kural itself, extended to the whole editorial stack rather than
+ *  treating the Kural as a one-off). The WHOLE stack -- not just the
+ *  Kural -- is centred vertically as one unit, since filling the
+ *  previously-reserved centre space with more than two lines means the
+ *  Kural alone sitting at exact centre would push the reflection/meta
+ *  lines low and unbalanced.
+ *
+ *  Reflection line uses content.englishLine1/englishLine2 (already
+ *  real, existing fields on KuralPublishingContent -- nothing new
+ *  needed, whatever the founder types into the existing form is what
+ *  renders here). englishLine2 is optional -- a Kural whose reflection
+ *  fits on one line simply renders one. Metadata composes from
+ *  content.kuralNumber/series/issue: "Kural-{n} | {series} | Issue
+ *  {issue}" -- explicit founder request, read as a pipe separator
+ *  (typed as a capital I, the standard autocorrect substitution for
+ *  "|"); flagged directly before building in case that reading is
+ *  wrong. */
+function computeHeroLayout(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   content: KuralPublishingContent,
   tamilFont: string,
   sansFont: string
-): KuralLayout {
+): HeroLayout {
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
-  const maxTextWidth = width * 0.72; // narrower than before -- room for the block to stay centred with margin either side
-  const lines = [content.tamilLine1, content.tamilLine2];
-  const size = fitTokenSize(ctx, kuralToken, lines, tamilFont, sansFont, maxTextWidth, height);
+  const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
+  const metaToken = TYPOGRAPHY_TOKENS.meta;
+  const maxTextWidth = width * 0.72;
 
-  ctx.font = tokenFont(kuralToken, size, tamilFont, sansFont);
-  applyTokenTracking(ctx, kuralToken, size);
-  const width1 = ctx.measureText(content.tamilLine1).width;
-  const width2 = ctx.measureText(content.tamilLine2).width;
-  const blockWidth = Math.max(width1, width2); // line 1 in practice -- 4 words vs. 3
-
+  // --- Kural ---
+  const kuralLines = [content.tamilLine1, content.tamilLine2];
+  const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, height);
+  ctx.font = tokenFont(kuralToken, kuralSize, tamilFont, sansFont);
+  applyTokenTracking(ctx, kuralToken, kuralSize);
+  const kuralWidth1 = ctx.measureText(content.tamilLine1).width;
+  const kuralWidth2 = ctx.measureText(content.tamilLine2).width;
+  const blockWidth = Math.max(kuralWidth1, kuralWidth2);
   const leftX = (width - blockWidth) / 2;
-  const lineGap = size * kuralToken.lineHeightRatio;
-  const cy = height / 2;
-  const y1 = cy - lineGap / 2 + size * 0.32;
-  const y2 = y1 + lineGap;
+  const kuralLineGap = kuralSize * kuralToken.lineHeightRatio;
 
-  // Bounding box for the clearing effect -- generous vertical padding
-  // (ascender/descender headroom fillText's own metrics don't capture),
-  // modest horizontal padding.
-  const padX = size * 0.4;
-  const padTop = size * 0.85;
-  const padBottom = size * 0.35;
+  // FIX: consistent ascent/descent fractions used everywhere below --
+  // previously kuralBlockHeight used a different, smaller ascent number
+  // (0.32) than the actual y1 offset used later (0.82), and none of the
+  // block-height calculations accounted for descent below the LAST
+  // line's baseline at all. Confirmed directly against a real render:
+  // the reflection line's first line visibly overlapped the Kural's
+  // second line. A block's full visual height, from a "top" cursor to
+  // where the next block may safely begin, is: ascent (to the first
+  // baseline) + internal line gaps + descent (below the last baseline).
+  const ASCENT_FRAC = 0.82;
+  const DESCENT_FRAC = 0.3;
+  const kuralBlockHeight = kuralSize * ASCENT_FRAC + kuralLineGap + kuralSize * DESCENT_FRAC;
+
+  // --- Reflection (English) ---
+  const reflectionLines = [content.englishLine1, content.englishLine2].filter((l) => l.trim().length > 0);
+  const reflectionSize =
+    reflectionLines.length > 0
+      ? fitTokenSize(ctx, reflectionToken, reflectionLines, tamilFont, sansFont, maxTextWidth, height)
+      : 0;
+  const reflectionLineGap = reflectionSize * reflectionToken.lineHeightRatio;
+  const reflectionBlockHeight =
+    reflectionLines.length > 0
+      ? reflectionSize * ASCENT_FRAC + reflectionLineGap * (reflectionLines.length - 1) + reflectionSize * DESCENT_FRAC
+      : 0;
+
+  // --- Metadata ---
+  const metaText = `Kural-${content.kuralNumber} | ${content.series} | Issue ${content.issue}`;
+  const metaSize = tokenSize(metaToken, height); // fixed-length token -- not fit-shrunk
+  const metaBlockHeight = metaSize * ASCENT_FRAC + metaSize * DESCENT_FRAC;
+
+  // --- Stack the whole block, centred as one unit ---
+  const gapAboveReflection = reflectionLines.length > 0 ? kuralSize * 0.55 : 0;
+  const gapAboveMeta = metaSize * 1.3;
+  const totalHeight = kuralBlockHeight + gapAboveReflection + reflectionBlockHeight + gapAboveMeta + metaBlockHeight;
+
+  let cursorY = height / 2 - totalHeight / 2;
+  const kuralY1 = cursorY + kuralSize * ASCENT_FRAC;
+  const kuralY2 = kuralY1 + kuralLineGap;
+  cursorY += kuralBlockHeight + gapAboveReflection;
+
+  const reflectionYs: number[] = [];
+  for (let i = 0; i < reflectionLines.length; i++) {
+    reflectionYs.push(cursorY + reflectionSize * ASCENT_FRAC + i * reflectionLineGap);
+  }
+  cursorY += reflectionBlockHeight + gapAboveMeta;
+
+  const metaY = cursorY + metaSize * ASCENT_FRAC;
+
+  // --- Clearing box: the FULL stack, not just the Kural ---
+  const padX = kuralSize * 0.4;
+  const padTop = kuralSize * 0.85;
+  const padBottom = metaSize * 0.5;
   return {
     leftX,
-    y1,
-    y2,
-    size,
+    kuralY1,
+    kuralY2,
+    kuralSize,
+    reflectionLines,
+    reflectionYs,
+    reflectionSize,
+    metaText,
+    metaY,
+    metaSize,
     box: {
       x0: leftX - padX,
-      y0: y1 - padTop,
+      y0: kuralY1 - padTop,
       x1: leftX + blockWidth + padX,
-      y1b: y2 + padBottom,
+      y1b: metaY + padBottom,
     },
   };
 }
 
 /** How strongly a given point should be suppressed for sitting inside or
- *  near the Kural's own footprint -- 0 = fully suppressed (never place
+ *  near the hero's own footprint -- 0 = fully suppressed (never place
  *  ambient content here, so nothing can visually collide with the
  *  ink), rising smoothly to 1 well outside the box. Explicit founder
  *  agreement: "a quiet clearing around it" -- gradual, not a hard-edged
  *  panel boundary, which every constitution in this project has argued
  *  against. */
-function kuralClearingFactor(x: number, y: number, box: KuralLayout["box"]): number {
+function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"]): number {
   const featherX = (box.x1 - box.x0) * 0.18;
   const featherY = (box.y1b - box.y0) * 0.35;
   const dx = x < box.x0 ? box.x0 - x : x > box.x1 ? x - box.x1 : 0;
@@ -1154,16 +1231,37 @@ function kuralClearingFactor(x: number, y: number, box: KuralLayout["box"]): num
  *  per explicit founder agreement. No glow (agreed: "pure survival, zero
  *  decoration"). No internal weight hierarchy between words -- explicit
  *  founder disagreement with giving செயல் extra emphasis; every word
- *  renders at identical weight and colour, uniformly. */
-function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingContent, layout: KuralLayout, tamilFont: string, sansFont: string): void {
+ *  renders at identical weight and colour, uniformly. Reflection and
+ *  meta lines reuse the already-locked tokens exactly as specified
+ *  (reflection: italic sans; meta: tamil-family per the constitution,
+ *  not overridden here) -- both share the Kural's own left edge. */
+function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingContent, layout: HeroLayout, tamilFont: string, sansFont: string): void {
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
+  const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
+  const metaToken = TYPOGRAPHY_TOKENS.meta;
+
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
-  ctx.font = tokenFont(kuralToken, layout.size, tamilFont, sansFont);
-  applyTokenTracking(ctx, kuralToken, layout.size);
+
+  ctx.font = tokenFont(kuralToken, layout.kuralSize, tamilFont, sansFont);
+  applyTokenTracking(ctx, kuralToken, layout.kuralSize);
   ctx.fillStyle = COLORS.kuralInk;
-  ctx.fillText(content.tamilLine1, layout.leftX, layout.y1);
-  ctx.fillText(content.tamilLine2, layout.leftX, layout.y2);
+  ctx.fillText(content.tamilLine1, layout.leftX, layout.kuralY1);
+  ctx.fillText(content.tamilLine2, layout.leftX, layout.kuralY2);
+
+  if (layout.reflectionLines.length > 0) {
+    ctx.font = tokenFont(reflectionToken, layout.reflectionSize, tamilFont, sansFont);
+    applyTokenTracking(ctx, reflectionToken, layout.reflectionSize);
+    ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.82);
+    for (let i = 0; i < layout.reflectionLines.length; i++) {
+      ctx.fillText(layout.reflectionLines[i], layout.leftX, layout.reflectionYs[i]);
+    }
+  }
+
+  ctx.font = tokenFont(metaToken, layout.metaSize, tamilFont, sansFont);
+  applyTokenTracking(ctx, metaToken, layout.metaSize);
+  ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.85);
+  ctx.fillText(layout.metaText, layout.leftX, layout.metaY);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
