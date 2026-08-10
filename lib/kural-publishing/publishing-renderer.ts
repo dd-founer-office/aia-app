@@ -678,11 +678,6 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
 // memory, uyirmei closer than letters, words closer than uyirmei, with
 // the sentence itself reserved for the deepest interior (see
 // drawAssembledSentence, still not called this milestone).
-// MILESTONE 04: STAGE_RINGS.letters and .uyirmei are no longer read --
-// both those stages moved to fixed-anchor placement (placeLetterAnchors/
-// drawUyirmeiFromAnchors) per the explicit founder plan. .words is still
-// used by the commented-out words stage below, ready to return.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const STAGE_RINGS = {
   letters: { peakLo: 0.16, peakHi: 0.42, fadeOutHi: 0.62 },
   uyirmei: { peakLo: 0.36, peakHi: 0.6, fadeOutHi: 0.8 },
@@ -823,11 +818,6 @@ function drawMemoryLayer(
  *  opacity stay close to uniform within a stage -- hierarchy comes from
  *  stage-to-stage differences and ring position, not variation within
  *  one placement. */
-// MILESTONE 04: not called this milestone -- letters and uyirmei moved
-// to fixed-anchor placement. Kept intact, unchanged, for the words stage
-// (still commented out inside drawLivingField), which reuses this
-// technique unchanged once it's re-enabled.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawRadialStage(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -900,128 +890,6 @@ function drawRadialStage(
  *  assembled sentence) is drawn separately by drawAssembledSentence,
  *  called from renderKuralPublishing, since it uses the locked Kural
  *  typography token rather than the field's own glyph system. */
-/** GOLD MASTER, explicit founder plan, verified against the real uyir-mei
- *  reference table before any code was written: Layer 2 (உயிர்/மெய்) moves
- *  from probabilistic/repeatable placement to ONE FIXED ANCHOR per unique
- *  letter -- deterministic, not scattered -- because Layer 3 needs a
- *  stable place to point to. "If ச் and ஒ are in the second layer, the
- *  third layer [சொ] should be placed near them, so anyone seeing சொ
- *  already knows it came from ச் and ஒ." Positions avoid the deep
- *  interior (reserved for later/deeper layers) and keep minimum spacing
- *  from each other so anchors never crowd. Uses the seeded generator,
- *  not Math.random -- same anchors every render for the same content. */
-function placeLetterAnchors(
-  items: readonly string[],
-  width: number,
-  height: number,
-  rand: SeededRandom
-): Map<string, { x: number; y: number }> {
-  const cx = width / 2;
-  const cy = height / 2;
-  const centerClearRadius = Math.min(width, height) * 0.28;
-  const minSpacing = width * 0.079;
-  const marginX = width * 0.073;
-  const marginY = height * 0.119;
-
-  const positions = new Map<string, { x: number; y: number }>();
-  const placed: { x: number; y: number }[] = [];
-
-  for (const letter of items) {
-    if (positions.has(letter)) continue; // one anchor per unique letter
-    let x = cx;
-    let y = cy;
-    let attempts = 0;
-    while (attempts < 400) {
-      attempts++;
-      x = rand.range(marginX, width - marginX);
-      y = rand.range(marginY, height - marginY);
-      const dCenter = Math.hypot(x - cx, y - cy);
-      if (dCenter < centerClearRadius) continue;
-      const ok = placed.every((p) => Math.hypot(x - p.x, y - p.y) > minSpacing);
-      if (ok) break;
-    }
-    placed.push({ x, y });
-    positions.set(letter, { x, y });
-  }
-  return positions;
-}
-
-/** Layer 2, drawn at its fixed anchors -- verified real உயிர் (independent
- *  vowels) and மெய் (dead consonants) this Kural actually uses, each
- *  appearing exactly once, always in the same place for the same
- *  content. */
-function drawFixedLetters(
-  ctx: CanvasRenderingContext2D,
-  anchors: ReadonlyMap<string, { x: number; y: number }>,
-  tamilFont: string,
-  size: number,
-  opacity: number,
-  color: string,
-  weight: number
-): void {
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  for (const [letter, { x, y }] of anchors) {
-    ctx.font = `${weight} ${size}px ${tamilFont}, sans-serif`;
-    ctx.fillStyle = withAlpha(color, opacity);
-    ctx.fillText(letter, x, y);
-  }
-}
-
-/** Layer 3 -- every real உயிர்மெய் compound this Kural uses, positioned at
- *  the midpoint of its own two real component anchors (via atomicPartsOf,
- *  the same decomposition already verified turn by turn against the
- *  reference table: த் + அ = த, ன் + ஐ = னை...), pulled toward the centre
- *  so it still reads as more resolved than Layer 2, not just sitting
- *  between two dots. No connecting lines anywhere -- the relationship is
- *  proximity only, exactly as specified. A small deterministic offset
- *  (positionHash of the midpoint, not Math.random) keeps compounds that
- *  share one parent letter from stacking exactly on top of each other. */
-function drawUyirmeiFromAnchors(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  compounds: readonly string[],
-  letterAnchors: ReadonlyMap<string, { x: number; y: number }>,
-  tamilFont: string,
-  size: number,
-  opacity: number,
-  color: string,
-  weight: number
-): void {
-  const cx = width / 2;
-  const cy = height / 2;
-  const drawn = new Set<string>();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  for (const compound of compounds) {
-    if (drawn.has(compound)) continue;
-    const parts = atomicPartsOf(compound);
-    if (parts.length !== 2) continue; // defensive -- every real exactCompounds entry decomposes to exactly two atoms
-    const p1 = letterAnchors.get(parts[0]);
-    const p2 = letterAnchors.get(parts[1]);
-    if (!p1 || !p2) continue;
-
-    let mx = (p1.x + p2.x) / 2;
-    let my = (p1.y + p2.y) / 2;
-    mx = mx + (cx - mx) * 0.22;
-    my = my + (cy - my) * 0.22;
-
-    const jr = 22;
-    const angle = positionHash(mx, my) * 360;
-    const jx = mx + jr * Math.cos((angle * Math.PI) / 180);
-    const jy = my + jr * Math.sin((angle * Math.PI) / 180);
-
-    ctx.font = `${weight} ${size}px ${tamilFont}, serif`;
-    ctx.fillStyle = withAlpha(color, opacity);
-    applyGlow(ctx, withAlpha(COLORS.illuminatedGold, 0.55), size * 0.3);
-    ctx.fillText(compound, jx, jy);
-    clearGlow(ctx);
-    drawn.add(compound);
-  }
-}
-
 function drawLivingField(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1034,27 +902,28 @@ function drawLivingField(
   drawMemoryLayer(ctx, width, height, brahmiFont, rand);
 
   // MILESTONE 04 / STAGE 2 -- Letter Recognition: உயிர் + மெய் only (real
-  // independent vowels and dead consonants this Kural actually uses).
-  // GOLD MASTER, explicit founder plan: this is no longer probabilistic
-  // radial placement -- each unique letter gets exactly ONE fixed anchor
-  // (placeLetterAnchors), because Layer 3 needs a stable position to
-  // point to. A real, deliberate change to Layer 2's own behaviour, not
-  // just an addition -- approved explicitly before being built.
+  // independent vowels and dead consonants this Kural actually uses --
+  // zonePools.exactLetters, not the உயிர்மெய் compounds, which stay a
+  // later stage). Now radial (STAGE_RINGS.letters), matching the same
+  // edge-distance principle Stage 1's memory layer already uses -- no
+  // top/bottom favouring, resolution grows inward from every direction.
   const letterItems = zonePools.exactLetters.length > 0 ? zonePools.exactLetters : ["அ"];
-  const letterAnchors = placeLetterAnchors(letterItems, width, height, rand);
-  drawFixedLetters(ctx, letterAnchors, tamilFont, 19, 0.4, COLORS.heritageBronze, 500);
+  drawRadialStage(ctx, width, height, STAGE_RINGS.letters, letterItems, rand, {
+    tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
+    weight: 500, glow: false, cellW: 60, cellH: 52, allowOverlapGuard: false,
+  });
 
-  // MILESTONE 04 / STAGE 3 -- Uyirmei Formation: every real உயிர்மெய்
-  // compound this Kural uses, each placed at the midpoint of its own two
-  // real component letters from Layer 2 above (see drawUyirmeiFromAnchors)
-  // -- verified turn by turn against the reference uyir-mei table before
-  // any of this was built. No connecting lines -- proximity only.
-  const uyirmeiItems = zonePools.exactCompounds;
-  drawUyirmeiFromAnchors(ctx, width, height, uyirmeiItems, letterAnchors, tamilFont, 25, 0.92, COLORS.illuminatedGold, 700);
-
-  // MILESTONE 04 SCOPE: two more layers still to come (words, sentence) --
-  // kept intact and unchanged below, not deleted, ready to return one at
-  // a time as each is explicitly approved.
+  // MILESTONE 04 SCOPE: three more layers still to come (uyirmei, words,
+  // sentence) -- kept intact and unchanged below, not deleted, ready to
+  // return one at a time as each is explicitly approved. Both remaining
+  // gridded stages are already re-parameterized for the radial model
+  // (STAGE_RINGS), so re-enabling them needs no further rework.
+  //
+  // const uyirmeiItems = zonePools.exactCompounds.length > 0 ? zonePools.exactCompounds : ["அ"];
+  // drawRadialStage(ctx, width, height, STAGE_RINGS.uyirmei, uyirmeiItems, rand, {
+  //   tamilFont, fontFamily: "serif", size: 20, opacity: 0.5, color: mix(COLORS.heritageBronze, COLORS.illuminatedGold, 0.55),
+  //   weight: 500, glow: true, cellW: 66, cellH: 58, allowOverlapGuard: false,
+  // });
   //
   // const wordItems = zonePools.words.length > 0 ? zonePools.words : ["சொல்"];
   // drawRadialStage(ctx, width, height, STAGE_RINGS.words, wordItems, rand, {
