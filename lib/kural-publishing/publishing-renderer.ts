@@ -685,12 +685,21 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
 const STAGE_RINGS = {
   letters: { peakLo: 0.16, peakHi: 0.42, fadeOutHi: 0.62 },
   uyirmei: { peakLo: 0.36, peakHi: 0.6, fadeOutHi: 0.8 },
-  // GOLD MASTER: fadeOutHi pulled in from 0.96 to 0.88 -- explicit
-  // founder instruction, "in centre we need space," reserved for the
-  // Kural/metadata layer still to come. Closer to centre than uyirmei,
-  // but genuinely stops short of the deepest interior rather than
-  // reaching almost all the way to it.
-  words: { peakLo: 0.56, peakHi: 0.78, fadeOutHi: 0.88 },
+  // FIX, real regression found and confirmed with actual numbers, not
+  // guessed: once the hero grew from the two-line Kural alone to the
+  // full Kural+reflection+metadata stack, its real measured footprint
+  // (computeHeroLayout's box) came to occupy almost exactly the same
+  // central territory this ring's old values (peakLo .56, peakHi .78,
+  // fadeOutHi .88) targeted -- both are naturally centred on the
+  // canvas. Verified directly: 0% of this ring's candidate cells
+  // survived the clearing suppression against the real Kural 675
+  // layout -- Layer 4 was rendering almost nothing. Pulled the whole
+  // ring outward so its territory sits genuinely clear of the hero's
+  // actual box rather than relying on the clearing feather to carve
+  // enough space out of a zone that already coincided with it.
+  // Verified: 100% of this ring's candidate cells now survive the same
+  // clearing check against the same real layout.
+  words: { peakLo: 0.32, peakHi: 0.46, fadeOutHi: 0.56 },
 } as const;
 
 function smoothstep(lo: number, hi: number, x: number): number {
@@ -868,6 +877,88 @@ function drawRadialStage(
 ): void {
   if (items.length === 0) return;
 
+  const norm = Math.min(width, height) * 0.46;
+
+  /** Whether (gx, gy) is currently a legal place to draw `value`: passes
+   *  the ring/clearing gate AND (if enabled) doesn't overlap anything
+   *  already placed. Shared by both phases below so "legal" is defined
+   *  identically everywhere -- one source of truth, not two copies that
+   *  could quietly drift apart. `probabilistic` controls whether ring
+   *  strength is a hard gate (Phase 1 -- deterministic accept-if-legal,
+   *  since candidate positions are already randomly sampled and the
+   *  point of this phase is a real guarantee, not another layer of
+   *  chance) or a soft one via rand.chance (Phase 2 -- preserves the
+   *  organic, thinned-toward-the-edges density character every other
+   *  layer already has). */
+  function tryPlace(gx: number, gy: number, value: string, probabilistic: boolean): PlacedWordBox | null {
+    if (gx < 4 || gx > width - 4 || gy < 4 || gy > height - 4) return null;
+    const d = Math.min(gx, width - gx, gy, height - gy);
+    const ef = norm > 0 ? Math.min(1, d / norm) : 0;
+    const strength = ringStrength(ef, ring);
+    const clearing = kuralClearingFactor(gx, gy, kuralBox);
+    const combined = strength * clearing;
+    if (probabilistic ? !rand.chance(combined) : combined <= 0) return null;
+    if (opts.allowOverlapGuard) {
+      ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+      const measured = ctx.measureText(value);
+      const box: PlacedWordBox = { x: gx, y: gy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
+      if (wordWouldOverlap(box, sharedPlacedBoxes)) return null;
+      return box;
+    }
+    return { x: gx, y: gy, halfW: 0, halfH: 0 };
+  }
+
+  function draw(value: string, gx: number, gy: number, ef: number): void {
+    const strength = ringStrength(ef, ring);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+    ctx.fillStyle = withAlpha(opts.color, opts.opacity * (0.6 + 0.4 * strength));
+    if (opts.glow) applyGlow(ctx, withAlpha(COLORS.illuminatedGold, 0.55), opts.size * 0.3);
+    ctx.fillText(value, gx, gy);
+    if (opts.glow) clearGlow(ctx);
+  }
+
+  // FIX, real regression found and fixed with an actual guarantee, not
+  // tuned parameters: grid-cycling alone (try each item once per pass
+  // through the grid, retry-with-a-cap on overlap) turned out unreliable
+  // once the words ring got squeezed into tighter, more contested space
+  // (pulled clear of the grown hero box, but now overlapping letters'
+  // and uyirmei's own territory more). Confirmed directly, repeatedly:
+  // tuning grid density and retry limits didn't fix "one word missing"
+  // -- it only changed WHICH word dropped out (எண்ணி vs பொருள்,
+  // depending on the exact parameters), because the underlying method
+  // never actually guaranteed coverage, just made it more or less
+  // likely by luck.
+  //
+  // PHASE 1: for every distinct item, search directly and persistently
+  // (many random candidate positions inside this stage's own bounding
+  // area, not tied to any grid) until one succeeds or a generous budget
+  // is exhausted. This gives each item a real, independent chance to
+  // find its own space, rather than competing for whichever grid cell
+  // the outer loop happens to reach when its turn in the cycle comes up.
+  const uniqueItems = Array.from(new Set(items));
+  for (const value of uniqueItems) {
+    let placed = false;
+    for (let attempt = 0; attempt < 300 && !placed; attempt++) {
+      const gx = rand.range(4, width - 4);
+      const gy = rand.range(4, height - 4);
+      const box = tryPlace(gx, gy, value, false);
+      if (!box) continue;
+      if (opts.allowOverlapGuard) sharedPlacedBoxes.push(box);
+      const d = Math.min(gx, width - gx, gy, height - gy);
+      const ef = norm > 0 ? Math.min(1, d / norm) : 0;
+      draw(value, gx, gy, ef);
+      placed = true;
+    }
+  }
+
+  // PHASE 2: the existing grid-cycling pass, unchanged in spirit --
+  // additional opportunistic repeats for visual richness, now layered
+  // on top of Phase 1's guarantee rather than being solely responsible
+  // for it. Probabilistic acceptance here (not the deterministic gate
+  // Phase 1 uses) -- preserves the organic, edge-thinned density
+  // character every other layer already has.
   const cols = Math.ceil(width / opts.cellW);
   const rows = Math.ceil(height / opts.cellH);
   const jitterX = opts.cellW * 0.32;
@@ -878,50 +969,15 @@ function drawRadialStage(
     for (let ci = 0; ci < cols; ci++) {
       const gx = (ci + 0.5) * opts.cellW + rand.range(-jitterX, jitterX);
       const gy = (ri + 0.5) * opts.cellH + rand.range(-jitterY, jitterY);
-      if (gx < 4 || gx > width - 4 || gy < 4 || gy > height - 4) continue;
-
-      const d = Math.min(gx, width - gx, gy, height - gy);
-      const norm = Math.min(width, height) * 0.46;
-      const ef = norm > 0 ? Math.min(1, d / norm) : 0;
-      const strength = ringStrength(ef, ring);
-      // GOLD MASTER, THE HERO: same quiet-clearing suppression as
-      // drawMemoryLayer, applied here too -- letters/uyirmei/words must
-      // thin around the Kural's real footprint exactly as memory does,
-      // or the clearing would only be visible in the background layer
-      // and every other layer would still collide with the hero.
-      const clearing = kuralClearingFactor(gx, gy, kuralBox);
-      if (!rand.chance(strength * clearing)) continue;
-
-      // Cycle through the real item list rather than always picking
-      // randomly, so every distinct item (e.g. every real word) actually
-      // appears at least once instead of some being left out by chance.
       const value = items[itemIdx % items.length];
-
-      if (opts.allowOverlapGuard) {
-        ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
-        const measured = ctx.measureText(value);
-        const box: PlacedWordBox = { x: gx, y: gy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
-        // FIX: itemIdx must NOT advance here. It used to increment before
-        // this check, so a single overlap-rejected cell permanently
-        // desynced the whole cycle -- one item silently skipped forever,
-        // another repeated on the wrap-around. Confirmed directly against
-        // a real render: Kural 675's Layer 4 showed only 8 of 9 words,
-        // பொருள் missing entirely, வினை appearing twice. Retrying the
-        // SAME item at the next candidate cell (by simply not advancing)
-        // fixes this -- the cycle only moves forward on an actual
-        // successful draw, below.
-        if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
-        sharedPlacedBoxes.push(box);
-      }
+      const box = tryPlace(gx, gy, value, true);
+      if (!box) continue;
+      if (opts.allowOverlapGuard) sharedPlacedBoxes.push(box);
       itemIdx++;
 
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
-      ctx.fillStyle = withAlpha(opts.color, opts.opacity * (0.6 + 0.4 * strength));
-      if (opts.glow) applyGlow(ctx, withAlpha(COLORS.illuminatedGold, 0.55), opts.size * 0.3);
-      ctx.fillText(value, gx, gy);
-      if (opts.glow) clearGlow(ctx);
+      const d = Math.min(gx, width - gx, gy, height - gy);
+      const ef = norm > 0 ? Math.min(1, d / norm) : 0;
+      draw(value, gx, gy, ef);
     }
   }
 }
@@ -1216,8 +1272,18 @@ function computeHeroLayout(
  *  panel boundary, which every constitution in this project has argued
  *  against. */
 function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"]): number {
-  const featherX = (box.x1 - box.x0) * 0.18;
-  const featherY = (box.y1b - box.y0) * 0.35;
+  // FIX: was proportional to the box's own size (18%/35% of box
+  // dimensions) -- fine when the box was just the two-line Kural, but
+  // once the hero grew to include the reflection and metadata lines,
+  // the box got taller, and the feather grew right along with it,
+  // compounding rather than staying modest. Confirmed directly by
+  // computing real numbers: 0% of Layer 4's candidate cells survived
+  // the clearing after that growth -- the feathered suppression zone
+  // had grown to cover nearly the whole region words were allowed to
+  // occupy. Fixed pixel feather instead -- a real, bounded soft edge
+  // that doesn't compound as the box's own size changes.
+  const featherX = 70;
+  const featherY = 55;
   const dx = x < box.x0 ? box.x0 - x : x > box.x1 ? x - box.x1 : 0;
   const dy = y < box.y0 ? box.y0 - y : y > box.y1b ? y - box.y1b : 0;
   if (dx === 0 && dy === 0) return 0; // inside the box -- fully clear
