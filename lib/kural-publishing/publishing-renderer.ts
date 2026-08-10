@@ -682,24 +682,28 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
 // memory, uyirmei closer than letters, words closer than uyirmei, with
 // the sentence itself reserved for the deepest interior (see
 // drawAssembledSentence, still not called this milestone).
+// GOLD MASTER, LAYER SEPARATION -- explicit founder-approved re-tuning.
+// The previous values (letters .16-.62, uyirmei .36-.80, words .32-.56)
+// overlapped each other across 0.2-0.4 units of range -- direct founder
+// observation, confirmed: "layer one is not recognisable... why the
+// layer has been mixed up." Anywhere in roughly ef 0.36-0.56, all three
+// stages were actively competing for the same physical territory. This
+// was a real side effect of the previous fix (pulling words clear of
+// the hero's grown footprint landed it inside letters'/uyirmei's own
+// space instead of finding new room) that went unflagged at the time.
+//
+// Re-tuned so each stage is a genuinely separate band, touching its
+// neighbour only at a thin transition edge -- not stacked across most
+// of its own width. Memory (drawMemoryLayer, no ring of its own) now
+// gets a real exclusive zone too: nothing else has peakLo below 0.14,
+// so ef 0-0.14 is memory alone, the one place it reads as purely
+// itself rather than one quiet layer competing with three louder ones
+// in the same space. Words' fadeOutHi (0.52) still stays safely clear
+// of the hero's own footprint (~0.56), preserving the previous fix.
 const STAGE_RINGS = {
-  letters: { peakLo: 0.16, peakHi: 0.42, fadeOutHi: 0.62 },
-  uyirmei: { peakLo: 0.36, peakHi: 0.6, fadeOutHi: 0.8 },
-  // FIX, real regression found and confirmed with actual numbers, not
-  // guessed: once the hero grew from the two-line Kural alone to the
-  // full Kural+reflection+metadata stack, its real measured footprint
-  // (computeHeroLayout's box) came to occupy almost exactly the same
-  // central territory this ring's old values (peakLo .56, peakHi .78,
-  // fadeOutHi .88) targeted -- both are naturally centred on the
-  // canvas. Verified directly: 0% of this ring's candidate cells
-  // survived the clearing suppression against the real Kural 675
-  // layout -- Layer 4 was rendering almost nothing. Pulled the whole
-  // ring outward so its territory sits genuinely clear of the hero's
-  // actual box rather than relying on the clearing feather to carve
-  // enough space out of a zone that already coincided with it.
-  // Verified: 100% of this ring's candidate cells now survive the same
-  // clearing check against the same real layout.
-  words: { peakLo: 0.32, peakHi: 0.46, fadeOutHi: 0.56 },
+  letters: { peakLo: 0.14, peakHi: 0.24, fadeOutHi: 0.28 },
+  uyirmei: { peakLo: 0.3, peakHi: 0.38, fadeOutHi: 0.42 },
+  words: { peakLo: 0.42, peakHi: 0.48, fadeOutHi: 0.52 },
 } as const;
 
 function smoothstep(lo: number, hi: number, x: number): number {
