@@ -296,7 +296,7 @@ export function renderKuralPublishing(
   // function). The assembled-sentence stage below is fully intact and
   // unchanged but deliberately not called this milestone, for the same
   // reason -- ready to return exactly as it is once Stage 2 is approved.
-  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools);
+  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content);
 
   // drawAssembledSentence(ctx, width, height, content, tamilSerifFont, serifFont);
 
@@ -681,7 +681,12 @@ function buildMilestoneZonePools(kuralSyllables: readonly string[], content: Kur
 const STAGE_RINGS = {
   letters: { peakLo: 0.16, peakHi: 0.42, fadeOutHi: 0.62 },
   uyirmei: { peakLo: 0.36, peakHi: 0.6, fadeOutHi: 0.8 },
-  words: { peakLo: 0.56, peakHi: 0.82, fadeOutHi: 0.96 },
+  // GOLD MASTER: fadeOutHi pulled in from 0.96 to 0.88 -- explicit
+  // founder instruction, "in centre we need space," reserved for the
+  // Kural/metadata layer still to come. Closer to centre than uyirmei,
+  // but genuinely stops short of the deepest interior rather than
+  // reaching almost all the way to it.
+  words: { peakLo: 0.56, peakHi: 0.78, fadeOutHi: 0.88 },
 } as const;
 
 function smoothstep(lo: number, hi: number, x: number): number {
@@ -744,10 +749,11 @@ function drawMemoryLayer(
   brahmiFont: string,
   rand: SeededRandom
 ): void {
-  // GOLD MASTER: reduced from 11 -- explicit founder instruction to make
-  // Layer 1 physically smaller so Layer 3 (uyirmei) has visual room
-  // without disturbing the centre space reserved for the Kural/metadata.
-  const FIXED_SIZE = 8;
+  // GOLD MASTER: reduced 11 -> 8 -> 6 across two passes -- explicit
+  // founder instruction each time, most recently to free up visual room
+  // for Layer 4 (words with meaning) without disturbing the centre space
+  // reserved for the Kural/metadata.
+  const FIXED_SIZE = 6;
   const FIXED_WEIGHT = 500;
   const brahmiGlyphs = HISTORICAL_POOL.filter((g) => g.script === "brahmi");
   const vatteluttuGlyphs = HISTORICAL_POOL.filter((g) => g.script === "vatteluttu");
@@ -906,7 +912,8 @@ function drawLivingField(
   tamilFont: string,
   brahmiFont: string,
   rand: SeededRandom,
-  zonePools: MilestoneZonePools
+  zonePools: MilestoneZonePools,
+  content: KuralPublishingContent
 ): void {
   drawMemoryLayer(ctx, width, height, brahmiFont, rand);
 
@@ -954,11 +961,35 @@ function drawLivingField(
   // -- kept intact and unchanged below, not deleted, ready to return one
   // at a time as each is explicitly approved.
   //
-  // const wordItems = zonePools.words.length > 0 ? zonePools.words : ["சொல்"];
-  // drawRadialStage(ctx, width, height, STAGE_RINGS.words, wordItems, rand, {
-  //   tamilFont, fontFamily: "serif", size: 30, opacity: 0.92, color: COLORS.illuminatedGold,
-  //   weight: 700, glow: true, cellW: 130, cellH: 100, allowOverlapGuard: true,
-  // }, sharedBoxes);
+  // MILESTONE 04 / STAGE 4 -- Words With Meaning. GOLD MASTER, explicit
+  // founder-authorized, and genuinely different in kind from Layers 2/3:
+  // this content is NOT mechanically derivable from the Kural text the
+  // way exactLetters/exactCompounds are (those come from real Unicode
+  // decomposition of whatever is actually loaded). Breaking a Kural into
+  // meaning-bearing chunks and choosing which word represents each idea
+  // requires real semantic judgement -- worked out together turn by
+  // turn for this specific Kural (675, Amaichchu Iyal) before any of
+  // this was written: பொருள்/கருவி/காலம்/வினை/இடம் (the five factors),
+  // ஐந்தும் ("all five"), இருள்தீர/எண்ணி/செயல் (the instruction --
+  // clear doubt, weigh it, then act). Curated per-Kural content, stated
+  // plainly as such, not disguised as something the code figured out on
+  // its own. Same mechanism as Layers 2/3 otherwise: radial
+  // (STAGE_RINGS.words, pulled in to leave real space before the
+  // reserved centre), quiet bronze, no gold, no glow, checked against
+  // the same shared overlap tracker.
+  const LAYER4_WORDS_KURAL_675: readonly string[] = [
+    "பொருள்", "கருவி", "காலம்", "வினை", "இடம்",
+    "ஐந்தும்", "இருள்தீர", "எண்ணி", "செயல்",
+  ];
+  if (content.kuralNumber === "675") {
+    drawRadialStage(ctx, width, height, STAGE_RINGS.words, LAYER4_WORDS_KURAL_675, rand, {
+      tamilFont, fontFamily: "serif", size: 24, opacity: 0.56, color: COLORS.heritageBronze,
+      weight: 500, glow: false, cellW: 90, cellH: 78, allowOverlapGuard: true,
+    }, sharedBoxes);
+  }
+
+  // MILESTONE 04 SCOPE: one more layer still to come (the assembled
+  // sentence) -- kept intact and unchanged below, not deleted.
 }
 
 
