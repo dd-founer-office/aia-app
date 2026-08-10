@@ -232,6 +232,43 @@ interface AmbientGlyph {
   script: AmbientScript;
 }
 
+// GOLD MASTER, explicit founder-directed feature: some Layer 1 (Brahmi/
+// Vatteluttu) glyphs are marked as "belonging" to whichever Kural is
+// loaded, when their real phonetic identity matches a letter this
+// Kural's actual text uses (zonePools.exactLetters). These are
+// index-aligned to TAMIL_BRAHMI.glyphs / VATTELUTTU.glyphs exactly (both
+// pools preserve their original array order all the way through
+// HISTORICAL_POOL's construction and every filter downstream -- verified
+// before relying on it).
+//
+// BRAHMI: verified directly against the real Unicode Tamil-Brahmi block
+// chart (U+11000, confirmed via web search before writing this), not
+// guessed. Two entries are genuinely ambiguous -- ancient Brahmi had one
+// undifferentiated E and one O; Tamil's short/long split (எ/ஏ, ஒ/ஓ) is a
+// later, Tamil-specific innovation the ancestral script doesn't
+// distinguish -- so those two map to BOTH modern variants; either
+// appearing in the Kural counts as a match.
+const BRAHMI_TO_MODERN: readonly (readonly string[])[] = [
+  ["அ"], ["ஆ"], ["இ"], ["ஈ"], ["உ"], ["ஊ"],
+  ["எ", "ஏ"], ["ஐ"], ["ஒ", "ஓ"], ["ஔ"],
+  ["க\u0BCD"], ["ங\u0BCD"], ["ச\u0BCD"], ["ஞ\u0BCD"], ["ட\u0BCD"], ["ண\u0BCD"],
+  ["த\u0BCD"], ["ந\u0BCD"], ["ப\u0BCD"], ["ம\u0BCD"], ["ய\u0BCD"], ["ர\u0BCD"], ["ல\u0BCD"], ["வ\u0BCD"],
+];
+
+// VATTELUTTU: founder-supplied reference chart, cross-verified before
+// use -- two independent shape matches (the unmistakable rounded
+// triangle at index 19, and the numeral-1-like stroke at index 16) both
+// landed exactly where a straightforward reading of the chart predicted,
+// and the resulting phonetic sequence falls into real standard Tamil
+// alphabetical order (க ங ச ஞ ட ண த ந ப ம ய ர ல வ ழ ள) once the chart's
+// two loosely-transliterated "na" labels are read as ங/ந and its "ṛa"
+// as ழ். Explicitly confirmed by the founder before this was written.
+const VATTELUTTU_TO_MODERN: readonly (readonly string[])[] = [
+  ["அ"], ["ஆ"], ["இ"], ["உ"], ["எ"],
+  ["க\u0BCD"], ["ங\u0BCD"], ["ச\u0BCD"], ["ஞ\u0BCD"], ["ட\u0BCD"], ["ண\u0BCD"], ["த\u0BCD"], ["ந\u0BCD"],
+  ["ப\u0BCD"], ["ம\u0BCD"], ["ய\u0BCD"], ["ர\u0BCD"], ["ல\u0BCD"], ["வ\u0BCD"], ["ழ\u0BCD"], ["ள\u0BCD"],
+];
+
 const HISTORICAL_POOL: readonly AmbientGlyph[] = [
   ...TAMIL_BRAHMI.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "brahmi" })),
   ...VATTELUTTU.glyphs.map((glyph): AmbientGlyph => ({ glyph, script: "vatteluttu" })),
@@ -765,7 +802,8 @@ function drawMemoryLayer(
   height: number,
   brahmiFont: string,
   rand: SeededRandom,
-  kuralBox: HeroLayout["box"]
+  kuralBox: HeroLayout["box"],
+  zonePools: MilestoneZonePools
 ): void {
   // GOLD MASTER: increased from 6 to 17 -- explicit founder instruction:
   // "the tamil brahmi and the vatteluthu must be as same in size as the
@@ -826,7 +864,25 @@ function drawMemoryLayer(
       const isBrahmi = rand.chance(0.5); // equal status, flat roll
       const pool = isBrahmi ? brahmiGlyphs : vatteluttuGlyphs;
       if (pool.length === 0) continue;
-      const ambient = rand.pick(pool);
+      // Same formula rand.pick used internally (arr[Math.floor(rnd()*len)])
+      // -- byte-identical RNG consumption and resulting glyph selection to
+      // before this feature existed. Needed as an explicit index (not just
+      // the picked value) so the phonetic-equivalent tables below can be
+      // looked up; pick() alone doesn't expose which index it chose.
+      const idx = Math.floor(rand.range(0, pool.length));
+      const ambient = pool[idx];
+
+      // GOLD MASTER: does this glyph's real phonetic identity belong to
+      // this Kural -- i.e. does ANY of its modern-Tamil equivalent(s)
+      // appear in the real, verified atomic letter inventory this
+      // Kural's actual text uses (zonePools.exactLetters, which already
+      // includes every decomposed உயிர்/மெய் component, not just letters
+      // that happen to stand alone in the text)? Verified mapping tables
+      // above -- Brahmi against the real Unicode chart, Vatteluttu
+      // against the founder's own reference, cross-checked against real
+      // Tamil alphabetical order before being trusted.
+      const equivalents = isBrahmi ? BRAHMI_TO_MODERN[idx] : VATTELUTTU_TO_MODERN[idx];
+      const belongsToKural = equivalents?.some((eq) => zonePools.exactLetters.includes(eq)) ?? false;
 
       // Opacity is the ONLY depth signal -- many distinguishable levels
       // of presence (clearly visible down to barely perceptible), tied
@@ -835,16 +891,31 @@ function drawMemoryLayer(
       const opacity = 0.05 + density * 0.5 + rand.range(-0.04, 0.04);
       const clampedOpacity = Math.max(0.04, Math.min(0.62, opacity));
 
+      // GOLD MASTER: "belongs to this Kural" gets bolder weight AND
+      // darker/more saturated colour together, per explicit founder
+      // choice -- blended toward kuralInk (the darkest tone in the whole
+      // palette) rather than staying pure heritageBronze, plus a real
+      // opacity floor so it can never accidentally render as faint as an
+      // unrelated glyph.
+      const displayColor = belongsToKural ? mix(COLORS.heritageBronze, COLORS.kuralInk, 0.6) : COLORS.heritageBronze;
+      const displayOpacity = belongsToKural ? Math.max(clampedOpacity, 0.55) : clampedOpacity;
+
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = withAlpha(COLORS.heritageBronze, clampedOpacity);
+      ctx.fillStyle = withAlpha(displayColor, displayOpacity);
       if (ambient.glyph.kind === "path") {
         ctx.save();
         ctx.translate(gx, gy);
-        drawPathGlyph(ctx, ambient.glyph.value, FIXED_SIZE);
+        if (belongsToKural) {
+          ctx.strokeStyle = withAlpha(displayColor, displayOpacity);
+          ctx.lineWidth = FIXED_SIZE * 0.06;
+          ctx.lineJoin = "round";
+        }
+        drawPathGlyph(ctx, ambient.glyph.value, FIXED_SIZE, belongsToKural);
         ctx.restore();
       } else {
-        ctx.font = `${FIXED_WEIGHT} ${FIXED_SIZE}px ${brahmiFont}`;
+        const weight = belongsToKural ? 700 : FIXED_WEIGHT;
+        ctx.font = `${weight} ${FIXED_SIZE}px ${brahmiFont}`;
         ctx.fillText(ambient.glyph.value, gx, gy);
       }
     }
@@ -1012,7 +1083,7 @@ function drawLivingField(
   content: KuralPublishingContent,
   kuralBox: HeroLayout["box"]
 ): void {
-  drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox);
+  drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox, zonePools);
 
   // GOLD MASTER, explicit founder thumb rule: "no letter must be
   // overlapped" -- not just within one layer, across all of them. One
@@ -1098,7 +1169,7 @@ function drawLivingField(
  *  counters) render as true gaps rather than solid fill. Caller is
  *  expected to have already translated to the glyph's origin and set
  *  fillStyle; this only builds and fills the path. */
-function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: number): void {
+function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: number, alsoStroke = false): void {
   ctx.beginPath();
   shape.outer.forEach((p, i) => {
     const px = (p[0] / 10 - 0.5) * size;
@@ -1117,6 +1188,11 @@ function drawPathGlyph(ctx: CanvasRenderingContext2D, shape: GlyphPath, size: nu
     ctx.closePath();
   });
   ctx.fill("evenodd");
+  // GOLD MASTER: path glyphs (Vatteluttu) have no font-weight to bolden --
+  // an additional stroke on the same path, using the caller's already-set
+  // strokeStyle/lineWidth, approximates "thicker" for a vector shape.
+  // Defaulted off so the pre-existing call site's behaviour is unchanged.
+  if (alsoStroke) ctx.stroke();
 }
 
 /** GOLD MASTER, RAINFALL / FILTRATION MODEL -- the assembled Kural itself,
