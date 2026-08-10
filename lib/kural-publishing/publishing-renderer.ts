@@ -767,20 +767,29 @@ function drawMemoryLayer(
   rand: SeededRandom,
   kuralBox: HeroLayout["box"]
 ): void {
-  // GOLD MASTER: reduced 11 -> 8 -> 6 across two passes -- explicit
-  // founder instruction each time, most recently to free up visual room
-  // for Layer 4 (words with meaning) without disturbing the centre space
-  // reserved for the Kural/metadata.
-  const FIXED_SIZE = 6;
+  // GOLD MASTER: increased from 6 to 17 -- explicit founder instruction:
+  // "the tamil brahmi and the vatteluthu must be as same in size as the
+  // uyir and mei eluthu so that it will be visible." Matches
+  // STAGE_RINGS.letters' own size exactly (17, see the letters call
+  // below), so Layer 1 reads as genuinely comparable to Layer 2, not a
+  // smudge underneath it. Direct founder report against a real render:
+  // Layer 1 "looking like some dots and irregular shapes" at the old
+  // 6px size -- too small to read as actual letterforms at all.
+  const FIXED_SIZE = 17;
   const FIXED_WEIGHT = 500;
   const brahmiGlyphs = HISTORICAL_POOL.filter((g) => g.script === "brahmi");
   const vatteluttuGlyphs = HISTORICAL_POOL.filter((g) => g.script === "vatteluttu");
 
   // Cell sized comfortably larger than the fixed glyph so that even at
   // maximum jitter, adjacent cells' glyphs cannot touch -- this is what
-  // makes "no overlap" a guarantee rather than a probability.
-  const cellW = 30;
-  const cellH = 26;
+  // makes "no overlap" a guarantee rather than a probability. Scaled up
+  // to match the larger glyph size above (roughly the same proportions
+  // the old 30x26 cell kept relative to the old 6px glyph) -- explicit
+  // founder instruction, "you can reduce the width": fewer, larger,
+  // clearer marks instead of many tiny ones, a direct consequence of
+  // needing more room per glyph to stay overlap-free at this size.
+  const cellW = 55;
+  const cellH = 48;
   const cols = Math.ceil(width / cellW);
   const rows = Math.ceil(height / cellH);
   // Jitter kept well inside half a cell width/height so neighbouring
