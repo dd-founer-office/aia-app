@@ -878,15 +878,24 @@ function drawRadialStage(
       // randomly, so every distinct item (e.g. every real word) actually
       // appears at least once instead of some being left out by chance.
       const value = items[itemIdx % items.length];
-      itemIdx++;
 
       if (opts.allowOverlapGuard) {
         ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
         const measured = ctx.measureText(value);
         const box: PlacedWordBox = { x: gx, y: gy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
+        // FIX: itemIdx must NOT advance here. It used to increment before
+        // this check, so a single overlap-rejected cell permanently
+        // desynced the whole cycle -- one item silently skipped forever,
+        // another repeated on the wrap-around. Confirmed directly against
+        // a real render: Kural 675's Layer 4 showed only 8 of 9 words,
+        // பொருள் missing entirely, வினை appearing twice. Retrying the
+        // SAME item at the next candidate cell (by simply not advancing)
+        // fixes this -- the cycle only moves forward on an actual
+        // successful draw, below.
         if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
         sharedPlacedBoxes.push(box);
       }
+      itemIdx++;
 
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
