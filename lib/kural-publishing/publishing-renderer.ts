@@ -1518,6 +1518,27 @@ function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"]): numb
  *  meta lines reuse the already-locked tokens exactly as specified
  *  (reflection: italic sans; meta: tamil-family per the constitution,
  *  not overridden here) -- both share the Kural's own left edge. */
+/** GOLD MASTER, explicit founder-approved emboss treatment for the Kural
+ *  itself -- "Option C: raised emboss, stronger depth," chosen directly
+ *  against an exploration built on the real current background (warm
+ *  parchment centre, kuralInk text), not a hypothetical one. Classic
+ *  layered-offset technique -- there is no native Canvas emboss filter,
+ *  so this is genuinely how it has to be built: a dark shadow copy
+ *  offset down-right, a light highlight copy offset up-left, then the
+ *  real ink colour on top. Scoped to the Kural's own two lines only, per
+ *  the request itself ("give some embossed effect to the kural") --
+ *  reflection/meta stay plain. */
+function drawEmbossedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
+  const offset = 2.4;
+  const opacity = 0.55;
+  ctx.fillStyle = withAlpha("#000000", opacity);
+  ctx.fillText(text, x + offset, y + offset);
+  ctx.fillStyle = withAlpha("#FFFFFF", opacity);
+  ctx.fillText(text, x - offset, y - offset);
+  ctx.fillStyle = COLORS.kuralInk;
+  ctx.fillText(text, x, y);
+}
+
 function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingContent, layout: HeroLayout, tamilFont: string, sansFont: string): void {
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
@@ -1528,9 +1549,8 @@ function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingCo
 
   ctx.font = tokenFont(kuralToken, layout.kuralSize, tamilFont, sansFont);
   applyTokenTracking(ctx, kuralToken, layout.kuralSize);
-  ctx.fillStyle = COLORS.kuralInk;
-  ctx.fillText(content.tamilLine1, layout.leftX, layout.kuralY1);
-  ctx.fillText(content.tamilLine2, layout.leftX, layout.kuralY2);
+  drawEmbossedText(ctx, content.tamilLine1, layout.leftX, layout.kuralY1);
+  drawEmbossedText(ctx, content.tamilLine2, layout.leftX, layout.kuralY2);
 
   if (layout.reflectionLines.length > 0) {
     ctx.font = tokenFont(reflectionToken, layout.reflectionSize, tamilFont, sansFont);
