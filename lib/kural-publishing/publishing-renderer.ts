@@ -1440,8 +1440,15 @@ function computeHeroLayout(
   const metaBlockHeight = metaSize * ASCENT_FRAC + metaSize * DESCENT_FRAC;
 
   // --- Stack the whole block, centred as one unit ---
-  const gapAboveReflection = reflectionLines.length > 0 ? kuralSize * 0.55 : 0;
-  const gapAboveMeta = metaSize * 1.3;
+  // GOLD MASTER, explicit founder-approved spacing -- "Generous"
+  // (1.5x / 2.8x), chosen directly against a visual exploration built
+  // from this exact layout's own real pixel measurements before any
+  // code was touched: previously 32px between the Kural and reflection,
+  // 40px between reflection and metadata (kuralSize*0.55 / metaSize*1.3)
+  // -- confirmed too tight relative to the font sizes involved. Now
+  // 83px and 85px respectively for Kural 675's actual proportions.
+  const gapAboveReflection = reflectionLines.length > 0 ? kuralSize * 1.5 : 0;
+  const gapAboveMeta = metaSize * 2.8;
   const totalHeight = kuralBlockHeight + gapAboveReflection + reflectionBlockHeight + gapAboveMeta + metaBlockHeight;
 
   let cursorY = height / 2 - totalHeight / 2;
