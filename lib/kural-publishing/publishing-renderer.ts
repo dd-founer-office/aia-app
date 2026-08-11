@@ -1180,6 +1180,7 @@ function drawLivingField(
     drawRadialStage(ctx, width, height, STAGE_RINGS.uyirmei, uyirmeiItems, rand, {
       tamilFont, fontFamily: "serif", size: 19, opacity: 0.42, color: COLORS.heritageBronze,
       weight: 500, glow: false, cellW: 64, cellH: 56, allowOverlapGuard: true,
+      highlightFirstOccurrence: true,
     }, kuralBox, sharedBoxes);
   }
 
