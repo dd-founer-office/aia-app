@@ -1570,7 +1570,7 @@ function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingCo
 
   ctx.font = tokenFont(metaToken, layout.metaSize, tamilFont, sansFont);
   applyTokenTracking(ctx, metaToken, layout.metaSize);
-  ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.85);
+  ctx.fillStyle = withAlpha(mix(COLORS.heritageBronze, COLORS.kuralInk, 0.35), 1.0);
   ctx.fillText(layout.metaText, layout.leftX, layout.metaY);
 }
 
