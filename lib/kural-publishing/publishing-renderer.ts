@@ -1123,6 +1123,67 @@ function drawRadialStage(
   }
 }
 
+/** GOLD MASTER, POSITIONAL SPLIT -- see the call site's own comment for
+ *  the full reasoning. Places every item in `items` exactly once (no
+ *  opportunistic repeats -- unlike drawRadialStage's Phase 2, this
+ *  layer's whole point is that each curated word appears a single,
+ *  deliberate time), constrained to either the top or bottom half of
+ *  the canvas. Reuses the same ring-strength/clearing/overlap
+ *  primitives drawRadialStage itself uses, so a word placed here is
+ *  governed by the identical "how resolved is this position" logic --
+ *  only the search space (top half vs bottom half) differs. */
+function drawWordsInHalf(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  ring: { peakLo: number; peakHi: number; fadeOutHi: number },
+  items: readonly string[],
+  rand: SeededRandom,
+  opts: {
+    tamilFont: string;
+    fontFamily: "sans-serif" | "serif";
+    size: number;
+    opacity: number;
+    color: string;
+    weight: number;
+  },
+  kuralBox: HeroLayout["box"],
+  sharedPlacedBoxes: PlacedWordBox[],
+  half: "top" | "bottom"
+): void {
+  if (items.length === 0) return;
+
+  const norm = Math.min(width, height) * 0.46;
+  const yMin = half === "top" ? 4 : height / 2;
+  const yMax = half === "top" ? height / 2 : height - 4;
+
+  const uniqueItems = Array.from(new Set(items));
+  for (const value of uniqueItems) {
+    let placed = false;
+    for (let attempt = 0; attempt < 400 && !placed; attempt++) {
+      const gx = rand.range(4, width - 4);
+      const gy = rand.range(yMin, yMax);
+      const d = Math.min(gx, width - gx, gy, height - gy);
+      const ef = norm > 0 ? Math.min(1, d / norm) : 0;
+      const strength = ringStrength(ef, ring);
+      const clearing = kuralClearingFactor(gx, gy, kuralBox);
+      if (strength * clearing <= 0) continue;
+
+      ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+      const measured = ctx.measureText(value);
+      const box: PlacedWordBox = { x: gx, y: gy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
+      if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
+      sharedPlacedBoxes.push(box);
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = withAlpha(opts.color, opts.opacity * (0.6 + 0.4 * strength));
+      ctx.fillText(value, gx, gy);
+      placed = true;
+    }
+  }
+}
+
 /** The whole Living Field for this pass: background memory (full canvas,
  *  edge-density) plus the four resolution stages, each its own ring in
  *  edge-distance space rather than a Y-band. The fifth stage (the
@@ -1196,23 +1257,31 @@ function drawLivingField(
   // meaning-bearing chunks and choosing which word represents each idea
   // requires real semantic judgement -- worked out together turn by
   // turn for this specific Kural (675, Amaichchu Iyal) before any of
-  // this was written: பொருள்/கருவி/காலம்/வினை/இடம் (the five factors),
-  // ஐந்தும் ("all five"), இருள்தீர/எண்ணி/செயல் (the instruction --
-  // clear doubt, weigh it, then act). Curated per-Kural content, stated
-  // plainly as such, not disguised as something the code figured out on
-  // its own. Same mechanism as Layers 2/3 otherwise: radial
-  // (STAGE_RINGS.words, pulled in to leave real space before the
-  // reserved centre), quiet bronze, no gold, no glow, checked against
-  // the same shared overlap tracker.
-  const LAYER4_WORDS_KURAL_675: readonly string[] = [
-    "பொருள்", "கருவி", "காலம்", "வினை", "இடம்",
-    "ஐந்தும்", "இருள்தீர", "எண்ணி", "செயல்",
-  ];
+  // this was written. Curated per-Kural content, stated plainly as such,
+  // not disguised as something the code figured out on its own.
+  //
+  // GOLD MASTER, POSITIONAL SPLIT: explicit founder correction -- "words
+  // repeating" (fixed: each word now places exactly once, no
+  // opportunistic Phase 2 repeats the way letters/uyirmei still have)
+  // and an explicit new placement rule: words belonging to the Kural's
+  // FIRST line (பொருள்/கருவி/காலம்/வினை/இடம்/ஐந்தும் -- the five
+  // factors) must appear in the canvas's TOP half; words belonging to
+  // the SECOND line (இருள்தீர/எண்ணி/செயல் -- the instruction) must
+  // appear in the BOTTOM half. This is a real, deliberate exception to
+  // the radial/no-directional-bias principle every other layer in this
+  // file follows -- said plainly here rather than done quietly, and
+  // justified specifically because these words carry real positional
+  // meaning tied to which line of the Kural they actually come from,
+  // not an arbitrary top/bottom split.
+  const LAYER4_TOP_WORDS_KURAL_675: readonly string[] = ["பொருள்", "கருவி", "காலம்", "வினை", "இடம்", "ஐந்தும்"];
+  const LAYER4_BOTTOM_WORDS_KURAL_675: readonly string[] = ["இருள்தீர", "எண்ணி", "செயல்"];
   if (content.kuralNumber === "675") {
-    drawRadialStage(ctx, width, height, STAGE_RINGS.words, LAYER4_WORDS_KURAL_675, rand, {
-      tamilFont, fontFamily: "serif", size: 24, opacity: 0.56, color: COLORS.heritageBronze,
-      weight: 500, glow: false, cellW: 90, cellH: 78, allowOverlapGuard: true,
-    }, kuralBox, sharedBoxes);
+    const wordOpts = {
+      tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.56, color: COLORS.heritageBronze,
+      weight: 500,
+    };
+    drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_TOP_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "top");
+    drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_BOTTOM_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "bottom");
   }
 
   // MILESTONE 04 SCOPE: one more layer still to come (the assembled
