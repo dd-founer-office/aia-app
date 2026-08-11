@@ -981,6 +981,20 @@ function drawRadialStage(
     cellW: number;
     cellH: number;
     allowOverlapGuard: boolean;
+    // GOLD MASTER, explicit founder request: "how we did for layer 1
+    // same here -- the uyir and mei letter that belongs to the kural are
+    // highlighted." Every item this function ever draws already belongs
+    // to the Kural by construction (the caller only ever passes real
+    // content, e.g. zonePools.exactLetters) -- unlike Layer 1, which
+    // draws from an unrelated ancient-script pool where only SOME
+    // glyphs happen to phonetically match. So the meaningful parallel
+    // isn't "which items belong" (all of them do) but "which occurrence
+    // of each belonging item is the one that reads as resolved" -- each
+    // distinct item gets exactly one bold, darker instance; its other
+    // occurrences elsewhere on the canvas stay in the normal quiet
+    // styling. Defaults to false so letters/uyirmei/words all keep
+    // their current behaviour unless explicitly opted in.
+    highlightFirstOccurrence?: boolean;
   },
   kuralBox: HeroLayout["box"],
   // GOLD MASTER: shared across multiple drawRadialStage calls (letters,
@@ -1024,12 +1038,20 @@ function drawRadialStage(
     return { x: gx, y: gy, halfW: 0, halfH: 0 };
   }
 
-  function draw(value: string, gx: number, gy: number, ef: number): void {
+  /** `highlighted` renders bold + darker/more saturated, matching Layer
+   *  1's exact treatment (mix toward kuralInk, opacity floored) -- one
+   *  definition of "resolved" reused across layers rather than
+   *  reinvented per layer. */
+  function draw(value: string, gx: number, gy: number, ef: number, highlighted: boolean): void {
     const strength = ringStrength(ef, ring);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
-    ctx.fillStyle = withAlpha(opts.color, opts.opacity * (0.6 + 0.4 * strength));
+    const weight = highlighted ? 700 : opts.weight;
+    const color = highlighted ? mix(COLORS.heritageBronze, COLORS.kuralInk, 0.6) : opts.color;
+    const baseOpacity = opts.opacity * (0.6 + 0.4 * strength);
+    const opacity = highlighted ? Math.max(baseOpacity, 0.7) : baseOpacity;
+    ctx.font = `${weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+    ctx.fillStyle = withAlpha(color, opacity);
     if (opts.glow) applyGlow(ctx, withAlpha(COLORS.illuminatedGold, 0.55), opts.size * 0.3);
     ctx.fillText(value, gx, gy);
     if (opts.glow) clearGlow(ctx);
@@ -1053,6 +1075,9 @@ function drawRadialStage(
   // is exhausted. This gives each item a real, independent chance to
   // find its own space, rather than competing for whichever grid cell
   // the outer loop happens to reach when its turn in the cycle comes up.
+  // This loop visits each distinct item exactly once, which is also
+  // exactly the "one highlighted occurrence" highlightFirstOccurrence
+  // needs -- no separate tracking required.
   const uniqueItems = Array.from(new Set(items));
   for (const value of uniqueItems) {
     let placed = false;
@@ -1064,7 +1089,7 @@ function drawRadialStage(
       if (opts.allowOverlapGuard) sharedPlacedBoxes.push(box);
       const d = Math.min(gx, width - gx, gy, height - gy);
       const ef = norm > 0 ? Math.min(1, d / norm) : 0;
-      draw(value, gx, gy, ef);
+      draw(value, gx, gy, ef, opts.highlightFirstOccurrence === true);
       placed = true;
     }
   }
@@ -1093,7 +1118,7 @@ function drawRadialStage(
 
       const d = Math.min(gx, width - gx, gy, height - gy);
       const ef = norm > 0 ? Math.min(1, d / norm) : 0;
-      draw(value, gx, gy, ef);
+      draw(value, gx, gy, ef, false);
     }
   }
 }
@@ -1133,6 +1158,7 @@ function drawLivingField(
   drawRadialStage(ctx, width, height, STAGE_RINGS.letters, letterItems, rand, {
     tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
     weight: 500, glow: false, cellW: 60, cellH: 52, allowOverlapGuard: true,
+    highlightFirstOccurrence: true,
   }, kuralBox, sharedBoxes);
 
   // MILESTONE 04 / STAGE 3 -- Uyirmei Formation. GOLD MASTER, explicit
