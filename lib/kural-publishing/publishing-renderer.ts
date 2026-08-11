@@ -86,6 +86,49 @@ const COLORS = {
   mutedEarth: "#8C7B62",
 } as const;
 
+/** GOLD MASTER, STONE -> SCREEN. Explicit founder-approved palette,
+ *  replacing the previous background system entirely (was the old
+ *  COLORS.warmParchment/vignetteEdge radial vignette). Scope, per
+ *  explicit instruction: "Only refine the COLOUR PALETTE and BACKGROUND
+ *  GRADIENT" -- this governs drawAtmosphere and the Kural hero's own ink
+ *  colour ONLY. Layers 1-4's ambient content still uses COLORS
+ *  (heritageBronze etc.) above, unchanged -- a deliberate, conservative
+ *  scoping decision, not an oversight: those layers are meant to "remain
+ *  subtle and atmospheric... never compete with the main Kural
+ *  typography," and re-deriving their colour from this new system wasn't
+ *  part of what was actually approved. Flagged explicitly rather than
+ *  silently decided.
+ *
+ *  Seven ordered stops -- deliberately NOT cyan/turquoise anywhere,
+ *  direct founder correction against an earlier exploration that used
+ *  livingCyan for this purpose: "REMOVE THE CYAN/TURQUOISE COMPLETELY...
+ *  not part of the approved KKA palette." Direction is top-to-bottom
+ *  (STONE_SCREEN_STOPS[0] at y=0, last stop at y=height) -- chosen after
+ *  comparing left-right, top-bottom, and diagonal options directly
+ *  rendered: top-bottom was the only one where the Kural's own wide
+ *  lines don't straddle two very different background zones at once,
+ *  since the gradient's axis of change runs perpendicular to the text's
+ *  own wide axis. */
+const STONE_SCREEN_STOPS: readonly string[] = [
+  "#292522", // Stone -- oldest layer
+  "#8C5A3C", // Earth
+  "#A66A2C", // Ochre / Bronze
+  "#526447", // Life
+  "#328D63", // Living Green
+  "#EFF4F2", // Mint -- present
+  "#183B36", // Screen -- Heritage Green, the modern/digital end
+];
+
+/** The two approved inks this palette can use for text -- Typography
+ *  Charcoal (dark) and White. No single one of these gives acceptable
+ *  contrast across the whole Stone -> Screen range on its own (Stone and
+ *  Screen are both near-black; Mint is near-white) -- verified directly
+ *  before building anything: charcoal alone bottoms out at 1.06:1
+ *  against Stone, white alone bottoms out badly against Mint. Ink must
+ *  be chosen per-position; see adaptiveInkFor below. */
+const TYPOGRAPHY_CHARCOAL = "#2B2A26";
+const INK_WHITE = "#FFFFFF";
+
 // ---------------------------------------------------------------------------
 // Typography System -- Four roles: Kural, Reflection, Meta, Footer. Nothing
 // below is an independent pixel choice -- every size is a ratio of BASE
@@ -340,7 +383,7 @@ export function renderKuralPublishing(
 
   // The hero itself, drawn last -- on top of the (now cleared-around)
   // field, real typeset text, no glow, uniform weight throughout.
-  drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont);
+  drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont, height);
 
   // tamilSerifFont/serifFont are not consumed now that the Kural uses
   // Noto Sans Tamil instead -- kept in the destructure for parity with
@@ -368,25 +411,72 @@ function extractTamilSyllables(text: string): string[] {
 // layer; the language mass is what should read as dark and deep.
 // ---------------------------------------------------------------------------
 
-/** Distance to the nearest canvas edge, SMOOTHED. A hard Math.min(x, w-x,
- *  y, h-y) is mathematically correct as "nearest edge distance" and works
- *  fine for the glyph density (placement is discrete and jittered, which
- *  hides the underlying shape) -- but for a continuous colour fill, that
- *  same hard min produces genuinely rectangular, hard-cornered level-set
- *  contours, especially visible on a wide landscape canvas. Confirmed
- *  directly: the first version of this fix rendered a visible boxed frame
- *  -- exactly the kind of hard boundary this whole project has worked to
- *  eliminate. Smoothed via a soft-minimum (log-sum-exp) instead, which
- *  rounds the corners into a genuine vignette while still treating every
- *  edge equally -- no edge is weighted differently from another, only the
- *  hard corner of the min() itself is softened. */
-function softEdgeDistance(x: number, y: number, width: number, height: number, softness: number): number {
-  const dl = x;
-  const dr = width - x;
-  const dt = y;
-  const db = height - y;
-  const sum = Math.exp(-dl / softness) + Math.exp(-dr / softness) + Math.exp(-dt / softness) + Math.exp(-db / softness);
-  return -softness * Math.log(sum);
+// GOLD MASTER, STONE -> SCREEN: the radial four-edge vignette this file
+// used to compute (softEdgeDistance -- a smoothed nearest-edge distance,
+// avoiding the hard rectangular contours a plain Math.min(x,w-x,y,h-y)
+// produces on a continuous fill) is gone entirely, replaced by the
+// top-to-bottom linear gradient below. That specific problem doesn't
+// apply here -- y/height is already a clean, continuous axis with no
+// corners to smooth -- so the function itself is removed rather than
+// kept around unused.
+
+/** Linear interpolation between two hex colours in plain RGB space --
+ *  intentionally simpler than the mix()/HSL-adjacent helpers used
+ *  elsewhere, since this runs per-cell across a fairly large grid and
+ *  needs to stay cheap. */
+function lerpRgbHex(hexA: string, hexB: string, t: number): [number, number, number] {
+  const [r1, g1, b1] = hexToRgb(hexA);
+  const [r2, g2, b2] = hexToRgb(hexB);
+  const c = Math.max(0, Math.min(1, t));
+  return [Math.round(r1 + (r2 - r1) * c), Math.round(g1 + (g2 - g1) * c), Math.round(b1 + (b2 - b1) * c)];
+}
+
+/** The Stone -> Screen background colour at a given position along the
+ *  gradient (t: 0 = Stone, 1 = Screen). Plain linear interpolation
+ *  between consecutive stops -- deliberately matches
+ *  ctx.createLinearGradient's own addColorStop behaviour exactly (see
+ *  drawAtmosphere), so this function's answer is always consistent with
+ *  what's actually painted on screen at that position, not an
+ *  approximation of it. Used by the Kural's adaptive-ink lookup and the
+ *  texture layers' "local colour" blending. */
+function stoneScreenColorAt(t: number): [number, number, number] {
+  const clamped = Math.max(0, Math.min(1, t));
+  const n = STONE_SCREEN_STOPS.length;
+  const seg = 1 / (n - 1);
+  const idx = Math.min(n - 2, Math.floor(clamped / seg));
+  const localT = (clamped - idx * seg) / seg;
+  return lerpRgbHex(STONE_SCREEN_STOPS[idx], STONE_SCREEN_STOPS[idx + 1], localT);
+}
+
+function relativeLuminance(rgb: readonly [number, number, number]): number {
+  const ch = (c: number) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * ch(rgb[0]) + 0.7152 * ch(rgb[1]) + 0.0722 * ch(rgb[2]);
+}
+
+function contrastRatio(rgbA: readonly [number, number, number], rgbB: readonly [number, number, number]): number {
+  const lA = relativeLuminance(rgbA);
+  const lB = relativeLuminance(rgbB);
+  const lighter = Math.max(lA, lB);
+  const darker = Math.min(lA, lB);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** Which of the two approved inks reads better against a given
+ *  background RGB -- verified before use, not assumed: worst case across
+ *  101 sampled points along the whole gradient is 3.81:1 (every one of
+ *  the 7 named stops individually clears at least large-text AA, most
+ *  clear full-text AA). This is what makes "the main Kural must remain
+ *  the strongest visual element" true regardless of where a line happens
+ *  to sit on the gradient. */
+function adaptiveInkFor(bgRgb: readonly [number, number, number]): string {
+  const charcoalRgb = hexToRgb(TYPOGRAPHY_CHARCOAL);
+  const whiteRgb = hexToRgb(INK_WHITE);
+  const crCharcoal = contrastRatio(charcoalRgb, bgRgb);
+  const crWhite = contrastRatio(whiteRgb, bgRgb);
+  return crCharcoal >= crWhite ? TYPOGRAPHY_CHARCOAL : INK_WHITE;
 }
 
 function drawAtmosphere(
@@ -394,41 +484,29 @@ function drawAtmosphere(
   width: number,
   height: number
 ): void {
-  // FIX, direct founder correction, second pass: the first fix attempt
-  // used a discrete multi-stop colour lookup (matching the old gradient's
-  // stops exactly), which read fine as a smooth native CSS gradient but
-  // produced clearly visible BANDING once rendered as flat-filled grid
-  // cells -- confirmed directly by rendering it. Replaced with a single
-  // continuous smoothstep between exactly two colours -- no discrete
-  // thresholds anywhere, so no band edges can exist. Distance is still
-  // the smoothed nearest-edge metric (Spatial Constitution Law A,
-  // softEdgeDistance above), and cell size is reduced so the remaining
-  // per-cell flat-fill quantization is well below the threshold of
-  // visibility.
-  const norm = Math.min(width, height) * 0.5;
-  const softness = Math.min(width, height) * 0.16;
-  const cell = 10;
-  const cols = Math.ceil(width / cell);
-  const rows = Math.ceil(height / cell);
-  const edgeColor = mix(COLORS.vignetteEdge, COLORS.heritageBronze, 0.22);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cx = c * cell;
-      const cy = r * cell;
-      const d = softEdgeDistance(cx, cy, width, height, softness);
-      const t = norm > 0 ? Math.min(1, Math.max(0, d / norm)) : 1;
-      const smooth = t * t * (3 - 2 * t); // smoothstep -- continuous, no seams
-      ctx.fillStyle = mix(edgeColor, COLORS.warmParchment, smooth);
-      ctx.fillRect(cx, cy, cell, cell);
-    }
+  // GOLD MASTER, STONE -> SCREEN: replaces the previous four-edge radial
+  // vignette entirely. Direction is top-to-bottom (t = y/height) -- see
+  // STONE_SCREEN_STOPS's doc comment for why this direction specifically
+  // was chosen over left-right or diagonal.
+  //
+  // FIX: first version filled this cell-by-cell (10px cells, matching
+  // the technique the old radial background used) with each cell's RGB
+  // channels rounded to the nearest integer. Confirmed directly by
+  // rendering it: visible horizontal banding, worst in the Mint region
+  // specifically -- rounding produces a genuine staircase in the
+  // underlying colour values, and the eye is most sensitive to exactly
+  // that kind of step near the light end of a range. This axis is now a
+  // pure top-to-bottom line with no edge-distance complexity, so
+  // Canvas's own native linear gradient is the right tool -- it
+  // interpolates per pixel, not per cell, so there is no rounding step
+  // to see.
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  const n = STONE_SCREEN_STOPS.length;
+  for (let i = 0; i < n; i++) {
+    gradient.addColorStop(i / (n - 1), STONE_SCREEN_STOPS[i]);
   }
-
-  // No elongated "vein" strata patches, and no darker-toned variant --
-  // removed entirely per founder direction. Against the light reference
-  // ground, even a low-opacity darkened patch read as a visible shadow
-  // shape, not texture. Depth now comes only from drawLocalTonalVariation
-  // and drawParchmentTexture below -- fine, cell-based grain with no
-  // large-scale shape to be seen as an artifact.
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
 
   drawLocalTonalVariation(ctx, width, height);
   drawParchmentTexture(ctx, width, height);
@@ -485,14 +563,15 @@ function drawLocalTonalVariation(
   width: number,
   height: number
 ): void {
-  // FIX, same founder correction as drawAtmosphere above: was
-  // xFrac/colorEnd-based and only ever iterated columns up to
-  // colorEnd*width -- i.e. only ever ran in the left portion of the
-  // canvas at all. Now fades by the same smoothed nearest-edge distance
-  // as the base gradient and covers every cell, matching Spatial
-  // Constitution Law A.
-  const norm = Math.min(width, height) * 0.55;
-  const softness = Math.min(width, height) * 0.16;
+  // GOLD MASTER, STONE -> SCREEN: grain now blends toward the LOCAL
+  // background colour at each cell (from stoneScreenColorAt) rather than
+  // the old fixed vignetteEdge/heritageBronze pair, since those specific
+  // tones no longer relate to what's actually underneath at a given
+  // position. Fade driven by the same top-to-bottom axis the background
+  // itself uses, kept at full strength throughout rather than fading
+  // toward one end -- this is surface grain, not part of the colour
+  // story, so it stays consistent everywhere "slightly tactile/
+  // paper-like" per the approved visual character.
   const cell = 13;
   const cols = Math.ceil(width / cell);
   const rows = Math.ceil(height / cell);
@@ -500,33 +579,30 @@ function drawLocalTonalVariation(
     for (let c = 0; c < cols; c++) {
       const cx = c * cell;
       const cy = r * cell;
-      const d = softEdgeDistance(cx, cy, width, height, softness);
-      const ef = norm > 0 ? Math.min(1, Math.max(0, d / norm)) : 0;
-      const fade = Math.max(0, 1 - ef / 0.42);
+      const t = height > 0 ? cy / height : 0;
+      const [lr, lg, lb] = stoneScreenColorAt(t);
+      const localHex = `rgb(${lr}, ${lg}, ${lb})`;
       const n = organicDepth(cx, cy);
-      const delta = (n - 0.5) * 0.1 * fade;
+      const delta = (n - 0.5) * 0.09;
       if (Math.abs(delta) < 0.005) continue;
       ctx.fillStyle =
         delta > 0
-          ? mixAlpha(COLORS.vignetteEdge, COLORS.heritageBronze, 0.35, delta * 0.7)
-          : mixAlpha(COLORS.warmParchment, "#FFFFFF", 0.5, -delta * 0.6);
+          ? mixAlpha(localHex, "#000000", 0.4, delta * 0.7)
+          : mixAlpha(localHex, "#FFFFFF", 0.4, -delta * 0.6);
       ctx.fillRect(cx, cy, cell, cell);
     }
   }
 }
 
-/** Warm Parchment's own material texture -- "archival paper, soft mineral
- *  surface, warm light," explicitly NOT "heavy paper grain, wood, grunge."
- *  Same non-RNG position-hash technique as drawLocalTonalVariation (zero
- *  rand draws, so it can't perturb composition). FIX, same founder
- *  correction: previously confined to whichever columns
- *  drawLocalTonalVariation's left-only pass DIDN'T cover (a
- *  right-portion-only complement to a left-portion-only vignette) -- now
- *  covers the full canvas, since fine grain was never inherently
- *  directional in the first place; there was no reason it should have
- *  been limited to part of the canvas once the vignette itself stopped
- *  being left-only. Pure warm-toward-parchment variation only; never
- *  introduces the dark tones the vignette uses. */
+/** Fine surface grain -- "archival paper, soft mineral surface, warm
+ *  light," explicitly NOT "heavy paper grain, wood, grunge." Same
+ *  non-RNG position-hash technique as drawLocalTonalVariation (zero rand
+ *  draws, so it can't perturb composition). GOLD MASTER, STONE ->
+ *  SCREEN: blends toward the LOCAL background colour at each cell
+ *  instead of the old fixed warmParchment/heritageBronze pair, for the
+ *  same reason as drawLocalTonalVariation above -- those tones no longer
+ *  describe what's actually underneath once the background became a
+ *  top-to-bottom journey instead of one flat cream ground. */
 function drawParchmentTexture(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -539,13 +615,16 @@ function drawParchmentTexture(
     for (let c = 0; c < cols; c++) {
       const cx = c * cell;
       const cy = r * cell;
+      const t = height > 0 ? cy / height : 0;
+      const [lr, lg, lb] = stoneScreenColorAt(t);
+      const localHex = `rgb(${lr}, ${lg}, ${lb})`;
       const n = smoothNoise(cx + 2200, cy + 1500, 58);
-      const delta = (n - 0.5) * 0.032;
+      const delta = (n - 0.5) * 0.03;
       if (Math.abs(delta) < 0.003) continue;
       ctx.fillStyle =
         delta > 0
-          ? mixAlpha(COLORS.warmParchment, COLORS.heritageBronze, 0.5, delta)
-          : mixAlpha(COLORS.warmParchment, "#FFFFFF", 0.5, -delta * 0.6);
+          ? mixAlpha(localHex, "#000000", 0.4, delta)
+          : mixAlpha(localHex, "#FFFFFF", 0.4, -delta * 0.6);
       ctx.fillRect(cx, cy, cell, cell);
     }
   }
@@ -1422,32 +1501,43 @@ function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"]): numb
  *  meta lines reuse the already-locked tokens exactly as specified
  *  (reflection: italic sans; meta: tamil-family per the constitution,
  *  not overridden here) -- both share the Kural's own left edge. */
-function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingContent, layout: HeroLayout, tamilFont: string, sansFont: string): void {
+function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingContent, layout: HeroLayout, tamilFont: string, sansFont: string, height: number): void {
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
   const metaToken = TYPOGRAPHY_TOKENS.meta;
+
+  // GOLD MASTER, STONE -> SCREEN: "the main Kural must remain the
+  // strongest visual element" -- explicit founder requirement. No single
+  // fixed ink colour reads well across the whole background range
+  // (verified: Typography Charcoal alone bottoms out at 1.06:1 against
+  // Stone; White alone fails against Mint), so ink is picked per line,
+  // based on the actual background colour directly behind THAT line --
+  // not one global choice for the whole hero block, which would fail
+  // wherever a line happened to cross a boundary the wrong way.
+  const inkAt = (y: number): string => adaptiveInkFor(stoneScreenColorAt(height > 0 ? y / height : 0));
 
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 
   ctx.font = tokenFont(kuralToken, layout.kuralSize, tamilFont, sansFont);
   applyTokenTracking(ctx, kuralToken, layout.kuralSize);
-  ctx.fillStyle = COLORS.kuralInk;
+  ctx.fillStyle = inkAt(layout.kuralY1);
   ctx.fillText(content.tamilLine1, layout.leftX, layout.kuralY1);
+  ctx.fillStyle = inkAt(layout.kuralY2);
   ctx.fillText(content.tamilLine2, layout.leftX, layout.kuralY2);
 
   if (layout.reflectionLines.length > 0) {
     ctx.font = tokenFont(reflectionToken, layout.reflectionSize, tamilFont, sansFont);
     applyTokenTracking(ctx, reflectionToken, layout.reflectionSize);
-    ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.82);
     for (let i = 0; i < layout.reflectionLines.length; i++) {
+      ctx.fillStyle = withAlpha(inkAt(layout.reflectionYs[i]), 0.85);
       ctx.fillText(layout.reflectionLines[i], layout.leftX, layout.reflectionYs[i]);
     }
   }
 
   ctx.font = tokenFont(metaToken, layout.metaSize, tamilFont, sansFont);
   applyTokenTracking(ctx, metaToken, layout.metaSize);
-  ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.85);
+  ctx.fillStyle = withAlpha(inkAt(layout.metaY), 0.85);
   ctx.fillText(layout.metaText, layout.leftX, layout.metaY);
 }
 
