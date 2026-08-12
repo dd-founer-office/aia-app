@@ -1438,11 +1438,10 @@ function computeHeroLayout(
   // GOLD MASTER: uppercased here (not just visually styled) so
   // fitTokenSize measures the actual text that will be rendered --
   // per the founder's reference image, the reflection line is set in
-  // capitals, bold, tight tracking, matching a small-caps editorial
-  // masthead style rather than the earlier airy lowercase treatment.
-  const reflectionLines = [content.englishLine1, content.englishLine2]
-    .filter((l) => l.trim().length > 0)
-    .map((l) => l.toUpperCase());
+  // bold, tight tracking, matching a small-caps editorial masthead
+  // style -- normal case, per explicit founder correction ("i no need
+  // all uppercase") against the previous all-caps version.
+  const reflectionLines = [content.englishLine1, content.englishLine2].filter((l) => l.trim().length > 0);
   const reflectionSize =
     reflectionLines.length > 0
       ? fitTokenSize(ctx, reflectionToken, reflectionLines, tamilFont, sansFont, maxTextWidth, height)
@@ -1454,11 +1453,12 @@ function computeHeroLayout(
       : 0;
 
   // --- Metadata ---
-  // GOLD MASTER: uppercased, matching the reference. Split into two
-  // segments (bold "KURAL-N" + lighter " | SERIES | ISSUE X") at draw
-  // time in drawKuralHero -- metaText here stays the full combined
-  // string for width/clearing-box measurement purposes.
-  const metaText = `KURAL-${content.kuralNumber} | ${content.series} | ISSUE ${content.issue}`.toUpperCase();
+  // Split into two segments (bold "Kural-N" + lighter " | Series |
+  // Issue X") at draw time in drawKuralHero -- metaText here stays the
+  // full combined string for width/clearing-box measurement purposes.
+  // Normal case, per explicit founder correction ("i no need all
+  // uppercase") against the previous all-caps version.
+  const metaText = `Kural-${content.kuralNumber} | ${content.series} | Issue ${content.issue}`;
   const metaSize = tokenSize(metaToken, height); // fixed-length token -- not fit-shrunk
   const metaBlockHeight = metaSize * ASCENT_FRAC + metaSize * DESCENT_FRAC;
 
@@ -1599,8 +1599,8 @@ function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingCo
   ctx.font = tokenFont(metaToken, layout.metaSize, tamilFont, sansFont);
   applyTokenTracking(ctx, metaToken, layout.metaSize);
   const metaColor = withAlpha(mix(COLORS.heritageBronze, COLORS.kuralInk, 0.35), 1.0);
-  const boldSegment = `KURAL-${content.kuralNumber}`.toUpperCase();
-  const restSegment = ` | ${content.series} | ISSUE ${content.issue}`.toUpperCase();
+  const boldSegment = `Kural-${content.kuralNumber}`;
+  const restSegment = ` | ${content.series} | Issue ${content.issue}`;
 
   ctx.font = `700 ${layout.metaSize}px ${tamilFont}, sans-serif`;
   applyTokenTracking(ctx, metaToken, layout.metaSize);
