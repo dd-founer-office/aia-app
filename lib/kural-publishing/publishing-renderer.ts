@@ -165,11 +165,18 @@ const TYPOGRAPHY_TOKENS = {
     role: "Reflection -- English secondary voice",
     fontFamily: "sans",
     weight: 500,
-    italic: true,
+    // GOLD MASTER: explicit founder choice -- "Option C: non-italic +
+    // wider letter-spacing (airy, quote-like)" -- picked directly
+    // against four real rendered options, not a guess. italic was the
+    // founder's original ask to remove; letterSpacingEm widened from
+    // 0.02 to 0.06 is what gives this line its own distinct character
+    // in place of the slant, rather than reading as a smaller, fainter
+    // copy of the Kural's own upright weight.
+    italic: false,
     sizeRatio: 1.575,
     minSizeRatio: 1.35,
     lineHeightRatio: 1.55,
-    letterSpacingEm: 0.02,
+    letterSpacingEm: 0.06,
     align: "left",
   },
   kural: {
