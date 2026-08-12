@@ -348,7 +348,7 @@ export function renderKuralPublishing(
   // pair) into the "tamil" font slot instead of tamilSerifFont/serifFont.
   const kuralLayout = computeHeroLayout(ctx, width, height, content, tamilFont, sansFont);
 
-  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout.box);
+  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout);
 
   // The hero itself, drawn last -- on top of the (now cleared-around)
   // field, real typeset text, no glow, uniform weight throughout.
@@ -1196,6 +1196,95 @@ function drawWordsInHalf(
   }
 }
 
+/** Measures the real x-position of every space-separated written token in
+ *  a Tamil line, using whatever font/size is currently set on ctx --
+ *  caller must set ctx.font to match the Kural's own rendering before
+ *  calling this, so the measured positions are genuinely the same ones
+ *  the real Kural text will occupy. */
+function measureLineTokens(
+  ctx: CanvasRenderingContext2D,
+  line: string,
+  startX: number
+): { token: string; startX: number; endX: number; centerX: number }[] {
+  const tokens = line.split(" ");
+  const spaceWidth = ctx.measureText(" ").width;
+  let x = startX;
+  const results: { token: string; startX: number; endX: number; centerX: number }[] = [];
+  for (const tok of tokens) {
+    const w = ctx.measureText(tok).width;
+    results.push({ token: tok, startX: x, endX: x + w, centerX: x + w / 2 });
+    x += w + spaceWidth;
+  }
+  return results;
+}
+
+/** GOLD MASTER, explicit founder-approved concept, verified against the
+ *  real measured position of every written token before being built --
+ *  "the kural's porul karuvi is formed by the layer 4 words... i no
+ *  need extra word... porul and karuvi." Each group is either a real
+ *  pair (two curated words that combine into ONE written compound in
+ *  the Kural's own text, e.g. பொருள்+கருவி -> பொருள்கருவி) or a single
+ *  (a curated word that already matches a standalone written token
+ *  exactly, e.g. காலம்). NO duplicate combined-word text is ever drawn
+ *  -- the Kural's own already-rendered text at kuralY1 IS the "formed"
+ *  result; this only draws the component word(s) above it and a
+ *  converging line down to the real measured token position.
+ *
+ *  Scoped to the FIRST line only, per explicit founder-approved
+ *  decision after a real geometry problem was found and shown directly:
+ *  the second line sits close to the first (not near the canvas edge),
+ *  while the available bottom placement zone only starts well below the
+ *  whole hero block -- converging line-2 words up into their real
+ *  position would mean long lines crossing the reflection/metadata
+ *  text. Line 2's words (இருள்தீர/எண்ணி/செயல்) are not true multi-word
+ *  compounds anyway -- each already stands alone in the written text --
+ *  so they keep their existing simple placement via drawWordsInHalf,
+ *  unchanged. */
+function drawWordFormation(
+  ctx: CanvasRenderingContext2D,
+  kuralLayout: HeroLayout,
+  tamilLine1: string,
+  groups: readonly (readonly string[])[],
+  tamilFont: string,
+  color: string
+): void {
+  ctx.font = `700 ${kuralLayout.kuralSize}px ${tamilFont}, sans-serif`;
+  const tokens = measureLineTokens(ctx, tamilLine1, kuralLayout.leftX);
+
+  // Available top territory: from a small margin at the canvas edge
+  // down to just above the hero's own clearing box -- verified by
+  // direct measurement before building (roughly 190px of real room for
+  // Kural 675's own proportions).
+  const labelY = 90;
+  const convergeY = Math.max(20, kuralLayout.box.y0 - 15);
+  const wordSize = kuralLayout.kuralSize * 0.47;
+
+  let tokenIdx = 0;
+  for (const group of groups) {
+    const tok = tokens[tokenIdx];
+    tokenIdx++;
+    if (!tok) continue; // safety: more groups than tokens would be a real content mismatch
+    const n = group.length;
+    const spread = n === 2 ? wordSize * 3.4 : 0;
+    ctx.font = `600 ${wordSize}px ${tamilFont}, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    for (let i = 0; i < n; i++) {
+      const wx = n === 2 ? tok.centerX - spread / 2 + i * spread : tok.centerX;
+      ctx.fillStyle = withAlpha(color, 0.85);
+      ctx.fillText(group[i], wx, labelY);
+      ctx.strokeStyle = withAlpha(color, 0.4);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(wx, labelY + wordSize * 0.25);
+      ctx.lineTo(tok.centerX, convergeY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+}
+
 /** The whole Living Field for this pass: background memory (full canvas,
  *  edge-density) plus the four resolution stages, each its own ring in
  *  edge-distance space rather than a Y-band. The fifth stage (the
@@ -1211,8 +1300,9 @@ function drawLivingField(
   rand: SeededRandom,
   zonePools: MilestoneZonePools,
   content: KuralPublishingContent,
-  kuralBox: HeroLayout["box"]
+  kuralLayout: HeroLayout
 ): void {
+  const kuralBox = kuralLayout.box;
   drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox, zonePools);
 
   // GOLD MASTER, explicit founder thumb rule: "no letter must be
@@ -1285,14 +1375,31 @@ function drawLivingField(
   // justified specifically because these words carry real positional
   // meaning tied to which line of the Kural they actually come from,
   // not an arbitrary top/bottom split.
-  const LAYER4_TOP_WORDS_KURAL_675: readonly string[] = ["பொருள்", "கருவி", "காலம்", "வினை", "இடம்", "ஐந்தும்"];
+  // GOLD MASTER, WORD FORMATION: explicit founder-approved treatment,
+  // built only after the real geometry was verified by direct
+  // measurement, shown visually, and corrected once already ("i no
+  // need extra word... porul and karuvi" -- the first version wrongly
+  // drew a duplicate combined-word text; fixed to converge into the
+  // Kural's own already-rendered text instead). Groups here are the
+  // real written-token structure of line 1 itself: பொருள்கருவி and
+  // வினையிடனொடு are genuine two-word compounds in the Kural's own
+  // text, காலம் and ஐந்தும் are already standalone tokens. Order matters
+  // -- must match the order these tokens actually appear in
+  // content.tamilLine1, since drawWordFormation consumes tokens
+  // left-to-right, one group per token, in sequence.
+  const LAYER4_LINE1_FORMATION_GROUPS: readonly (readonly string[])[] = [
+    ["பொருள்", "கருவி"],
+    ["காலம்"],
+    ["வினை", "இடம்"],
+    ["ஐந்தும்"],
+  ];
   const LAYER4_BOTTOM_WORDS_KURAL_675: readonly string[] = ["இருள்தீர", "எண்ணி", "செயல்"];
   if (content.kuralNumber === "675") {
     const wordOpts = {
       tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.56, color: COLORS.heritageBronze,
       weight: 500,
     };
-    drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_TOP_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "top");
+    drawWordFormation(ctx, kuralLayout, content.tamilLine1, LAYER4_LINE1_FORMATION_GROUPS, tamilFont, COLORS.heritageBronze);
     drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_BOTTOM_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "bottom");
   }
 
