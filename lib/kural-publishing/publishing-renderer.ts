@@ -1259,7 +1259,20 @@ function measureLineTokens(
  *  whole hero block. Line 2's words (இருள்தீர/எண்ணி/செயல்) are not true
  *  multi-word compounds anyway -- each already stands alone in the
  *  written text -- so they get a different, simpler treatment; see
- *  drawWordsInReadingOrder below. */
+ *  drawWordsInReadingOrder below.
+ *
+ *  ARCHITECTURAL NOTE, direct founder catch against a real render: this
+ *  function does NOT place content inside Layer 4's own designated ring
+ *  (STAGE_RINGS.words). It uses raw pixel positioning near the canvas
+ *  edge, which lands inside Layer 2's (letters) own territory instead
+ *  -- confirmed by direct calculation, not assumed. Checked and ruled
+ *  out constraining this to Layer 4's actual ring instead: for Kural
+ *  675 there's only ~20px of clearance between STAGE_RINGS.words' own
+ *  inner edge and the hero's clearing zone, not enough for this layout.
+ *  Kept as a deliberate, explicitly acknowledged exception -- the
+ *  shared overlap tracker (sharedPlacedBoxes) still guarantees no
+ *  literal glyph collision with Layer 2's content, but the two layers
+ *  do now share the same physical territory, not separate rings. */
 function drawWordFormation(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1471,6 +1484,28 @@ function drawLivingField(
   // -- must match the order these tokens actually appear in
   // content.tamilLine1, since drawWordFormation consumes tokens
   // left-to-right, one group per token, in sequence.
+  //
+  // ARCHITECTURAL CORRECTION, direct founder catch against a real
+  // render: this treatment does NOT live inside Layer 4's own
+  // designated ring (STAGE_RINGS.words, ef 0.42-0.52) the way every
+  // other layer's content stays inside its own ring. It uses raw pixel
+  // positioning near the canvas edges instead -- which, verified by
+  // direct calculation, lands at roughly ef 0.21 for a typical word
+  // here, squarely inside LAYER 2's (letters, ef 0.14-0.28) own
+  // territory, not Layer 4's. This was built without flagging that
+  // departure, which is the real problem -- not a matter of opinion.
+  // Checked whether it could be fixed by constraining to Layer 4's own
+  // ring instead: for Kural 675, STAGE_RINGS.words' own inner edge
+  // (ef 0.52) lands at y~222, and the hero's clearing zone starts at
+  // y~243 -- about 20px of usable space, not enough for a two-word pair
+  // with staggered rows. Genuinely not geometrically workable for this
+  // content, so kept here as a deliberate, explicitly acknowledged
+  // exception instead -- the same honest treatment already given to the
+  // top/bottom split above, not a second silent one. The shared
+  // overlap-guard (sharedBoxes, passed into both drawWordFormation and
+  // drawWordsInReadingOrder below) is what actually prevents this from
+  // colliding with Layer 2's own glyphs -- verified working -- but it
+  // does not, and cannot, keep the two layers in separate territory.
   const LAYER4_LINE1_FORMATION_GROUPS: readonly (readonly string[])[] = [
     ["பொருள்", "கருவி"],
     ["காலம்"],
