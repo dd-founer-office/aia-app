@@ -1143,7 +1143,16 @@ function drawRadialStage(
  *  the canvas. Reuses the same ring-strength/clearing/overlap
  *  primitives drawRadialStage itself uses, so a word placed here is
  *  governed by the identical "how resolved is this position" logic --
- *  only the search space (top half vs bottom half) differs. */
+ *  only the search space (top half vs bottom half) differs.
+ *
+ *  Currently unused: superseded for Kural 675's top group by
+ *  drawWordFormation and for the bottom group by
+ *  drawWordsInReadingOrder (explicit founder correction requiring
+ *  reading-order sequencing, which this function's random search
+ *  doesn't guarantee). Kept intact, not deleted -- a genuinely reusable
+ *  building block for any future case that wants an unordered top/
+ *  bottom split without the reading-order requirement. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawWordsInHalf(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1227,26 +1236,40 @@ function measureLineTokens(
  *  (a curated word that already matches a standalone written token
  *  exactly, e.g. காலம்). NO duplicate combined-word text is ever drawn
  *  -- the Kural's own already-rendered text at kuralY1 IS the "formed"
- *  result; this only draws the component word(s) above it and a
- *  converging line down to the real measured token position.
+ *  result.
+ *
+ *  GOLD MASTER, real founder corrections against an actual render, not
+ *  guessed: (1) no connecting lines -- shown purely by position now, no
+ *  drawn line to the Kural text below; (2) no straight-row alignment --
+ *  every group's vertical position is staggered across several bands
+ *  instead of one fixed y; (3) real overlap protection -- the previous
+ *  version placed words at a single fixed (x,y) with no collision check
+ *  at all, and a real render showed exactly the predicted result:
+ *  pair-words overlapping each other, and separately colliding with
+ *  Layer 1's own ambient glyphs in the same territory. Fixed by
+ *  searching multiple candidate positions per word (varying y, and x
+ *  jitter near the group's target token) against the SAME shared
+ *  cross-layer overlap tracker every other layer already uses, so a
+ *  formation word can never collide with anything, ambient or not.
  *
  *  Scoped to the FIRST line only, per explicit founder-approved
  *  decision after a real geometry problem was found and shown directly:
  *  the second line sits close to the first (not near the canvas edge),
  *  while the available bottom placement zone only starts well below the
- *  whole hero block -- converging line-2 words up into their real
- *  position would mean long lines crossing the reflection/metadata
- *  text. Line 2's words (இருள்தீர/எண்ணி/செயல்) are not true multi-word
- *  compounds anyway -- each already stands alone in the written text --
- *  so they keep their existing simple placement via drawWordsInHalf,
- *  unchanged. */
+ *  whole hero block. Line 2's words (இருள்தீர/எண்ணி/செயல்) are not true
+ *  multi-word compounds anyway -- each already stands alone in the
+ *  written text -- so they get a different, simpler treatment; see
+ *  drawWordsInReadingOrder below. */
 function drawWordFormation(
   ctx: CanvasRenderingContext2D,
+  width: number,
   kuralLayout: HeroLayout,
   tamilLine1: string,
   groups: readonly (readonly string[])[],
   tamilFont: string,
-  color: string
+  color: string,
+  rand: SeededRandom,
+  sharedPlacedBoxes: PlacedWordBox[]
 ): void {
   ctx.font = `700 ${kuralLayout.kuralSize}px ${tamilFont}, sans-serif`;
   const tokens = measureLineTokens(ctx, tamilLine1, kuralLayout.leftX);
@@ -1254,33 +1277,94 @@ function drawWordFormation(
   // Available top territory: from a small margin at the canvas edge
   // down to just above the hero's own clearing box -- verified by
   // direct measurement before building (roughly 190px of real room for
-  // Kural 675's own proportions).
-  const labelY = 90;
-  const convergeY = Math.max(20, kuralLayout.box.y0 - 15);
+  // Kural 675's own proportions). Several distinct row bands within
+  // that territory, so groups land at genuinely different heights
+  // rather than one straight line.
   const wordSize = kuralLayout.kuralSize * 0.47;
+  const topMargin = 24;
+  const bottomMargin = Math.max(topMargin + wordSize, kuralLayout.box.y0 - 20);
+  const rowBands = [topMargin + wordSize * 0.5, (topMargin + bottomMargin) / 2, bottomMargin - wordSize * 0.5];
+
+  ctx.font = `600 ${wordSize}px ${tamilFont}, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
 
   let tokenIdx = 0;
+  let rowCursor = 0; // cycles through rowBands so consecutive groups don't share a row either
   for (const group of groups) {
     const tok = tokens[tokenIdx];
     tokenIdx++;
     if (!tok) continue; // safety: more groups than tokens would be a real content mismatch
-    const n = group.length;
-    const spread = n === 2 ? wordSize * 3.4 : 0;
-    ctx.font = `600 ${wordSize}px ${tamilFont}, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    for (let i = 0; i < n; i++) {
-      const wx = n === 2 ? tok.centerX - spread / 2 + i * spread : tok.centerX;
+
+    for (const word of group) {
+      const measured = ctx.measureText(word);
+      const halfW = measured.width / 2;
+      const halfH = wordSize * 0.6;
+      let placed = false;
+      for (let attempt = 0; attempt < 60 && !placed; attempt++) {
+        const y = rowBands[(rowCursor + attempt) % rowBands.length];
+        const xJitter = rand.range(-wordSize * 1.8, wordSize * 1.8);
+        const x = Math.min(width - halfW - 4, Math.max(halfW + 4, tok.centerX + xJitter));
+        const box: PlacedWordBox = { x, y, halfW, halfH };
+        if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
+        sharedPlacedBoxes.push(box);
+        ctx.fillStyle = withAlpha(color, 0.85);
+        ctx.fillText(word, x, y);
+        placed = true;
+      }
+      rowCursor++;
+    }
+  }
+}
+
+/** GOLD MASTER, explicit founder correction: "i need like the down part
+ *  the irultheera should come first then enni then seyal" -- the bottom
+ *  group's words must appear in their real left-to-right reading order,
+ *  not scattered randomly the way drawWordsInHalf placed them. Divides
+ *  the available bottom width into one horizontal segment per word, in
+ *  the order given, then searches for a non-overlapping position within
+ *  each word's own segment -- guarantees reading order while still
+ *  respecting the same shared overlap tracker every other layer uses. */
+function drawWordsInReadingOrder(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  kuralBox: HeroLayout["box"],
+  words: readonly string[],
+  tamilFont: string,
+  size: number,
+  color: string,
+  rand: SeededRandom,
+  sharedPlacedBoxes: PlacedWordBox[]
+): void {
+  if (words.length === 0) return;
+  ctx.font = `600 ${size}px ${tamilFont}, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+
+  const yMin = Math.min(height - 24, kuralBox.y1b + 40);
+  const yMax = height - 24;
+  const margin = 60;
+  const usableWidth = width - margin * 2;
+  const segmentWidth = usableWidth / words.length;
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const measured = ctx.measureText(word);
+    const halfW = measured.width / 2;
+    const halfH = size * 0.6;
+    const segStart = margin + i * segmentWidth;
+    const segCenterX = segStart + segmentWidth / 2;
+    let placed = false;
+    for (let attempt = 0; attempt < 80 && !placed; attempt++) {
+      const x = Math.min(segStart + segmentWidth - halfW - 4, Math.max(segStart + halfW + 4, segCenterX + rand.range(-segmentWidth * 0.3, segmentWidth * 0.3)));
+      const y = rand.range(yMin, yMax);
+      const box: PlacedWordBox = { x, y, halfW, halfH };
+      if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
+      sharedPlacedBoxes.push(box);
       ctx.fillStyle = withAlpha(color, 0.85);
-      ctx.fillText(group[i], wx, labelY);
-      ctx.strokeStyle = withAlpha(color, 0.4);
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(wx, labelY + wordSize * 0.25);
-      ctx.lineTo(tok.centerX, convergeY);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.fillText(word, x, y);
+      placed = true;
     }
   }
 }
@@ -1395,12 +1479,8 @@ function drawLivingField(
   ];
   const LAYER4_BOTTOM_WORDS_KURAL_675: readonly string[] = ["இருள்தீர", "எண்ணி", "செயல்"];
   if (content.kuralNumber === "675") {
-    const wordOpts = {
-      tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.56, color: COLORS.heritageBronze,
-      weight: 500,
-    };
-    drawWordFormation(ctx, kuralLayout, content.tamilLine1, LAYER4_LINE1_FORMATION_GROUPS, tamilFont, COLORS.heritageBronze);
-    drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_BOTTOM_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "bottom");
+    drawWordFormation(ctx, width, kuralLayout, content.tamilLine1, LAYER4_LINE1_FORMATION_GROUPS, tamilFont, COLORS.heritageBronze, rand, sharedBoxes);
+    drawWordsInReadingOrder(ctx, width, height, kuralBox, LAYER4_BOTTOM_WORDS_KURAL_675, tamilFont, 24, COLORS.heritageBronze, rand, sharedBoxes);
   }
 
   // MILESTONE 04 SCOPE: one more layer still to come (the assembled
