@@ -158,25 +158,30 @@ const TYPOGRAPHY_TOKENS = {
     sizeRatio: 1.425,
     minSizeRatio: 1.425,
     lineHeightRatio: 1,
-    letterSpacingEm: 0.02,
+    // GOLD MASTER: widened, matching the visible tracking in the
+    // founder's reference image -- 0.02 -> 0.08. The "KURAL-N" segment
+    // is rendered bolder than the rest at draw time (drawKuralHero),
+    // not via this token, since a single TypographyToken can't express
+    // two weights within one line.
+    letterSpacingEm: 0.08,
     align: "left",
   },
   reflection: {
     role: "Reflection -- English secondary voice",
     fontFamily: "sans",
-    weight: 500,
-    // GOLD MASTER: explicit founder choice -- "Option C: non-italic +
-    // wider letter-spacing (airy, quote-like)" -- picked directly
-    // against four real rendered options, not a guess. italic was the
-    // founder's original ask to remove; letterSpacingEm widened from
-    // 0.02 to 0.06 is what gives this line its own distinct character
-    // in place of the slant, rather than reading as a smaller, fainter
-    // copy of the Kural's own upright weight.
+    // GOLD MASTER: explicit founder correction against a reference
+    // image -- bold, uppercase, tight tracking (a small-caps editorial
+    // masthead style), replacing the earlier "Option C" airy-lowercase
+    // treatment. weight 500 -> 700, letterSpacingEm 0.06 -> 0.01 (tight,
+    // not wide -- the reference's capitals sit close together, unlike
+    // the previous quote-like spacing). Text itself is uppercased in
+    // computeHeroLayout, not just styled here.
+    weight: 700,
     italic: false,
     sizeRatio: 1.575,
     minSizeRatio: 1.35,
     lineHeightRatio: 1.55,
-    letterSpacingEm: 0.06,
+    letterSpacingEm: 0.01,
     align: "left",
   },
   kural: {
@@ -1430,7 +1435,14 @@ function computeHeroLayout(
   const kuralBlockHeight = kuralSize * ASCENT_FRAC + kuralLineGap + kuralSize * DESCENT_FRAC;
 
   // --- Reflection (English) ---
-  const reflectionLines = [content.englishLine1, content.englishLine2].filter((l) => l.trim().length > 0);
+  // GOLD MASTER: uppercased here (not just visually styled) so
+  // fitTokenSize measures the actual text that will be rendered --
+  // per the founder's reference image, the reflection line is set in
+  // capitals, bold, tight tracking, matching a small-caps editorial
+  // masthead style rather than the earlier airy lowercase treatment.
+  const reflectionLines = [content.englishLine1, content.englishLine2]
+    .filter((l) => l.trim().length > 0)
+    .map((l) => l.toUpperCase());
   const reflectionSize =
     reflectionLines.length > 0
       ? fitTokenSize(ctx, reflectionToken, reflectionLines, tamilFont, sansFont, maxTextWidth, height)
@@ -1442,7 +1454,11 @@ function computeHeroLayout(
       : 0;
 
   // --- Metadata ---
-  const metaText = `Kural-${content.kuralNumber} | ${content.series} | Issue ${content.issue}`;
+  // GOLD MASTER: uppercased, matching the reference. Split into two
+  // segments (bold "KURAL-N" + lighter " | SERIES | ISSUE X") at draw
+  // time in drawKuralHero -- metaText here stays the full combined
+  // string for width/clearing-box measurement purposes.
+  const metaText = `KURAL-${content.kuralNumber} | ${content.series} | ISSUE ${content.issue}`.toUpperCase();
   const metaSize = tokenSize(metaToken, height); // fixed-length token -- not fit-shrunk
   const metaBlockHeight = metaSize * ASCENT_FRAC + metaSize * DESCENT_FRAC;
 
@@ -1575,10 +1591,27 @@ function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingCo
     }
   }
 
+  // GOLD MASTER: metadata split into two segments to match the
+  // reference image -- "KURAL-N" bold, " | SERIES | ISSUE X" lighter.
+  // A single fillText call can't express two weights, so this measures
+  // the bold segment's width first to know where the lighter segment
+  // starts. Both share the meta token's widened tracking.
   ctx.font = tokenFont(metaToken, layout.metaSize, tamilFont, sansFont);
   applyTokenTracking(ctx, metaToken, layout.metaSize);
-  ctx.fillStyle = withAlpha(mix(COLORS.heritageBronze, COLORS.kuralInk, 0.35), 1.0);
-  ctx.fillText(layout.metaText, layout.leftX, layout.metaY);
+  const metaColor = withAlpha(mix(COLORS.heritageBronze, COLORS.kuralInk, 0.35), 1.0);
+  const boldSegment = `KURAL-${content.kuralNumber}`.toUpperCase();
+  const restSegment = ` | ${content.series} | ISSUE ${content.issue}`.toUpperCase();
+
+  ctx.font = `700 ${layout.metaSize}px ${tamilFont}, sans-serif`;
+  applyTokenTracking(ctx, metaToken, layout.metaSize);
+  ctx.fillStyle = metaColor;
+  ctx.fillText(boldSegment, layout.leftX, layout.metaY);
+  const boldWidth = ctx.measureText(boldSegment).width;
+
+  ctx.font = tokenFont(metaToken, layout.metaSize, tamilFont, sansFont);
+  applyTokenTracking(ctx, metaToken, layout.metaSize);
+  ctx.fillStyle = metaColor;
+  ctx.fillText(restSegment, layout.leftX + boldWidth, layout.metaY);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
