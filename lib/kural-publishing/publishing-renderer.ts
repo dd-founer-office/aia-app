@@ -1156,7 +1156,20 @@ function drawRadialStage(
  *  whole edge-to-edge width with no ring check at all). This is what
  *  lets the bottom group keep its explicit reading-order requirement
  *  (இருள்தீர் -> எண்ணி் -> செயல், left to right) without leaving
- *  Layer 4's own ring to get it. */
+ *  Layer 4's own ring to get it.
+ *
+ *  `pairAnchor`, new: explicit founder request -- "i need the user
+ *  should recognise that porulkaruvai came from porul and karuvi...
+ *  adjust the placement inside the fourth layer itself." பொருள்கருவி
+ *  is the Kural's own first written word, a real compound of two
+ *  curated Layer 4 words -- once placed near each other, a viewer can
+ *  read the relationship directly, without needing a line or leaving
+ *  the ring. When set, item `followIndex`'s search is biased to land
+ *  within `maxDistance` of wherever item `anchorIndex` already landed
+ *  -- still checked against the SAME ring/clearing/overlap constraints
+ *  as every other placement, so proximity is achieved by search bias
+ *  alone, never by exempting either word from Layer 4's own
+ *  territory. */
 function drawWordsInHalf(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1175,7 +1188,8 @@ function drawWordsInHalf(
   kuralBox: HeroLayout["box"],
   sharedPlacedBoxes: PlacedWordBox[],
   half: "top" | "bottom",
-  orderedLeftToRight = false
+  orderedLeftToRight = false,
+  pairAnchor?: { anchorIndex: number; followIndex: number; maxDistance: number }
 ): void {
   if (items.length === 0) return;
 
@@ -1191,6 +1205,7 @@ function drawWordsInHalf(
   const margin = 60;
   const usableWidth = Math.max(1, width - margin * 2);
   const segmentWidth = usableWidth / orderedItems.length;
+  const placedPositions: ({ x: number; y: number } | null)[] = new Array(orderedItems.length).fill(null);
 
   ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
   ctx.textAlign = "center";
@@ -1200,10 +1215,22 @@ function drawWordsInHalf(
     const value = orderedItems[i];
     const xMin = orderedLeftToRight ? margin + i * segmentWidth : 4;
     const xMax = orderedLeftToRight ? margin + (i + 1) * segmentWidth : width - 4;
+    const anchor = pairAnchor && i === pairAnchor.followIndex ? placedPositions[pairAnchor.anchorIndex] : null;
     let placed = false;
     for (let attempt = 0; attempt < 400 && !placed; attempt++) {
-      const gx = rand.range(xMin, xMax);
-      const gy = rand.range(yMin, yMax);
+      let gx: number;
+      let gy: number;
+      if (anchor) {
+        // Biased toward the anchor word's own position, not confined to
+        // it -- still clamped into this item's own legal x-range and
+        // the half's own y-range, so a follower can never wander outside
+        // where it was already allowed to be.
+        gx = Math.min(xMax, Math.max(xMin, anchor.x + rand.range(-pairAnchor!.maxDistance, pairAnchor!.maxDistance)));
+        gy = Math.min(yMax, Math.max(yMin, anchor.y + rand.range(-pairAnchor!.maxDistance * 0.6, pairAnchor!.maxDistance * 0.6)));
+      } else {
+        gx = rand.range(xMin, xMax);
+        gy = rand.range(yMin, yMax);
+      }
       const d = Math.min(gx, width - gx, gy, height - gy);
       const ef = norm > 0 ? Math.min(1, d / norm) : 0;
       const strength = ringStrength(ef, ring);
@@ -1214,6 +1241,7 @@ function drawWordsInHalf(
       const box: PlacedWordBox = { x: gx, y: gy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
       if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
       sharedPlacedBoxes.push(box);
+      placedPositions[i] = { x: gx, y: gy };
 
       ctx.fillStyle = withAlpha(opts.color, opts.opacity * (0.6 + 0.4 * strength));
       ctx.fillText(value, gx, gy);
@@ -1343,6 +1371,17 @@ function drawLivingField(
   // staying in-ring -- drawWordsInHalf's orderedLeftToRight mode
   // achieves it by dividing the ring's own top/bottom search space into
   // per-word segments, not by leaving the ring.
+  //
+  // GOLD MASTER, explicit founder request: "our first word of kural is
+  // porulkaruvi... i need the user should recognise that porulkaruvai
+  // came from porul and karuvi the fourth layer words so adjust the
+  // placement inside the fourth layer itself accordingly." பொருள் and
+  // கருவி (indices 0/1 below) are the two curated words that combine
+  // into பொருள்கருவி, the Kural's own actual first written word --
+  // pairAnchor biases கருவி's placement to land near wherever பொருள்
+  // ends up, still fully inside Layer 4's own ring, so a viewer can read
+  // the relationship through proximity rather than a line or any
+  // departure from Layer 4's own territory.
   const LAYER4_TOP_WORDS_KURAL_675: readonly string[] = ["பொருள்", "கருவி", "காலம்", "வினை", "இடம்", "ஐந்தும்"];
   const LAYER4_BOTTOM_WORDS_KURAL_675: readonly string[] = ["இருள்தீர", "எண்ணி", "செயல்"];
   if (content.kuralNumber === "675") {
@@ -1350,7 +1389,10 @@ function drawLivingField(
       tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.56, color: COLORS.heritageBronze,
       weight: 500,
     };
-    drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_TOP_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "top");
+    drawWordsInHalf(
+      ctx, width, height, STAGE_RINGS.words, LAYER4_TOP_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "top", false,
+      { anchorIndex: 0, followIndex: 1, maxDistance: wordOpts.size * 4.5 }
+    );
     drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_BOTTOM_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "bottom", true);
   }
 
