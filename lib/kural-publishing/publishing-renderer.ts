@@ -816,7 +816,7 @@ function drawMemoryLayer(
   rand: SeededRandom,
   kuralBox: HeroLayout["box"],
   zonePools: MilestoneZonePools,
-  extraBox?: HeroLayout["box"]
+  extraBoxes?: readonly HeroLayout["box"][]
 ): void {
   // GOLD MASTER: increased from 6 to 17 -- explicit founder instruction:
   // "the tamil brahmi and the vatteluthu must be as same in size as the
@@ -894,9 +894,7 @@ function drawMemoryLayer(
       // founder agreement. Smoothly suppresses acceptance near/inside
       // the hero's real measured footprint (computeHeroLayout), never
       // a hard edge.
-      const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBox);
-      // populated rather than sparse, per "substantially denser than the
-      // current version... should immediately see a large population."
+      const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBoxes);
       if (!rand.chance(Math.min(1, density * 0.92 + 0.06) * clearing * confine)) continue;
 
       const isBrahmi = rand.chance(0.5); // equal status, flat roll
@@ -1007,7 +1005,7 @@ function drawRadialStage(
     highlightFirstOccurrence?: boolean;
   },
   kuralBox: HeroLayout["box"],
-  extraBox: HeroLayout["box"] | undefined,
+  extraBoxes: readonly HeroLayout["box"][] | undefined,
   // GOLD MASTER: shared across multiple drawRadialStage calls (letters,
   // uyirmei, ...) so overlap is checked between STAGES, not just within
   // one -- explicit founder thumb rule: "no letter must be overlapped,"
@@ -1036,7 +1034,7 @@ function drawRadialStage(
     const d = Math.min(gx, width - gx, gy, height - gy);
     const ef = norm > 0 ? Math.min(1, d / norm) : 0;
     const strength = ringStrength(ef, ring);
-    const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBox);
+    const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBoxes);
     const combined = strength * clearing;
     if (probabilistic ? !rand.chance(combined) : combined <= 0) return null;
     if (opts.allowOverlapGuard) {
@@ -1222,6 +1220,26 @@ function computeFormationZoneBox(width: number, kuralLayout: HeroLayout): HeroLa
     y0: Math.max(0, topMargin - wordSize * 0.9),
     x1: width,
     y1b: bottomMargin + wordSize * 0.4,
+  };
+}
+
+/** GOLD MASTER, real founder-reported fix: the region
+ *  drawWordsInReadingOrder actually occupies, computed with the EXACT
+ *  same Y-range formula that function itself uses, so this box and the
+ *  words drawn inside it can never drift out of sync. Mirrors
+ *  computeFormationZoneBox's own role for the top group -- explicit
+ *  founder correction that the top and bottom groups' protection didn't
+ *  match: the top zone got its own clearing already, the bottom zone
+ *  never did, leaving it just as exposed to Layer 2's letters as
+ *  before any of this was fixed. */
+function computeBottomZoneBox(width: number, height: number, kuralBox: HeroLayout["box"]): HeroLayout["box"] {
+  const yMin = Math.min(height - 24, kuralBox.y1b + 40);
+  const yMax = height - 24;
+  return {
+    x0: 0,
+    y0: yMin,
+    x1: width,
+    y1b: yMax,
   };
 }
 
@@ -1420,12 +1438,20 @@ function drawLivingField(
   kuralLayout: HeroLayout
 ): void {
   const kuralBox = kuralLayout.box;
-  // GOLD MASTER, real founder-reported "mashing up" fix: only Kural 675
-  // has the word-formation treatment (drawWordFormation below), so this
-  // extra suppression zone only needs to exist for that Kural -- every
-  // other Kural's Layers 1-3 behave exactly as before, unaffected.
-  const formationZone = content.kuralNumber === "675" ? computeFormationZoneBox(width, kuralLayout) : undefined;
-  drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox, zonePools, formationZone);
+  // GOLD MASTER, real founder-reported "mashing up" fix, corrected a
+  // second time after a real asymmetry was caught: "top and bottom are
+  // not matching our layer where it lives" -- the top zone
+  // (drawWordFormation) got its own clearing already; the bottom zone
+  // (drawWordsInReadingOrder) never did, leaving it just as exposed to
+  // Layer 2's letters as before any of this was fixed. Both zones only
+  // need to exist for Kural 675 (the only Kural with either treatment)
+  // -- every other Kural's Layers 1-3 behave exactly as before,
+  // unaffected.
+  const extraClearingZones =
+    content.kuralNumber === "675"
+      ? [computeFormationZoneBox(width, kuralLayout), computeBottomZoneBox(width, height, kuralBox)]
+      : undefined;
+  drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox, zonePools, extraClearingZones);
 
   // GOLD MASTER, explicit founder thumb rule: "no letter must be
   // overlapped" -- not just within one layer, across all of them. One
@@ -1444,7 +1470,7 @@ function drawLivingField(
     tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
     weight: 500, glow: false, cellW: 60, cellH: 52, allowOverlapGuard: true,
     highlightFirstOccurrence: true,
-  }, kuralBox, formationZone, sharedBoxes);
+  }, kuralBox, extraClearingZones, sharedBoxes);
 
   // MILESTONE 04 / STAGE 3 -- Uyirmei Formation. GOLD MASTER, explicit
   // founder plan: every item drawn here is a real உயிர்மெய் compound
@@ -1466,7 +1492,7 @@ function drawLivingField(
       tamilFont, fontFamily: "serif", size: 19, opacity: 0.42, color: COLORS.heritageBronze,
       weight: 500, glow: false, cellW: 64, cellH: 56, allowOverlapGuard: true,
       highlightFirstOccurrence: true,
-    }, kuralBox, formationZone, sharedBoxes);
+    }, kuralBox, extraClearingZones, sharedBoxes);
   }
 
   // MILESTONE 04 SCOPE: two more layers still to come (words, sentence)
@@ -1765,7 +1791,7 @@ function computeHeroLayout(
  *  agreement: "a quiet clearing around it" -- gradual, not a hard-edged
  *  panel boundary, which every constitution in this project has argued
  *  against. */
-function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"], extraBox?: HeroLayout["box"]): number {
+function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"], extraBoxes?: readonly HeroLayout["box"][]): number {
   // FIX: was proportional to the box's own size (18%/35% of box
   // dimensions) -- fine when the box was just the two-line Kural, but
   // once the hero grew to include the reflection and metadata lines,
@@ -1786,18 +1812,27 @@ function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"], extra
     return t * t * (3 - 2 * t); // smoothstep -- gradual, no hard edge
   };
   // GOLD MASTER, real founder-reported "mashing up" fix: word formation
-  // (drawWordFormation) lives outside Layer 4's own ring, in the same
-  // physical territory Layer 2's letters occupy -- verified previously,
-  // and not fixable by relocating the formation treatment (not enough
-  // vertical room in Layer 4's own ring for this content). The actual
-  // fix is the other direction: give the formation zone its own
+  // (drawWordFormation, and its bottom-group counterpart
+  // drawWordsInReadingOrder) lives outside Layer 4's own ring, in the
+  // same physical territory Layer 2's letters occupy -- verified
+  // previously, and not fixable by relocating the treatment (not
+  // enough vertical room in Layer 4's own ring for this content). The
+  // actual fix is the other direction: give BOTH zones their own
   // suppression here, the same technique already used for the hero's
   // own clearing, so Layer 1/2/3's ambient content stops populating the
-  // same pixels the formation words now occupy. extraBox is optional so
-  // every existing caller (the hero's own clearing) is unaffected.
-  const base = clearingFor(box);
-  if (!extraBox) return base;
-  return Math.min(base, clearingFor(extraBox));
+  // same pixels the formation/reading-order words occupy -- at either
+  // edge, not just the top one. extraBoxes is an array, not a single
+  // box, precisely because the top zone (near y=0) and bottom zone
+  // (near y=height) are non-contiguous -- one box can't represent both.
+  // Optional so every existing caller (the hero's own clearing) is
+  // unaffected.
+  let result = clearingFor(box);
+  if (extraBoxes) {
+    for (const b of extraBoxes) {
+      result = Math.min(result, clearingFor(b));
+    }
+  }
+  return result;
 }
 
 /** The hero itself. Real typeset text via fillText -- not glyph-by-glyph
