@@ -1036,7 +1036,7 @@ function drawRadialStage(
     const d = Math.min(gx, width - gx, gy, height - gy);
     const ef = norm > 0 ? Math.min(1, d / norm) : 0;
     const strength = ringStrength(ef, ring);
-    const clearing = kuralClearingFactor(gx, gy, kuralBox);
+    const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBox);
     const combined = strength * clearing;
     if (probabilistic ? !rand.chance(combined) : combined <= 0) return null;
     if (opts.allowOverlapGuard) {
