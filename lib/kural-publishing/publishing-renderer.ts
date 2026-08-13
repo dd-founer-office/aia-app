@@ -815,8 +815,7 @@ function drawMemoryLayer(
   brahmiFont: string,
   rand: SeededRandom,
   kuralBox: HeroLayout["box"],
-  zonePools: MilestoneZonePools,
-  extraBoxes?: readonly HeroLayout["box"][]
+  zonePools: MilestoneZonePools
 ): void {
   // GOLD MASTER: increased from 6 to 17 -- explicit founder instruction:
   // "the tamil brahmi and the vatteluthu must be as same in size as the
@@ -894,7 +893,7 @@ function drawMemoryLayer(
       // founder agreement. Smoothly suppresses acceptance near/inside
       // the hero's real measured footprint (computeHeroLayout), never
       // a hard edge.
-      const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBoxes);
+      const clearing = kuralClearingFactor(gx, gy, kuralBox);
       if (!rand.chance(Math.min(1, density * 0.92 + 0.06) * clearing * confine)) continue;
 
       const isBrahmi = rand.chance(0.5); // equal status, flat roll
@@ -1005,7 +1004,6 @@ function drawRadialStage(
     highlightFirstOccurrence?: boolean;
   },
   kuralBox: HeroLayout["box"],
-  extraBoxes: readonly HeroLayout["box"][] | undefined,
   // GOLD MASTER: shared across multiple drawRadialStage calls (letters,
   // uyirmei, ...) so overlap is checked between STAGES, not just within
   // one -- explicit founder thumb rule: "no letter must be overlapped,"
@@ -1034,7 +1032,7 @@ function drawRadialStage(
     const d = Math.min(gx, width - gx, gy, height - gy);
     const ef = norm > 0 ? Math.min(1, d / norm) : 0;
     const strength = ringStrength(ef, ring);
-    const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBoxes);
+    const clearing = kuralClearingFactor(gx, gy, kuralBox);
     const combined = strength * clearing;
     if (probabilistic ? !rand.chance(combined) : combined <= 0) return null;
     if (opts.allowOverlapGuard) {
@@ -1137,19 +1135,28 @@ function drawRadialStage(
  *  opportunistic repeats -- unlike drawRadialStage's Phase 2, this
  *  layer's whole point is that each curated word appears a single,
  *  deliberate time), constrained to either the top or bottom half of
- *  the canvas. Reuses the same ring-strength/clearing/overlap
- *  primitives drawRadialStage itself uses, so a word placed here is
- *  governed by the identical "how resolved is this position" logic --
- *  only the search space (top half vs bottom half) differs.
+ *  the canvas AND to the given ring -- reuses the same ring-strength/
+ *  clearing/overlap primitives drawRadialStage itself uses, so a word
+ *  placed here is governed by the identical "how resolved is this
+ *  position" logic, only the search space (top half vs bottom half)
+ *  differs.
  *
- *  Currently unused: superseded for Kural 675's top group by
- *  drawWordFormation and for the bottom group by
- *  drawWordsInReadingOrder (explicit founder correction requiring
- *  reading-order sequencing, which this function's random search
- *  doesn't guarantee). Kept intact, not deleted -- a genuinely reusable
- *  building block for any future case that wants an unordered top/
- *  bottom split without the reading-order requirement. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ *  REVIVED, explicit founder instruction after this exact ring-
+ *  confinement was abandoned for a "word formation" treatment that
+ *  moved content onto the canvas edges, outside Layer 4's own ring
+ *  entirely: "i need the layer 4 words only inside the ring and all
+ *  other layers one belong to the respective layers only no mix up."
+ *  The formation/reading-order functions this comment used to say
+ *  superseded this one are gone; this is the real implementation again.
+ *
+ *  `orderedLeftToRight`, new: when true, divides the canvas width into
+ *  one horizontal segment per item (in the order given) and constrains
+ *  each item's search to its own segment -- still fully ring-confined
+ *  (unlike the removed drawWordsInReadingOrder, which searched the
+ *  whole edge-to-edge width with no ring check at all). This is what
+ *  lets the bottom group keep its explicit reading-order requirement
+ *  (இருள்தீர் -> எண்ணி் -> செயல், left to right) without leaving
+ *  Layer 4's own ring to get it. */
 function drawWordsInHalf(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1167,7 +1174,8 @@ function drawWordsInHalf(
   },
   kuralBox: HeroLayout["box"],
   sharedPlacedBoxes: PlacedWordBox[],
-  half: "top" | "bottom"
+  half: "top" | "bottom",
+  orderedLeftToRight = false
 ): void {
   if (items.length === 0) return;
 
@@ -1175,11 +1183,26 @@ function drawWordsInHalf(
   const yMin = half === "top" ? 4 : height / 2;
   const yMax = half === "top" ? height / 2 : height - 4;
 
-  const uniqueItems = Array.from(new Set(items));
-  for (const value of uniqueItems) {
+  // Ordered mode keeps every item, in the given sequence, one per
+  // segment -- unordered mode still deduplicates the way this function
+  // always has, since order doesn't matter there and repeats would just
+  // waste search budget on an item already guaranteed placed.
+  const orderedItems = orderedLeftToRight ? items : Array.from(new Set(items));
+  const margin = 60;
+  const usableWidth = Math.max(1, width - margin * 2);
+  const segmentWidth = usableWidth / orderedItems.length;
+
+  ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  for (let i = 0; i < orderedItems.length; i++) {
+    const value = orderedItems[i];
+    const xMin = orderedLeftToRight ? margin + i * segmentWidth : 4;
+    const xMax = orderedLeftToRight ? margin + (i + 1) * segmentWidth : width - 4;
     let placed = false;
     for (let attempt = 0; attempt < 400 && !placed; attempt++) {
-      const gx = rand.range(4, width - 4);
+      const gx = rand.range(xMin, xMax);
       const gy = rand.range(yMin, yMax);
       const d = Math.min(gx, width - gx, gy, height - gy);
       const ef = norm > 0 ? Math.min(1, d / norm) : 0;
@@ -1187,14 +1210,11 @@ function drawWordsInHalf(
       const clearing = kuralClearingFactor(gx, gy, kuralBox);
       if (strength * clearing <= 0) continue;
 
-      ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
       const measured = ctx.measureText(value);
       const box: PlacedWordBox = { x: gx, y: gy, halfW: measured.width / 2, halfH: opts.size * 0.6 };
       if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
       sharedPlacedBoxes.push(box);
 
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
       ctx.fillStyle = withAlpha(opts.color, opts.opacity * (0.6 + 0.4 * strength));
       ctx.fillText(value, gx, gy);
       placed = true;
@@ -1202,223 +1222,6 @@ function drawWordsInHalf(
   }
 }
 
-/** GOLD MASTER, real founder-reported fix: the region drawWordFormation
- *  actually occupies, computed with the EXACT same Y-range formula that
- *  function itself uses (topMargin/bottomMargin), so this box and the
- *  words drawn inside it can never drift out of sync. Used to give the
- *  formation treatment its own suppression zone (via
- *  kuralClearingFactor's extraBox) so Layer 1/2/3's ambient content
- *  stops populating the same pixels -- full canvas width, since Layer
- *  2's own letters already span the whole width at this height anyway,
- *  and jittered formation words can land anywhere across that span. */
-function computeFormationZoneBox(width: number, kuralLayout: HeroLayout): HeroLayout["box"] {
-  const wordSize = kuralLayout.kuralSize * 0.47;
-  const topMargin = 24;
-  const bottomMargin = Math.max(topMargin + wordSize, kuralLayout.box.y0 - 20);
-  return {
-    x0: 0,
-    y0: Math.max(0, topMargin - wordSize * 0.9),
-    x1: width,
-    y1b: bottomMargin + wordSize * 0.4,
-  };
-}
-
-/** GOLD MASTER, real founder-reported fix: the region
- *  drawWordsInReadingOrder actually occupies, computed with the EXACT
- *  same Y-range formula that function itself uses, so this box and the
- *  words drawn inside it can never drift out of sync. Mirrors
- *  computeFormationZoneBox's own role for the top group -- explicit
- *  founder correction that the top and bottom groups' protection didn't
- *  match: the top zone got its own clearing already, the bottom zone
- *  never did, leaving it just as exposed to Layer 2's letters as
- *  before any of this was fixed. */
-function computeBottomZoneBox(width: number, height: number, kuralBox: HeroLayout["box"]): HeroLayout["box"] {
-  const yMin = Math.min(height - 24, kuralBox.y1b + 40);
-  const yMax = height - 24;
-  return {
-    x0: 0,
-    y0: yMin,
-    x1: width,
-    y1b: yMax,
-  };
-}
-
-/** Measures the real x-position of every space-separated written token in
- *  a Tamil line, using whatever font/size is currently set on ctx --
- *  caller must set ctx.font to match the Kural's own rendering before
- *  calling this, so the measured positions are genuinely the same ones
- *  the real Kural text will occupy. */
-function measureLineTokens(
-  ctx: CanvasRenderingContext2D,
-  line: string,
-  startX: number
-): { token: string; startX: number; endX: number; centerX: number }[] {
-  const tokens = line.split(" ");
-  const spaceWidth = ctx.measureText(" ").width;
-  let x = startX;
-  const results: { token: string; startX: number; endX: number; centerX: number }[] = [];
-  for (const tok of tokens) {
-    const w = ctx.measureText(tok).width;
-    results.push({ token: tok, startX: x, endX: x + w, centerX: x + w / 2 });
-    x += w + spaceWidth;
-  }
-  return results;
-}
-
-/** GOLD MASTER, explicit founder-approved concept, verified against the
- *  real measured position of every written token before being built --
- *  "the kural's porul karuvi is formed by the layer 4 words... i no
- *  need extra word... porul and karuvi." Each group is either a real
- *  pair (two curated words that combine into ONE written compound in
- *  the Kural's own text, e.g. பொருள்+கருவி -> பொருள்கருவி) or a single
- *  (a curated word that already matches a standalone written token
- *  exactly, e.g. காலம்). NO duplicate combined-word text is ever drawn
- *  -- the Kural's own already-rendered text at kuralY1 IS the "formed"
- *  result.
- *
- *  GOLD MASTER, real founder corrections against an actual render, not
- *  guessed: (1) no connecting lines -- shown purely by position now, no
- *  drawn line to the Kural text below; (2) no straight-row alignment --
- *  every group's vertical position is staggered across several bands
- *  instead of one fixed y; (3) real overlap protection -- the previous
- *  version placed words at a single fixed (x,y) with no collision check
- *  at all, and a real render showed exactly the predicted result:
- *  pair-words overlapping each other, and separately colliding with
- *  Layer 1's own ambient glyphs in the same territory. Fixed by
- *  searching multiple candidate positions per word (varying y, and x
- *  jitter near the group's target token) against the SAME shared
- *  cross-layer overlap tracker every other layer already uses, so a
- *  formation word can never collide with anything, ambient or not.
- *
- *  Scoped to the FIRST line only, per explicit founder-approved
- *  decision after a real geometry problem was found and shown directly:
- *  the second line sits close to the first (not near the canvas edge),
- *  while the available bottom placement zone only starts well below the
- *  whole hero block. Line 2's words (இருள்தீர/எண்ணி/செயல்) are not true
- *  multi-word compounds anyway -- each already stands alone in the
- *  written text -- so they get a different, simpler treatment; see
- *  drawWordsInReadingOrder below.
- *
- *  ARCHITECTURAL NOTE, direct founder catch against a real render: this
- *  function does NOT place content inside Layer 4's own designated ring
- *  (STAGE_RINGS.words). It uses raw pixel positioning near the canvas
- *  edge, which lands inside Layer 2's (letters) own territory instead
- *  -- confirmed by direct calculation, not assumed. Checked and ruled
- *  out constraining this to Layer 4's actual ring instead: for Kural
- *  675 there's only ~20px of clearance between STAGE_RINGS.words' own
- *  inner edge and the hero's clearing zone, not enough for this layout.
- *  Kept as a deliberate, explicitly acknowledged exception -- the
- *  shared overlap tracker (sharedPlacedBoxes) still guarantees no
- *  literal glyph collision with Layer 2's content, but the two layers
- *  do now share the same physical territory, not separate rings. */
-function drawWordFormation(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  kuralLayout: HeroLayout,
-  tamilLine1: string,
-  groups: readonly (readonly string[])[],
-  tamilFont: string,
-  color: string,
-  rand: SeededRandom,
-  sharedPlacedBoxes: PlacedWordBox[]
-): void {
-  ctx.font = `700 ${kuralLayout.kuralSize}px ${tamilFont}, sans-serif`;
-  const tokens = measureLineTokens(ctx, tamilLine1, kuralLayout.leftX);
-
-  // Available top territory: from a small margin at the canvas edge
-  // down to just above the hero's own clearing box -- verified by
-  // direct measurement before building (roughly 190px of real room for
-  // Kural 675's own proportions). Several distinct row bands within
-  // that territory, so groups land at genuinely different heights
-  // rather than one straight line.
-  const wordSize = kuralLayout.kuralSize * 0.47;
-  const topMargin = 24;
-  const bottomMargin = Math.max(topMargin + wordSize, kuralLayout.box.y0 - 20);
-  const rowBands = [topMargin + wordSize * 0.5, (topMargin + bottomMargin) / 2, bottomMargin - wordSize * 0.5];
-
-  ctx.font = `600 ${wordSize}px ${tamilFont}, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
-
-  let tokenIdx = 0;
-  let rowCursor = 0; // cycles through rowBands so consecutive groups don't share a row either
-  for (const group of groups) {
-    const tok = tokens[tokenIdx];
-    tokenIdx++;
-    if (!tok) continue; // safety: more groups than tokens would be a real content mismatch
-
-    for (const word of group) {
-      const measured = ctx.measureText(word);
-      const halfW = measured.width / 2;
-      const halfH = wordSize * 0.6;
-      let placed = false;
-      for (let attempt = 0; attempt < 60 && !placed; attempt++) {
-        const y = rowBands[(rowCursor + attempt) % rowBands.length];
-        const xJitter = rand.range(-wordSize * 1.8, wordSize * 1.8);
-        const x = Math.min(width - halfW - 4, Math.max(halfW + 4, tok.centerX + xJitter));
-        const box: PlacedWordBox = { x, y, halfW, halfH };
-        if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
-        sharedPlacedBoxes.push(box);
-        ctx.fillStyle = withAlpha(color, 0.85);
-        ctx.fillText(word, x, y);
-        placed = true;
-      }
-      rowCursor++;
-    }
-  }
-}
-
-/** GOLD MASTER, explicit founder correction: "i need like the down part
- *  the irultheera should come first then enni then seyal" -- the bottom
- *  group's words must appear in their real left-to-right reading order,
- *  not scattered randomly the way drawWordsInHalf placed them. Divides
- *  the available bottom width into one horizontal segment per word, in
- *  the order given, then searches for a non-overlapping position within
- *  each word's own segment -- guarantees reading order while still
- *  respecting the same shared overlap tracker every other layer uses. */
-function drawWordsInReadingOrder(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  kuralBox: HeroLayout["box"],
-  words: readonly string[],
-  tamilFont: string,
-  size: number,
-  color: string,
-  rand: SeededRandom,
-  sharedPlacedBoxes: PlacedWordBox[]
-): void {
-  if (words.length === 0) return;
-  ctx.font = `600 ${size}px ${tamilFont}, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
-
-  const yMin = Math.min(height - 24, kuralBox.y1b + 40);
-  const yMax = height - 24;
-  const margin = 60;
-  const usableWidth = width - margin * 2;
-  const segmentWidth = usableWidth / words.length;
-
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-    const measured = ctx.measureText(word);
-    const halfW = measured.width / 2;
-    const halfH = size * 0.6;
-    const segStart = margin + i * segmentWidth;
-    const segCenterX = segStart + segmentWidth / 2;
-    let placed = false;
-    for (let attempt = 0; attempt < 80 && !placed; attempt++) {
-      const x = Math.min(segStart + segmentWidth - halfW - 4, Math.max(segStart + halfW + 4, segCenterX + rand.range(-segmentWidth * 0.3, segmentWidth * 0.3)));
-      const y = rand.range(yMin, yMax);
-      const box: PlacedWordBox = { x, y, halfW, halfH };
-      if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
-      sharedPlacedBoxes.push(box);
-      ctx.fillStyle = withAlpha(color, 0.85);
-      ctx.fillText(word, x, y);
-      placed = true;
-    }
-  }
-}
 
 /** The whole Living Field for this pass: background memory (full canvas,
  *  edge-density) plus the four resolution stages, each its own ring in
@@ -1438,20 +1241,17 @@ function drawLivingField(
   kuralLayout: HeroLayout
 ): void {
   const kuralBox = kuralLayout.box;
-  // GOLD MASTER, real founder-reported "mashing up" fix, corrected a
-  // second time after a real asymmetry was caught: "top and bottom are
-  // not matching our layer where it lives" -- the top zone
-  // (drawWordFormation) got its own clearing already; the bottom zone
-  // (drawWordsInReadingOrder) never did, leaving it just as exposed to
-  // Layer 2's letters as before any of this was fixed. Both zones only
-  // need to exist for Kural 675 (the only Kural with either treatment)
-  // -- every other Kural's Layers 1-3 behave exactly as before,
-  // unaffected.
-  const extraClearingZones =
-    content.kuralNumber === "675"
-      ? [computeFormationZoneBox(width, kuralLayout), computeBottomZoneBox(width, height, kuralBox)]
-      : undefined;
-  drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox, zonePools, extraClearingZones);
+  // REVERTED, explicit founder instruction: "i need the layer 4 words
+  // only inside the ring and all other layers one belong to the
+  // respective layers only no mix up." The top/bottom clearing zones
+  // this section used to compute existed only to protect word-formation
+  // content that had been moved OUTSIDE Layer 4's own ring, onto the
+  // canvas edges. That whole design is gone now -- see the Layer 4
+  // section below, which places words back inside STAGE_RINGS.words,
+  // the same ring every other Kural's words already live in, so no
+  // special protection is needed here any more than letters/uyirmei
+  // need one against each other.
+  drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox, zonePools);
 
   // GOLD MASTER, explicit founder thumb rule: "no letter must be
   // overlapped" -- not just within one layer, across all of them. One
@@ -1470,7 +1270,7 @@ function drawLivingField(
     tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
     weight: 500, glow: false, cellW: 60, cellH: 52, allowOverlapGuard: true,
     highlightFirstOccurrence: true,
-  }, kuralBox, extraClearingZones, sharedBoxes);
+  }, kuralBox, sharedBoxes);
 
   // MILESTONE 04 / STAGE 3 -- Uyirmei Formation. GOLD MASTER, explicit
   // founder plan: every item drawn here is a real உயிர்மெய் compound
@@ -1492,7 +1292,7 @@ function drawLivingField(
       tamilFont, fontFamily: "serif", size: 19, opacity: 0.42, color: COLORS.heritageBronze,
       weight: 500, glow: false, cellW: 64, cellH: 56, allowOverlapGuard: true,
       highlightFirstOccurrence: true,
-    }, kuralBox, extraClearingZones, sharedBoxes);
+    }, kuralBox, sharedBoxes);
   }
 
   // MILESTONE 04 SCOPE: two more layers still to come (words, sentence)
@@ -1523,50 +1323,35 @@ function drawLivingField(
   // justified specifically because these words carry real positional
   // meaning tied to which line of the Kural they actually come from,
   // not an arbitrary top/bottom split.
-  // GOLD MASTER, WORD FORMATION: explicit founder-approved treatment,
-  // built only after the real geometry was verified by direct
-  // measurement, shown visually, and corrected once already ("i no
-  // need extra word... porul and karuvi" -- the first version wrongly
-  // drew a duplicate combined-word text; fixed to converge into the
-  // Kural's own already-rendered text instead). Groups here are the
-  // real written-token structure of line 1 itself: பொருள்கருவி and
-  // வினையிடனொடு are genuine two-word compounds in the Kural's own
-  // text, காலம் and ஐந்தும் are already standalone tokens. Order matters
-  // -- must match the order these tokens actually appear in
-  // content.tamilLine1, since drawWordFormation consumes tokens
-  // left-to-right, one group per token, in sequence.
   //
-  // ARCHITECTURAL CORRECTION, direct founder catch against a real
-  // render: this treatment does NOT live inside Layer 4's own
-  // designated ring (STAGE_RINGS.words, ef 0.42-0.52) the way every
-  // other layer's content stays inside its own ring. It uses raw pixel
-  // positioning near the canvas edges instead -- which, verified by
-  // direct calculation, lands at roughly ef 0.21 for a typical word
-  // here, squarely inside LAYER 2's (letters, ef 0.14-0.28) own
-  // territory, not Layer 4's. This was built without flagging that
-  // departure, which is the real problem -- not a matter of opinion.
-  // Checked whether it could be fixed by constraining to Layer 4's own
-  // ring instead: for Kural 675, STAGE_RINGS.words' own inner edge
-  // (ef 0.52) lands at y~222, and the hero's clearing zone starts at
-  // y~243 -- about 20px of usable space, not enough for a two-word pair
-  // with staggered rows. Genuinely not geometrically workable for this
-  // content, so kept here as a deliberate, explicitly acknowledged
-  // exception instead -- the same honest treatment already given to the
-  // top/bottom split above, not a second silent one. The shared
-  // overlap-guard (sharedBoxes, passed into both drawWordFormation and
-  // drawWordsInReadingOrder below) is what actually prevents this from
-  // colliding with Layer 2's own glyphs -- verified working -- but it
-  // does not, and cannot, keep the two layers in separate territory.
-  const LAYER4_LINE1_FORMATION_GROUPS: readonly (readonly string[])[] = [
-    ["பொருள்", "கருவி"],
-    ["காலம்"],
-    ["வினை", "இடம்"],
-    ["ஐந்தும்"],
-  ];
+  // RING-CONFINEMENT, restored after a real regression: a "word
+  // formation" treatment (component words visually converging toward
+  // the Kural's own literal text) was built and shipped here for a
+  // time, which required moving this content OUTSIDE Layer 4's own ring
+  // entirely, onto the canvas edges -- verified by direct calculation to
+  // land inside LAYER 2's (letters) own territory, not Layer 4's. That
+  // caused real, repeated visual collisions with Layer 2's content, and
+  // needed increasingly complex clearing-zone machinery to even partly
+  // paper over. Explicit founder instruction removed all of it: "i need
+  // the layer 4 words only inside the ring and all other layers one
+  // belong to the respective layers only no mix up." The formation
+  // visual is gone -- there is no way to keep both "inside Layer 4's own
+  // ring" and "visually pointing at the Kural's exact literal text
+  // position" at once, and staying in-ring is what was explicitly
+  // chosen. Reading order for the bottom group (இருள்தீர -> எண்ணி ->
+  // செயல், left to right) is kept, since that doesn't conflict with
+  // staying in-ring -- drawWordsInHalf's orderedLeftToRight mode
+  // achieves it by dividing the ring's own top/bottom search space into
+  // per-word segments, not by leaving the ring.
+  const LAYER4_TOP_WORDS_KURAL_675: readonly string[] = ["பொருள்", "கருவி", "காலம்", "வினை", "இடம்", "ஐந்தும்"];
   const LAYER4_BOTTOM_WORDS_KURAL_675: readonly string[] = ["இருள்தீர", "எண்ணி", "செயல்"];
   if (content.kuralNumber === "675") {
-    drawWordFormation(ctx, width, kuralLayout, content.tamilLine1, LAYER4_LINE1_FORMATION_GROUPS, tamilFont, COLORS.heritageBronze, rand, sharedBoxes);
-    drawWordsInReadingOrder(ctx, width, height, kuralBox, LAYER4_BOTTOM_WORDS_KURAL_675, tamilFont, 24, COLORS.heritageBronze, rand, sharedBoxes);
+    const wordOpts = {
+      tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.56, color: COLORS.heritageBronze,
+      weight: 500,
+    };
+    drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_TOP_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "top");
+    drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_BOTTOM_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "bottom", true);
   }
 
   // MILESTONE 04 SCOPE: one more layer still to come (the assembled
@@ -1791,7 +1576,7 @@ function computeHeroLayout(
  *  agreement: "a quiet clearing around it" -- gradual, not a hard-edged
  *  panel boundary, which every constitution in this project has argued
  *  against. */
-function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"], extraBoxes?: readonly HeroLayout["box"][]): number {
+function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"]): number {
   // FIX: was proportional to the box's own size (18%/35% of box
   // dimensions) -- fine when the box was just the two-line Kural, but
   // once the hero grew to include the reflection and metadata lines,
@@ -1802,37 +1587,23 @@ function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"], extra
   // had grown to cover nearly the whole region words were allowed to
   // occupy. Fixed pixel feather instead -- a real, bounded soft edge
   // that doesn't compound as the box's own size changes.
+  //
+  // REVERTED, explicit founder instruction: "i need the layer 4 words
+  // only inside the ring and all other layers one belong to the
+  // respective layers only no mix up." This function briefly grew a
+  // second (array) parameter to protect word-formation content that had
+  // been moved OUTSIDE Layer 4's own ring, onto the canvas edges. That
+  // whole design is gone now -- Layer 4 lives inside STAGE_RINGS.words
+  // again, the same ring letters/uyirmei already respect their own
+  // versions of, so this suppression only ever needs to protect the
+  // hero's own footprint, exactly as it did before any of that.
   const featherX = 70;
   const featherY = 55;
-  const clearingFor = (b: HeroLayout["box"]): number => {
-    const dx = x < b.x0 ? b.x0 - x : x > b.x1 ? x - b.x1 : 0;
-    const dy = y < b.y0 ? b.y0 - y : y > b.y1b ? y - b.y1b : 0;
-    if (dx === 0 && dy === 0) return 0; // inside the box -- fully clear
-    const t = Math.min(1, Math.max(dx / featherX, dy / featherY));
-    return t * t * (3 - 2 * t); // smoothstep -- gradual, no hard edge
-  };
-  // GOLD MASTER, real founder-reported "mashing up" fix: word formation
-  // (drawWordFormation, and its bottom-group counterpart
-  // drawWordsInReadingOrder) lives outside Layer 4's own ring, in the
-  // same physical territory Layer 2's letters occupy -- verified
-  // previously, and not fixable by relocating the treatment (not
-  // enough vertical room in Layer 4's own ring for this content). The
-  // actual fix is the other direction: give BOTH zones their own
-  // suppression here, the same technique already used for the hero's
-  // own clearing, so Layer 1/2/3's ambient content stops populating the
-  // same pixels the formation/reading-order words occupy -- at either
-  // edge, not just the top one. extraBoxes is an array, not a single
-  // box, precisely because the top zone (near y=0) and bottom zone
-  // (near y=height) are non-contiguous -- one box can't represent both.
-  // Optional so every existing caller (the hero's own clearing) is
-  // unaffected.
-  let result = clearingFor(box);
-  if (extraBoxes) {
-    for (const b of extraBoxes) {
-      result = Math.min(result, clearingFor(b));
-    }
-  }
-  return result;
+  const dx = x < box.x0 ? box.x0 - x : x > box.x1 ? x - box.x1 : 0;
+  const dy = y < box.y0 ? box.y0 - y : y > box.y1b ? y - box.y1b : 0;
+  if (dx === 0 && dy === 0) return 0; // inside the box -- fully clear
+  const t = Math.min(1, Math.max(dx / featherX, dy / featherY));
+  return t * t * (3 - 2 * t); // smoothstep -- gradual, no hard edge
 }
 
 /** The hero itself. Real typeset text via fillText -- not glyph-by-glyph
