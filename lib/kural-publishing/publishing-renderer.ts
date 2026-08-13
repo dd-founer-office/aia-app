@@ -1612,6 +1612,18 @@ function drawLivingField(
   // (leftmost) -> left, எண்ணிச் (middle) -> bottom (line 1 already owns
   // "top", so line 2's middle token uses the opposite zone rather than
   // competing for the same band), செயல் (rightmost) -> right.
+  //
+  // PRECISION REFINEMENT, direct founder request: "semantic words
+  // belonging to the second line -> surrounding field aligned generally
+  // with the second line." எண்ணிச் moved from "bottom" to "top" --
+  // verified by direct calculation before changing anything: the "top"
+  // zone (y~200) sits 174px from line 2's real height (374), while
+  // "bottom" (y~727) sits 353px away -- genuinely twice as far. A
+  // middle-x token can only ever use "top" or "bottom" (the safe zone
+  // rules out anything horizontally centred, and "left"/"right" would
+  // misrepresent a middle token as belonging to an edge), so between
+  // the two real options, "top" is the objectively closer one for
+  // BOTH lines, not just line 1.
   const LAYER4_LINE1_GROUPS: readonly (readonly string[])[] = [
     ["பொருள்", "கருவி"],
     ["காலம்"],
@@ -1624,7 +1636,7 @@ function drawLivingField(
     ["எண்ணி"],
     ["செயல்"],
   ];
-  const LAYER4_LINE2_ZONES: readonly ("left" | "right" | "top" | "bottom")[] = ["left", "bottom", "right"];
+  const LAYER4_LINE2_ZONES: readonly ("left" | "right" | "top" | "bottom")[] = ["left", "top", "right"];
   if (content.kuralNumber === "675") {
     const wordOpts = {
       // GOLD MASTER, prominence reduction: explicit founder request --
