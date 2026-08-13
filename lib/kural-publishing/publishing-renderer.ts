@@ -1169,17 +1169,38 @@ function measureLineTokens(
  *  lets the placement be driven by the Kural's own actual text
  *  structure rather than a hardcoded per-Kural layout.
  *
+ *  ORDERING FIX, direct founder correction against a real render: a
+ *  two-word group's members previously searched independently and
+ *  symmetrically around the same target x, with no relationship to each
+ *  other -- confirmed by instrumentation that இருள் and தீர் landed in
+ *  the WRONG order (இருள் right of the token, தீர் left of it,
+ *  backwards from இருள் -> தீர் -> இருள்தீர's own natural reading
+ *  order). Fixed: for a pair, the first word's search is centred at
+ *  tokenX - sideOffset, the second at tokenX + sideOffset, each with
+ *  its own smaller jitter -- still organic and never neatly aligned
+ *  (the jitter keeps them from landing at fixed, predictable spots),
+ *  but the first member is now genuinely biased left and the second
+ *  genuinely biased right, matching the compound's own spelling order.
+ *
+ *  STRENGTH HIERARCHY, explicit founder request: "give slightly
+ *  stronger semantic presence to the fragments that form compounds...
+ *  single concepts... can remain more atmospheric." `isCompound` (true
+ *  for two-word groups) applies a modest opacity and weight boost --
+ *  within the same "opacity as the depth/resolution signal" philosophy
+ *  already used everywhere else in this field, not a different visual
+ *  language, and nowhere near as strong as the highlightFirstOccurrence
+ *  treatment elsewhere (bold-700/darkened-ink) -- genuinely subtle, per
+ *  "not so close that they look like labels."
+ *
  *  Each word's search is biased toward its own token's real measured
- *  centreX (via a bounded random offset, not an exact match -- "close
+ *  centreX with a bounded random offset, not an exact match -- "close
  *  enough to be discoverable, not so close it reads as a label," per
- *  explicit founder instruction), while every other constraint stays
+ *  explicit founder instruction -- while every other constraint stays
  *  exactly what it already was for Layer 4: full ring confinement
  *  (ringStrength against STAGE_RINGS.words), full half confinement (top
  *  for line 1, bottom for line 2), full no-repeat (each word placed
  *  exactly once), full no-overlap (the same shared cross-layer
- *  tracker). Colour, opacity, and weight are untouched -- this only
- *  changes WHERE within the ring each word's search is centred, never
- *  what it looks like once placed. */
+ *  tracker). */
 function drawWordsNearKuralTokens(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1212,23 +1233,41 @@ function drawWordsNearKuralTokens(
   const yMin = half === "top" ? 4 : height / 2;
   const yMax = half === "top" ? height / 2 : height - 4;
 
-  ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
   let tokenIdx = 0;
   for (const group of groups) {
     const tok = tokens[tokenIdx];
     tokenIdx++;
     if (!tok) continue; // safety: more groups than real tokens would be a genuine content mismatch
 
-    for (const value of group) {
+    const isCompound = group.length === 2;
+    const weight = isCompound ? 600 : opts.weight;
+    const opacity = isCompound ? Math.min(0.85, opts.opacity * 1.2) : opts.opacity;
+    // Half the bias radius as the left/right separation, leaving the
+    // other half as each word's own jitter -- enough room for the pair
+    // to still feel organically placed, not pinned to two fixed spots.
+    const sideOffset = biasRadius * 0.5;
+    const sideJitter = biasRadius * 0.5;
+
+    ctx.font = `${weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (let i = 0; i < group.length; i++) {
+      const value = group[i];
       const measured = ctx.measureText(value);
       const halfW = measured.width / 2;
       const halfH = opts.size * 0.6;
+      // Single word: centred on the token, full bias radius of jitter.
+      // Pair, first member: biased left of the token. Pair, second
+      // member: biased right. Order comes from the group's own array
+      // order, which the caller sets to match the compound's real
+      // spelling order (e.g. ["இருள்", "தீர"] for இருள்தீர்).
+      const center = !isCompound ? tok.centerX : i === 0 ? tok.centerX - sideOffset : tok.centerX + sideOffset;
+      const jitter = isCompound ? sideJitter : biasRadius;
+
       let placed = false;
       for (let attempt = 0; attempt < 500 && !placed; attempt++) {
-        const gx = Math.min(width - 4, Math.max(4, tok.centerX + rand.range(-biasRadius, biasRadius)));
+        const gx = Math.min(width - 4, Math.max(4, center + rand.range(-jitter, jitter)));
         const gy = rand.range(yMin, yMax);
         const d = Math.min(gx, width - gx, gy, height - gy);
         const ef = norm > 0 ? Math.min(1, d / norm) : 0;
@@ -1240,7 +1279,7 @@ function drawWordsNearKuralTokens(
         if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
         sharedPlacedBoxes.push(box);
 
-        ctx.fillStyle = withAlpha(opts.color, opts.opacity * (0.6 + 0.4 * strength));
+        ctx.fillStyle = withAlpha(opts.color, opacity * (0.6 + 0.4 * strength));
         ctx.fillText(value, gx, gy);
         placed = true;
       }
@@ -1499,12 +1538,20 @@ function drawLivingField(
   // look like labels." Checked geometrically before building, not
   // assumed: for Kural 675, every real token's own x-position is
   // reachable within STAGE_RINGS.words at a real y inside the correct
-  // half (confirmed for all seven tokens across both lines). Each word
-  // below is drawn by drawWordsNearKuralTokens, which biases its search
-  // toward its own token's real measured centre while never leaving the
-  // ring, the half, the no-repeat guarantee, or the shared no-overlap
-  // tracker -- only WHERE within the ring each search is centred
-  // changes, nothing about colour, opacity, or weight.
+  // half (confirmed for all seven tokens across both lines).
+  //
+  // PRECISION REFINEMENT, direct founder correction against a real
+  // render: இருள்/தீர் landed in the wrong order (இருள் right of the
+  // token, தீர் left of it) since a pair's two members previously
+  // searched independently with no relationship to each other. Fixed
+  // inside drawWordsNearKuralTokens itself -- see its own doc comment --
+  // a pair's first member (matching the compound's own spelling order,
+  // e.g. இருள் in ["இருள்","தீர"]) is now genuinely biased left of its
+  // token, the second genuinely biased right. Also added there: a
+  // modest opacity/weight boost for compound pairs specifically (பொருள்
+  // +கருவி, வினை+இடம், இருள்+தீர்) over single-token words (காலம்,
+  // ஐந்தும், எண்ணி, செயல்), per explicit founder request for these
+  // three relationships to be "the most discoverable."
   //
   // Content change, explicit founder breakdown: இருள்தீர் (previously
   // one curated word) is now இருள் + தீர் -- இருள் ("darkness") and
