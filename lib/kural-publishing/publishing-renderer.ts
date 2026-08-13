@@ -1572,7 +1572,14 @@ function drawLivingField(
   ];
   if (content.kuralNumber === "675") {
     const wordOpts = {
-      tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.56, color: COLORS.heritageBronze,
+      // GOLD MASTER, prominence reduction: explicit founder request --
+      // "reduce their visual prominence by approximately 10-15%...
+      // while keeping them clearly discoverable." 0.56 -> 0.49 (~12%
+      // reduction), applied uniformly so the existing compound/single
+      // ratio (the x1.2 boost inside drawWordsNearKuralTokens) stays
+      // intact -- both tiers get quieter together, not one more than
+      // the other.
+      tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.49, color: COLORS.heritageBronze,
       weight: 500,
     };
     const biasRadius = 140; // discoverable, not label-close -- verified against real inter-token spacing (smallest real gap ~217px) before choosing this value
@@ -1580,9 +1587,22 @@ function drawLivingField(
       ctx, width, height, STAGE_RINGS.words, LAYER4_LINE1_GROUPS, content.tamilLine1, kuralLayout, tamilFont, rand,
       wordOpts, kuralBox, sharedBoxes, "top", biasRadius
     );
+    // GOLD MASTER, real geometric fix, direct founder correction against
+    // a real render: "the semantic words belonging to the second Kural
+    // line are sitting too low, around/below the metadata." Verified by
+    // direct calculation before touching anything: line 2's own real
+    // text sits at y~374, which is only 150-190px from the TOP ring
+    // band (the same one line 1 already uses) but 330-370px from the
+    // BOTTOM ring band this call used to use. The "bottom" band exists
+    // just outside the hero's own clearing zone, which spans the WHOLE
+    // hero stack (Kural + reflection + metadata) -- so "bottom" was
+    // never actually near line 2, it was near the bottom of the entire
+    // stack, including the metadata line below it. Switched to "top",
+    // the genuinely closer territory, verified by measurement rather
+    // than assumed.
     drawWordsNearKuralTokens(
       ctx, width, height, STAGE_RINGS.words, LAYER4_LINE2_GROUPS, content.tamilLine2, kuralLayout, tamilFont, rand,
-      wordOpts, kuralBox, sharedBoxes, "bottom", biasRadius
+      wordOpts, kuralBox, sharedBoxes, "top", biasRadius
     );
   }
 
