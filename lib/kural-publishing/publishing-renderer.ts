@@ -1155,58 +1155,61 @@ function measureLineTokens(
 /** GOLD MASTER, explicit founder-approved concept: "these smaller
  *  meaning words are coming together to form the actual words of the
  *  Kural... the eye naturally connects பொருள் -> கருவி -> பொருள்கருவி."
- *  Verified geometrically before building, not assumed: for Kural 675,
- *  every line-1 token's own x-position is reachable within Layer 4's
- *  actual ring (STAGE_RINGS.words) at a real y-value inside the top
- *  half (confirmed by direct calculation for all four tokens before any
- *  code was touched).
- *
  *  Each `groups` entry is one Kural token's real component word(s) --
  *  either a genuine two-word compound (பொருள்+கருவி -> பொருள்கருவி) or
  *  a single word standing in for a token that doesn't literally split
  *  (காலம் -> காலம்). Consumed in the same left-to-right order the real
- *  tokens appear in `kuralLine`, one group per token -- this is what
- *  lets the placement be driven by the Kural's own actual text
- *  structure rather than a hardcoded per-Kural layout.
+ *  tokens appear in `kuralLine`, one group per token, paired with
+ *  `zones[i]` -- this is what lets the placement be driven by the
+ *  Kural's own actual text structure rather than a hardcoded per-Kural
+ *  layout, while still giving the caller control over WHERE around the
+ *  Kural each group belongs.
  *
- *  ORDERING FIX, direct founder correction against a real render: a
- *  two-word group's members previously searched independently and
- *  symmetrically around the same target x, with no relationship to each
- *  other -- confirmed by instrumentation that இருள் and தீர் landed in
- *  the WRONG order (இருள் right of the token, தீர் left of it,
- *  backwards from இருள் -> தீர் -> இருள்தீர's own natural reading
- *  order). Fixed: for a pair, the first word's search is centred at
- *  tokenX - sideOffset, the second at tokenX + sideOffset, each with
- *  its own smaller jitter -- still organic and never neatly aligned
- *  (the jitter keeps them from landing at fixed, predictable spots),
- *  but the first member is now genuinely biased left and the second
- *  genuinely biased right, matching the compound's own spelling order.
+ *  GOLD MASTER, ZONE REDESIGN: direct founder correction against a real
+ *  render -- "the current placement is making Layer 4 look like another
+ *  sentence above the Kural... think orbit, not overlay." The previous
+ *  version biased every group toward the SAME horizontal band (all of
+ *  line 1's groups, then all of line 2's groups, packed into one strip
+ *  directly above the Kural) -- exactly the "second sentence" problem
+ *  described. Replaced entirely: each group now belongs to one of four
+ *  ZONES around the Kural -- "left" and "right" (the ring's own
+ *  left/right-edge territory, verified geometrically reachable at BOTH
+ *  Kural lines' real heights before being used), or "top"/"bottom" (the
+ *  ring's own top/bottom-edge territory, used only for the handful of
+ *  groups that don't fit naturally to a side). A group assigned "left"
+ *  or "right" also takes a `yAnchor` (which Kural line's real height to
+ *  centre near), so line 1's and line 2's groups on the same side stay
+ *  visually distinct from each other, not stacked in one column either.
  *
- *  STRENGTH HIERARCHY, explicit founder request: "give slightly
- *  stronger semantic presence to the fragments that form compounds...
- *  single concepts... can remain more atmospheric." `isCompound` (true
- *  for two-word groups) applies a modest opacity and weight boost --
- *  within the same "opacity as the depth/resolution signal" philosophy
- *  already used everywhere else in this field, not a different visual
- *  language, and nowhere near as strong as the highlightFirstOccurrence
- *  treatment elsewhere (bold-700/darkened-ink) -- genuinely subtle, per
- *  "not so close that they look like labels."
+ *  SAFE ZONE, explicit founder requirement -- "no Layer 4 word may
+ *  overlap, sit behind, touch, or visually merge with the Kural."
+ *  kuralClearingFactor already returns a hard 0 (fully suppressed)
+ *  anywhere inside the real kuralBox, which every layer in this file
+ *  already respects -- but this function additionally checks against an
+ *  EXPANDED copy of that box (padded further out on all sides), local
+ *  to this function only, so Layer 4 specifically keeps real breathing
+ *  room beyond the bare minimum every other layer uses. This does not
+ *  touch kuralClearingFactor itself or any other layer's own use of it.
  *
- *  Each word's search is biased toward its own token's real measured
- *  centreX with a bounded random offset, not an exact match -- "close
- *  enough to be discoverable, not so close it reads as a label," per
- *  explicit founder instruction -- while every other constraint stays
- *  exactly what it already was for Layer 4: full ring confinement
- *  (ringStrength against STAGE_RINGS.words), full half confinement (top
- *  for line 1, bottom for line 2), full no-repeat (each word placed
- *  exactly once), full no-overlap (the same shared cross-layer
- *  tracker). */
+ *  ORDERING, kept from the previous pass: a pair's first member
+ *  (matching the compound's own spelling order in the group array, e.g.
+ *  இருள் in ["இருள்","தீர"]) is biased toward one side of its target,
+ *  the second toward the other -- horizontally (left/right of centre)
+ *  in the "top"/"bottom" zones, vertically (above/below centre) in the
+ *  "left"/"right" zones, since those zones are themselves narrow
+ *  horizontal bands where a further horizontal split would be cramped.
+ *
+ *  STRENGTH HIERARCHY, kept from the previous pass: `isCompound`
+ *  (two-word groups) gets a modest opacity/weight boost over single-
+ *  token groups, within the same "opacity as the depth/resolution
+ *  signal" philosophy already used everywhere else in this field. */
 function drawWordsNearKuralTokens(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   ring: { peakLo: number; peakHi: number; fadeOutHi: number },
   groups: readonly (readonly string[])[],
+  zones: readonly ("left" | "right" | "top" | "bottom")[],
   kuralLine: string,
   kuralLayout: HeroLayout,
   tamilFont: string,
@@ -1221,8 +1224,7 @@ function drawWordsNearKuralTokens(
   },
   kuralBox: HeroLayout["box"],
   sharedPlacedBoxes: PlacedWordBox[],
-  half: "top" | "bottom",
-  biasRadius: number
+  yAnchor: number
 ): void {
   if (groups.length === 0) return;
 
@@ -1230,11 +1232,35 @@ function drawWordsNearKuralTokens(
   const tokens = measureLineTokens(ctx, kuralLine, kuralLayout.leftX);
 
   const norm = Math.min(width, height) * 0.46;
-  const yMin = half === "top" ? 4 : height / 2;
-  const yMax = half === "top" ? height / 2 : height - 4;
+
+  // Layer-4-specific expanded safe zone -- local to this function,
+  // doesn't touch kuralClearingFactor or any other layer's own clearing.
+  // FIX, real failure found and fixed with real numbers: 55px swallowed
+  // almost the entire bottom ring band (698-748px, only 60px wide to
+  // begin with) once stacked on top of the hero's own edge -- confirmed
+  // by instrumentation that எண்ணி் failed to place at all under that
+  // margin. 25px still adds genuine clearance beyond kuralClearingFactor's
+  // own base feather (70/55) without eliminating the territory.
+  const safeMargin = 25;
+  const expandedBox: HeroLayout["box"] = {
+    x0: kuralBox.x0 - safeMargin,
+    y0: kuralBox.y0 - safeMargin,
+    x1: kuralBox.x1 + safeMargin,
+    y1b: kuralBox.y1b + safeMargin,
+  };
+
+  // Ring's own left/right-edge territory, verified reachable at both
+  // Kural lines' real heights before being used (roughly ef 0.42-0.52
+  // maps to x~175-220 from the left edge, or the mirror from the right).
+  const leftX = norm * 0.46;
+  const rightX = width - norm * 0.46;
+  const topY = norm * 0.47;
+  const bottomY = height - norm * 0.47;
 
   let tokenIdx = 0;
-  for (const group of groups) {
+  for (let g = 0; g < groups.length; g++) {
+    const group = groups[g];
+    const zone = zones[g];
     const tok = tokens[tokenIdx];
     tokenIdx++;
     if (!tok) continue; // safety: more groups than real tokens would be a genuine content mismatch
@@ -1242,11 +1268,34 @@ function drawWordsNearKuralTokens(
     const isCompound = group.length === 2;
     const weight = isCompound ? 600 : opts.weight;
     const opacity = isCompound ? Math.min(0.85, opts.opacity * 1.2) : opts.opacity;
-    // Half the bias radius as the left/right separation, leaving the
-    // other half as each word's own jitter -- enough room for the pair
-    // to still feel organically placed, not pinned to two fixed spots.
-    const sideOffset = biasRadius * 0.5;
-    const sideJitter = biasRadius * 0.5;
+
+    // Each zone's own centre point and how a pair's two members split
+    // apart from it -- horizontally for top/bottom (wide bands),
+    // vertically for left/right (narrow bands, a horizontal split would
+    // be cramped against the ring's own limited width there).
+    let baseX: number;
+    let baseY: number;
+    let splitAxis: "x" | "y";
+    if (zone === "left") {
+      baseX = leftX;
+      baseY = yAnchor;
+      splitAxis = "y";
+    } else if (zone === "right") {
+      baseX = rightX;
+      baseY = yAnchor;
+      splitAxis = "y";
+    } else if (zone === "top") {
+      baseX = tok.centerX;
+      baseY = topY;
+      splitAxis = "x";
+    } else {
+      baseX = tok.centerX;
+      baseY = bottomY;
+      splitAxis = "x";
+    }
+    const splitOffset = 45;
+    const splitJitter = 30;
+    const freeJitter = zone === "left" || zone === "right" ? 90 : 70;
 
     ctx.font = `${weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
     ctx.textAlign = "center";
@@ -1257,23 +1306,32 @@ function drawWordsNearKuralTokens(
       const measured = ctx.measureText(value);
       const halfW = measured.width / 2;
       const halfH = opts.size * 0.6;
-      // Single word: centred on the token, full bias radius of jitter.
-      // Pair, first member: biased left of the token. Pair, second
-      // member: biased right. Order comes from the group's own array
-      // order, which the caller sets to match the compound's real
-      // spelling order (e.g. ["இருள்", "தீர"] for இருள்தீர்).
-      const center = !isCompound ? tok.centerX : i === 0 ? tok.centerX - sideOffset : tok.centerX + sideOffset;
-      const jitter = isCompound ? sideJitter : biasRadius;
+
+      let centerX = baseX;
+      let centerY = baseY;
+      let jitterX = freeJitter;
+      let jitterY = freeJitter;
+      if (isCompound) {
+        const side = i === 0 ? -1 : 1;
+        if (splitAxis === "x") {
+          centerX = baseX + side * splitOffset;
+          jitterX = splitJitter;
+        } else {
+          centerY = baseY + side * splitOffset;
+          jitterY = splitJitter;
+        }
+      }
 
       let placed = false;
       for (let attempt = 0; attempt < 500 && !placed; attempt++) {
-        const gx = Math.min(width - 4, Math.max(4, center + rand.range(-jitter, jitter)));
-        const gy = rand.range(yMin, yMax);
+        const gx = Math.min(width - 4, Math.max(4, centerX + rand.range(-jitterX, jitterX)));
+        const gy = Math.min(height - 4, Math.max(4, centerY + rand.range(-jitterY, jitterY)));
         const d = Math.min(gx, width - gx, gy, height - gy);
         const ef = norm > 0 ? Math.min(1, d / norm) : 0;
         const strength = ringStrength(ef, ring);
         const clearing = kuralClearingFactor(gx, gy, kuralBox);
-        if (strength * clearing <= 0) continue;
+        const safeZoneClear = kuralClearingFactor(gx, gy, expandedBox);
+        if (strength * clearing * safeZoneClear <= 0) continue;
 
         const box: PlacedWordBox = { x: gx, y: gy, halfW, halfH };
         if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
@@ -1529,47 +1587,44 @@ function drawLivingField(
   // words only inside the ring and all other layers one belong to the
   // respective layers only no mix up."
   //
-  // GOLD MASTER, EMERGENCE: explicit founder request, a more complete
-  // version of the same idea, this time verified to be achievable
-  // without ever leaving the ring -- "these smaller meaning words are
-  // coming together to form the actual words of the Kural... the eye
-  // naturally connects பொருள் -> கருவி -> பொருள்கருவி... make it an
-  // editorial / poetic visual relationship... not so close that they
-  // look like labels." Checked geometrically before building, not
-  // assumed: for Kural 675, every real token's own x-position is
-  // reachable within STAGE_RINGS.words at a real y inside the correct
-  // half (confirmed for all seven tokens across both lines).
+  // GOLD MASTER, EMERGENCE: explicit founder request -- "these smaller
+  // meaning words are coming together to form the actual words of the
+  // Kural... the eye naturally connects பொருள் -> கருவி -> பொருள்கருவி."
   //
-  // PRECISION REFINEMENT, direct founder correction against a real
-  // render: இருள்/தீர் landed in the wrong order (இருள் right of the
-  // token, தீர் left of it) since a pair's two members previously
-  // searched independently with no relationship to each other. Fixed
-  // inside drawWordsNearKuralTokens itself -- see its own doc comment --
-  // a pair's first member (matching the compound's own spelling order,
-  // e.g. இருள் in ["இருள்","தீர"]) is now genuinely biased left of its
-  // token, the second genuinely biased right. Also added there: a
-  // modest opacity/weight boost for compound pairs specifically (பொருள்
-  // +கருவி, வினை+இடம், இருள்+தீர்) over single-token words (காலம்,
-  // ஐந்தும், எண்ணி, செயல்), per explicit founder request for these
-  // three relationships to be "the most discoverable."
+  // ORBIT REDESIGN, direct founder correction against a real render:
+  // "the current placement is making Layer 4 look like another sentence
+  // above the Kural... think orbit, not overlay... do NOT create a
+  // second line of text." The previous version put every group from
+  // both lines into the same horizontal band directly above the Kural
+  // -- exactly this problem. Each group is now assigned a ZONE (left,
+  // right, top, or bottom) based on where its own token actually sits
+  // in its line, distributing groups around all four sides of the Kural
+  // instead of stacking them into one strip. Left-side tokens go to the
+  // "left" zone, right-side tokens to "right", and only the genuine
+  // middle tokens stay in "top"/"bottom" -- see drawWordsNearKuralTokens
+  // for the zone geometry itself and the expanded safe-zone that keeps
+  // every word a real distance from the Kural, not just non-overlapping.
   //
-  // Content change, explicit founder breakdown: இருள்தீர் (previously
-  // one curated word) is now இருள் + தீர் -- இருள் ("darkness") and
-  // தீர் ("to clear away, be resolved") are both genuine independent
-  // words, the same kind of real two-word compound பொருள்கருவி and
-  // வினையிடனொடு already are. எண்ணி and செயல் are unchanged, matching
-  // their own tokens (எண்ணிச்/செயல்) directly.
+  // ஐந்தும் in LINE1 GROUPS is deliberately last (matching its real
+  // token order in the line) but assigned "right" -- it's the line's
+  // rightmost token, so it belongs on the right side, not stacked into
+  // "top" with காலம்/வினை+இடம். Same principle for LINE2: இருள்+தீர்
+  // (leftmost) -> left, எண்ணிச் (middle) -> bottom (line 1 already owns
+  // "top", so line 2's middle token uses the opposite zone rather than
+  // competing for the same band), செயல் (rightmost) -> right.
   const LAYER4_LINE1_GROUPS: readonly (readonly string[])[] = [
     ["பொருள்", "கருவி"],
     ["காலம்"],
     ["வினை", "இடம்"],
     ["ஐந்தும்"],
   ];
+  const LAYER4_LINE1_ZONES: readonly ("left" | "right" | "top" | "bottom")[] = ["left", "top", "top", "right"];
   const LAYER4_LINE2_GROUPS: readonly (readonly string[])[] = [
     ["இருள்", "தீர"],
     ["எண்ணி"],
     ["செயல்"],
   ];
+  const LAYER4_LINE2_ZONES: readonly ("left" | "right" | "top" | "bottom")[] = ["left", "bottom", "right"];
   if (content.kuralNumber === "675") {
     const wordOpts = {
       // GOLD MASTER, prominence reduction: explicit founder request --
@@ -1582,27 +1637,27 @@ function drawLivingField(
       tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.49, color: COLORS.heritageBronze,
       weight: 500,
     };
-    const biasRadius = 140; // discoverable, not label-close -- verified against real inter-token spacing (smallest real gap ~217px) before choosing this value
+    // FIX, real placement failure found and fixed with real numbers, not
+    // guessed: passing kuralY1/kuralY2 directly as the left/right-zone
+    // anchor put line 1's and line 2's pairs only 84px apart before
+    // splitting -- confirmed by instrumentation that இருள் failed to
+    // place entirely (கருவி's range 305-365 and இருள்'s range 299-359
+    // overlapped by 54px, so இருள் kept colliding with கருவி's
+    // already-placed box for all 500 attempts). Verified separately
+    // that the ring is actually reachable across a much taller y-range
+    // at the left/right zone's x-position (196-732 for this canvas,
+    // since x stays the dominant distance throughout) -- so there was
+    // real room to separate the two lines further, not just tune the
+    // existing split tighter. Pushing line 1's anchor up and line 2's
+    // down by 50px each roughly doubles the gap between them (84px ->
+    // 184px) before either pair's own left/right split is even applied.
     drawWordsNearKuralTokens(
-      ctx, width, height, STAGE_RINGS.words, LAYER4_LINE1_GROUPS, content.tamilLine1, kuralLayout, tamilFont, rand,
-      wordOpts, kuralBox, sharedBoxes, "top", biasRadius
+      ctx, width, height, STAGE_RINGS.words, LAYER4_LINE1_GROUPS, LAYER4_LINE1_ZONES, content.tamilLine1, kuralLayout, tamilFont, rand,
+      wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY1 - 50
     );
-    // GOLD MASTER, real geometric fix, direct founder correction against
-    // a real render: "the semantic words belonging to the second Kural
-    // line are sitting too low, around/below the metadata." Verified by
-    // direct calculation before touching anything: line 2's own real
-    // text sits at y~374, which is only 150-190px from the TOP ring
-    // band (the same one line 1 already uses) but 330-370px from the
-    // BOTTOM ring band this call used to use. The "bottom" band exists
-    // just outside the hero's own clearing zone, which spans the WHOLE
-    // hero stack (Kural + reflection + metadata) -- so "bottom" was
-    // never actually near line 2, it was near the bottom of the entire
-    // stack, including the metadata line below it. Switched to "top",
-    // the genuinely closer territory, verified by measurement rather
-    // than assumed.
     drawWordsNearKuralTokens(
-      ctx, width, height, STAGE_RINGS.words, LAYER4_LINE2_GROUPS, content.tamilLine2, kuralLayout, tamilFont, rand,
-      wordOpts, kuralBox, sharedBoxes, "top", biasRadius
+      ctx, width, height, STAGE_RINGS.words, LAYER4_LINE2_GROUPS, LAYER4_LINE2_ZONES, content.tamilLine2, kuralLayout, tamilFont, rand,
+      wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY2 + 50
     );
   }
 
