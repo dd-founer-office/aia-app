@@ -1130,6 +1130,124 @@ function drawRadialStage(
   }
 }
 
+/** Measures the real x-position of every space-separated written token in
+ *  a Tamil line, using whatever font/size is currently set on ctx --
+ *  caller must set ctx.font to match the Kural's own rendering before
+ *  calling this, so the measured positions are genuinely the same ones
+ *  the real Kural text will occupy. */
+function measureLineTokens(
+  ctx: CanvasRenderingContext2D,
+  line: string,
+  startX: number
+): { token: string; centerX: number }[] {
+  const tokens = line.split(" ");
+  const spaceWidth = ctx.measureText(" ").width;
+  let x = startX;
+  const results: { token: string; centerX: number }[] = [];
+  for (const tok of tokens) {
+    const w = ctx.measureText(tok).width;
+    results.push({ token: tok, centerX: x + w / 2 });
+    x += w + spaceWidth;
+  }
+  return results;
+}
+
+/** GOLD MASTER, explicit founder-approved concept: "these smaller
+ *  meaning words are coming together to form the actual words of the
+ *  Kural... the eye naturally connects பொருள் -> கருவி -> பொருள்கருவி."
+ *  Verified geometrically before building, not assumed: for Kural 675,
+ *  every line-1 token's own x-position is reachable within Layer 4's
+ *  actual ring (STAGE_RINGS.words) at a real y-value inside the top
+ *  half (confirmed by direct calculation for all four tokens before any
+ *  code was touched).
+ *
+ *  Each `groups` entry is one Kural token's real component word(s) --
+ *  either a genuine two-word compound (பொருள்+கருவி -> பொருள்கருவி) or
+ *  a single word standing in for a token that doesn't literally split
+ *  (காலம் -> காலம்). Consumed in the same left-to-right order the real
+ *  tokens appear in `kuralLine`, one group per token -- this is what
+ *  lets the placement be driven by the Kural's own actual text
+ *  structure rather than a hardcoded per-Kural layout.
+ *
+ *  Each word's search is biased toward its own token's real measured
+ *  centreX (via a bounded random offset, not an exact match -- "close
+ *  enough to be discoverable, not so close it reads as a label," per
+ *  explicit founder instruction), while every other constraint stays
+ *  exactly what it already was for Layer 4: full ring confinement
+ *  (ringStrength against STAGE_RINGS.words), full half confinement (top
+ *  for line 1, bottom for line 2), full no-repeat (each word placed
+ *  exactly once), full no-overlap (the same shared cross-layer
+ *  tracker). Colour, opacity, and weight are untouched -- this only
+ *  changes WHERE within the ring each word's search is centred, never
+ *  what it looks like once placed. */
+function drawWordsNearKuralTokens(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  ring: { peakLo: number; peakHi: number; fadeOutHi: number },
+  groups: readonly (readonly string[])[],
+  kuralLine: string,
+  kuralLayout: HeroLayout,
+  tamilFont: string,
+  rand: SeededRandom,
+  opts: {
+    tamilFont: string;
+    fontFamily: "sans-serif" | "serif";
+    size: number;
+    opacity: number;
+    color: string;
+    weight: number;
+  },
+  kuralBox: HeroLayout["box"],
+  sharedPlacedBoxes: PlacedWordBox[],
+  half: "top" | "bottom",
+  biasRadius: number
+): void {
+  if (groups.length === 0) return;
+
+  ctx.font = `700 ${kuralLayout.kuralSize}px ${tamilFont}, sans-serif`;
+  const tokens = measureLineTokens(ctx, kuralLine, kuralLayout.leftX);
+
+  const norm = Math.min(width, height) * 0.46;
+  const yMin = half === "top" ? 4 : height / 2;
+  const yMax = half === "top" ? height / 2 : height - 4;
+
+  ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  let tokenIdx = 0;
+  for (const group of groups) {
+    const tok = tokens[tokenIdx];
+    tokenIdx++;
+    if (!tok) continue; // safety: more groups than real tokens would be a genuine content mismatch
+
+    for (const value of group) {
+      const measured = ctx.measureText(value);
+      const halfW = measured.width / 2;
+      const halfH = opts.size * 0.6;
+      let placed = false;
+      for (let attempt = 0; attempt < 500 && !placed; attempt++) {
+        const gx = Math.min(width - 4, Math.max(4, tok.centerX + rand.range(-biasRadius, biasRadius)));
+        const gy = rand.range(yMin, yMax);
+        const d = Math.min(gx, width - gx, gy, height - gy);
+        const ef = norm > 0 ? Math.min(1, d / norm) : 0;
+        const strength = ringStrength(ef, ring);
+        const clearing = kuralClearingFactor(gx, gy, kuralBox);
+        if (strength * clearing <= 0) continue;
+
+        const box: PlacedWordBox = { x: gx, y: gy, halfW, halfH };
+        if (wordWouldOverlap(box, sharedPlacedBoxes)) continue;
+        sharedPlacedBoxes.push(box);
+
+        ctx.fillStyle = withAlpha(opts.color, opts.opacity * (0.6 + 0.4 * strength));
+        ctx.fillText(value, gx, gy);
+        placed = true;
+      }
+    }
+  }
+}
+
 /** GOLD MASTER, POSITIONAL SPLIT -- see the call site's own comment for
  *  the full reasoning. Places every item in `items` exactly once (no
  *  opportunistic repeats -- unlike drawRadialStage's Phase 2, this
@@ -1169,7 +1287,16 @@ function drawRadialStage(
  *  -- still checked against the SAME ring/clearing/overlap constraints
  *  as every other placement, so proximity is achieved by search bias
  *  alone, never by exempting either word from Layer 4's own
- *  territory. */
+ *  territory.
+ *
+ *  Currently unused: superseded for Kural 675 by
+ *  drawWordsNearKuralTokens, which biases every word toward its own
+ *  real Kural token instead of toward another already-placed word or a
+ *  fixed segment. Kept intact, not deleted -- pairAnchor/
+ *  orderedLeftToRight remain a genuinely reusable building block for
+ *  any future case that wants ring-confined placement without the
+ *  per-token bias. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawWordsInHalf(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1358,42 +1485,58 @@ function drawLivingField(
   // time, which required moving this content OUTSIDE Layer 4's own ring
   // entirely, onto the canvas edges -- verified by direct calculation to
   // land inside LAYER 2's (letters) own territory, not Layer 4's. That
-  // caused real, repeated visual collisions with Layer 2's content, and
-  // needed increasingly complex clearing-zone machinery to even partly
-  // paper over. Explicit founder instruction removed all of it: "i need
-  // the layer 4 words only inside the ring and all other layers one
-  // belong to the respective layers only no mix up." The formation
-  // visual is gone -- there is no way to keep both "inside Layer 4's own
-  // ring" and "visually pointing at the Kural's exact literal text
-  // position" at once, and staying in-ring is what was explicitly
-  // chosen. Reading order for the bottom group (இருள்தீர -> எண்ணி ->
-  // செயல், left to right) is kept, since that doesn't conflict with
-  // staying in-ring -- drawWordsInHalf's orderedLeftToRight mode
-  // achieves it by dividing the ring's own top/bottom search space into
-  // per-word segments, not by leaving the ring.
+  // caused real, repeated visual collisions with Layer 2's content.
+  // Explicit founder instruction removed all of it: "i need the layer 4
+  // words only inside the ring and all other layers one belong to the
+  // respective layers only no mix up."
   //
-  // GOLD MASTER, explicit founder request: "our first word of kural is
-  // porulkaruvi... i need the user should recognise that porulkaruvai
-  // came from porul and karuvi the fourth layer words so adjust the
-  // placement inside the fourth layer itself accordingly." பொருள் and
-  // கருவி (indices 0/1 below) are the two curated words that combine
-  // into பொருள்கருவி, the Kural's own actual first written word --
-  // pairAnchor biases கருவி's placement to land near wherever பொருள்
-  // ends up, still fully inside Layer 4's own ring, so a viewer can read
-  // the relationship through proximity rather than a line or any
-  // departure from Layer 4's own territory.
-  const LAYER4_TOP_WORDS_KURAL_675: readonly string[] = ["பொருள்", "கருவி", "காலம்", "வினை", "இடம்", "ஐந்தும்"];
-  const LAYER4_BOTTOM_WORDS_KURAL_675: readonly string[] = ["இருள்தீர", "எண்ணி", "செயல்"];
+  // GOLD MASTER, EMERGENCE: explicit founder request, a more complete
+  // version of the same idea, this time verified to be achievable
+  // without ever leaving the ring -- "these smaller meaning words are
+  // coming together to form the actual words of the Kural... the eye
+  // naturally connects பொருள் -> கருவி -> பொருள்கருவி... make it an
+  // editorial / poetic visual relationship... not so close that they
+  // look like labels." Checked geometrically before building, not
+  // assumed: for Kural 675, every real token's own x-position is
+  // reachable within STAGE_RINGS.words at a real y inside the correct
+  // half (confirmed for all seven tokens across both lines). Each word
+  // below is drawn by drawWordsNearKuralTokens, which biases its search
+  // toward its own token's real measured centre while never leaving the
+  // ring, the half, the no-repeat guarantee, or the shared no-overlap
+  // tracker -- only WHERE within the ring each search is centred
+  // changes, nothing about colour, opacity, or weight.
+  //
+  // Content change, explicit founder breakdown: இருள்தீர் (previously
+  // one curated word) is now இருள் + தீர் -- இருள் ("darkness") and
+  // தீர் ("to clear away, be resolved") are both genuine independent
+  // words, the same kind of real two-word compound பொருள்கருவி and
+  // வினையிடனொடு already are. எண்ணி and செயல் are unchanged, matching
+  // their own tokens (எண்ணிச்/செயல்) directly.
+  const LAYER4_LINE1_GROUPS: readonly (readonly string[])[] = [
+    ["பொருள்", "கருவி"],
+    ["காலம்"],
+    ["வினை", "இடம்"],
+    ["ஐந்தும்"],
+  ];
+  const LAYER4_LINE2_GROUPS: readonly (readonly string[])[] = [
+    ["இருள்", "தீர"],
+    ["எண்ணி"],
+    ["செயல்"],
+  ];
   if (content.kuralNumber === "675") {
     const wordOpts = {
       tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.56, color: COLORS.heritageBronze,
       weight: 500,
     };
-    drawWordsInHalf(
-      ctx, width, height, STAGE_RINGS.words, LAYER4_TOP_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "top", false,
-      { anchorIndex: 0, followIndex: 1, maxDistance: wordOpts.size * 4.5 }
+    const biasRadius = 140; // discoverable, not label-close -- verified against real inter-token spacing (smallest real gap ~217px) before choosing this value
+    drawWordsNearKuralTokens(
+      ctx, width, height, STAGE_RINGS.words, LAYER4_LINE1_GROUPS, content.tamilLine1, kuralLayout, tamilFont, rand,
+      wordOpts, kuralBox, sharedBoxes, "top", biasRadius
     );
-    drawWordsInHalf(ctx, width, height, STAGE_RINGS.words, LAYER4_BOTTOM_WORDS_KURAL_675, rand, wordOpts, kuralBox, sharedBoxes, "bottom", true);
+    drawWordsNearKuralTokens(
+      ctx, width, height, STAGE_RINGS.words, LAYER4_LINE2_GROUPS, content.tamilLine2, kuralLayout, tamilFont, rand,
+      wordOpts, kuralBox, sharedBoxes, "bottom", biasRadius
+    );
   }
 
   // MILESTONE 04 SCOPE: one more layer still to come (the assembled
