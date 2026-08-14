@@ -7,29 +7,32 @@
  * this is fully isolated from lib/living-field/ (the locked Kernel) rather
  * than reaching into its live glyphs -- founder-approved tradeoff: this
  * spawns its own independent set of KKA_001 letters, styled and animated to
- * be visually indistinguishable from the real field (see config.ts's
- * "duplicated snapshot" note), rather than amending the Kernel's "no engine
- * moves a glyph" rule (Sprint 03C).
+ * be visually indistinguishable from the real field.
  *
- * Lifecycle:
- *  1. "scroll"     -- convergence amount is a pure function of scroll
- *                      position (0 at top, 1 at page bottom). Default mode.
- *  2. "holding"    -- triggered once scroll reaches the formation threshold.
- *                      Fully formed, time-driven, independent of further
- *                      scroll position.
+ * Revision 2 (founder-directed): renders in normal page flow (a real block
+ * right after Shared Acts of Aram, not a viewport-fixed overlay), and the
+ * fully-formed state is real, natively-shaped text -- not more hand-placed
+ * spans. Hand-placed glyphs can only ever approximate real Tamil text
+ * shaping; they crossfade into the genuine article for the final ~15% of
+ * convergence, which is also what stays on screen during the hold, and
+ * what the crossfade reverses out of during dissolve.
+ *
+ * Lifecycle (identical shape to revision 1, now driven by this section's
+ * own scroll position rather than the whole page's):
+ *  1. "scroll"     -- convergence amount is a pure function of how far this
+ *                      section has scrolled into view. Default mode.
+ *  2. "holding"    -- triggered once convergence reaches the threshold.
+ *                      Fully formed (real text visible), time-driven.
  *  3. "dissolving" -- after the hold, animates back to scattered over a
  *                      fixed duration, also time-driven.
  *  4. "settled"    -- fully dissolved, ambient scatter only. Stays here
- *                      (does NOT immediately re-form even though scroll is
- *                      still at the bottom) until the person scrolls back
- *                      up past the re-arm threshold.
- * Scrolling up out of the trigger zone at ANY point (including mid-hold or
- * mid-dissolve) immediately hands control back to "scroll" mode -- scrolling
- * away always regains manual control, never leaves the animation "stuck".
+ *                      until the person scrolls the section back out of
+ *                      its "arrived" position and back in.
+ * Scrolling the section out of range at ANY point (including mid-hold or
+ * mid-dissolve) immediately hands control back to "scroll" mode.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { segmentKuralVerse, type KuralGrapheme } from "@/lib/kural-scroll-formation/segment";
 import { KKA_001_RAW, KURAL_SCROLL_FORMATION_CONFIG as CFG } from "@/lib/kural-scroll-formation/config";
 
@@ -40,14 +43,15 @@ interface Point {
 
 interface LetterLayout {
   grapheme: KuralGrapheme;
-  scatterFrac: Point; // stable 0..1 fractions, drawn once per mount
-  scatterPx: Point; // derived from scatterFrac + current viewport size
-  formedPx: Point; // derived from verse layout + current viewport size
+  scatterFrac: Point; // stable 0..1 fractions of the CONTAINER's own box
+  scatterPx: Point; // derived from scatterFrac + current container size
+  approxFormedPx: Point; // derived from verse layout + current container size
 }
 
 type FormationMode = "scroll" | "holding" | "dissolving" | "settled";
 
 const GRAPHEMES = segmentKuralVerse(KKA_001_RAW);
+const VERSE_LINES = KKA_001_RAW.split("\n");
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -57,15 +61,12 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-/** Left-aligned, line-by-line layout anchored near the bottom of the
- *  viewport -- same word/letter spacing algorithm the old Living Region
- *  used for its reserved verse, reimplemented standalone here (see
- *  segment.ts's header for why this doesn't import from living-region.ts). */
-function computeFormedPositions(viewportWidth: number, viewportHeight: number): Point[] {
-  const { horizontalMarginPx, bottomOffsetPx, letterAdvancePx, wordGapPx, lineGapPx } = CFG.formed;
-  const lineCount = new Set(GRAPHEMES.map((g) => g.lineIndex)).size;
+/** Left-aligned, line-by-line APPROXIMATE layout, relative to the
+ *  container's own box. Intentionally not pixel-perfect -- see
+ *  approxFormed's config comment for why that's fine. */
+function computeApproxFormedPositions(): Point[] {
+  const { horizontalMarginPx, topOffsetPx, letterAdvancePx, wordGapPx, lineGapPx } = CFG.approxFormed;
   const rowHeight = CFG.fontSizePx + lineGapPx;
-  const baseY = viewportHeight - bottomOffsetPx;
 
   const positions: Point[] = [];
   let currentLine = -1;
@@ -82,7 +83,7 @@ function computeFormedPositions(viewportWidth: number, viewportHeight: number): 
       if (currentWord !== -1) x += wordGapPx;
       currentWord = g.wordIndex;
     }
-    const y = baseY - (lineCount - 1 - g.lineIndex) * rowHeight;
+    const y = topOffsetPx + g.lineIndex * rowHeight;
     positions.push({ x, y });
     if (g.glyphIndexInWord < g.wordLength - 1) x += letterAdvancePx;
   });
@@ -91,11 +92,9 @@ function computeFormedPositions(viewportWidth: number, viewportHeight: number): 
 }
 
 /** Ambient shimmer opacity for one glyph at one instant -- duplicated
- *  formula from the real field's diagonal wave + slow breathing (see
- *  config.ts's ambientShimmer block for why these values are copied, not
- *  imported). Derives an approximate col/row from the glyph's own scattered
- *  pixel position so the sweep reads at the same visual cadence as the
- *  background. */
+ *  formula from the real field's diagonal wave + slow breathing. Derives
+ *  an approximate col/row from the glyph's own scattered pixel position so
+ *  the sweep reads at the same visual cadence as the background. */
 function computeAmbientShimmerOpacity(scatterPx: Point, nowMs: number): number {
   const s = CFG.ambientShimmer;
   const col = scatterPx.x / s.cellWidth;
@@ -107,19 +106,14 @@ function computeAmbientShimmerOpacity(scatterPx: Point, nowMs: number): number {
 }
 
 export default function KuralScrollFormation() {
-  const [viewport, setViewport] = useState<{ w: number; h: number } | null>(null);
-  // Lazy initializer -- runs exactly once, at mount, which is the sanctioned
-  // exception to "render must be pure": it's explicitly documented as the
-  // one-time-init escape hatch, unlike calling Math.random() in the render
-  // body itself (which is what this replaces).
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const letterRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const realTextRef = useRef<HTMLDivElement | null>(null);
+
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null);
   const [reducedMotion, setReducedMotion] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false
   );
-  // Stable scattered fractions -- same lazy-initializer reasoning: drawn
-  // exactly once per mount, never re-rolled on resize (only their pixel
-  // projection changes). Plain state rather than a ref, so useMemo below
-  // can read it during render without tripping the "no ref reads during
-  // render" rule.
   const [scatterFractions] = useState<Point[]>(() => {
     const { xMinFrac, xMaxFrac, yMinFrac, yMaxFrac } = CFG.scatter;
     return GRAPHEMES.map(() => ({
@@ -127,7 +121,6 @@ export default function KuralScrollFormation() {
       y: yMinFrac + Math.random() * (yMaxFrac - yMinFrac),
     }));
   });
-  const letterRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
   useEffect(() => {
     const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -137,36 +130,49 @@ export default function KuralScrollFormation() {
   }, []);
 
   useEffect(() => {
-    const computeViewport = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
-    computeViewport();
-    window.addEventListener("resize", computeViewport);
-    return () => window.removeEventListener("resize", computeViewport);
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => setContainerSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   const layout: LetterLayout[] | null = useMemo(() => {
-    if (!viewport) return null;
-    const formedPositions = computeFormedPositions(viewport.w, viewport.h);
+    if (!containerSize) return null;
+    const approxFormedPositions = computeApproxFormedPositions();
     return GRAPHEMES.map((grapheme, i) => ({
       grapheme,
       scatterFrac: scatterFractions[i],
       scatterPx: {
-        x: scatterFractions[i].x * viewport.w,
-        y: scatterFractions[i].y * viewport.h,
+        x: scatterFractions[i].x * containerSize.w,
+        y: scatterFractions[i].y * containerSize.h,
       },
-      formedPx: formedPositions[i],
+      approxFormedPx: approxFormedPositions[i],
     }));
-  }, [viewport, scatterFractions]);
+  }, [containerSize, scatterFractions]);
 
   // The formation lifecycle. Deliberately NOT React state -- runs a
   // continuous, throttled RAF loop that writes directly to each letter's
-  // style, so neither scrolling nor the hold/dissolve timers ever trigger a
-  // re-render (same performance discipline the Living Field engine's own
-  // loop follows).
+  // style (and the real-text layer's opacity), so neither scrolling nor
+  // the hold/dissolve timers ever trigger a re-render.
   useEffect(() => {
     if (!layout || reducedMotion) return;
+    const container = containerRef.current;
+    const realText = realTextRef.current;
+    if (!container || !realText) return;
 
-    const { formationTriggerThreshold, retriggerResetThreshold, holdMs, dissolveMs, frameIntervalMs } =
-      CFG.lifecycle;
+    const {
+      entryViewportFrac,
+      exitViewportFrac,
+      formationTriggerThreshold,
+      retriggerResetThreshold,
+      holdMs,
+      dissolveMs,
+      crossfadeStartT,
+      frameIntervalMs,
+    } = CFG.lifecycle;
 
     let mode: FormationMode = "scroll";
     let modeStartTs = 0;
@@ -174,14 +180,18 @@ export default function KuralScrollFormation() {
     let lastFrameTs = 0;
     let rafId = 0;
 
-    const applyFrame = (nowMs: number): void => {
-      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-      const rawScrollT = scrollable > 0 ? window.scrollY / scrollable : 1;
-      const scrollT = clamp01(rawScrollT);
+    const computeSectionProgress = (): number => {
+      const rect = container.getBoundingClientRect();
+      const entryPx = window.innerHeight * entryViewportFrac;
+      const exitPx = window.innerHeight * exitViewportFrac;
+      if (entryPx === exitPx) return rect.top <= exitPx ? 1 : 0;
+      return clamp01((entryPx - rect.top) / (entryPx - exitPx));
+    };
 
-      // Scrolling away from the trigger zone always regains manual control,
-      // interrupting an in-progress hold or dissolve if one is running.
-      if (scrollT < retriggerResetThreshold) {
+    const applyFrame = (nowMs: number): void => {
+      const sectionT = computeSectionProgress();
+
+      if (sectionT < retriggerResetThreshold) {
         hasTriggeredThisApproach = false;
         if (mode !== "scroll") mode = "scroll";
       }
@@ -189,8 +199,8 @@ export default function KuralScrollFormation() {
       let displayT: number;
 
       if (mode === "scroll") {
-        displayT = CFG.easeConverge(scrollT);
-        if (scrollT >= formationTriggerThreshold && !hasTriggeredThisApproach) {
+        displayT = CFG.easeConverge(sectionT);
+        if (sectionT >= formationTriggerThreshold && !hasTriggeredThisApproach) {
           hasTriggeredThisApproach = true;
           mode = "holding";
           modeStartTs = nowMs;
@@ -207,20 +217,32 @@ export default function KuralScrollFormation() {
         displayT = 1 - CFG.easeDissolve(p);
         if (p >= 1) mode = "settled";
       } else {
-        // settled -- fully ambient, independent of scroll, until re-armed
         displayT = 0;
       }
 
+      // Animated glyph layer: position + shimmer/formed opacity blend.
       layout.forEach((letter, i) => {
         const el = letterRefs.current[i];
         if (!el) return;
-        const dx = (letter.scatterPx.x - letter.formedPx.x) * (1 - displayT);
-        const dy = (letter.scatterPx.y - letter.formedPx.y) * (1 - displayT);
+        const dx = (letter.scatterPx.x - letter.approxFormedPx.x) * (1 - displayT);
+        const dy = (letter.scatterPx.y - letter.approxFormedPx.y) * (1 - displayT);
         const ambientOpacity = computeAmbientShimmerOpacity(letter.scatterPx, nowMs);
-        const opacity = lerp(ambientOpacity, CFG.formed.opacity, displayT);
+        // As displayT approaches 1, the animated layer additionally fades
+        // out (on top of its normal ambient-to-formed opacity blend) so it
+        // can crossfade into the real text layer beneath it.
+        const crossfadeOut =
+          displayT >= crossfadeStartT ? 1 - (displayT - crossfadeStartT) / (1 - crossfadeStartT) : 1;
+        const baseOpacity = lerp(ambientOpacity, 0.92, displayT);
         el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-        el.style.opacity = String(opacity);
+        el.style.opacity = String(clamp01(baseOpacity * crossfadeOut));
       });
+
+      // Real text layer: fades in as the animated layer fades out, over
+      // the same crossfade window, then stays fully visible through the
+      // hold, and fades back out symmetrically during dissolve.
+      const crossfadeIn =
+        displayT >= crossfadeStartT ? (displayT - crossfadeStartT) / (1 - crossfadeStartT) : 0;
+      realText.style.opacity = String(clamp01(crossfadeIn));
     };
 
     const loop = (nowMs: number): void => {
@@ -235,51 +257,76 @@ export default function KuralScrollFormation() {
     return () => cancelAnimationFrame(rafId);
   }, [layout, reducedMotion]);
 
-  if (!layout || typeof document === "undefined") return null;
-
   const colorString = `rgb(${CFG.colorRGB[0]}, ${CFG.colorRGB[1]}, ${CFG.colorRGB[2]})`;
 
-  return createPortal(
+  return (
     <div
-      aria-hidden="true"
+      ref={containerRef}
       style={{
-        position: "fixed",
-        inset: 0,
-        pointerEvents: "none",
-        zIndex: -5, // above the ambient field canvas (z:-10), below card content
+        position: "relative",
+        height: CFG.container.heightPx,
         overflow: "hidden",
       }}
     >
-      {layout.map((letter, i) => {
-        const pos = reducedMotion ? letter.formedPx : letter.scatterPx;
-        const initialDx = pos.x - letter.formedPx.x;
-        const initialDy = pos.y - letter.formedPx.y;
-        return (
-          <span
-            key={letter.grapheme.order}
-            ref={(el) => {
-              letterRefs.current[i] = el;
-            }}
-            style={{
-              position: "absolute",
-              left: letter.formedPx.x,
-              top: letter.formedPx.y,
-              transform: `translate3d(${initialDx}px, ${initialDy}px, 0)`,
-              fontSize: CFG.fontSizePx,
-              fontWeight: CFG.fontWeight,
-              fontFamily: `var(--font-tamil-sans), ${CFG.fontFamilyFallback}`,
-              color: colorString,
-              opacity: reducedMotion ? CFG.formed.opacity : CFG.ambientShimmer.baseOpacity,
-              whiteSpace: "pre",
-              lineHeight: 1,
-              willChange: "transform, opacity",
-            }}
-          >
-            {letter.grapheme.glyph}
-          </span>
-        );
-      })}
-    </div>,
-    document.body
+      {/* Animated glyph layer -- decorative, purely visual approach to
+          formation. Hidden entirely (not rendered) under reduced motion;
+          the real text layer below is always what's actually legible. */}
+      {!reducedMotion && layout && (
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          {layout.map((letter, i) => (
+            <span
+              key={letter.grapheme.order}
+              ref={(el) => {
+                letterRefs.current[i] = el;
+              }}
+              style={{
+                position: "absolute",
+                left: letter.approxFormedPx.x,
+                top: letter.approxFormedPx.y,
+                transform: `translate3d(${letter.scatterPx.x - letter.approxFormedPx.x}px, ${
+                  letter.scatterPx.y - letter.approxFormedPx.y
+                }px, 0)`,
+                fontSize: CFG.fontSizePx,
+                fontWeight: CFG.fontWeight,
+                fontFamily: `var(--font-tamil-sans), ${CFG.fontFamilyFallback}`,
+                color: colorString,
+                opacity: CFG.ambientShimmer.baseOpacity,
+                whiteSpace: "pre",
+                lineHeight: 1,
+                willChange: "transform, opacity",
+              }}
+            >
+              {letter.grapheme.glyph}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Real, natively-shaped text layer -- what's actually read. Always
+          rendered; opacity-driven so it can crossfade in. Under reduced
+          motion this is simply shown at full opacity with no animation. */}
+      <div
+        ref={realTextRef}
+        className="font-tamil-sans"
+        style={{
+          position: "absolute",
+          left: CFG.realText.horizontalMarginPx,
+          top: CFG.realText.topOffsetPx,
+          right: CFG.realText.horizontalMarginPx,
+          fontSize: CFG.realText.fontSizePx,
+          fontWeight: CFG.fontWeight,
+          lineHeight: CFG.realText.lineHeight,
+          color: colorString,
+          opacity: reducedMotion ? 1 : 0,
+          textAlign: "left",
+        }}
+      >
+        {VERSE_LINES.map((line, i) => (
+          <p key={i} style={{ margin: 0 }}>
+            {line}
+          </p>
+        ))}
+      </div>
+    </div>
   );
 }

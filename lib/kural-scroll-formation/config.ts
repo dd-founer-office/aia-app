@@ -15,15 +15,25 @@
  * exporting it across the boundary. If lib/living-field/config.ts's
  * calibration ever changes, this file's snapshot will silently drift --
  * that's an accepted tradeoff of isolation, not an oversight.
+ *
+ * Revision 2 (founder-directed): moved from a viewport-fixed overlay to a
+ * normal in-page block sitting right after Shared Acts of Aram, and added
+ * a crossfade handoff to real, natively-rendered text once formation
+ * completes -- hand-placed animated glyphs can only ever approximate real
+ * Tamil text shaping, never match it exactly, so the fully-formed state now
+ * IS real text, not more hand-placed spans.
  */
 
 /** The verse this feature currently forms. */
 export const KKA_001_RAW = "அகர முதல எழுத்தெல்லாம் ஆதி\nபகவன் முதற்றே உலகு";
 
 export const KURAL_SCROLL_FORMATION_CONFIG = {
-  /** Single fixed font size for every glyph, scattered or formed. Locked
-   *  visual language: "Tamil glyphs remain fixed in scale and orientation"
-   *  -- only opacity and position ever animate, never size or rotation. */
+  /** Single fixed font size for every animated glyph, scattered or
+   *  converging. Locked visual language: "Tamil glyphs remain fixed in
+   *  scale and orientation" -- only opacity and position ever animate,
+   *  never size or rotation. The real, native-text final state (below) has
+   *  its own, separately-set size, since it's a different rendering
+   *  mechanism entirely, not one of these animated glyphs. */
   fontSizePx: 15,
 
   /** Duplicated snapshot of the real field's typography + color, so these
@@ -33,36 +43,51 @@ export const KURAL_SCROLL_FORMATION_CONFIG = {
     "'Noto Sans Tamil','Nirmala UI','Tamil Sangam MN','Tamil MN',sans-serif",
   fontWeight: 400,
 
-  /** Formed (final) position: a fixed viewport-space rectangle, left-
-   *  aligned, anchored near the bottom of the screen, clear of
-   *  BottomNavigation. Same left-aligned / 4-word-then-3-word convention as
-   *  the locked Kural display rule everywhere else in the app. */
-  formed: {
-    horizontalMarginPx: 24,
-    /** Distance from the viewport's bottom edge to the last line's row,
-     *  clearing BottomNavigation (~100px tall on a typical phone width,
-     *  plus safe-area inset). */
-    bottomOffsetPx: 118,
-    /** Horizontal advance between two graphemes of the SAME word, in px --
-     *  sized for the fixed 15px font. */
-    letterAdvancePx: 16,
-    /** Gap between two words on the same line, in px. */
-    wordGapPx: 18,
-    /** Gap between line 1 and line 2, in px. */
-    lineGapPx: 26,
-    /** Resting opacity once fully formed -- legible, calm, no shimmer. */
-    opacity: 0.92,
+  /** Container the whole feature lives in -- a normal block in the page
+   *  flow, directly after Shared Acts of Aram, not a viewport-fixed
+   *  overlay. Reserves real vertical space so the page's layout doesn't
+   *  jump once JS mounts. */
+  container: {
+    heightPx: 260,
+  },
+
+  /** Approximate target position for each animated glyph as it converges --
+   *  intentionally APPROXIMATE, not pixel-identical to how a browser would
+   *  natively shape and kern this exact text. That's fine: in the final
+   *  ~15% of convergence these animated glyphs crossfade into the real,
+   *  natively-rendered text (see realText below), which is what's actually
+   *  read -- the animated layer's job is only to sell the "arriving"
+   *  motion, not to BE the legible result. Coordinates are relative to the
+   *  container's own box, not the viewport. */
+  approxFormed: {
+    horizontalMarginPx: 20,
+    topOffsetPx: 90,
+    letterAdvancePx: 13,
+    wordGapPx: 11,
+    lineGapPx: 24,
+  },
+
+  /** The real, natively-rendered verse text -- what the person actually
+   *  reads once formation completes. Ordinary text, not animated spans, so
+   *  it reads exactly like any other correctly-shaped Tamil text in the
+   *  app. Positioned to visually line up with approxFormed above so the
+   *  crossfade doesn't jump. */
+  realText: {
+    topOffsetPx: 90,
+    horizontalMarginPx: 20,
+    fontSizePx: 19,
+    lineHeight: 1.5,
   },
 
   /** Scatter (ambient) positions: random, regenerated once per mount,
-   *  within these viewport-fraction bounds. Kept clear of the very top
-   *  (hero/header) and the formed rect + nav at the bottom, so scattered
-   *  letters don't visually collide with either. */
+   *  within these container-fraction bounds (relative to the container's
+   *  own width/height, not the viewport) -- kept within this section's own
+   *  box rather than spanning the whole page. */
   scatter: {
-    xMinFrac: 0.06,
-    xMaxFrac: 0.9,
-    yMinFrac: 0.1,
-    yMaxFrac: 0.76,
+    xMinFrac: 0.04,
+    xMaxFrac: 0.94,
+    yMinFrac: 0.04,
+    yMaxFrac: 0.92,
   },
 
   /** Ambient shimmer -- duplicated snapshot of the real field's "near"
@@ -71,7 +96,7 @@ export const KURAL_SCROLL_FORMATION_CONFIG = {
    *  letters shimmer identically to the real background field. This
    *  shimmer's influence fades out naturally as convergence proceeds (its
    *  weight in the opacity blend shrinks to zero at full formation) --
-   *  letters visibly calm down as they resolve into legible text. */
+   *  letters visibly calm down as they resolve. */
   ambientShimmer: {
     baseOpacity: 0.07,
     waveAmplitude: 0.032,
@@ -88,23 +113,39 @@ export const KURAL_SCROLL_FORMATION_CONFIG = {
     cellHeight: 40,
   },
 
-  /** Formation lifecycle. Scroll drives convergence up to the trigger
-   *  point; after that the cycle is time-driven (hold, then dissolve),
-   *  independent of further scroll position, until the person scrolls back
-   *  up far enough to re-arm it. */
+  /** Formation lifecycle. Convergence is driven by how far this SECTION
+   *  has scrolled into view (its own bounding box vs the viewport), not
+   *  the whole page's scroll fraction -- forms as you scroll to it, not
+   *  only once you reach the very bottom of the page. After full
+   *  convergence the cycle is time-driven (hold, then dissolve),
+   *  independent of further scroll position, until the person scrolls
+   *  back up far enough to re-arm it. */
   lifecycle: {
-    /** Scroll fraction (0-1 of the page) at which convergence is
-     *  considered "complete" and the hold phase begins. */
+    /** Fraction of the viewport's height, measured from the top of the
+     *  viewport, that the container's own top edge must cross to define
+     *  the start (0) and end (1) of the convergence range. E.g. entryFrac
+     *  1.0 = container's top is exactly at the bottom of the screen (just
+     *  entering); exitFrac 0.35 = container's top has scrolled up to 35%
+     *  down the screen (comfortably in view, "arrived"). */
+    entryViewportFrac: 1.0,
+    exitViewportFrac: 0.35,
+    /** Local progress (0-1, within the entry/exit range above) at which
+     *  convergence is considered "complete" and the hold phase begins. */
     formationTriggerThreshold: 0.995,
-    /** Scroll fraction below which the cycle re-arms (scrolling away
-     *  resets things, and also interrupts an in-progress hold/dissolve --
-     *  scrolling up always hands control back to the person). */
+    /** Local progress below which the cycle re-arms (scrolling the section
+     *  back out of its "arrived" position resets things, and also
+     *  interrupts an in-progress hold/dissolve). */
     retriggerResetThreshold: 0.85,
     /** How long the fully-formed verse holds before it starts dissolving,
-     *  even if the person stays scrolled at the bottom. */
+     *  even if the person stays scrolled at this section. */
     holdMs: 3200,
     /** Duration of the dissolve-back-into-the-field animation. */
     dissolveMs: 1600,
+    /** Portion of the FINAL approach to formation (displayT range) during
+     *  which the animated glyphs crossfade into the real, natively-shaped
+     *  text -- e.g. 0.85 means the crossfade runs across displayT
+     *  0.85 -> 1.0. */
+    crossfadeStartT: 0.85,
     /** Minimum ms between recomputed frames -- matches the real field's own
      *  frameIntervalMs philosophy (motion is slow by design; repainting
      *  faster than this burns battery for imperceptible change). */
