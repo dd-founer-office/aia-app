@@ -8,7 +8,6 @@ import {
   mockContributor,
   mockJourney,
   mockLatestAct,
-  mockKuralOfTheDay,
   getCurrentMonthParticipation,
 } from "@/lib/mock-data";
 import { STAGE_LABELS, STAGE_ORDER } from "@/types";
@@ -20,9 +19,7 @@ import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { JourneyTimeline } from "@/components/home/JourneyTimeline";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
-import { buildReservedVerseInput } from "@/lib/living-field/reserved-verse-bridge";
-import { setLivingRegionVerse } from "@/lib/living-field/living-region-bridge";
-import LivingRegionZone from "@/components/field/LivingRegionZone";
+import KuralScrollFormation from "@/components/home/KuralScrollFormation";
 
 export default function HomePage() {
   const router = useRouter();
@@ -79,9 +76,8 @@ export default function HomePage() {
   }, []);
 
   // Living Literature Prelude: let the field recognize "அறம்" -- the theme
-  // Kural Koorum Aram represents, not the specific day's verse text, which
-  // still comes only from mockKuralOfTheDay exactly as before -- shortly
-  // BEFORE the Kural card actually reaches the user's reading position.
+  // Kural Koorum Aram represents -- shortly BEFORE the Kural Scroll
+  // Formation actually reaches the user's reading position at the footer.
   //
   // IntersectionObserver, not scroll-position polling or a timer, is the
   // clean lifecycle tool for "notify me when this element is about to
@@ -92,21 +88,15 @@ export default function HomePage() {
   // `rootMargin`'s bottom value is set to a generous positive number,
   // which -- per the spec's own semantics -- EXPANDS the effective
   // viewport downward before intersection is tested. The practical effect:
-  // the observer fires while the Kural card is still comfortably below
-  // the visible viewport, not when it's actually on screen. Given the
-  // Kernel's expression cycle is 11 seconds total (3s rise, 4s hold, 4s
-  // fall) and ordinary scroll speed, this gives the recognition a real
-  // head start -- typically enough for it to have visibly settled by the
-  // time the card is actually where the user is reading, without ever
-  // literally gating or delaying the card's render (the card is always
-  // present in the DOM; only the FIELD's timing creates the sequence).
+  // the observer fires while the section is still comfortably below
+  // the visible viewport, not when it's actually on screen.
   //
   // This is inherently a best-effort, typical-case timing choice, not a
-  // hard guarantee -- an unusually fast scroll could reach the card before
-  // the recognition fully dissolves. That's consistent with the Ambient
-  // Language Layer's existing philosophy everywhere else (best-effort
-  // matching, no forced outcomes) rather than a gap specific to this
-  // integration.
+  // hard guarantee -- an unusually fast scroll could reach the footer
+  // before the recognition fully dissolves. That's consistent with the
+  // Ambient Language Layer's existing philosophy everywhere else
+  // (best-effort matching, no forced outcomes) rather than a gap specific
+  // to this integration.
   //
   // Same Strict-Mode-safe idempotency pattern as the homeReady trigger
   // above: a ref guard, and the observer is disconnected in cleanup (both
@@ -148,40 +138,6 @@ export default function HomePage() {
     return () => {
       observer.disconnect();
       engineReadyUnsubscribe?.();
-    };
-  }, []);
-
-  // Sprint 04A (Living Region v1), Commit 3B.3: sets the real verse into the
-  // Reflection Engine exactly once per real mount, as soon as an engine
-  // exists -- the same Strict-Mode-safe idempotency pattern as the
-  // homeReady/kuralSection effects above (ref guard, not state, since this
-  // never needs to trigger a re-render; unsubscribe in cleanup so a
-  // since-unmounted component can never fire this later).
-  //
-  // Unlike those two, this doesn't wait for the section to scroll near the
-  // viewport -- the reservation needs to exist in the layout as soon as the
-  // engine is ready, since Reserved Semantic Cells are computed at layout
-  // BUILD time (field-layout.ts), not on demand. There is no "too early" for
-  // this call: an idle Living Region with a reservation set is invisible
-  // (Commit 3A), exactly like one with no reservation at all.
-  //
-  // buildReservedVerseInput() is content-agnostic (reserved-verse-bridge.ts)
-  // -- this is the one place that decides WHICH text becomes the reflection.
-  // A future Aathichoodi or proverb page would call the exact same two
-  // functions with different source text, nothing else.
-  const verseSetRef = useRef(false);
-
-  useEffect(() => {
-    if (verseSetRef.current) return;
-
-    const unsubscribe = onLivingFieldEngineReady(() => {
-      if (verseSetRef.current) return;
-      verseSetRef.current = true;
-      setLivingRegionVerse(buildReservedVerseInput(mockKuralOfTheDay.kural_tamil));
-    });
-
-    return () => {
-      unsubscribe();
     };
   }, []);
 
@@ -320,21 +276,17 @@ export default function HomePage() {
           </p>
         </Card>
 
-        {/* Sprint 04A (Living Region v1), Commit 3B.3: Living Region
-            Replacement. The visible Kural card is gone -- heading,
-            container, verse text, explanation, button, all of it. Nothing
-            replaces it visually; the Living Field simply continues. This
-            wrapping div still carries kuralSectionRef (unchanged from
-            before -- the ambient recognition-pulse IntersectionObserver
-            above still needs a real DOM target to watch) and now also
-            hosts LivingRegionZone (Commit 3B.2's spacer/observer/hit-target,
-            unchanged), which is where the real KKA-001 verse actually lives
-            now -- set once, on mount, by the effect above
-            (buildReservedVerseInput + setLivingRegionVerse). Someone
-            scrolling through without ever pressing should notice nothing
-            missing here -- only a quieter page. */}
+        {/* Kural Scroll Formation replacement (supersedes Sprint 04A Living
+            Region entirely, founder-directed). This wrapping div still
+            carries kuralSectionRef (unchanged -- the ambient
+            recognition-pulse IntersectionObserver above still needs a real
+            DOM target to watch) and now hosts KuralScrollFormation, which
+            is fully isolated from lib/living-field/ (see its own file
+            header for why) -- it spawns and animates its own KKA-001
+            letters, converging as the page scrolls toward this point,
+            holding briefly, then dissolving back into ambient scatter. */}
         <div ref={kuralSectionRef}>
-          <LivingRegionZone />
+          <KuralScrollFormation />
         </div>
       </main>
 
