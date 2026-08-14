@@ -32,7 +32,7 @@
  * mid-dissolve) immediately hands control back to "scroll" mode.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { segmentKuralVerse, type KuralGrapheme } from "@/lib/kural-scroll-formation/segment";
 import { KKA_001_RAW, KURAL_SCROLL_FORMATION_CONFIG as CFG } from "@/lib/kural-scroll-formation/config";
 
@@ -52,6 +52,35 @@ type FormationMode = "scroll" | "holding" | "dissolving" | "settled";
 
 const GRAPHEMES = segmentKuralVerse(KKA_001_RAW);
 const VERSE_LINES = KKA_001_RAW.split("\n");
+
+/**
+ * Reduced-motion detection via useSyncExternalStore -- the React-provided
+ * API for exactly this problem (subscribing to external, browser-only
+ * state that also needs a defined value during server rendering).
+ *
+ * A prior version of this file used a useState lazy initializer instead.
+ * That's subtly broken for an SSR app: the initializer runs during the
+ * SERVER render (where `window` doesn't exist, so it always defaulted to
+ * `false`), and React reuses that exact initial value through hydration --
+ * it does NOT re-run the initializer client-side. The only client-side
+ * effect only listened for FUTURE `change` events; it never corrected the
+ * already-wrong initial value. Net effect: anyone whose OS/browser has
+ * "reduce motion" enabled got stuck on the false branch forever, with the
+ * real-text layer's opacity permanently driven by that wrong value.
+ * useSyncExternalStore is specifically designed to read the correct
+ * client value immediately upon hydration, without that gap.
+ */
+function subscribeToReducedMotionChanges(onChange: () => void): () => void {
+  const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+function readReducedMotionOnClient(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+function readReducedMotionOnServer(): boolean {
+  return false;
+}
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -111,8 +140,10 @@ export default function KuralScrollFormation() {
   const realTextRef = useRef<HTMLDivElement | null>(null);
 
   const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null);
-  const [reducedMotion, setReducedMotion] = useState<boolean>(() =>
-    typeof window !== "undefined" ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false
+  const reducedMotion = useSyncExternalStore(
+    subscribeToReducedMotionChanges,
+    readReducedMotionOnClient,
+    readReducedMotionOnServer
   );
   const [scatterFractions] = useState<Point[]>(() => {
     const { xMinFrac, xMaxFrac, yMinFrac, yMaxFrac } = CFG.scatter;
@@ -123,20 +154,22 @@ export default function KuralScrollFormation() {
   });
 
   useEffect(() => {
-    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onChange = () => setReducedMotion(mql.matches);
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-
-  useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const measure = () => setContainerSize({ w: el.clientWidth, h: el.clientHeight });
     measure();
+    // Defensive re-measure one frame later: guards against any environment
+    // where the browser hasn't fully committed layout in the same tick as
+    // this effect running (ResizeObserver's own callback covers ongoing
+    // changes either way, this is just belt-and-suspenders for the very
+    // first measurement).
+    const rafId = requestAnimationFrame(measure);
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
   }, []);
 
   const layout: LetterLayout[] | null = useMemo(() => {
