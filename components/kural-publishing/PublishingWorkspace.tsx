@@ -66,7 +66,6 @@ export default function PublishingWorkspace() {
     DEFAULT_KURAL_200_CONTENT
   );
   const [generation, setGeneration] = useState(0);
-  const [showFormationLogic, setShowFormationLogic] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
   const [format, setFormat] = useState<ExportFormat>(EXPORT_FORMATS[0]);
@@ -188,27 +187,6 @@ export default function PublishingWorkspace() {
             {isExporting ? "Preparing PNG…" : `Download PNG (${format.label})`}
           </button>
         </div>
-
-        <div className="mt-8 border-t border-[var(--color-border)] pt-4">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={showFormationLogic}
-              onChange={(e) => setShowFormationLogic(e.target.checked)}
-            />
-            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
-              Show Formation Logic (debug, preview only)
-            </span>
-          </label>
-          <p className="mt-1 text-xs text-[var(--color-muted-foreground)] opacity-70">
-            Never appears in the downloaded PNG.
-          </p>
-        </div>
-
-        <p className="mt-4 text-xs text-[var(--color-muted-foreground)] opacity-70">
-          Logo: {logoImage ? "loaded from " : "not yet supplied at "}
-          <code>{KKA_LOGO_PATH}</code>
-        </p>
       </section>
 
       <section className="flex-1">
@@ -220,7 +198,6 @@ export default function PublishingWorkspace() {
             content={content}
             generation={generation}
             logoImage={logoImage}
-            debugFormationLogic={showFormationLogic}
             format={format}
           />
         </div>
