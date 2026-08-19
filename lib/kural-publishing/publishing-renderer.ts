@@ -197,17 +197,30 @@ const TYPOGRAPHY_TOKENS = {
   },
 } as const satisfies Record<string, TypographyToken>;
 
-/** Resolves a token's target size in px for the given canvas height. This
- *  is the size fit-shrink text starts from (Kural, Reflection) or the size
- *  fixed-length text renders at directly (Meta, Footer). */
-function tokenSize(token: TypographyToken, height: number): number {
-  return height * BASE_SIZE_FRACTION * token.sizeRatio;
+/** Resolves a token's target size in px for the given canvas dimensions.
+ *  This is the size fit-shrink text starts from (Kural, Reflection) or
+ *  the size fixed-length text renders at directly (Meta, Footer).
+ *
+ *  FIX, found while adding new export formats (WhatsApp Status/
+ *  Instagram Story/Instagram Post): this scaled by height alone, which
+ *  happened to work for every format built so far because height was
+ *  always the smaller dimension (1648x928 landscape, 1080x1080 square).
+ *  The first portrait format (1080x1920) exposed the real assumption --
+ *  confirmed directly by rendering it: reflection and metadata text
+ *  overflowed off the right edge, since sizing scaled up with the much
+ *  taller height while the available width stayed narrow. Scaling by
+ *  the smaller of width/height instead is a no-op for every existing
+ *  format (where height already IS the smaller dimension) and correctly
+ *  shrinks text for any format where width becomes the real constraint. */
+function tokenSize(token: TypographyToken, width: number, height: number): number {
+  return Math.min(width, height) * BASE_SIZE_FRACTION * token.sizeRatio;
 }
 
 /** Resolves a token's safety-floor size in px -- fit-shrink text may
- *  shrink toward this but never below it. */
-function tokenMinSize(token: TypographyToken, height: number): number {
-  return height * BASE_SIZE_FRACTION * token.minSizeRatio;
+ *  shrink toward this but never below it. Same width/height fix as
+ *  tokenSize above, for the same reason. */
+function tokenMinSize(token: TypographyToken, width: number, height: number): number {
+  return Math.min(width, height) * BASE_SIZE_FRACTION * token.minSizeRatio;
 }
 
 /** Builds the canvas font string for a token at a resolved size, reading
@@ -314,6 +327,15 @@ export interface RenderKuralPublishingOptions {
    *  KuralHeroCanvas.renderKuralPublishingForExport, which always renders
    *  with this forced false regardless of the live preview's toggle state. */
   debugFormationLogic?: boolean;
+  /** GOLD MASTER, explicit founder request: social-format exports (WhatsApp
+   *  Status, Instagram Post, Instagram Story) need a small wordmark +
+   *  handle for social use -- the original landscape publication format
+   *  does not. Both optional and both off by default, so every existing
+   *  caller (the current landscape page) is completely unaffected unless
+   *  it explicitly opts in. Real text supplied by the founder ("AiA --
+   *  Aram in Action" / "aram_in_action"), not invented. */
+  brandingWordmark?: string;
+  brandingHandle?: string;
 }
 
 export function renderKuralPublishing(
@@ -353,6 +375,10 @@ export function renderKuralPublishing(
   // The hero itself, drawn last -- on top of the (now cleared-around)
   // field, real typeset text, no glow, uniform weight throughout.
   drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont);
+
+  if (opts.brandingWordmark || opts.brandingHandle) {
+    drawSocialBranding(ctx, width, height, opts.brandingWordmark, opts.brandingHandle, sansFont);
+  }
 
   // tamilSerifFont/serifFont are not consumed now that the Kural uses
   // Noto Sans Tamil instead -- kept in the destructure for parity with
@@ -1789,7 +1815,7 @@ function computeHeroLayout(
 
   // --- Kural ---
   const kuralLines = [content.tamilLine1, content.tamilLine2];
-  const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, height);
+  const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, width, height);
   ctx.font = tokenFont(kuralToken, kuralSize, tamilFont, sansFont);
   applyTokenTracking(ctx, kuralToken, kuralSize);
   const kuralWidth1 = ctx.measureText(content.tamilLine1).width;
@@ -1821,7 +1847,7 @@ function computeHeroLayout(
   const reflectionLines = [content.englishLine1, content.englishLine2].filter((l) => l.trim().length > 0);
   const reflectionSize =
     reflectionLines.length > 0
-      ? fitTokenSize(ctx, reflectionToken, reflectionLines, tamilFont, sansFont, maxTextWidth, height)
+      ? fitTokenSize(ctx, reflectionToken, reflectionLines, tamilFont, sansFont, maxTextWidth, width, height)
       : 0;
   const reflectionLineGap = reflectionSize * reflectionToken.lineHeightRatio;
   const reflectionBlockHeight =
@@ -1836,7 +1862,7 @@ function computeHeroLayout(
   // Normal case, per explicit founder correction ("i no need all
   // uppercase") against the previous all-caps version.
   const metaText = `Kural-${content.kuralNumber} | ${content.series} | Issue ${content.issue}`;
-  const metaSize = tokenSize(metaToken, height); // fixed-length token -- not fit-shrunk
+  const metaSize = tokenSize(metaToken, width, height); // fixed-length token -- not fit-shrunk
   const metaBlockHeight = metaSize * ASCENT_FRAC + metaSize * DESCENT_FRAC;
 
   // --- Stack the whole block, centred as one unit ---
@@ -2001,6 +2027,53 @@ function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingCo
   ctx.fillText(restSegment, layout.leftX + boldWidth, layout.metaY);
 }
 
+/** GOLD MASTER, explicit founder request: "add branding elements for
+ *  social use" for the new WhatsApp Status / Instagram Post / Instagram
+ *  Story export formats -- the original landscape publication format
+ *  does not carry this (see renderKuralPublishing, which only calls this
+ *  when brandingWordmark/brandingHandle are explicitly supplied). Real
+ *  text supplied directly by the founder, not invented: wordmark "AiA --
+ *  Aram in Action", handle "aram_in_action".
+ *
+ *  Positioned near the bottom of the canvas, centred horizontally, well
+ *  below the hero stack -- deliberately the quietest text on the page,
+ *  matching the established hierarchy (Kural > reflection > metadata >
+ *  branding). Sized off Math.min(width,height), same fix as tokenSize/
+ *  tokenMinSize, so it scales sensibly across the very different aspect
+ *  ratios these export formats use (portrait, square) without needing a
+ *  separate size table per format. */
+function drawSocialBranding(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  wordmark: string | undefined,
+  handle: string | undefined,
+  sansFont: string
+): void {
+  const scale = Math.min(width, height);
+  const wordmarkSize = scale * 0.024;
+  const handleSize = scale * 0.018;
+  const bottomMargin = scale * 0.045;
+  const gap = scale * 0.012;
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+
+  const handleY = height - bottomMargin;
+  const wordmarkY = handle ? handleY - handleSize - gap : handleY;
+
+  if (wordmark) {
+    ctx.font = `600 ${wordmarkSize}px ${sansFont}`;
+    ctx.fillStyle = withAlpha(COLORS.kuralInk, 0.7);
+    ctx.fillText(wordmark, width / 2, wordmarkY);
+  }
+  if (handle) {
+    ctx.font = `500 ${handleSize}px ${sansFont}`;
+    ctx.fillStyle = withAlpha(COLORS.heritageBronze, 0.75);
+    ctx.fillText(`@${handle.replace(/^@/, "")}`, width / 2, handleY);
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawAssembledSentence(
   ctx: CanvasRenderingContext2D,
@@ -2013,7 +2086,7 @@ function drawAssembledSentence(
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const maxTextWidth = width * 0.86;
   const lines = [content.tamilLine1, content.tamilLine2];
-  const size = fitTokenSize(ctx, kuralToken, lines, tamilFont, sansFont, maxTextWidth, height);
+  const size = fitTokenSize(ctx, kuralToken, lines, tamilFont, sansFont, maxTextWidth, width, height);
   const lineGap = size * kuralToken.lineHeightRatio;
   const cy = height / 2;
   const y1 = cy - lineGap / 2 + size * 0.32;
@@ -2070,7 +2143,7 @@ function drawForegroundKural(
   // குறள் [n] -- the smallest fragment that also survived, sitting just
   // above the Kural as part of the same small miracle, not a masthead.
   const metaToken = TYPOGRAPHY_TOKENS.meta;
-  const metaSize = tokenSize(metaToken, height);
+  const metaSize = tokenSize(metaToken, width, height);
   const metaY = height * 0.375;
   ctx.textAlign = metaToken.align;
   ctx.textBaseline = "alphabetic";
@@ -2083,7 +2156,7 @@ function drawForegroundKural(
   // ink from every prior pass; only where it sits in the page changed.
   const kuralToken = TYPOGRAPHY_TOKENS.kural;
   const kuralLines = [content.tamilLine1, content.tamilLine2];
-  const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, height);
+  const kuralSize = fitTokenSize(ctx, kuralToken, kuralLines, tamilFont, sansFont, maxTextWidth, width, height);
   const kuralY1 = height * 0.44;
   const kuralY2 = kuralY1 + kuralSize * kuralToken.lineHeightRatio;
 
@@ -2099,7 +2172,7 @@ function drawForegroundKural(
   // not a formally separated row.
   const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
   const englishLines = [content.englishLine1, content.englishLine2];
-  const engSize = fitTokenSize(ctx, reflectionToken, englishLines, tamilFont, sansFont, maxTextWidth, height);
+  const engSize = fitTokenSize(ctx, reflectionToken, englishLines, tamilFont, sansFont, maxTextWidth, width, height);
   const engY1 = kuralY2 + height * 0.055;
   const engY2 = engY1 + engSize * reflectionToken.lineHeightRatio;
 
@@ -2113,7 +2186,7 @@ function drawForegroundKural(
   // Footer -- present, but unimportant. The smallest thing near the
   // Kural's close, no separator, no ornament.
   const footerToken = TYPOGRAPHY_TOKENS.footer;
-  const footerSize = tokenSize(footerToken, height);
+  const footerSize = tokenSize(footerToken, width, height);
   const footerY = engY2 + height * 0.06;
   ctx.textAlign = footerToken.align;
   ctx.font = tokenFont(footerToken, footerSize, tamilFont, sansFont);
@@ -2155,10 +2228,11 @@ function fitTokenSize(
   tamilFont: string,
   sansFont: string,
   maxWidth: number,
+  width: number,
   height: number
 ): number {
-  let size = tokenSize(token, height);
-  const minSize = tokenMinSize(token, height);
+  let size = tokenSize(token, width, height);
+  const minSize = tokenMinSize(token, width, height);
   while (size > minSize) {
     ctx.font = tokenFont(token, size, tamilFont, sansFont);
     applyTokenTracking(ctx, token, size);

@@ -32,6 +32,36 @@ import type { KuralPublishingContent } from "@/lib/kural-publishing/kural200-sta
 export const CANVAS_WIDTH = 1648;
 export const CANVAS_HEIGHT = 928;
 
+/** GOLD MASTER, explicit founder request: publishing assets for other
+ *  usages (WhatsApp Status, Instagram Post, Instagram Story) alongside
+ *  the original landscape publication format. Real, standard dimensions
+ *  for each platform, not guessed -- WhatsApp Status and Instagram Story
+ *  share the same 1080x1920 (9:16) frame; Instagram Post is a 1080x1080
+ *  square. "landscape" (the original format) is the default and always
+ *  first in this list. */
+export interface ExportFormat {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+  /** Social formats get the wordmark/handle; the original landscape
+   *  publication format does not (explicit founder scoping -- branding
+   *  is "for social use", not part of the original design). */
+  branding: boolean;
+}
+
+export const EXPORT_FORMATS: readonly ExportFormat[] = [
+  { id: "landscape", label: "Landscape (current)", width: CANVAS_WIDTH, height: CANVAS_HEIGHT, branding: false },
+  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true },
+  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true },
+  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true },
+];
+
+/** Real text supplied directly by the founder, not invented -- see the
+ *  drawSocialBranding doc comment in publishing-renderer.ts. */
+export const BRANDING_WORDMARK = "AiA — Aram in Action";
+export const BRANDING_HANDLE = "aram_in_action";
+
 /** Where the canonical Kural Koorum Aram logo is expected to live once
  *  supplied. Nothing in this file generates a fallback if it's missing --
  *  PublishingWorkspace's loader simply fails silently and no logo draws,
@@ -70,6 +100,10 @@ interface KuralHeroCanvasProps {
   /** INTERNAL, development-only. Live-preview only -- see module doc.
    *  Defaults to false. */
   debugFormationLogic?: boolean;
+  /** GOLD MASTER: which export format to render at. Defaults to the
+   *  original landscape dimensions with no branding, so every existing
+   *  caller of this component is completely unaffected. */
+  format?: ExportFormat;
 }
 
 export default function KuralHeroCanvas({
@@ -77,8 +111,10 @@ export default function KuralHeroCanvas({
   generation,
   logoImage,
   debugFormationLogic = false,
+  format = EXPORT_FORMATS[0],
 }: KuralHeroCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const { width, height, branding } = format;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -88,8 +124,8 @@ export default function KuralHeroCanvas({
 
     const paint = (): void => {
       renderKuralPublishing(ctx, {
-        width: CANVAS_WIDTH,
-        height: CANVAS_HEIGHT,
+        width,
+        height,
         content,
         tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
         sansFont: resolveFont("--font-sans", SANS_FALLBACK),
@@ -98,6 +134,8 @@ export default function KuralHeroCanvas({
         brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
         logoImage: logoImage ?? null,
         debugFormationLogic,
+        brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+        brandingHandle: branding ? BRANDING_HANDLE : undefined,
       });
     };
 
@@ -120,13 +158,13 @@ export default function KuralHeroCanvas({
     return () => {
       cancelled = true;
     };
-  }, [content, generation, logoImage, debugFormationLogic]);
+  }, [content, generation, logoImage, debugFormationLogic, width, height, branding]);
 
   return (
     <canvas
       ref={canvasRef}
-      width={CANVAS_WIDTH}
-      height={CANVAS_HEIGHT}
+      width={width}
+      height={height}
       aria-label="Kural Koorum Aram publication preview"
       style={{
         width: "100%",
@@ -148,11 +186,13 @@ export default function KuralHeroCanvas({
  *  screen once the canonical asset is in place. */
 export async function renderKuralPublishingForExport(
   content: KuralPublishingContent,
-  logoImage: HTMLImageElement | null = null
+  logoImage: HTMLImageElement | null = null,
+  format: ExportFormat = EXPORT_FORMATS[0]
 ): Promise<Blob | null> {
+  const { width, height, branding } = format;
   const canvas = document.createElement("canvas");
-  canvas.width = CANVAS_WIDTH;
-  canvas.height = CANVAS_HEIGHT;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
@@ -168,8 +208,8 @@ export async function renderKuralPublishingForExport(
   }
 
   renderKuralPublishing(ctx, {
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
+    width,
+    height,
     content,
     tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
     sansFont: resolveFont("--font-sans", SANS_FALLBACK),
@@ -178,6 +218,8 @@ export async function renderKuralPublishingForExport(
     brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
     logoImage,
     debugFormationLogic: false,
+    brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+    brandingHandle: branding ? BRANDING_HANDLE : undefined,
   });
 
   return new Promise((resolve) => {

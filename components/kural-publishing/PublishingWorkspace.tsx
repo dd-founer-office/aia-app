@@ -25,9 +25,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import KuralHeroCanvas, {
-  CANVAS_WIDTH,
-  CANVAS_HEIGHT,
   KKA_LOGO_PATH,
+  EXPORT_FORMATS,
+  type ExportFormat,
   renderKuralPublishingForExport,
 } from "./KuralHeroCanvas";
 import {
@@ -55,10 +55,10 @@ const FIELDS: readonly FieldConfig[] = [
   { key: "englishLine2", label: "English Line 2" },
 ];
 
-function buildFilename(content: KuralPublishingContent): string {
+function buildFilename(content: KuralPublishingContent, format: ExportFormat): string {
   const issue = deriveIssueNumber(content.issue);
   const kural = content.kuralNumber.trim().replace(/[^a-zA-Z0-9]+/g, "") || "0";
-  return `kural-koorum-aram-issue-${issue}-kural-${kural}.png`;
+  return `kural-koorum-aram-issue-${issue}-kural-${kural}-${format.id}.png`;
 }
 
 export default function PublishingWorkspace() {
@@ -69,6 +69,7 @@ export default function PublishingWorkspace() {
   const [showFormationLogic, setShowFormationLogic] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
+  const [format, setFormat] = useState<ExportFormat>(EXPORT_FORMATS[0]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,12 +100,12 @@ export default function PublishingWorkspace() {
     try {
       // Independent render, debug always forced off inside this helper --
       // never reads the (possibly debug-overlaid) live preview canvas.
-      const blob = await renderKuralPublishingForExport(content, logoImage);
+      const blob = await renderKuralPublishingForExport(content, logoImage, format);
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = buildFilename(content);
+      link.download = buildFilename(content, format);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -112,7 +113,7 @@ export default function PublishingWorkspace() {
     } finally {
       setIsExporting(false);
     }
-  }, [content, logoImage]);
+  }, [content, logoImage, format]);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[1400px] flex-col gap-6 px-5 py-8 lg:flex-row lg:gap-10 lg:px-10">
@@ -143,6 +144,34 @@ export default function PublishingWorkspace() {
         </div>
 
         <div className="mt-6 flex flex-col gap-3">
+          <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+            Export format
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            {EXPORT_FORMATS.map((f) => {
+              const active = f.id === format.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFormat(f)}
+                  className={`rounded-[var(--radius-button)] border px-3 py-2 text-left text-xs font-medium transition-colors ${
+                    active
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                      : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)]"
+                  }`}
+                >
+                  <span className="block">{f.label}</span>
+                  <span className={`block text-[10px] opacity-70 ${active ? "" : "text-[var(--color-muted-foreground)]"}`}>
+                    {f.width}×{f.height}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3">
           <button
             type="button"
             onClick={handleGenerate}
@@ -156,7 +185,7 @@ export default function PublishingWorkspace() {
             disabled={isExporting}
             className="rounded-[var(--radius-button)] border border-[var(--color-primary)] bg-transparent px-5 py-3 text-sm font-medium text-[var(--color-primary)] disabled:opacity-50"
           >
-            {isExporting ? "Preparing PNG…" : "Download PNG"}
+            {isExporting ? "Preparing PNG…" : `Download PNG (${format.label})`}
           </button>
         </div>
 
@@ -184,14 +213,15 @@ export default function PublishingWorkspace() {
 
       <section className="flex-1">
         <p className="mb-2 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
-          Preview — exports at exactly {CANVAS_WIDTH}×{CANVAS_HEIGHT}px
+          Preview — {format.label}, exports at exactly {format.width}×{format.height}px
         </p>
-        <div className="mx-auto max-w-4xl">
+        <div className={`mx-auto ${format.width >= format.height ? "max-w-4xl" : "max-w-md"}`}>
           <KuralHeroCanvas
             content={content}
             generation={generation}
             logoImage={logoImage}
             debugFormationLogic={showFormationLogic}
+            format={format}
           />
         </div>
       </section>
