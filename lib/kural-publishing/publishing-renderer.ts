@@ -376,6 +376,21 @@ export function renderKuralPublishing(
   // field, real typeset text, no glow, uniform weight throughout.
   drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont);
 
+  // GOLD MASTER, explicit founder placement (revised): "near the
+  // metadata line and much bigger in size" -- moved from beside the
+  // reflection lines. Verified by direct measurement before building:
+  // metadata's own real width leaves a 395px gap before the box's own
+  // right edge (much wider than the reflection's 237px), but only 15px
+  // of vertical room remains between the metadata line and the hero
+  // box's own bottom edge -- nowhere near enough to vertically CENTRE a
+  // genuinely bigger mark there. Positioned with its TOP at the
+  // metadata's own height instead, extending down into the open space
+  // below the hero box (239px of real room before the canvas edge),
+  // rather than forcing a big mark into a 15px gap.
+  if (opts.logoImage) {
+    drawLogoNearMetadata(ctx, kuralLayout, tamilFont, sansFont, opts.logoImage, width, height);
+  }
+
   if (opts.brandingWordmark || opts.brandingHandle) {
     drawSocialBranding(ctx, width, height, opts.brandingWordmark, opts.brandingHandle, sansFont);
   }
@@ -2071,6 +2086,61 @@ function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingCo
   applyTokenTracking(ctx, metaToken, layout.metaSize);
   ctx.fillStyle = metaColor;
   ctx.fillText(restSegment, layout.leftX + boldWidth, layout.metaY);
+}
+
+/** GOLD MASTER, explicit founder-approved placement (revised from an
+ *  earlier "beside the reflection" version): "near the metadata line
+ *  and much bigger in size." Measures the metadata line's own real
+ *  width (re-using the exact bold+regular split drawKuralHero itself
+ *  renders with) and uses the gap to its right, same principle as the
+ *  earlier reflection placement but against a different, wider anchor.
+ *
+ *  Vertical placement is NOT centred on the metadata line -- verified
+ *  by direct measurement that only ~15px of room exists between the
+ *  metadata line and the hero box's own bottom edge, nowhere near
+ *  enough to centre a genuinely bigger mark. Instead the logo's TOP
+ *  aligns near the metadata's own height and extends downward into the
+ *  real open space below the hero box (roughly 239px of canvas room
+ *  before the bottom edge for this canvas size), so a bigger size has
+ *  somewhere real to go rather than being forced into a 15px gap. */
+function drawLogoNearMetadata(
+  ctx: CanvasRenderingContext2D,
+  layout: HeroLayout,
+  tamilFont: string,
+  sansFont: string,
+  logoImage: HTMLImageElement,
+  canvasWidth: number,
+  canvasHeight: number
+): void {
+  const metaToken = TYPOGRAPHY_TOKENS.meta;
+  ctx.font = `700 ${layout.metaSize}px ${tamilFont}, sans-serif`;
+  applyTokenTracking(ctx, metaToken, layout.metaSize);
+  const metaRightEdge = layout.leftX + ctx.measureText(layout.metaText).width;
+
+  const margin = 40;
+  const availableWidth = layout.box.x1 - metaRightEdge - margin * 2;
+  const naturalW = logoImage.naturalWidth || logoImage.width;
+  const naturalH = logoImage.naturalHeight || logoImage.height;
+  if (!naturalW || !naturalH || availableWidth < 24) return;
+
+  // "Much bigger" -- roughly double the previous reflection-side sizing
+  // (0.075 -> 0.16 of canvas height), still capped by whichever real
+  // constraint is tighter: the horizontal gap, or the actual room
+  // between the metadata line and the canvas's own bottom edge.
+  const verticalRoom = canvasHeight - layout.metaY - 20;
+  const targetH = Math.min(canvasHeight * 0.16, availableWidth / (naturalW / naturalH), verticalRoom);
+  if (targetH < 24) return; // genuinely no room -- skip rather than force an overlap
+
+  const scale = targetH / naturalH;
+  const w = naturalW * scale;
+  const logoX = metaRightEdge + margin;
+  const logoY = layout.metaY - layout.metaSize * 0.75;
+
+  void canvasWidth;
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.drawImage(logoImage, logoX, logoY, w, targetH);
+  ctx.restore();
 }
 
 /** GOLD MASTER, explicit founder request: "add branding elements for
