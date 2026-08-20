@@ -370,17 +370,18 @@ export function renderKuralPublishing(
   // pair) into the "tamil" font slot instead of tamilSerifFont/serifFont.
   const kuralLayout = computeHeroLayout(ctx, width, height, content, tamilFont, sansFont);
 
-  // GOLD MASTER, EMBOSSED HERITAGE MARK, explicit founder correction
-  // against a real render: "the watermark currently looks too faded,
-  // too transparent, washed out... more like a watermark placed on top
-  // than an intentional brand object... transform the existing seal
-  // into a subtle embossed heritage mark... do not simply increase
-  // opacity... create visibility through material depth and tonal
-  // separation." Built and verified in stages, not all at once: (1)
-  // moderate opacity + soft outer shadow (this block) -- gives real
-  // physical presence, like something resting on the page rather than
-  // painted onto it; further stages (inner vignette for engraved depth,
-  // bronze edge highlight) layer on top of this same drawing pass.
+  // GOLD MASTER, FULL CLARITY, explicit founder correction against a
+  // real reference image: "i need exactly like this" -- the reference
+  // shows the seal at essentially full opacity and its own original
+  // colour (gold text, blue circuit tracery, dark ring), not the muted/
+  // bronze-toned/vignetted treatment from the previous pass. That
+  // whole treatment (bronze 'color'-blend tint, inner multiply
+  // vignette, added gold edge highlight) was built specifically to
+  // MUTE the seal -- the opposite of what's being asked for here, so
+  // it's removed entirely rather than tuned down. Only the soft drop
+  // shadow is kept, for a small amount of physical grounding against
+  // the page (the reference image itself shows the seal sitting with
+  // real contrast against its background, not pasted perfectly flat).
   const logoRect = opts.logoImage ? computeLogoRect(ctx, kuralLayout, tamilFont, opts.logoImage, width, height) : null;
 
   if (opts.logoImage && logoRect) {
@@ -391,7 +392,7 @@ export function renderKuralPublishing(
     const rotationRad = (-13 * Math.PI) / 180;
 
     ctx.save();
-    ctx.globalAlpha = 0.42;
+    ctx.globalAlpha = 0.97;
     ctx.shadowColor = "rgba(36, 30, 24, 0.35)"; // COLORS.kuralInk at low alpha -- a soft, warm-dark shadow, not pure black
     ctx.shadowBlur = 22;
     ctx.shadowOffsetX = 3;
@@ -399,75 +400,6 @@ export function renderKuralPublishing(
     ctx.translate(centerX, centerY);
     ctx.rotate(rotationRad);
     ctx.drawImage(opts.logoImage, -logoW / 2, -logoH / 2, logoW, logoH);
-    ctx.restore();
-
-    // BRONZE TONING: explicit founder request -- "aged bronze / dark
-    // antique metal / engraved seal rather than: flat transparent
-    // watermark." The seal's own artwork keeps its exact original
-    // detail (letterforms, the central symbol, the ring text) -- 'color'
-    // blend mode shifts HUE/SATURATION toward the target tone while
-    // preserving the original's own luminance (its light/dark
-    // structure, i.e. the actual engraving), rather than flattening it
-    // into a solid tint the way 'source-atop' or a plain overlay would.
-    //
-    // FIX, real bug caught by rendering, not assumed correct: a plain
-    // fillRect over the logo's own bounding square bled a visible tan
-    // patch into the image's TRANSPARENT CORNERS (the logo PNG is a
-    // circle inscribed in a square canvas) -- 'color' blend mode
-    // doesn't protect fully-transparent destination pixels the way a
-    // naive assumption would suggest. Fixed with an explicit circular
-    // clip (radius = half the drawn width, matching the seal's own real
-    // circular extent) before filling, so the tint can only ever touch
-    // the actual seal, never the square it's inscribed in.
-    ctx.save();
-    ctx.globalAlpha = 0.42;
-    ctx.translate(centerX, centerY);
-    ctx.rotate(rotationRad);
-    ctx.beginPath();
-    ctx.arc(0, 0, logoW / 2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.globalCompositeOperation = "color";
-    ctx.fillStyle = COLORS.heritageBronze;
-    ctx.fillRect(-logoW / 2, -logoH / 2, logoW, logoH);
-    ctx.restore();
-
-    // ENGRAVED DEPTH: explicit founder request -- "subtle dimensional
-    // depth... restrained inner shadow... delicate bronze edge
-    // highlight... slight engraved/embossed texture... as if the seal
-    // is physically impressed into the paper." A radial gradient,
-    // near-transparent at the centre and darkening toward the rim,
-    // composited with 'multiply' so it only ever darkens (never lightens
-    // past the seal's own tone) -- reads as the rim sitting slightly
-    // recessed, an engraved edge rather than a flat sticker edge.
-    // Clipped to the same real circle as the bronze tint above.
-    ctx.save();
-    ctx.globalAlpha = 0.42;
-    ctx.translate(centerX, centerY);
-    ctx.rotate(rotationRad);
-    ctx.beginPath();
-    ctx.arc(0, 0, logoW / 2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.globalCompositeOperation = "multiply";
-    const innerVignette = ctx.createRadialGradient(0, 0, logoW * 0.32, 0, 0, logoW * 0.5);
-    innerVignette.addColorStop(0, "rgba(255,255,255,1)"); // no darkening at centre -- multiply by white = no-op
-    innerVignette.addColorStop(1, "rgba(120,95,60,0.55)"); // darkened warm bronze at the rim
-    ctx.fillStyle = innerVignette;
-    ctx.fillRect(-logoW / 2, -logoH / 2, logoW, logoH);
-    ctx.restore();
-
-    // Delicate bronze edge highlight -- a thin ring just inside the
-    // seal's own outer edge, catching light the way a raised metal rim
-    // would. Kept faint (opacity well below the seal's own base tone)
-    // so it reads as a highlight, not a bright outline.
-    ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.translate(centerX, centerY);
-    ctx.rotate(rotationRad);
-    ctx.beginPath();
-    ctx.arc(0, 0, logoW / 2 - 2, 0, Math.PI * 2);
-    ctx.strokeStyle = COLORS.illuminatedGold;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
     ctx.restore();
   }
 
