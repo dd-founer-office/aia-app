@@ -370,18 +370,20 @@ export function renderKuralPublishing(
   // pair) into the "tamil" font slot instead of tamilSerifFont/serifFont.
   const kuralLayout = computeHeroLayout(ctx, width, height, content, tamilFont, sansFont);
 
-  // GOLD MASTER, FULL CLARITY, explicit founder correction against a
-  // real reference image: "i need exactly like this" -- the reference
-  // shows the seal at essentially full opacity and its own original
-  // colour (gold text, blue circuit tracery, dark ring), not the muted/
-  // bronze-toned/vignetted treatment from the previous pass. That
-  // whole treatment (bronze 'color'-blend tint, inner multiply
-  // vignette, added gold edge highlight) was built specifically to
-  // MUTE the seal -- the opposite of what's being asked for here, so
-  // it's removed entirely rather than tuned down. Only the soft drop
-  // shadow is kept, for a small amount of physical grounding against
-  // the page (the reference image itself shows the seal sitting with
-  // real contrast against its background, not pasted perfectly flat).
+  // GOLD MASTER, CORRECTED, explicit founder correction against the
+  // SAME reference image sent twice: "i checked but im not getting the
+  // same colours and effect used in the attached image." Real mistake
+  // in the previous pass, not a new request -- misread "not faded" as
+  // "not toned" and removed the bronze treatment entirely, when the
+  // reference actually wants BOTH at once: full opacity/clarity AND
+  // warm bronze/antique toning (the reference's own circle background
+  // is a dark warm brown, not the source PNG's navy blue; its circuit
+  // tracery reads gold/amber, not the source's cyan). Restoring the
+  // 'color'-blend bronze tint (verified working, including the circular
+  // clip fix for the transparent-corner bleed bug found earlier) at a
+  // stronger intensity than the previous muted pass used, since the
+  // reference shows the blue almost entirely replaced by warm tones,
+  // not just partially shifted.
   const logoRect = opts.logoImage ? computeLogoRect(ctx, kuralLayout, tamilFont, opts.logoImage, width, height) : null;
 
   if (opts.logoImage && logoRect) {
@@ -400,6 +402,24 @@ export function renderKuralPublishing(
     ctx.translate(centerX, centerY);
     ctx.rotate(rotationRad);
     ctx.drawImage(opts.logoImage, -logoW / 2, -logoH / 2, logoW, logoH);
+    ctx.restore();
+
+    // Bronze/antique toning -- 'color' blend mode shifts hue/saturation
+    // toward heritageBronze while preserving the original artwork's own
+    // luminance (the actual engraved detail survives, this never
+    // flattens into a solid tint). Clipped to the seal's real circular
+    // extent (not its square bounding box) -- the earlier bleed bug
+    // into the PNG's transparent corners is still fixed here.
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotationRad);
+    ctx.beginPath();
+    ctx.arc(0, 0, logoW / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.globalCompositeOperation = "color";
+    ctx.fillStyle = COLORS.heritageBronze;
+    ctx.fillRect(-logoW / 2, -logoH / 2, logoW, logoH);
     ctx.restore();
   }
 
