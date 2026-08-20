@@ -389,9 +389,25 @@ export function renderKuralPublishing(
   drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont);
 
   if (opts.logoImage && logoRect) {
+    // GOLD MASTER, explicit founder request: "slightly rotate the angle
+    // of the logo to the left side -13 degrees." Rotated around the
+    // logo's own centre (not its top-left corner, which is what
+    // ctx.rotate alone would pivot around) -- translate to centre,
+    // rotate, then draw the image offset back by half its own
+    // width/height so it lands exactly where logoRect (and therefore
+    // the exclusion zone computeLogoRect already carved out for it)
+    // says it should.
+    const logoW = logoRect.x1 - logoRect.x0;
+    const logoH = logoRect.y1b - logoRect.y0;
+    const centerX = logoRect.x0 + logoW / 2;
+    const centerY = logoRect.y0 + logoH / 2;
+    const rotationRad = (-13 * Math.PI) / 180;
+
     ctx.save();
     ctx.globalAlpha = 0.9;
-    ctx.drawImage(opts.logoImage, logoRect.x0, logoRect.y0, logoRect.x1 - logoRect.x0, logoRect.y1b - logoRect.y0);
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotationRad);
+    ctx.drawImage(opts.logoImage, -logoW / 2, -logoH / 2, logoW, logoH);
     ctx.restore();
   }
 
