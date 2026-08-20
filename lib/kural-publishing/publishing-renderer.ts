@@ -370,25 +370,29 @@ export function renderKuralPublishing(
   // pair) into the "tamil" font slot instead of tamilSerifFont/serifFont.
   const kuralLayout = computeHeroLayout(ctx, width, height, content, tamilFont, sansFont);
 
-  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout);
+  // GOLD MASTER, explicit founder placement (twice-revised): "near the
+  // metadata line and much bigger in size," then "why can't we use the
+  // space [right of the hero block] and double the size." Computed once
+  // here, before the field draws, and reused for both the exclusion
+  // zone AND the actual drawing below -- so the two can never drift out
+  // of sync with each other. See computeLogoRect's own doc comment for
+  // the real measurements behind this placement (verified the Kural's
+  // own widest line leaves no safe gap large enough beside it at double
+  // size, so the logo now sits partly outside the hero's own protected
+  // rectangle and needs its own exclusion zone here).
+  const logoRect = opts.logoImage ? computeLogoRect(ctx, kuralLayout, tamilFont, opts.logoImage, width, height) : null;
+
+  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout, logoRect ?? undefined);
 
   // The hero itself, drawn last -- on top of the (now cleared-around)
   // field, real typeset text, no glow, uniform weight throughout.
   drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont);
 
-  // GOLD MASTER, explicit founder placement (revised): "near the
-  // metadata line and much bigger in size" -- moved from beside the
-  // reflection lines. Verified by direct measurement before building:
-  // metadata's own real width leaves a 395px gap before the box's own
-  // right edge (much wider than the reflection's 237px), but only 15px
-  // of vertical room remains between the metadata line and the hero
-  // box's own bottom edge -- nowhere near enough to vertically CENTRE a
-  // genuinely bigger mark there. Positioned with its TOP at the
-  // metadata's own height instead, extending down into the open space
-  // below the hero box (239px of real room before the canvas edge),
-  // rather than forcing a big mark into a 15px gap.
-  if (opts.logoImage) {
-    drawLogoNearMetadata(ctx, kuralLayout, tamilFont, sansFont, opts.logoImage, width, height);
+  if (opts.logoImage && logoRect) {
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(opts.logoImage, logoRect.x0, logoRect.y0, logoRect.x1 - logoRect.x0, logoRect.y1b - logoRect.y0);
+    ctx.restore();
   }
 
   if (opts.brandingWordmark || opts.brandingHandle) {
@@ -856,7 +860,8 @@ function drawMemoryLayer(
   brahmiFont: string,
   rand: SeededRandom,
   kuralBox: HeroLayout["box"],
-  zonePools: MilestoneZonePools
+  zonePools: MilestoneZonePools,
+  extraBox?: HeroLayout["box"]
 ): void {
   // GOLD MASTER: increased from 6 to 17 -- explicit founder instruction:
   // "the tamil brahmi and the vatteluthu must be as same in size as the
@@ -934,7 +939,7 @@ function drawMemoryLayer(
       // founder agreement. Smoothly suppresses acceptance near/inside
       // the hero's real measured footprint (computeHeroLayout), never
       // a hard edge.
-      const clearing = kuralClearingFactor(gx, gy, kuralBox);
+      const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBox);
       if (!rand.chance(Math.min(1, density * 0.92 + 0.06) * clearing * confine)) continue;
 
       const isBrahmi = rand.chance(0.5); // equal status, flat roll
@@ -1045,6 +1050,7 @@ function drawRadialStage(
     highlightFirstOccurrence?: boolean;
   },
   kuralBox: HeroLayout["box"],
+  extraBox: HeroLayout["box"] | undefined,
   // GOLD MASTER: shared across multiple drawRadialStage calls (letters,
   // uyirmei, ...) so overlap is checked between STAGES, not just within
   // one -- explicit founder thumb rule: "no letter must be overlapped,"
@@ -1073,7 +1079,7 @@ function drawRadialStage(
     const d = Math.min(gx, width - gx, gy, height - gy);
     const ef = norm > 0 ? Math.min(1, d / norm) : 0;
     const strength = ringStrength(ef, ring);
-    const clearing = kuralClearingFactor(gx, gy, kuralBox);
+    const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBox);
     const combined = strength * clearing;
     if (probabilistic ? !rand.chance(combined) : combined <= 0) return null;
     if (opts.allowOverlapGuard) {
@@ -1265,7 +1271,8 @@ function drawWordsNearKuralTokens(
   },
   kuralBox: HeroLayout["box"],
   sharedPlacedBoxes: PlacedWordBox[],
-  yAnchor: number
+  yAnchor: number,
+  extraBox?: HeroLayout["box"]
 ): void {
   if (groups.length === 0) return;
 
@@ -1370,7 +1377,7 @@ function drawWordsNearKuralTokens(
         const d = Math.min(gx, width - gx, gy, height - gy);
         const ef = norm > 0 ? Math.min(1, d / norm) : 0;
         const strength = ringStrength(ef, ring);
-        const clearing = kuralClearingFactor(gx, gy, kuralBox);
+        const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBox);
         const safeZoneClear = kuralClearingFactor(gx, gy, expandedBox);
         if (strength * clearing * safeZoneClear <= 0) continue;
 
@@ -1531,7 +1538,8 @@ function drawLivingField(
   rand: SeededRandom,
   zonePools: MilestoneZonePools,
   content: KuralPublishingContent,
-  kuralLayout: HeroLayout
+  kuralLayout: HeroLayout,
+  extraBox?: HeroLayout["box"]
 ): void {
   const kuralBox = kuralLayout.box;
   // REVERTED, explicit founder instruction: "i need the layer 4 words
@@ -1544,7 +1552,7 @@ function drawLivingField(
   // the same ring every other Kural's words already live in, so no
   // special protection is needed here any more than letters/uyirmei
   // need one against each other.
-  drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox, zonePools);
+  drawMemoryLayer(ctx, width, height, brahmiFont, rand, kuralBox, zonePools, extraBox);
 
   // GOLD MASTER, explicit founder thumb rule: "no letter must be
   // overlapped" -- not just within one layer, across all of them. One
@@ -1563,7 +1571,7 @@ function drawLivingField(
     tamilFont, fontFamily: "sans-serif", size: 17, opacity: 0.34, color: COLORS.heritageBronze,
     weight: 500, glow: false, cellW: 60, cellH: 52, allowOverlapGuard: true,
     highlightFirstOccurrence: true,
-  }, kuralBox, sharedBoxes);
+  }, kuralBox, extraBox, sharedBoxes);
 
   // MILESTONE 04 / STAGE 3 -- Uyirmei Formation. GOLD MASTER, explicit
   // founder plan: every item drawn here is a real உயிர்மெய் compound
@@ -1585,7 +1593,7 @@ function drawLivingField(
       tamilFont, fontFamily: "serif", size: 19, opacity: 0.42, color: COLORS.heritageBronze,
       weight: 500, glow: false, cellW: 64, cellH: 56, allowOverlapGuard: true,
       highlightFirstOccurrence: true,
-    }, kuralBox, sharedBoxes);
+    }, kuralBox, extraBox, sharedBoxes);
   }
 
   // MILESTONE 04 SCOPE: two more layers still to come (words, sentence)
@@ -1752,11 +1760,11 @@ function drawLivingField(
     // 184px) before either pair's own left/right split is even applied.
     drawWordsNearKuralTokens(
       ctx, width, height, STAGE_RINGS.words, line1Groups, assignZones(line1Groups.length), content.tamilLine1, kuralLayout, tamilFont, rand,
-      wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY1 - 50
+      wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY1 - 50, extraBox
     );
     drawWordsNearKuralTokens(
       ctx, width, height, STAGE_RINGS.words, line2Groups, assignZones(line2Groups.length), content.tamilLine2, kuralLayout, tamilFont, rand,
-      wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY2 + 50
+      wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY2 + 50, extraBox
     );
   }
 
@@ -1982,7 +1990,7 @@ function computeHeroLayout(
  *  agreement: "a quiet clearing around it" -- gradual, not a hard-edged
  *  panel boundary, which every constitution in this project has argued
  *  against. */
-function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"]): number {
+function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"], extraBox?: HeroLayout["box"]): number {
   // FIX: was proportional to the box's own size (18%/35% of box
   // dimensions) -- fine when the box was just the two-line Kural, but
   // once the hero grew to include the reflection and metadata lines,
@@ -1999,17 +2007,31 @@ function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"]): numb
   // respective layers only no mix up." This function briefly grew a
   // second (array) parameter to protect word-formation content that had
   // been moved OUTSIDE Layer 4's own ring, onto the canvas edges. That
-  // whole design is gone now -- Layer 4 lives inside STAGE_RINGS.words
+  // whole design was removed -- Layer 4 lives inside STAGE_RINGS.words
   // again, the same ring letters/uyirmei already respect their own
-  // versions of, so this suppression only ever needs to protect the
-  // hero's own footprint, exactly as it did before any of that.
+  // versions of.
+  //
+  // RE-ADDED, genuinely different reason this time: explicit founder
+  // request to double the logo's size, which -- verified by direct
+  // measurement before building -- means it now extends 89px past the
+  // hero box's own right edge and 7px past its bottom edge (the Kural's
+  // own widest line leaves no safe gap large enough beside it at that
+  // size, so the logo has to sit partly outside the hero's already-
+  // protected rectangle). extraBox is a single box, not the earlier
+  // array, since only one additional region (the logo's own footprint)
+  // needs protecting this time. Optional so every existing caller (the
+  // hero's own clearing) is unaffected.
   const featherX = 70;
   const featherY = 55;
-  const dx = x < box.x0 ? box.x0 - x : x > box.x1 ? x - box.x1 : 0;
-  const dy = y < box.y0 ? box.y0 - y : y > box.y1b ? y - box.y1b : 0;
-  if (dx === 0 && dy === 0) return 0; // inside the box -- fully clear
-  const t = Math.min(1, Math.max(dx / featherX, dy / featherY));
-  return t * t * (3 - 2 * t); // smoothstep -- gradual, no hard edge
+  const clearingFor = (b: HeroLayout["box"]): number => {
+    const dx = x < b.x0 ? b.x0 - x : x > b.x1 ? x - b.x1 : 0;
+    const dy = y < b.y0 ? b.y0 - y : y > b.y1b ? y - b.y1b : 0;
+    if (dx === 0 && dy === 0) return 0; // inside the box -- fully clear
+    const t = Math.min(1, Math.max(dx / featherX, dy / featherY));
+    return t * t * (3 - 2 * t); // smoothstep -- gradual, no hard edge
+  };
+  const base = clearingFor(box);
+  return extraBox ? Math.min(base, clearingFor(extraBox)) : base;
 }
 
 /** The hero itself. Real typeset text via fillText -- not glyph-by-glyph
@@ -2103,44 +2125,57 @@ function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingCo
  *  real open space below the hero box (roughly 239px of canvas room
  *  before the bottom edge for this canvas size), so a bigger size has
  *  somewhere real to go rather than being forced into a 15px gap. */
-function drawLogoNearMetadata(
+/** GOLD MASTER, explicit founder placement (twice-revised): "why can't
+ *  we use the space [to the right of the hero block] and double the
+ *  size" -- superseded a first version that sat beside the metadata
+ *  line alone. Verified by direct measurement before building, across
+ *  every row in the hero stack, not just one: the Kural's own first
+ *  line is the widest element (right edge at x~1337 for Kural 675),
+ *  leaving essentially no safe gap beside it -- so a genuinely bigger
+ *  logo can't sit beside the Kural rows. Positioned instead below both
+ *  Kural lines (clear of kuralY2), to the right of the reflection's own
+ *  longest line, sized to roughly double the previous pass. Confirmed
+ *  by calculation that at this size the logo extends ~89px past the
+ *  hero box's own right edge and ~7px past its bottom edge -- which is
+ *  exactly why this now returns a rect for the caller to also use as an
+ *  exclusion zone (see renderKuralPublishing), rather than just drawing
+ *  directly the way the metadata-only version did. Returns null if
+ *  there's genuinely no room, rather than forcing an overlap. */
+function computeLogoRect(
   ctx: CanvasRenderingContext2D,
   layout: HeroLayout,
   tamilFont: string,
-  sansFont: string,
   logoImage: HTMLImageElement,
   canvasWidth: number,
   canvasHeight: number
-): void {
-  const metaToken = TYPOGRAPHY_TOKENS.meta;
-  ctx.font = `700 ${layout.metaSize}px ${tamilFont}, sans-serif`;
-  applyTokenTracking(ctx, metaToken, layout.metaSize);
-  const metaRightEdge = layout.leftX + ctx.measureText(layout.metaText).width;
+): HeroLayout["box"] | null {
+  const reflectionToken = TYPOGRAPHY_TOKENS.reflection;
+  ctx.font = tokenFont(reflectionToken, layout.reflectionSize, tamilFont, tamilFont);
+  applyTokenTracking(ctx, reflectionToken, layout.reflectionSize);
+  const reflectionRightEdge =
+    layout.reflectionLines.length > 0
+      ? Math.max(...layout.reflectionLines.map((l) => layout.leftX + ctx.measureText(l).width))
+      : layout.leftX;
 
-  const margin = 40;
-  const availableWidth = layout.box.x1 - metaRightEdge - margin * 2;
   const naturalW = logoImage.naturalWidth || logoImage.width;
   const naturalH = logoImage.naturalHeight || logoImage.height;
-  if (!naturalW || !naturalH || availableWidth < 24) return;
+  if (!naturalW || !naturalH) return null;
 
-  // "Much bigger" -- roughly double the previous reflection-side sizing
-  // (0.075 -> 0.16 of canvas height), still capped by whichever real
-  // constraint is tighter: the horizontal gap, or the actual room
-  // between the metadata line and the canvas's own bottom edge.
-  const verticalRoom = canvasHeight - layout.metaY - 20;
-  const targetH = Math.min(canvasHeight * 0.16, availableWidth / (naturalW / naturalH), verticalRoom);
-  if (targetH < 24) return; // genuinely no room -- skip rather than force an overlap
+  const margin = 30;
+  const startX = reflectionRightEdge + margin;
+  const startY = layout.kuralY2 + margin;
+  // "Double the size" -- roughly double the previous metadata-side
+  // sizing (0.16 -> 0.32 of canvas height), capped by whichever real
+  // constraint is tighter: staying on-canvas horizontally, or
+  // vertically before the canvas's own bottom edge.
+  const maxByWidth = canvasWidth - startX - margin;
+  const maxByHeight = canvasHeight - startY - margin;
+  const targetH = Math.min(canvasHeight * 0.32, maxByWidth / (naturalW / naturalH), maxByHeight);
+  if (targetH < 24) return null; // genuinely no room -- skip rather than force an overlap
 
   const scale = targetH / naturalH;
   const w = naturalW * scale;
-  const logoX = metaRightEdge + margin;
-  const logoY = layout.metaY - layout.metaSize * 0.75;
-
-  void canvasWidth;
-  ctx.save();
-  ctx.globalAlpha = 0.9;
-  ctx.drawImage(logoImage, logoX, logoY, w, targetH);
-  ctx.restore();
+  return { x0: startX, y0: startY, x1: startX + w, y1b: startY + targetH };
 }
 
 /** GOLD MASTER, explicit founder request: "add branding elements for
