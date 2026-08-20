@@ -370,33 +370,20 @@ export function renderKuralPublishing(
   // pair) into the "tamil" font slot instead of tamilSerifFont/serifFont.
   const kuralLayout = computeHeroLayout(ctx, width, height, content, tamilFont, sansFont);
 
-  // GOLD MASTER, explicit founder placement (twice-revised): "near the
-  // metadata line and much bigger in size," then "why can't we use the
-  // space [right of the hero block] and double the size." Computed once
-  // here, before the field draws, and reused for both the exclusion
-  // zone AND the actual drawing below -- so the two can never drift out
-  // of sync with each other. See computeLogoRect's own doc comment for
-  // the real measurements behind this placement (verified the Kural's
-  // own widest line leaves no safe gap large enough beside it at double
-  // size, so the logo now sits partly outside the hero's own protected
-  // rectangle and needs its own exclusion zone here).
+  // GOLD MASTER, WATERMARK, explicit founder-approved revision: "use
+  // the logo as a watermark in the same place." Recommendation given
+  // and approved before building: (1) much lower opacity -- 0.9 -> 0.12,
+  // faint enough to feel pressed into the page rather than placed on
+  // top; (2) drawn BEFORE the ambient field instead of after, and no
+  // longer passed as an exclusion zone -- Layer 1-4 content now passes
+  // naturally over it, the way a real watermark shows through printed
+  // text rather than pushing the text aside. Position, size (still
+  // computeLogoRect's own "double the size" sizing), and the -13 degree
+  // rotation are all unchanged -- only the layering and opacity
+  // changed, per the founder's own scoping.
   const logoRect = opts.logoImage ? computeLogoRect(ctx, kuralLayout, tamilFont, opts.logoImage, width, height) : null;
 
-  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout, logoRect ?? undefined);
-
-  // The hero itself, drawn last -- on top of the (now cleared-around)
-  // field, real typeset text, no glow, uniform weight throughout.
-  drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont);
-
   if (opts.logoImage && logoRect) {
-    // GOLD MASTER, explicit founder request: "slightly rotate the angle
-    // of the logo to the left side -13 degrees." Rotated around the
-    // logo's own centre (not its top-left corner, which is what
-    // ctx.rotate alone would pivot around) -- translate to centre,
-    // rotate, then draw the image offset back by half its own
-    // width/height so it lands exactly where logoRect (and therefore
-    // the exclusion zone computeLogoRect already carved out for it)
-    // says it should.
     const logoW = logoRect.x1 - logoRect.x0;
     const logoH = logoRect.y1b - logoRect.y0;
     const centerX = logoRect.x0 + logoW / 2;
@@ -404,12 +391,18 @@ export function renderKuralPublishing(
     const rotationRad = (-13 * Math.PI) / 180;
 
     ctx.save();
-    ctx.globalAlpha = 0.9;
+    ctx.globalAlpha = 0.12;
     ctx.translate(centerX, centerY);
     ctx.rotate(rotationRad);
     ctx.drawImage(opts.logoImage, -logoW / 2, -logoH / 2, logoW, logoH);
     ctx.restore();
   }
+
+  drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout);
+
+  // The hero itself, drawn last -- on top of the (now cleared-around)
+  // field, real typeset text, no glow, uniform weight throughout.
+  drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont);
 
   if (opts.brandingWordmark || opts.brandingHandle) {
     drawSocialBranding(ctx, width, height, opts.brandingWordmark, opts.brandingHandle, sansFont);
@@ -2141,22 +2134,26 @@ function drawKuralHero(ctx: CanvasRenderingContext2D, content: KuralPublishingCo
  *  real open space below the hero box (roughly 239px of canvas room
  *  before the bottom edge for this canvas size), so a bigger size has
  *  somewhere real to go rather than being forced into a 15px gap. */
-/** GOLD MASTER, explicit founder placement (twice-revised): "why can't
- *  we use the space [to the right of the hero block] and double the
- *  size" -- superseded a first version that sat beside the metadata
+/** GOLD MASTER, explicit founder placement (multiply-revised): "why
+ *  can't we use the space [to the right of the hero block] and double
+ *  the size" -- superseded a first version that sat beside the metadata
  *  line alone. Verified by direct measurement before building, across
  *  every row in the hero stack, not just one: the Kural's own first
  *  line is the widest element (right edge at x~1337 for Kural 675),
  *  leaving essentially no safe gap beside it -- so a genuinely bigger
  *  logo can't sit beside the Kural rows. Positioned instead below both
  *  Kural lines (clear of kuralY2), to the right of the reflection's own
- *  longest line, sized to roughly double the previous pass. Confirmed
- *  by calculation that at this size the logo extends ~89px past the
- *  hero box's own right edge and ~7px past its bottom edge -- which is
- *  exactly why this now returns a rect for the caller to also use as an
- *  exclusion zone (see renderKuralPublishing), rather than just drawing
- *  directly the way the metadata-only version did. Returns null if
- *  there's genuinely no room, rather than forcing an overlap. */
+ *  longest line, sized to roughly double the previous pass.
+ *
+ *  CORRECTION, watermark revision: this rect was previously ALSO passed
+ *  into drawLivingField as an exclusion zone, since at this size the
+ *  logo extends past the hero box's own edges into territory ambient
+ *  content could otherwise reach. That's gone now -- explicit founder
+ *  request to use the logo "as a watermark," which means ambient
+ *  content should pass naturally OVER it, not be kept clear of it. This
+ *  function still only computes WHERE the logo goes (position/size),
+ *  not whether anything else avoids that space. Returns null if there's
+ *  genuinely no room, rather than forcing an overlap. */
 function computeLogoRect(
   ctx: CanvasRenderingContext2D,
   layout: HeroLayout,
