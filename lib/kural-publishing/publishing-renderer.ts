@@ -1650,60 +1650,43 @@ function drawLivingField(
   // misrepresent a middle token as belonging to an edge), so between
   // the two real options, "top" is the objectively closer one for
   // BOTH lines, not just line 1.
-  // GOLD MASTER, GENERALIZED: explicit founder correction -- "it should
-  // be filled automatically no manual one" -- for Kural 478 (this
-  // section's own gate previously only ever matched "675", so every
-  // other Kural silently drew nothing at all). Real constraint that
-  // still applies, unchanged: Kural meaning is never invented -- which
-  // word groups form which real compound requires genuine Tamil
-  // linguistic judgement, not a mechanical split. "Automatic" here means
-  // that judgement happens once, by me, when a Kural is added to
-  // LAYER4_CURATED_KURALS below, rather than being typed into a form
-  // field by a person each time -- confirmed directly with the founder
-  // before building this: I analyse each new Kural's real tokens
-  // (independent-word compounds vs. root+grammatical-suffix, the same
-  // test used for பலர்நின்று -> பலர்/நின்று vs. ஆற்றின், which is a
-  // root plus a case marker, not two words) and add the result here.
-  // Kurals not yet in this table simply draw no Layer 4 content --
-  // never a guessed fallback.
+  // GOLD MASTER, FULLY MECHANICAL: explicit founder correction -- "i
+  // need the system itself do that like how the letters and uyir mei
+  // eluthu forms this layer also should somehow." Layers 2/3 derive
+  // their content from real Unicode script structure (how a consonant
+  // and vowel sign combine into one grapheme) -- purely mechanical,
+  // works identically on any Tamil string, no risk, because it never
+  // needs to know what the text MEANS, only how it's WRITTEN. Layer 4
+  // previously required knowing whether a token was two independent
+  // words fused together (பலர்நின்று = பலர் + நின்று) or one root plus
+  // a grammatical particle (ஆற்றின் = ஆறு + the case marker இன், not a
+  // word at all) -- genuine linguistic judgement, which is why it was a
+  // curated lookup table (LAYER4_CURATED_KURALS, now removed) rather
+  // than something the system could do on its own for an arbitrary
+  // future Kural.
   //
-  // Zones are no longer hand-specified per Kural either -- assignZones
-  // below derives left/right/top purely from each group's position in
-  // its own line (first -> left, last -> right, everything between ->
-  // top), the same pattern that was hand-tuned for Kural 675 and later
-  // confirmed to be the right one for Kural 478's different token count
-  // too. This is what makes adding a future Kural genuinely just "supply
-  // the groups" -- no per-Kural placement tuning required.
-  const LAYER4_CURATED_KURALS: Readonly<Record<string, { line1Groups: readonly (readonly string[])[]; line2Groups: readonly (readonly string[])[] }>> = {
-    "675": {
-      line1Groups: [["பொருள்", "கருவி"], ["காலம்"], ["வினை", "இடம்"], ["ஐந்தும்"]],
-      line2Groups: [["இருள்", "தீர"], ["எண்ணி"], ["செயல்"]],
-    },
-    "478": {
-      // ஆற்றின் வருந்தா வருத்தம் பலர்நின்று போற்றினும் பொத்துப் படும்.
-      // Only பலர்நின்று is a genuine two-word compound (பலர் "many
-      // people" + நின்று "persisting/standing" -- both complete,
-      // independently meaningful words). Every other token is a single
-      // root with a grammatical particle attached (ஆற்றின் = ஆறு/ஆற்றல்
-      // + இன் case marker; வருந்தா = வருந்து + ஆ negation; போற்றினும் =
-      // போற்று + இனும் concessive; படும் = படு + உம் future tense) --
-      // splitting those would show a grammar particle as if it were its
-      // own idea, which it isn't. பொத்துப் shown as பொத்து, its real
-      // dictionary form -- the trailing ப் is sandhi before படும், not
-      // part of the word.
-      line1Groups: [["ஆற்றின்"], ["வருந்தா"], ["வருத்தம்"], ["பலர்", "நின்று"]],
-      line2Groups: [["போற்றினும்"], ["பொத்து"], ["படும்"]],
-    },
-  };
-
-  /** Derives left/right/top zone assignment purely from a group's
-   *  position within its own line -- first group (leftmost real token)
-   *  -> left, last group (rightmost token) -> right, everything between
-   *  -> top. Matches the hand-tuned pattern that was verified working
-   *  for Kural 675's 4-and-3-group lines, and confirmed to generalize
-   *  correctly for Kural 478's identical 4-and-3 shape with entirely
-   *  different words. A single-group line has no real "left vs right"
-   *  to express, so it defaults to top. */
+  // Direct founder decision after being shown the real tradeoff: rather
+  // than build a genuine Tamil morphological engine (real dictionary +
+  // grammatical-suffix rules, substantial engineering, still capable of
+  // getting rare Sangam-era vocabulary wrong), Layer 4 now shows every
+  // real written word of the Kural as its own word, exactly as written
+  // -- no splitting, ever. This is mechanically identical in kind to
+  // Layers 2/3: every group is simply one real space-separated token
+  // from content.tamilLine1/tamilLine2, so it works automatically for
+  // any Kural, forever, with zero curated data and zero risk of a wrong
+  // linguistic guess. The cost, stated plainly: the specific "two
+  // smaller words visibly converging into one" moment (பொருள் + கருவி
+  // -> பொருள்கருவி) no longer happens for genuine compounds -- every
+  // word, compound or not, now shows as the single written token it
+  // actually is. The core idea (meaning-words surrounding and forming
+  // the Kural) stays fully intact; only the compound-splitting is gone.
+  //
+  // Zones still derived purely from each token's position in its own
+  // line (first -> left, last -> right, everything between -> top) --
+  // unchanged from the previous pass, verified there to reproduce Kural
+  // 675's original hand-tuned zones exactly, and equally applicable
+  // here since it only depends on position, not on whether a token was
+  // split.
   function assignZones(groupCount: number): readonly ("left" | "right" | "top" | "bottom")[] {
     if (groupCount <= 1) return groupCount === 1 ? ["top"] : [];
     const zones: ("left" | "right" | "top" | "bottom")[] = [];
@@ -1713,54 +1696,53 @@ function drawLivingField(
     return zones;
   }
 
-  const layer4Data = LAYER4_CURATED_KURALS[content.kuralNumber];
-  if (layer4Data) {
-    // VALIDATION, not silent guessing: each curated group maps to
-    // exactly one real space-separated token in the actual Tamil text,
-    // in order (see drawWordsNearKuralTokens). If the founder edits the
-    // Tamil line after curation and the token count no longer matches
-    // what was analysed, skip Layer 4 entirely rather than draw
-    // mismatched groups against the wrong words.
-    const line1TokenCount = content.tamilLine1.trim().split(/\s+/).filter(Boolean).length;
-    const line2TokenCount = content.tamilLine2.trim().split(/\s+/).filter(Boolean).length;
-    const countsMatch =
-      layer4Data.line1Groups.length === line1TokenCount && layer4Data.line2Groups.length === line2TokenCount;
+  /** Splits a Kural line into its real written tokens and wraps each one
+   *  as its own single-word "group" -- the shape drawWordsNearKuralTokens
+   *  expects, but with no compound-pair splitting. Mechanical, not
+   *  curated: this is what makes Layer 4 work for a Kural nobody has
+   *  reviewed yet, the same way Layers 2/3 already do. */
+  function tokensAsGroups(line: string): readonly (readonly string[])[] {
+    return line
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((tok) => [tok]);
+  }
 
-    if (countsMatch) {
-      const wordOpts = {
-        // GOLD MASTER, prominence reduction: explicit founder request --
-        // "reduce their visual prominence by approximately 10-15%...
-        // while keeping them clearly discoverable." 0.56 -> 0.49 (~12%
-        // reduction), applied uniformly so the existing compound/single
-        // ratio (the x1.2 boost inside drawWordsNearKuralTokens) stays
-        // intact -- both tiers get quieter together, not one more than
-        // the other.
-        tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.49, color: COLORS.heritageBronze,
-        weight: 500,
-      };
-      // FIX, real placement failure found and fixed with real numbers, not
-      // guessed: passing kuralY1/kuralY2 directly as the left/right-zone
-      // anchor put line 1's and line 2's pairs only 84px apart before
-      // splitting -- confirmed by instrumentation that இருள் failed to
-      // place entirely (கருவி's range 305-365 and இருள்'s range 299-359
-      // overlapped by 54px, so இருள் kept colliding with கருவி's
-      // already-placed box for all 500 attempts). Verified separately
-      // that the ring is actually reachable across a much taller y-range
-      // at the left/right zone's x-position (196-732 for this canvas,
-      // since x stays the dominant distance throughout) -- so there was
-      // real room to separate the two lines further, not just tune the
-      // existing split tighter. Pushing line 1's anchor up and line 2's
-      // down by 50px each roughly doubles the gap between them (84px ->
-      // 184px) before either pair's own left/right split is even applied.
-      drawWordsNearKuralTokens(
-        ctx, width, height, STAGE_RINGS.words, layer4Data.line1Groups, assignZones(layer4Data.line1Groups.length), content.tamilLine1, kuralLayout, tamilFont, rand,
-        wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY1 - 50
-      );
-      drawWordsNearKuralTokens(
-        ctx, width, height, STAGE_RINGS.words, layer4Data.line2Groups, assignZones(layer4Data.line2Groups.length), content.tamilLine2, kuralLayout, tamilFont, rand,
-        wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY2 + 50
-      );
-    }
+  const line1Groups = tokensAsGroups(content.tamilLine1);
+  const line2Groups = tokensAsGroups(content.tamilLine2);
+
+  if (line1Groups.length > 0 || line2Groups.length > 0) {
+    const wordOpts = {
+      // GOLD MASTER, prominence reduction: explicit founder request --
+      // "reduce their visual prominence by approximately 10-15%...
+      // while keeping them clearly discoverable." 0.56 -> 0.49 (~12%
+      // reduction).
+      tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.49, color: COLORS.heritageBronze,
+      weight: 500,
+    };
+    // FIX, real placement failure found and fixed with real numbers, not
+    // guessed: passing kuralY1/kuralY2 directly as the left/right-zone
+    // anchor put line 1's and line 2's pairs only 84px apart before
+    // splitting -- confirmed by instrumentation that இருள் failed to
+    // place entirely (கருவி's range 305-365 and இருள்'s range 299-359
+    // overlapped by 54px, so இருள் kept colliding with கருவி's
+    // already-placed box for all 500 attempts). Verified separately
+    // that the ring is actually reachable across a much taller y-range
+    // at the left/right zone's x-position (196-732 for this canvas,
+    // since x stays the dominant distance throughout) -- so there was
+    // real room to separate the two lines further, not just tune the
+    // existing split tighter. Pushing line 1's anchor up and line 2's
+    // down by 50px each roughly doubles the gap between them (84px ->
+    // 184px) before either pair's own left/right split is even applied.
+    drawWordsNearKuralTokens(
+      ctx, width, height, STAGE_RINGS.words, line1Groups, assignZones(line1Groups.length), content.tamilLine1, kuralLayout, tamilFont, rand,
+      wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY1 - 50
+    );
+    drawWordsNearKuralTokens(
+      ctx, width, height, STAGE_RINGS.words, line2Groups, assignZones(line2Groups.length), content.tamilLine2, kuralLayout, tamilFont, rand,
+      wordOpts, kuralBox, sharedBoxes, kuralLayout.kuralY2 + 50
+    );
   }
 
   // MILESTONE 04 SCOPE: one more layer still to come (the assembled
