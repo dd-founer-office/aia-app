@@ -425,6 +425,14 @@ export function renderKuralPublishing(
 
   drawLivingField(ctx, width, height, tamilFont, brahmiFont, rand, zonePools, content, kuralLayout);
 
+  // GOLD MASTER, STEP 6, explicit founder request: thematic ghost words
+  // embedded in the atmosphere, not additional typography. Only words
+  // that genuinely fit Kural 478's own theme (enduring hardship from
+  // effort/ability) -- முயற்சி (effort) and வழி (path/means) both tie
+  // directly to ஆற்றின்/வருத்தம்; அறிவு/வெற்றி/அறம் don't fit this
+  // specific Kural's meaning, so left out rather than forced in.
+  drawGhostWords(ctx, width, height, kuralLayout.box, tamilFont);
+
   // The hero itself, drawn last -- on top of the (now cleared-around)
   // field, real typeset text, no glow, uniform weight throughout.
   drawKuralHero(ctx, content, kuralLayout, tamilFont, sansFont);
@@ -580,6 +588,87 @@ function smoothNoise(px: number, py: number, gridStep: number): number {
   const top = h00 + (h10 - h00) * tx;
   const bottom = h01 + (h11 - h01) * tx;
   return top + (bottom - top) * ty;
+}
+
+/** GOLD MASTER, STEP 4, explicit founder request: "replace the current
+ *  relatively uniform scatter with a deterministic, organic density
+ *  field... quiet zone -> cluster -> quiet zone." Pure function of
+ *  position (zero rand draws), reusing the existing smoothNoise --
+ *  deterministic across renders, not a new random system. A distinct
+ *  gridStep (165px, offset +5000/+5000) from both organicDepth's octaves
+ *  and Step 2's illumination perturbation, so this reads as its own
+ *  independent rhythm rather than echoing either. The extra
+ *  self-multiplication (n*n*(3-2n) applied twice) sharpens the noise
+ *  toward its extremes -- real quiet zones and real clusters, not just
+ *  mild variation -- which is what "the actual placement probability
+ *  must change" requires rather than a subtle multiplier. */
+function clusterDensity(x: number, y: number): number {
+  const n = smoothNoise(x + 5000, y + 5000, 165);
+  const shaped = n * n * (3 - 2 * n);
+  const sharpened = shaped * shaped * (3 - 2 * shaped);
+  return 0.12 + sharpened * 1.3;
+}
+
+/** GOLD MASTER, STEP 5, explicit founder request: "lower-left -> centre
+ *  -> upper-right... a subtle compositional bias layered underneath
+ *  [the clustering], weaker than the clustering effect." Perpendicular
+ *  distance from (x,y) to the diagonal LINE connecting the lower-left
+ *  and upper-right corners (not a monotonic corner-to-corner gradient,
+ *  which would read as a directional beam) -- points near that line get
+ *  a mild boost, points far from it (the other two corners) a mild
+ *  reduction. A little positional noise is mixed into the distance
+ *  itself so the "band" has an irregular, organic edge rather than a
+ *  crisp geometric stripe. Range (0.85-1.2) is deliberately narrower
+ *  than clusterDensity's (0.12-1.42), so this can only ever modulate
+ *  the clustering, never override it. */
+function directionalFlow(x: number, y: number, width: number, height: number): number {
+  const diagonalLength = Math.sqrt(width * width + height * height);
+  const perpDist = Math.abs(height * x + width * y - width * height) / diagonalLength;
+  const wobble = (smoothNoise(x + 8000, y + 8000, 220) - 0.5) * diagonalLength * 0.08;
+  const normalizedDist = Math.min(1, Math.max(0, (perpDist + wobble) / (diagonalLength * 0.22)));
+  const falloff = normalizedDist * normalizedDist * (3 - 2 * normalizedDist);
+  return 1.2 - falloff * 0.35;
+}
+
+/** GOLD MASTER, STEP 6: thematic ghost words, embedded in the
+ *  atmosphere, never Layer-4-strength typography. Deterministic
+ *  placement (position-hash driven candidate cells, same technique as
+ *  Steps 2/4/5 -- zero rand draws), biased toward QUIET zones via the
+ *  inverse of clusterDensity (Step 6 is meant to sit in the calm
+ *  regions Step 4 already creates, not fight them for the same
+ *  clusters). Each word gets its own opacity/blur/size so none of them
+ *  read identically -- "some almost completely absorbed, some slightly
+ *  more discoverable," per the founder's own phrasing. Sits between
+ *  middle and far depth (opacity/size below Layer 4, the "near" tier
+ *  from Step 3) and is skipped entirely wherever kuralClearingFactor
+ *  would suppress it, so it can never land on or near the Kural. */
+function drawGhostWords(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  kuralBox: HeroLayout["box"],
+  tamilFont: string
+): void {
+  const candidates: { word: string; nx: number; ny: number; size: number; opacity: number; blur: number }[] = [
+    { word: "முயற்சி", nx: 0.09, ny: 0.68, size: 22, opacity: 0.14, blur: 0.6 },
+    { word: "வழி", nx: 0.86, ny: 0.14, size: 19, opacity: 0.17, blur: 0.4 },
+    { word: "முயற்சி", nx: 0.72, ny: 0.82, size: 17, opacity: 0.11, blur: 0.8 },
+  ];
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const g of candidates) {
+    const gx = g.nx * width;
+    const gy = g.ny * height;
+    const clearing = kuralClearingFactor(gx, gy, kuralBox);
+    const quietness = 1 - Math.min(1, (clusterDensity(gx, gy) - 0.12) / 1.3);
+    if (clearing < 0.7 || quietness < 0.1) continue; // stay clear of the hero; only skip the very densest clusters
+    ctx.save();
+    ctx.filter = `blur(${g.blur}px)`;
+    ctx.fillStyle = withAlpha(COLORS.heritageBronze, g.opacity);
+    ctx.font = `500 ${g.size}px ${tamilFont}, serif`;
+    ctx.fillText(g.word, gx, gy);
+    ctx.restore();
+  }
 }
 
 /** Three octaves layered together -- a large, slow undulation (buried
@@ -990,7 +1079,7 @@ function drawMemoryLayer(
       const d = Math.min(gx, width - gx, gy, height - gy);
       const norm = Math.min(width, height) * 0.46;
       const ef = norm > 0 ? Math.min(1, d / norm) : 0;
-      const density = Math.exp(-1.55 * ef);
+      const density = Math.exp(-1.55 * ef) * clusterDensity(gx, gy) * directionalFlow(gx, gy, width, height);
       const confine = ringStrength(ef, confineRing);
 
       // GOLD MASTER, THE HERO: "a quiet clearing around it" -- explicit
@@ -1031,8 +1120,8 @@ function drawMemoryLayer(
       // of presence (clearly visible down to barely perceptible), tied
       // to the same edge-density value so edges read as more present and
       // the interior quieter, without ever hitting a hard floor of zero.
-      const opacity = 0.05 + density * 0.5 + rand.range(-0.04, 0.04);
-      const clampedOpacity = Math.max(0.04, Math.min(0.62, opacity));
+      const opacity = 0.04 + density * 0.38 + rand.range(-0.03, 0.03);
+      const clampedOpacity = Math.max(0.03, Math.min(0.46, opacity));
 
       // GOLD MASTER: "belongs to this Kural" gets bolder weight AND
       // darker/more saturated colour together, per explicit founder
@@ -1046,6 +1135,7 @@ function drawMemoryLayer(
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = withAlpha(displayColor, displayOpacity);
+      ctx.filter = belongsToKural ? "none" : "blur(0.5px)";
       if (ambient.glyph.kind === "path") {
         ctx.save();
         ctx.translate(gx, gy);
@@ -1061,6 +1151,7 @@ function drawMemoryLayer(
         ctx.font = `${weight} ${FIXED_SIZE}px ${brahmiFont}`;
         ctx.fillText(ambient.glyph.value, gx, gy);
       }
+      ctx.filter = "none";
     }
   }
 }
@@ -1138,7 +1229,7 @@ function drawRadialStage(
     const ef = norm > 0 ? Math.min(1, d / norm) : 0;
     const strength = ringStrength(ef, ring);
     const clearing = kuralClearingFactor(gx, gy, kuralBox, extraBox);
-    const combined = strength * clearing;
+    const combined = strength * clearing * clusterDensity(gx, gy) * directionalFlow(gx, gy, width, height);
     if (probabilistic ? !rand.chance(combined) : combined <= 0) return null;
     if (opts.allowOverlapGuard) {
       ctx.font = `${opts.weight} ${opts.size}px ${opts.tamilFont}, ${opts.fontFamily}`;
@@ -1799,7 +1890,7 @@ function drawLivingField(
       // "reduce their visual prominence by approximately 10-15%...
       // while keeping them clearly discoverable." 0.56 -> 0.49 (~12%
       // reduction).
-      tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.49, color: COLORS.heritageBronze,
+      tamilFont, fontFamily: "serif" as const, size: 24, opacity: 0.55, color: COLORS.heritageBronze,
       weight: 500,
     };
     // FIX, real placement failure found and fixed with real numbers, not
