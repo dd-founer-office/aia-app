@@ -2,9 +2,11 @@ import PublishingWorkspace from "@/components/kural-publishing/PublishingWorkspa
 
 // Internal tool — not part of the Contributor App's navigation or user-facing
 // surface. No auth beyond whatever the app already provides, no persistence,
-// no API route, per today's one-day MVP scope.
+// no API route. Originally scoped to Kural Koorum Aram publishing only; now
+// a unified Content Asset Generator (Content -> Content Type -> Template ->
+// Output Format -> Asset) reached at the same route.
 export const metadata = {
-  title: "Kural Koorum Aram — Publishing (Internal)",
+  title: "Distant Devotion — Asset Generator (Internal)",
 };
 
 export default function KuralPublishingPage() {
