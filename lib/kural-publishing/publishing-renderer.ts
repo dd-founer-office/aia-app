@@ -57,6 +57,12 @@ import {
   deriveSeed,
   type KuralPublishingContent,
 } from "./kural200-state";
+import {
+  smoothNoise,
+  clusterDensity,
+  directionalFlow,
+  extractTamilGraphemes as extractTamilSyllables,
+} from "./ambient-language-layer";
 
 /** Locked KKA master palette. Semantic roles, not arbitrary names:
  *   - deepCode: the deepest language world (near-black, faint navy character)
@@ -456,11 +462,6 @@ export function renderKuralPublishing(
  *  of the actual verified string, not a fabricated glyph set. Recomputed
  *  from `content` at render time since the control panel can edit the
  *  Tamil lines. */
-function extractTamilSyllables(text: string): string[] {
-  const matches = text.match(/[\u0B85-\u0B94]|[\u0B95-\u0BB9][\u0BBE-\u0BCD]?/g);
-  return matches ?? [];
-}
-
 // ---------------------------------------------------------------------------
 // Atmosphere -- a MUCH lighter hand than the previous pass. Colour fades out
 // well inside the dense field itself (by ~0.85 * denseEnd), not at the quiet
@@ -566,72 +567,6 @@ function drawAtmosphere(
  *  rebuilding": composition stays byte-identical to before except for this
  *  additional, independent grain layer softening the dark-panel/light-panel
  *  read within the already-dark region. */
-function positionHash(x: number, y: number): number {
-  const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-/** Smoothly interpolated hash sampled at fine pixel coordinates against a
- *  coarse grid spaced gridStep apart -- a single octave of organic value
- *  noise. Bilinear interpolation is what turns a hard hash lookup into a
- *  soft undulation instead of a blocky, digital-looking grid -- this is
- *  the fix for texture that could read as a noise filter. */
-function smoothNoise(px: number, py: number, gridStep: number): number {
-  const fx = px / gridStep;
-  const fy = py / gridStep;
-  const x0 = Math.floor(fx);
-  const y0 = Math.floor(fy);
-  const tx = fx - x0;
-  const ty = fy - y0;
-  const h00 = positionHash(x0, y0);
-  const h10 = positionHash(x0 + 1, y0);
-  const h01 = positionHash(x0, y0 + 1);
-  const h11 = positionHash(x0 + 1, y0 + 1);
-  const top = h00 + (h10 - h00) * tx;
-  const bottom = h01 + (h11 - h01) * tx;
-  return top + (bottom - top) * ty;
-}
-
-/** GOLD MASTER, STEP 4, explicit founder request: "replace the current
- *  relatively uniform scatter with a deterministic, organic density
- *  field... quiet zone -> cluster -> quiet zone." Pure function of
- *  position (zero rand draws), reusing the existing smoothNoise --
- *  deterministic across renders, not a new random system. A distinct
- *  gridStep (165px, offset +5000/+5000) from both organicDepth's octaves
- *  and Step 2's illumination perturbation, so this reads as its own
- *  independent rhythm rather than echoing either. The extra
- *  self-multiplication (n*n*(3-2n) applied twice) sharpens the noise
- *  toward its extremes -- real quiet zones and real clusters, not just
- *  mild variation -- which is what "the actual placement probability
- *  must change" requires rather than a subtle multiplier. */
-function clusterDensity(x: number, y: number): number {
-  const n = smoothNoise(x + 5000, y + 5000, 165);
-  const shaped = n * n * (3 - 2 * n);
-  const sharpened = shaped * shaped * (3 - 2 * shaped);
-  return 0.12 + sharpened * 1.3;
-}
-
-/** GOLD MASTER, STEP 5, explicit founder request: "lower-left -> centre
- *  -> upper-right... a subtle compositional bias layered underneath
- *  [the clustering], weaker than the clustering effect." Perpendicular
- *  distance from (x,y) to the diagonal LINE connecting the lower-left
- *  and upper-right corners (not a monotonic corner-to-corner gradient,
- *  which would read as a directional beam) -- points near that line get
- *  a mild boost, points far from it (the other two corners) a mild
- *  reduction. A little positional noise is mixed into the distance
- *  itself so the "band" has an irregular, organic edge rather than a
- *  crisp geometric stripe. Range (0.85-1.2) is deliberately narrower
- *  than clusterDensity's (0.12-1.42), so this can only ever modulate
- *  the clustering, never override it. */
-function directionalFlow(x: number, y: number, width: number, height: number): number {
-  const diagonalLength = Math.sqrt(width * width + height * height);
-  const perpDist = Math.abs(height * x + width * y - width * height) / diagonalLength;
-  const wobble = (smoothNoise(x + 8000, y + 8000, 220) - 0.5) * diagonalLength * 0.08;
-  const normalizedDist = Math.min(1, Math.max(0, (perpDist + wobble) / (diagonalLength * 0.22)));
-  const falloff = normalizedDist * normalizedDist * (3 - 2 * normalizedDist);
-  return 1.2 - falloff * 0.35;
-}
-
 /** GOLD MASTER, STEP 6: thematic ghost words, embedded in the
  *  atmosphere, never Layer-4-strength typography. Deterministic
  *  placement (position-hash driven candidate cells, same technique as

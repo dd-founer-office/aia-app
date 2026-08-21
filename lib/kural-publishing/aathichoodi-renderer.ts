@@ -10,12 +10,25 @@
  * KuralHeroCanvas can dispatch between the two templates with one
  * consistent calling convention.
  *
+ * Render order is Base surface -> Ambient Language Layer -> Foreground
+ * content -> Brand signature. The Ambient Language Layer call is the shared
+ * implementation in ambient-language-layer.ts -- the same noise/clustering
+ * primitives publishing-renderer.ts's own KKA-template field now imports
+ * from too, so there is exactly one ambient-field implementation in this
+ * feature, not two per the standing rule. It is drawn straight into this
+ * canvas (so it is part of every exported PNG, at every asset format), never
+ * a page-level background.
+ *
  * Visual language follows the Visual Constitution: warm off-white
  * background, one primary forest green, white card, warm gray border, calm
  * / premium / editorial. No gradients, no gamification, no clutter.
  */
 
 import { createSeededRandom } from "./seeded-random";
+import {
+  drawAmbientLanguageLayer,
+  extractTamilGraphemes,
+} from "./ambient-language-layer";
 import type { AathichoodiContent } from "./content-types";
 
 const BG = "#EFF4F2";
@@ -24,6 +37,12 @@ const BORDER = "#DCE2DF";
 const PRIMARY = "#328D63";
 const FOREGROUND = "#1F2A24";
 const MUTED = "#6B7A72";
+
+/** Ultimate fallback for the Ambient Language Layer's glyph pool -- the
+ *  standalone உயிர் vowels -- used only if a content type's own Tamil
+ *  fields (letter + tamilLine) are ever completely empty (e.g. Custom
+ *  before anything has been typed), so the layer never renders blank. */
+const FALLBACK_GLYPHS = ["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"];
 
 export interface RenderAathichoodiOptions {
   width: number;
@@ -71,27 +90,10 @@ export function renderAathichoodi(
   const { width, height, content, tamilSerifFont, sansFont } = opts;
   const rand = createSeededRandom(deriveSeed(content));
 
+  // 1. Base surface.
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, width, height);
-
-  // Ambient touch: one very faint oversized Tamil letter behind the card,
-  // deterministic per content (same seed -> same placement), echoing the
-  // app-wide Living Field language layer without importing it — same
-  // "concept reuse only" precedent KuralHeroCanvas already follows for
-  // font resolution.
-  ctx.save();
-  ctx.globalAlpha = 0.05;
-  ctx.fillStyle = PRIMARY;
-  ctx.font = `400 ${Math.round(height * 0.55)}px ${tamilSerifFont}`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(
-    content.letter || "அ",
-    width * rand.range(0.3, 0.7),
-    height * rand.range(0.35, 0.65)
-  );
-  ctx.restore();
 
   const pad = Math.round(Math.min(width, height) * 0.08);
   const cardX = pad;
@@ -100,6 +102,25 @@ export function renderAathichoodi(
   const cardH = height - pad * 2;
   const radius = Math.round(Math.min(width, height) * 0.035);
 
+  // 2. Ambient Language Layer -- the shared field system (see
+  // ambient-language-layer.ts), sourced from this content's own Tamil text
+  // so the field is real, never invented. Drawn behind the card, softly
+  // thinning toward it rather than a hard clip, so it stays a background
+  // presence rather than a decoration.
+  const glyphPool = extractTamilGraphemes(
+    `${content.letter} ${content.tamilLine}`
+  );
+  drawAmbientLanguageLayer(ctx, {
+    width,
+    height,
+    rand,
+    font: tamilSerifFont,
+    glyphPool: glyphPool.length > 0 ? glyphPool : FALLBACK_GLYPHS,
+    color: PRIMARY,
+    clearBox: { x: cardX, y: cardY, width: cardW, height: cardH },
+  });
+
+  // 3. Foreground content.
   ctx.save();
   ctx.fillStyle = CARD;
   ctx.strokeStyle = BORDER;
@@ -173,8 +194,8 @@ export function renderAathichoodi(
     ctx.fillText(content.english, contentX, cursorY);
   }
 
-  // Social branding: same slot/rule as the KKA template — only formats that
-  // opt in (brandingWordmark set) get the wordmark + handle + logo.
+  // 4. Brand signature. Same slot/rule as the KKA template — only formats
+  // that opt in (brandingWordmark set) get the wordmark + handle + logo.
   if (opts.brandingWordmark) {
     ctx.save();
     const brandY = cardY + cardH - innerPad * 0.55;
