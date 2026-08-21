@@ -496,17 +496,41 @@ function drawAtmosphere(
   // softEdgeDistance above), and cell size is reduced so the remaining
   // per-cell flat-fill quantization is well below the threshold of
   // visibility.
+  // GOLD MASTER, ORGANIC ILLUMINATION: explicit founder correction --
+  // "the existing background has a warm central glow... it currently
+  // risks looking like a conventional spotlight... break the
+  // symmetry... diffused natural light falling across handmade paper."
+  // The base gradient's own distance metric (softEdgeDistance) is
+  // perfectly symmetric by construction -- smooth-min of distance to
+  // all four edges, meaning the brightest point is always exactly
+  // centred and the falloff is always geometrically even. The EXISTING
+  // drawLocalTonalVariation pass below already adds noise-based
+  // variation, but confirmed by close inspection that it's too subtle
+  // (a max +/-5% brightness delta) to break the base gradient's own
+  // structural symmetry -- the "centred glow" read comes from the base
+  // gradient itself, not from lacking a second layer on top of it.
+  // Fixed at the source: the distance value itself is perturbed by a
+  // large-scale, slow noise field (smoothNoise at a wide gridStep, the
+  // same "strata" scale organicDepth already uses below) before being
+  // used for brightness, so the illumination's own shape becomes
+  // organic -- the brightest region shifts and the falloff becomes
+  // uneven, rather than staying perfectly circular. Zero rand draws
+  // (pure function of position), so this can't perturb the RNG sequence
+  // any other layer depends on.
   const norm = Math.min(width, height) * 0.5;
   const softness = Math.min(width, height) * 0.16;
   const cell = 10;
   const cols = Math.ceil(width / cell);
   const rows = Math.ceil(height / cell);
   const edgeColor = mix(COLORS.vignetteEdge, COLORS.heritageBronze, 0.22);
+  const illuminationPerturbStrength = norm * 0.16;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cx = c * cell;
       const cy = r * cell;
-      const d = softEdgeDistance(cx, cy, width, height, softness);
+      const rawD = softEdgeDistance(cx, cy, width, height, softness);
+      const perturb = (smoothNoise(cx + 3000, cy + 3000, 340) - 0.5) * 2 * illuminationPerturbStrength;
+      const d = rawD + perturb;
       const t = norm > 0 ? Math.min(1, Math.max(0, d / norm)) : 1;
       const smooth = t * t * (3 - 2 * t); // smoothstep -- continuous, no seams
       ctx.fillStyle = mix(edgeColor, COLORS.warmParchment, smooth);
