@@ -431,7 +431,9 @@ export function renderKuralPublishing(
   // effort/ability) -- முயற்சி (effort) and வழி (path/means) both tie
   // directly to ஆற்றின்/வருத்தம்; அறிவு/வெற்றி/அறம் don't fit this
   // specific Kural's meaning, so left out rather than forced in.
-  drawGhostWords(ctx, width, height, kuralLayout.box, tamilFont);
+  if (content.kuralNumber === "478") {
+    drawGhostWords(ctx, width, height, kuralLayout.box, tamilFont);
+  }
 
   // The hero itself, drawn last -- on top of the (now cleared-around)
   // field, real typeset text, no glow, uniform weight throughout.
@@ -650,9 +652,9 @@ function drawGhostWords(
   tamilFont: string
 ): void {
   const candidates: { word: string; nx: number; ny: number; size: number; opacity: number; blur: number }[] = [
-    { word: "முயற்சி", nx: 0.09, ny: 0.68, size: 22, opacity: 0.14, blur: 0.6 },
-    { word: "வழி", nx: 0.86, ny: 0.14, size: 19, opacity: 0.17, blur: 0.4 },
-    { word: "முயற்சி", nx: 0.72, ny: 0.82, size: 17, opacity: 0.11, blur: 0.8 },
+    { word: "முயற்சி", nx: 0.09, ny: 0.68, size: 19, opacity: 0.075, blur: 0.9 },
+    { word: "வழி", nx: 0.86, ny: 0.14, size: 17, opacity: 0.09, blur: 0.7 },
+    { word: "முயற்சி", nx: 0.72, ny: 0.82, size: 15, opacity: 0.06, blur: 1.1 },
   ];
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -2170,8 +2172,8 @@ function kuralClearingFactor(x: number, y: number, box: HeroLayout["box"], extra
   // array, since only one additional region (the logo's own footprint)
   // needs protecting this time. Optional so every existing caller (the
   // hero's own clearing) is unaffected.
-  const featherX = 70;
-  const featherY = 55;
+  const featherX = 110;
+  const featherY = 90;
   const clearingFor = (b: HeroLayout["box"]): number => {
     const dx = x < b.x0 ? b.x0 - x : x > b.x1 ? x - b.x1 : 0;
     const dy = y < b.y0 ? b.y0 - y : y > b.y1b ? y - b.y1b : 0;
