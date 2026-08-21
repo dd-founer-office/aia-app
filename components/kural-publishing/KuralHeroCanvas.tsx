@@ -1,61 +1,85 @@
 "use client";
 
 /**
- * KuralHeroCanvas — MVP
+ * KuralHeroCanvas — Distant Devotion Asset Generator
  * ----------------------------------------------------------------------------
- * Renders lib/kural-publishing/publishing-renderer.ts into a fixed
- * 1648x928 backing canvas, displayed responsively via CSS (width: 100%,
- * height: auto) so the preview scales to fit the workspace without ever
- * changing the actual export resolution.
+ * Originally MVP-scoped to the Kural Koorum Aram landscape publication only;
+ * now the shared preview/export canvas for the Asset Generator's two
+ * templates ("kka" -> publishing-renderer.ts, unchanged; "aathichoodi" ->
+ * aathichoodi-renderer.ts, new). Dispatch is by `template` prop -- content
+ * shape is validated by the caller (PublishingWorkspace), not here.
+ *
+ * Renders into a backing canvas sized to the selected ASSET_FORMAT, displayed
+ * responsively via CSS (width: 100%, height: auto) so the preview scales to
+ * fit the workspace without ever changing the actual export resolution.
  *
  * Deliberately NOT the Living Field's LivingFieldEngine/requestAnimationFrame
- * loop -- this draws exactly once per (content, generation, debug) change
- * and then stops. No animation, per the brief.
+ * loop -- this draws exactly once per (content, generation, debug, format)
+ * change and then stops. No animation.
  *
  * Font resolution mirrors components/field/LivingField.tsx's own approach
  * (read --font-tamil-sans / --font-sans from the document, re-render once
  * document.fonts settles) without importing that component -- concept reuse
- * only, as instructed.
+ * only.
  *
- * Visual Pass 05 adds `debugFormationLogic` for the live preview only, plus
- * `renderKuralPublishingForExport` -- a self-contained export path that
- * always renders with debug forced false, independent of whatever the
- * on-screen toggle is set to. PublishingWorkspace's Download PNG button
- * calls that helper directly rather than reading pixels off the live
- * preview canvas, so the debug overlay can never leak into an export.
+ * `debugFormationLogic` is KKA-template-only (it overlays that renderer's
+ * Formation Path structure) and is a no-op for the Aathichoodi template.
+ * Download PNG never reads pixels off the live preview canvas -- it always
+ * goes through the *ForExport helpers below, both of which force the debug
+ * overlay off independent of whatever the on-screen toggle is set to.
  */
 
 import { useEffect, useRef } from "react";
-import { renderKuralPublishing } from "@/lib/kural-publishing/publishing-renderer";
+import {
+  renderKuralPublishing,
+} from "@/lib/kural-publishing/publishing-renderer";
 import type { KuralPublishingContent } from "@/lib/kural-publishing/kural200-state";
+import {
+  renderAathichoodi,
+  renderAathichoodiForExport,
+} from "@/lib/kural-publishing/aathichoodi-renderer";
+import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
 
 export const CANVAS_WIDTH = 1648;
 export const CANVAS_HEIGHT = 928;
 
-/** GOLD MASTER, explicit founder request: publishing assets for other
- *  usages (WhatsApp Status, Instagram Post, Instagram Story) alongside
- *  the original landscape publication format. Real, standard dimensions
- *  for each platform, not guessed -- WhatsApp Status and Instagram Story
- *  share the same 1080x1920 (9:16) frame; Instagram Post is a 1080x1080
- *  square. "landscape" (the original format) is the default and always
- *  first in this list. */
-export interface ExportFormat {
+export type AssetContent = KuralPublishingContent | AathichoodiContent;
+
+/** GOLD MASTER asset-format registry. Real, standard dimensions for each
+ *  platform, not guessed. `templates` says which template(s) each format is
+ *  offered for -- PublishingWorkspace filters this list by the active
+ *  content type's template so, e.g., "KKA Cover" never shows up while
+ *  Aathichoodi content is selected. */
+export interface AssetFormat {
   id: string;
   label: string;
   width: number;
   height: number;
-  /** Social formats get the wordmark/handle; the original landscape
-   *  publication format does not (explicit founder scoping -- branding
-   *  is "for social use", not part of the original design). */
+  /** Whether this format gets the wordmark/handle. The two "master" formats
+   *  (KKA Cover, Aathichoodi Post) do not -- they are the original,
+   *  un-branded design for each template, matching the original landscape
+   *  format's founder-scoped behavior. Every social format does. */
   branding: boolean;
+  templates: readonly TemplateId[];
 }
 
-export const EXPORT_FORMATS: readonly ExportFormat[] = [
-  { id: "landscape", label: "Landscape (current)", width: CANVAS_WIDTH, height: CANVAS_HEIGHT, branding: false },
-  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true },
-  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true },
-  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true },
+export const ASSET_FORMATS: readonly AssetFormat[] = [
+  { id: "kka-cover", label: "KKA Cover", width: CANVAS_WIDTH, height: CANVAS_HEIGHT, branding: false, templates: ["kka"] },
+  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi"] },
+  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi"] },
+  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi"] },
+  { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi"] },
+  { id: "aathichoodi-post", label: "Aathichoodi Post", width: 1080, height: 1080, branding: false, templates: ["aathichoodi"] },
 ];
+
+/** Formats available for a given template, "KKA Cover"/original landscape
+ *  always first for the "kka" template to preserve prior default behavior. */
+export function formatsForTemplate(template: TemplateId): AssetFormat[] {
+  return ASSET_FORMATS.filter((f) => f.templates.includes(template));
+}
+
+/** Back-compat alias: the original single-format-tool export name. */
+export type ExportFormat = AssetFormat;
 
 /** Real text supplied directly by the founder, not invented -- see the
  *  drawSocialBranding doc comment in publishing-renderer.ts. */
@@ -65,9 +89,7 @@ export const BRANDING_HANDLE = "aram_in_action";
 /** Where the canonical Kural Koorum Aram logo is expected to live once
  *  supplied. Nothing in this file generates a fallback if it's missing --
  *  PublishingWorkspace's loader simply fails silently and no logo draws,
- *  per the standing rule against placeholder/generated marks. Add the real
- *  asset at this path (public/brand/...) and it starts appearing with no
- *  further code change. */
+ *  per the standing rule against placeholder/generated marks. */
 export const KKA_LOGO_PATH = "/brand/kural-koorum-aram-logo.png";
 
 const TAMIL_FALLBACK =
@@ -77,9 +99,8 @@ const SANS_FALLBACK =
 const TAMIL_SERIF_FALLBACK = "'Noto Serif Tamil','Tamil Sangam MN','Tamil MN',serif";
 const SERIF_FALLBACK = "Georgia,'Times New Roman',serif";
 // No safe cross-platform fallback exists for Brahmi -- if the web font
-// hasn't loaded, glyphs render as tofu/boxes on most systems. That is a
-// known, accepted limitation (see lib/living-field/glyphs.ts), not
-// something a fallback chain can paper over.
+// hasn't loaded, glyphs render as tofu/boxes on most systems. Known, accepted
+// limitation (see lib/living-field/glyphs.ts), KKA template only.
 const BRAHMI_FALLBACK = "'Noto Sans Brahmi',sans-serif";
 
 function resolveFont(cssVarName: string, fallback: string): string {
@@ -90,28 +111,38 @@ function resolveFont(cssVarName: string, fallback: string): string {
   return value.length > 0 ? `${value}, ${fallback}` : fallback;
 }
 
+function resolveAllFonts() {
+  return {
+    tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
+    sansFont: resolveFont("--font-sans", SANS_FALLBACK),
+    tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
+    serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
+    brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
+  };
+}
+
 interface KuralHeroCanvasProps {
-  content: KuralPublishingContent;
+  template: TemplateId;
+  content: AssetContent;
   /** Bump to force a re-render even when content is byte-identical to the
    *  last render (the explicit "Generate / Refresh" button). */
   generation: number;
   /** Optional canonical KKA logo, once available. */
   logoImage?: HTMLImageElement | null;
-  /** INTERNAL, development-only. Live-preview only -- see module doc.
+  /** INTERNAL, development-only. Live-preview only, KKA template only.
    *  Defaults to false. */
   debugFormationLogic?: boolean;
-  /** GOLD MASTER: which export format to render at. Defaults to the
-   *  original landscape dimensions with no branding, so every existing
-   *  caller of this component is completely unaffected. */
-  format?: ExportFormat;
+  /** Which asset format to render at. */
+  format: AssetFormat;
 }
 
 export default function KuralHeroCanvas({
+  template,
   content,
   generation,
   logoImage,
   debugFormationLogic = false,
-  format = EXPORT_FORMATS[0],
+  format,
 }: KuralHeroCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { width, height, branding } = format;
@@ -123,27 +154,36 @@ export default function KuralHeroCanvas({
     if (!ctx) return;
 
     const paint = (): void => {
-      renderKuralPublishing(ctx, {
-        width,
-        height,
-        content,
-        tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
-        sansFont: resolveFont("--font-sans", SANS_FALLBACK),
-        tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
-        serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
-        brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
-        logoImage: logoImage ?? null,
-        debugFormationLogic,
-        brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
-        brandingHandle: branding ? BRANDING_HANDLE : undefined,
-      });
+      const fonts = resolveAllFonts();
+      if (template === "kka") {
+        renderKuralPublishing(ctx, {
+          width,
+          height,
+          content: content as KuralPublishingContent,
+          ...fonts,
+          logoImage: logoImage ?? null,
+          debugFormationLogic,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+        });
+      } else {
+        renderAathichoodi(ctx, {
+          width,
+          height,
+          content: content as AathichoodiContent,
+          tamilSerifFont: fonts.tamilSerifFont,
+          tamilFont: fonts.tamilFont,
+          serifFont: fonts.serifFont,
+          sansFont: fonts.sansFont,
+          logoImage: logoImage ?? null,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+        });
+      }
     };
 
     paint();
 
-    // Canvas text does not reflow when a web font finishes loading the way
-    // DOM text does -- repaint once loading settles so the preview never
-    // freezes on a fallback-font measurement.
     let cancelled = false;
     if (typeof document !== "undefined" && "fonts" in document) {
       document.fonts.ready
@@ -158,14 +198,14 @@ export default function KuralHeroCanvas({
     return () => {
       cancelled = true;
     };
-  }, [content, generation, logoImage, debugFormationLogic, width, height, branding]);
+  }, [template, content, generation, logoImage, debugFormationLogic, width, height, branding]);
 
   return (
     <canvas
       ref={canvasRef}
       width={width}
       height={height}
-      aria-label="Kural Koorum Aram publication preview"
+      aria-label="Distant Devotion asset preview"
       style={{
         width: "100%",
         height: "auto",
@@ -177,17 +217,16 @@ export default function KuralHeroCanvas({
   );
 }
 
-/** Renders a fresh, fully independent 1648x928 canvas for PNG export --
- *  always with debugFormationLogic: false, regardless of the live
+/** Renders a fresh, fully independent canvas for PNG export -- always with
+ *  debugFormationLogic: false (KKA template) regardless of the live
  *  preview's current toggle state. This is the ONLY function
- *  PublishingWorkspace's Download PNG button should call, precisely so the
- *  debug overlay can never appear in an exported file. Accepts the same
- *  logo image the preview is showing, so the export matches what's on
- *  screen once the canonical asset is in place. */
+ *  PublishingWorkspace's Download PNG button should call for the KKA
+ *  template, precisely so the debug overlay can never appear in an exported
+ *  file. Accepts the same logo image the preview is showing. */
 export async function renderKuralPublishingForExport(
   content: KuralPublishingContent,
   logoImage: HTMLImageElement | null = null,
-  format: ExportFormat = EXPORT_FORMATS[0]
+  format: AssetFormat
 ): Promise<Blob | null> {
   const { width, height, branding } = format;
   const canvas = document.createElement("canvas");
@@ -196,9 +235,6 @@ export async function renderKuralPublishingForExport(
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  // Fonts are already loaded by the time someone can click Download (the
-  // live preview has been on screen), but wait on document.fonts.ready
-  // defensively anyway before drawing the export-only canvas.
   if (typeof document !== "undefined" && "fonts" in document) {
     try {
       await document.fonts.ready;
@@ -211,11 +247,7 @@ export async function renderKuralPublishingForExport(
     width,
     height,
     content,
-    tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
-    sansFont: resolveFont("--font-sans", SANS_FALLBACK),
-    tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
-    serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
-    brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
+    ...resolveAllFonts(),
     logoImage,
     debugFormationLogic: false,
     brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
@@ -225,4 +257,31 @@ export async function renderKuralPublishingForExport(
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), "image/png");
   });
+}
+
+/** Aathichoodi/generic-template counterpart to renderKuralPublishingForExport
+ *  above. Thin wrapper around aathichoodi-renderer.ts's own export helper so
+ *  PublishingWorkspace can call one dispatch point per template without
+ *  re-resolving fonts itself. */
+export async function renderAssetForExport(
+  template: TemplateId,
+  content: AssetContent,
+  logoImage: HTMLImageElement | null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  if (template === "kka") {
+    return renderKuralPublishingForExport(
+      content as KuralPublishingContent,
+      logoImage,
+      format
+    );
+  }
+  return renderAathichoodiForExport(
+    content as AathichoodiContent,
+    logoImage,
+    format,
+    resolveAllFonts(),
+    format.branding ? BRANDING_WORDMARK : undefined,
+    format.branding ? BRANDING_HANDLE : undefined
+  );
 }

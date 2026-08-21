@@ -77,7 +77,7 @@ export const DEFAULT_AATHICHOODI_CONTENT: AathichoodiContent = {
 /** Same shape as DEFAULT_AATHICHOODI_CONTENT, relabelled per content type so
  *  the field labels shown in the workspace make sense even though they share
  *  one underlying template and one data shape. */
-export const GENERIC_DEFAULTS: Record
+export const GENERIC_DEFAULTS: Record<
   Extract<ContentTypeId, "tamil-learning" | "announcement" | "custom">,
   AathichoodiContent
 > = {
