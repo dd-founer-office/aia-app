@@ -24,6 +24,12 @@ export interface SeriesHistory {
   recentChildLessonIds: string[];
   recentAiaConnectionIds: string[];
   recentCtaTypes: string[];
+  /** Slide 2's opening phrase ("Avvaiyar begins with a powerful idea:" and
+   *  its paraphrases) -- tracked separately from the theme-specific
+   *  reframing clause below it, since the opener pool is theme-independent. */
+  recentUnderstandingOpenerIds: string[];
+  /** Slide 2's per-theme "what this builds in a child" clause. */
+  recentReframingIds: string[];
 }
 
 export const EMPTY_HISTORY: SeriesHistory = {
@@ -34,6 +40,8 @@ export const EMPTY_HISTORY: SeriesHistory = {
   recentChildLessonIds: [],
   recentAiaConnectionIds: [],
   recentCtaTypes: [],
+  recentUnderstandingOpenerIds: [],
+  recentReframingIds: [],
 };
 
 export function loadHistory(): SeriesHistory {

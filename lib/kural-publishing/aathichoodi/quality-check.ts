@@ -24,6 +24,9 @@ export interface QualityCheckResult {
 
 const PARENT_MARKERS = ["you", "your child", "your family", "parent"];
 const CLASSROOM_MARKERS = ["lesson number", "grammar", "syllabus", "homework assignment", "exam"];
+const FAMILY_ACTOR_MARKERS = ["child", "sibling", "parent", "grandparent", "grandmother", "grandfather", "cousin", "your"];
+const GENERIC_OPENERS = ["every family", "every parent", "every child", "families often", "many families"];
+const HARD_SELL_MARKERS = ["buy now", "book now", "join our service", "sign up now", "limited time", "act now"];
 
 export function runQualityChecks(
   episode: ComposedEpisode,
@@ -75,9 +78,28 @@ export function runQualityChecks(
     warnings.push("A Distant Devotion connection is present but the CTA isn't Distant Devotion — double check this is intentional.");
   }
 
-  // Repetition against recent history (heuristic proxy for "does this feel
-  // fresh" -- exact rotation is handled by content-engine.ts already, this
-  // just surfaces the case where the pool ran out of fresh options).
+  // Slide 3 must show a specific family moment, never a generic statement
+  // (explicit founder example of what NOT to write: "Every family has
+  // opportunities to do the right thing"). Heuristic proxy: names a real
+  // family actor, and doesn't open with a generic-statement pattern.
+  const familyAngleLower = episode.familyAngle.toLowerCase();
+  if (!FAMILY_ACTOR_MARKERS.some((marker) => familyAngleLower.includes(marker))) {
+    warnings.push("Family situation may not name a specific family member (child/sibling/parent/grandparent) — check it shows a real moment, not a general statement.");
+  }
+  if (GENERIC_OPENERS.some((phrase) => familyAngleLower.startsWith(phrase))) {
+    warnings.push("Family situation opens with a generic statement rather than a specific moment — rewrite as a scene, not a philosophy.");
+  }
+
+  // Slide 5 must never read like an advertisement.
+  const aiaLower = episode.aiaConnection.toLowerCase();
+  if (HARD_SELL_MARKERS.some((marker) => aiaLower.includes(marker))) {
+    warnings.push("AiA connection reads like a sales pitch — soften the language.");
+  }
+
+  // Repetition against recent history (heuristic proxy for "is this
+  // emotionally different from recent episodes" -- exact rotation is
+  // handled by content-engine.ts already, this just surfaces the case
+  // where a pool ran out of fresh options and had to repeat).
   if (historyBeforeThisEpisode.recentCtaTypes.filter((t) => t === episode.cta.type).length >= 3) {
     warnings.push("This CTA type has been used often in recent episodes — consider variety.");
   }

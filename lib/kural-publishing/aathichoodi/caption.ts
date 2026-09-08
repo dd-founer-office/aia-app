@@ -12,21 +12,23 @@ import type { ComposedEpisode } from "./content-engine";
 const SIGNOFF = "சொல்லில் தமிழ் • செயலில் அறம்!";
 
 /** Hooks phrased as statements (not questions) get a standard parent
- *  question appended, so the caption always has one -- per the brief's
- *  fixed structure -- without duplicating a hook that's already a question. */
-function parentQuestion(hook: string): string {
-  if (hook.trim().endsWith("?")) return hook;
+ *  question appended, so the caption always has a distinct reflection
+ *  question -- per the brief's fixed structure. Hooks already phrased as a
+ *  question (most of them are) don't get a second, duplicate question --
+ *  the hook itself already fills that role. */
+function parentQuestion(hook: string): string | null {
+  if (hook.trim().endsWith("?")) return null;
   return "What would it look like to live this out with your child today?";
 }
 
 export function generateCaption(episode: ComposedEpisode): string {
+  const question = parentQuestion(episode.hook);
   const lines = [
     episode.hook,
     "",
     `Today's Aathichoodi: ${episode.tamilText} (${episode.transliteration})`,
     episode.simpleMeaning,
-    "",
-    parentQuestion(episode.hook),
+    ...(question ? ["", question] : []),
     "",
     `Today's action: ${episode.todayAction}`,
     "",

@@ -52,6 +52,10 @@ export interface CuratedEpisodeContent {
   aiaConnection: string;
   distantDevotionConnection?: string;
   recommendedCta: CtaTypeId;
+  /** Optional hand-authored override for Slide 2 (UNDERSTAND). When
+   *  omitted, understanding.ts composes it from the theme pools like every
+   *  other field content-engine.ts doesn't have curated prose for. */
+  understanding?: string;
 }
 
 export interface AathichoodiCanonEntry {
@@ -77,23 +81,26 @@ export const AATHICHOODI_SOURCE_URL =
 
 export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   { episodeNumber: 1, tamilText: "அறஞ்செய விரும்பு", simpleMeaning: "Desire to do righteous deeds.", transliteration: "Aram Seya Virumbu", primaryTheme: "character", verified: true,
+    // GOLD MASTER: founder-approved benchmark for the whole series (see
+    // content-engine.ts's own doc comment). Every field here was reviewed
+    // and corrected in two passes -- this is the exact approved copy, not
+    // a draft. Do not regenerate this episode from the pools; that would
+    // replace the approved benchmark with an unreviewed composition.
     curated: {
-      familyAngle: "Every family has small daily chances to do the right thing — even when no one is watching.",
+      understanding: "Avvaiyar begins with a powerful idea: don't just do good when someone's watching or asking — want to. That desire, once a child has it, becomes the root every other value in this series grows from.",
+      familyAngle: "Your older child sees a sibling struggling to reach something on a high shelf. No one asked them to help — but they climb up and get it anyway. That small, unprompted choice is exactly what today's line is about.",
       childLesson: "Doing good isn't a special occasion. It's a habit you build one small choice at a time.",
-      todayAction: "Ask your child: \"What's one kind thing we can do today, just because it's right?\" Then do it together.",
-      aiaConnection: "This is the seed of Aram in Action — wisdom that only means something once it becomes a deed.",
-      recommendedCta: "PARENT_REFLECTION",
+      todayAction: "Tonight, before bed, ask: \"What's one good thing you did today that nobody asked you to do?\" Whatever the answer, celebrate the wanting — not just the doing.",
+      aiaConnection: "Wisdom becomes meaningful when it becomes action — that's the whole idea behind Aram in Action.",
+      recommendedCta: "SAVE",
     },
   },
-  { episodeNumber: 2, tamilText: "ஆறுவது சினம்", simpleMeaning: "Anger is meant to cool down and pass.", transliteration: "Aaruvathu Sinam", primaryTheme: "self-control", verified: true,
-    curated: {
-      familyAngle: "The evening a sibling fight boils over, or a parent snaps after a long day — anger visits every home.",
-      childLesson: "Anger is a wave, not a wall. It always passes if you let it — you don't have to act on it while it's high.",
-      todayAction: "Next time anger shows up at home today, try counting to ten together before anyone speaks.",
-      aiaConnection: "Aram in Action starts with the hardest audience of all — ourselves, in the moment we're most upset.",
-      recommendedCta: "TRY_TODAY",
-    },
-  },
+  // Episode 2 is deliberately NOT curated -- it composes entirely from the
+  // theme pools (hooks.ts/scenarios.ts/actions.ts/voice.ts/
+  // understanding.ts), same as 102 of the other 108 episodes will. This is
+  // the system's own test case: proof the reusable engine produces
+  // Episode-1-quality output, distinctly, without hand-authored prose.
+  { episodeNumber: 2, tamilText: "ஆறுவது சினம்", simpleMeaning: "Anger is meant to cool down and pass.", transliteration: "Aaruvathu Sinam", primaryTheme: "self-control", verified: true },
   { episodeNumber: 3, tamilText: "இயல்வது கரவேல்", simpleMeaning: "Do not withhold help that is within your ability to give.", transliteration: "Iyalvathu Karavel", primaryTheme: "generosity", verified: true },
   { episodeNumber: 4, tamilText: "ஈவது விலக்கேல்", simpleMeaning: "Never stop someone else from giving.", transliteration: "Eevathu Vilakkel", primaryTheme: "generosity", verified: true },
   { episodeNumber: 5, tamilText: "உடையது விளம்பேல்", simpleMeaning: "Do not boast about what you own.", transliteration: "Udaiyathu Vilambel", primaryTheme: "character", verified: true },

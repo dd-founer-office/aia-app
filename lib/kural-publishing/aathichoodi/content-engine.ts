@@ -11,10 +11,30 @@
  * replace composeEpisode's internals alone, without touching canon.ts, the
  * renderers, or the UI.
  *
+ * Locked slide framework (founder-approved, Episode 1 is the benchmark):
+ *   1. STOP              -> hook (hooks.ts, theme-preference-driven)
+ *   2. UNDERSTAND         -> understanding (understanding.ts: opener + the
+ *                            episode's own meaning + a theme-rooted "what
+ *                            this builds in a child" clause)
+ *   3. SEE IT IN FAMILY LIFE -> familyAngle (scenarios.ts: one concrete,
+ *                            ordinary family moment, never a generic
+ *                            statement)
+ *   4. PRACTICE THE VALUE TODAY -> todayAction (actions.ts: one small,
+ *                            concrete, doable-today behaviour)
+ *   5. CARRY IT FORWARD + AiA -> aiaConnection (voice.ts: paraphrases of
+ *                            ONE consistent idea, "wisdom becomes
+ *                            meaningful when it becomes action") + cta
+ *
  * A canon entry's own `curated` fields (see canon.ts), when present, are
- * used verbatim -- an editor already made that call deliberately. Every
- * other episode is composed live from the theme pools (hooks/scenarios/
- * actions/voice.ts) with anti-repetition history (history-store.ts).
+ * used verbatim for familyAngle/todayAction/childLesson/aiaConnection/
+ * understanding/recommendedCta -- an editor already made that call
+ * deliberately. Every other episode is composed live from the theme pools
+ * with anti-repetition history (history-store.ts) so consistency comes
+ * from STRUCTURE (the five-slide framework, the tone, the hook-preference
+ * logic) rather than from repeating the same wording episode after episode.
+ * Slide 1's hook is ALWAYS chosen by theme preference (see hooks.ts) --
+ * even curated episodes don't hardcode it, since the hook is about which
+ * question fits the emotional lesson, not editorial prose.
  *
  * `verified` reflects the canon entry's own flag (Tamil text confidence),
  * never invented per-episode.
@@ -26,6 +46,7 @@ import { pickHook } from "./hooks";
 import { selectScenario } from "./scenarios";
 import { selectAction } from "./actions";
 import { selectChildLesson, selectAiaConnection } from "./voice";
+import { composeUnderstanding } from "./understanding";
 import { classifyCta, type CtaSelection } from "./cta";
 import {
   clampRecent,
@@ -54,13 +75,6 @@ export interface ComposedEpisode {
   verified: boolean;
 }
 
-const UNDERSTANDING_CLOSERS = [
-  "Simple to say — and even better once it's lived.",
-  "Not a rule to memorize. A habit worth building.",
-  "Old words, but the kind that still hold up today.",
-  "Small enough to remember, big enough to matter.",
-];
-
 /** STATIC is recommended only for short, emotionally-anchored lines --
  *  everything else defaults to CAROUSEL, per the brief. */
 export function recommendFormat(entry: AathichoodiCanonEntry): AathichoodiFormat {
@@ -85,14 +99,14 @@ export function composeEpisode(
   const theme = entry.primaryTheme;
   const curated = entry.curated;
 
-  // The hook pool is generic (parent-focused, not tied to specific
-  // wording) so even curated episodes rotate through it -- only the
-  // fields an editor actually authored (scenario/action/lesson/aia
-  // connection/cta) come from `curated` verbatim.
-  const hook = pickHook(episodeNumber, history.recentHookIds);
+  // Slide 1's hook is always theme-preference-driven (see hooks.ts) --
+  // deliberate per the emotional lesson, not random, and not something
+  // curated episodes override with hand-written prose.
+  const hook = pickHook(theme, history.recentHookIds);
+
   const scenario = curated
     ? { id: "curated", text: curated.familyAngle }
-    : selectScenario(theme, episodeNumber, entry.simpleMeaning, history.recentScenarioIds);
+    : selectScenario(theme, episodeNumber, history.recentScenarioIds);
   const action = curated
     ? { id: "curated", text: curated.todayAction }
     : selectAction(theme, episodeNumber, history.recentActionIds);
@@ -101,7 +115,16 @@ export function composeEpisode(
     : selectChildLesson(theme, episodeNumber, history.recentChildLessonIds);
   const aiaConnection = curated
     ? { id: "curated", text: curated.aiaConnection }
-    : selectAiaConnection(theme, episodeNumber, history.recentAiaConnectionIds);
+    : selectAiaConnection(episodeNumber, history.recentAiaConnectionIds);
+  const understanding = curated?.understanding
+    ? { text: curated.understanding, openerId: "curated", reframingId: "curated" }
+    : composeUnderstanding(
+        theme,
+        episodeNumber,
+        entry.simpleMeaning,
+        history.recentUnderstandingOpenerIds,
+        history.recentReframingIds
+      );
   const cta = classifyCta(
     theme,
     entry.simpleMeaning,
@@ -109,15 +132,13 @@ export function composeEpisode(
     curated?.recommendedCta
   );
 
-  const closer = UNDERSTANDING_CLOSERS[episodeNumber % UNDERSTANDING_CLOSERS.length];
-
   const episode: ComposedEpisode = {
     episodeNumber: entry.episodeNumber,
     totalEpisodes: AATHICHOODI_CANON.length,
     tamilText: entry.tamilText,
     transliteration: entry.transliteration,
     simpleMeaning: entry.simpleMeaning,
-    understanding: `${entry.simpleMeaning} ${closer}`,
+    understanding: understanding.text,
     primaryTheme: theme,
     themeLabel: themeLabel(theme),
     hook: hook.text,
@@ -139,6 +160,8 @@ export function composeEpisode(
     recentChildLessonIds: clampRecent([...history.recentChildLessonIds, childLesson.id]),
     recentAiaConnectionIds: clampRecent([...history.recentAiaConnectionIds, aiaConnection.id]),
     recentCtaTypes: clampRecent([...history.recentCtaTypes, cta.type]),
+    recentUnderstandingOpenerIds: clampRecent([...history.recentUnderstandingOpenerIds, understanding.openerId]),
+    recentReframingIds: clampRecent([...history.recentReframingIds, understanding.reframingId]),
   };
 
   return { episode, nextHistory };
