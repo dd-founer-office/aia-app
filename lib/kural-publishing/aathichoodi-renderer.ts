@@ -190,8 +190,11 @@ export function renderAathichoodi(
   if (content.english) {
     ctx.fillStyle = MUTED;
     ctx.font = `400 ${Math.round(cardH * 0.032)}px ${sansFont}`;
-    cursorY += cardH * 0.06;
-    ctx.fillText(content.english, contentX, cursorY);
+    const englishLines = wrapText(ctx, content.english, contentW);
+    for (const line of englishLines) {
+      cursorY += cardH * 0.05;
+      ctx.fillText(line, contentX, cursorY);
+    }
   }
 
   // 4. Brand signature. Same slot/rule as the KKA template — only formats

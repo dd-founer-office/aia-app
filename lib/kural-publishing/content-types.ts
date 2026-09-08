@@ -7,20 +7,33 @@
  * other file in this feature -- imports nothing from lib/living-field/ and
  * does not touch kural200-state.ts or publishing-renderer.ts.
  *
- * Only two templates exist so far: "kka" (the original, untouched
+ * Three templates exist: "kka" (the original, untouched
  * publishing-renderer.ts, driven by KuralPublishingContent from
- * kural200-state.ts) and "aathichoodi" (new, lightweight, in
- * aathichoodi-renderer.ts). Content types without a dedicated template yet
- * (Tamil Learning, Announcement, Custom) render through the Aathichoodi
- * template using its generic field slots -- per the brief's own rule not to
- * build a complex separate system for every content type in this MVP. Each
- * can get its own template later without changing this registry's shape.
+ * kural200-state.ts), "aathichoodi" (lightweight single-card, in
+ * aathichoodi-renderer.ts), and "aathichoodi-carousel" (the Daily
+ * Aathichoodi Series' 5-slide Family Carousel, in
+ * aathichoodi-carousel-renderer.ts -- see lib/kural-publishing/aathichoodi/
+ * for that feature's data + content-composition engine). Content types
+ * without a dedicated template yet (Tamil Learning, Announcement, Custom)
+ * render through the Aathichoodi template using its generic field slots --
+ * per the brief's own rule not to build a complex separate system for every
+ * content type in this MVP. Each can get its own template later without
+ * changing this registry's shape.
+ *
+ * "aathichoodi-series" is distinct from the plain "aathichoodi" content
+ * type above: the latter is one hand-typed demo card (unchanged, still
+ * fully supported); the former is the data-driven Daily Series (canonical
+ * 109-episode dataset + generated framing), which can render as either
+ * Carousel (its nominal template below) or Static (reusing the "aathichoodi"
+ * template/renderer via a content mapping) -- see PublishingWorkspace.tsx's
+ * own effective-template derivation for that runtime switch.
  */
 
-export type TemplateId = "kka" | "aathichoodi";
+export type TemplateId = "kka" | "aathichoodi" | "aathichoodi-carousel";
 
 export type ContentTypeId =
   | "aathichoodi"
+  | "aathichoodi-series"
   | "thirukkural"
   | "kka"
   | "tamil-learning"
@@ -39,7 +52,8 @@ export interface ContentTypeConfig {
  *  selector entries because that's how the brief lists it, not two separate
  *  implementations. */
 export const CONTENT_TYPES: readonly ContentTypeConfig[] = [
-  { id: "aathichoodi", label: "Aathichoodi", template: "aathichoodi" },
+  { id: "aathichoodi-series", label: "Aathichoodi (Daily Series)", template: "aathichoodi-carousel" },
+  { id: "aathichoodi", label: "Aathichoodi (Single Card)", template: "aathichoodi" },
   { id: "thirukkural", label: "Thirukkural", template: "kka" },
   { id: "kka", label: "Kural Koorum Aram", template: "kka" },
   { id: "tamil-learning", label: "Tamil Learning", template: "aathichoodi" },

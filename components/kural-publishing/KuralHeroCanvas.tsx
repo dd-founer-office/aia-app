@@ -38,12 +38,17 @@ import {
   renderAathichoodi,
   renderAathichoodiForExport,
 } from "@/lib/kural-publishing/aathichoodi-renderer";
+import {
+  renderAathichoodiCarouselSlide,
+  renderAathichoodiCarouselSlideForExport,
+} from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
 import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
+import type { ComposedEpisode } from "@/lib/kural-publishing/aathichoodi/content-engine";
 
 export const CANVAS_WIDTH = 1648;
 export const CANVAS_HEIGHT = 928;
 
-export type AssetContent = KuralPublishingContent | AathichoodiContent;
+export type AssetContent = KuralPublishingContent | AathichoodiContent | ComposedEpisode;
 
 /** GOLD MASTER asset-format registry. Real, standard dimensions for each
  *  platform, not guessed. `templates` says which template(s) each format is
@@ -65,10 +70,10 @@ export interface AssetFormat {
 
 export const ASSET_FORMATS: readonly AssetFormat[] = [
   { id: "kka-cover", label: "KKA Cover", width: CANVAS_WIDTH, height: CANVAS_HEIGHT, branding: false, templates: ["kka"] },
-  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi"] },
-  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi"] },
-  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi"] },
-  { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi"] },
+  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
+  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
+  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
+  { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
   { id: "aathichoodi-post", label: "Aathichoodi Post", width: 1080, height: 1080, branding: false, templates: ["aathichoodi"] },
 ];
 
@@ -134,6 +139,9 @@ interface KuralHeroCanvasProps {
   debugFormationLogic?: boolean;
   /** Which asset format to render at. */
   format: AssetFormat;
+  /** aathichoodi-carousel template only: which of the 5 slides to render
+   *  (0-indexed). Ignored by every other template. Defaults to 0. */
+  slideIndex?: number;
 }
 
 export default function KuralHeroCanvas({
@@ -143,6 +151,7 @@ export default function KuralHeroCanvas({
   logoImage,
   debugFormationLogic = false,
   format,
+  slideIndex = 0,
 }: KuralHeroCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { width, height, branding } = format;
@@ -163,6 +172,20 @@ export default function KuralHeroCanvas({
           ...fonts,
           logoImage: logoImage ?? null,
           debugFormationLogic,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+        });
+      } else if (template === "aathichoodi-carousel") {
+        renderAathichoodiCarouselSlide(ctx, {
+          width,
+          height,
+          episode: content as ComposedEpisode,
+          slideIndex,
+          tamilSerifFont: fonts.tamilSerifFont,
+          tamilFont: fonts.tamilFont,
+          serifFont: fonts.serifFont,
+          sansFont: fonts.sansFont,
+          logoImage: logoImage ?? null,
           brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
           brandingHandle: branding ? BRANDING_HANDLE : undefined,
         });
@@ -198,7 +221,7 @@ export default function KuralHeroCanvas({
     return () => {
       cancelled = true;
     };
-  }, [template, content, generation, logoImage, debugFormationLogic, width, height, branding]);
+  }, [template, content, generation, logoImage, debugFormationLogic, width, height, branding, slideIndex]);
 
   return (
     <canvas
@@ -278,6 +301,26 @@ export async function renderAssetForExport(
   }
   return renderAathichoodiForExport(
     content as AathichoodiContent,
+    logoImage,
+    format,
+    resolveAllFonts(),
+    format.branding ? BRANDING_WORDMARK : undefined,
+    format.branding ? BRANDING_HANDLE : undefined
+  );
+}
+
+/** Carousel-specific export counterpart -- takes an extra slideIndex the
+ *  other *ForExport helpers don't need, so it's kept as its own function
+ *  rather than overloading renderAssetForExport's signature. */
+export async function renderAathichoodiCarouselAssetForExport(
+  episode: ComposedEpisode,
+  slideIndex: number,
+  logoImage: HTMLImageElement | null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  return renderAathichoodiCarouselSlideForExport(
+    episode,
+    slideIndex,
     logoImage,
     format,
     resolveAllFonts(),

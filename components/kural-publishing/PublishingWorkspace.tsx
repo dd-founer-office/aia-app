@@ -53,6 +53,7 @@ import KuralHeroCanvas, {
   ASSET_FORMATS,
   formatsForTemplate,
   renderAssetForExport,
+  renderAathichoodiCarouselAssetForExport,
   type AssetFormat,
   type AssetContent,
 } from "./KuralHeroCanvas";
@@ -67,8 +68,28 @@ import {
   defaultAathichoodiContentFor,
   fieldLabelsFor,
   type ContentTypeId,
+  type TemplateId,
   type AathichoodiContent,
 } from "@/lib/kural-publishing/content-types";
+import { TOTAL_EPISODES } from "@/lib/kural-publishing/aathichoodi/canon";
+import {
+  composeEpisode,
+  nextEpisodeNumber,
+  type AathichoodiFormat,
+  type ComposedEpisode,
+} from "@/lib/kural-publishing/aathichoodi/content-engine";
+import {
+  loadHistory,
+  saveHistory,
+  EMPTY_HISTORY,
+  type SeriesHistory,
+} from "@/lib/kural-publishing/aathichoodi/history-store";
+import { runQualityChecks } from "@/lib/kural-publishing/aathichoodi/quality-check";
+import { generateCaption } from "@/lib/kural-publishing/aathichoodi/caption";
+import {
+  CAROUSEL_SLIDE_COUNT,
+  SLIDE_LABELS,
+} from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
 
 type ContentField = keyof KuralPublishingContent;
 
@@ -135,7 +156,7 @@ function buildAathichoodiFilename(
 
 function buildFilename(
   contentTypeId: ContentTypeId,
-  template: "kka" | "aathichoodi",
+  template: TemplateId,
   kuralContent: KuralPublishingContent,
   aathichoodiContent: AathichoodiContent,
   format: AssetFormat
@@ -143,6 +164,34 @@ function buildFilename(
   return template === "kka"
     ? buildKuralFilename(kuralContent, format)
     : buildAathichoodiFilename(contentTypeId, aathichoodiContent, format);
+}
+
+function buildSeriesStaticFilename(episode: ComposedEpisode, format: AssetFormat): string {
+  return `aathichoodi-ep${String(episode.episodeNumber).padStart(3, "0")}-static-${format.id}.png`;
+}
+
+function buildSeriesCarouselFilename(
+  episode: ComposedEpisode,
+  slideIndex: number,
+  format: AssetFormat
+): string {
+  return `aathichoodi-ep${String(episode.episodeNumber).padStart(3, "0")}-slide${slideIndex + 1}-${format.id}.png`;
+}
+
+/** Maps a composed series episode into the existing AathichoodiContent
+ *  shape so the Static format can reuse the untouched single-card
+ *  renderer/template exactly as-is -- no new render code needed for
+ *  Static. Per the brief's own Static spec (Aathichoodi -> short
+ *  interpretation -> emotional statement -> AiA signature). */
+function seriesEpisodeToStaticContent(episode: ComposedEpisode): AathichoodiContent {
+  return {
+    letter: `Episode ${episode.episodeNumber}`,
+    tamilLine: episode.tamilText,
+    easyReading: episode.transliteration,
+    meaning: episode.simpleMeaning,
+    english: episode.childLesson,
+    series: `Aathichoodi Series · ${episode.episodeNumber} of ${episode.totalEpisodes}`,
+  };
 }
 
 interface GeneratedAsset {
@@ -185,11 +234,40 @@ export default function PublishingWorkspace() {
   });
   const [generatedAssets, setGeneratedAssets] = useState<GeneratedAsset[]>([]);
 
+  // Daily Aathichoodi Series state. Isolated to its own block since every
+  // other content type above is unaffected by it.
+  const [episodeNumberInput, setEpisodeNumberInput] = useState(1);
+  const [seriesFormat, setSeriesFormat] = useState<AathichoodiFormat>("carousel");
+  const [composedEpisode, setComposedEpisode] = useState<ComposedEpisode | null>(null);
+  const [qualityWarnings, setQualityWarnings] = useState<string[]>([]);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [seriesHistory, setSeriesHistory] = useState<SeriesHistory>(() => loadHistory());
+
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
-  const availableFormats = formatsForTemplate(template);
-  const content: AssetContent =
-    template === "kka" ? kuralContent : aathichoodiContent;
+  const isSeriesType = contentTypeId === "aathichoodi-series";
+  const effectiveTemplate: TemplateId = isSeriesType
+    ? seriesFormat === "static"
+      ? "aathichoodi"
+      : "aathichoodi-carousel"
+    : template;
+  const availableFormats = formatsForTemplate(effectiveTemplate);
+
+  // A pure, cheap fallback so the preview always has a valid episode to
+  // render during the brief one-render gap between switching to this
+  // content type and the compose-on-switch state update below landing.
+  const displayEpisode: ComposedEpisode | null =
+    composedEpisode ?? (isSeriesType ? composeEpisode(1, EMPTY_HISTORY)?.episode ?? null : null);
+
+  const content: AssetContent = isSeriesType
+    ? seriesFormat === "static"
+      ? displayEpisode
+        ? seriesEpisodeToStaticContent(displayEpisode)
+        : defaultAathichoodiContentFor("aathichoodi")
+      : displayEpisode ?? (composeEpisode(1, EMPTY_HISTORY)?.episode as ComposedEpisode)
+    : template === "kka"
+      ? kuralContent
+      : aathichoodiContent;
 
   // Derived-state resets, computed during render rather than in an effect --
   // see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
@@ -207,6 +285,16 @@ export default function PublishingWorkspace() {
     setPrevContentTypeId(contentTypeId);
     if (template === "aathichoodi") {
       setAathichoodiContent(defaultAathichoodiContentFor(contentTypeId));
+    }
+    if (isSeriesType && !composedEpisode) {
+      const result = composeEpisode(episodeNumberInput, seriesHistory);
+      if (result) {
+        setComposedEpisode(result.episode);
+        setQualityWarnings(runQualityChecks(result.episode, seriesHistory).warnings);
+        setSeriesFormat(result.episode.recommendedFormat);
+        setSeriesHistory(result.nextHistory);
+        saveHistory(result.nextHistory);
+      }
     }
   }
 
@@ -297,33 +385,60 @@ export default function PublishingWorkspace() {
       selectedFormatIds.includes(f.id)
     );
     if (formats.length === 0) return;
+    if (isSeriesType && !composedEpisode) return;
 
     setGeneration((g) => g + 1);
     setIsGenerating(true);
     try {
       const results: GeneratedAsset[] = [];
-      for (const format of formats) {
-        const blob = await renderAssetForExport(
-          template,
-          content,
-          logoImage,
-          format
-        );
-        if (!blob) continue;
-        results.push({
-          formatId: format.id,
-          label: format.label,
-          width: format.width,
-          height: format.height,
-          url: URL.createObjectURL(blob),
-          filename: buildFilename(
-            contentTypeId,
-            template,
-            kuralContent,
-            aathichoodiContent,
+
+      if (isSeriesType && effectiveTemplate === "aathichoodi-carousel" && composedEpisode) {
+        for (const format of formats) {
+          for (let slide = 0; slide < CAROUSEL_SLIDE_COUNT; slide++) {
+            const blob = await renderAathichoodiCarouselAssetForExport(
+              composedEpisode,
+              slide,
+              logoImage,
+              format
+            );
+            if (!blob) continue;
+            results.push({
+              formatId: `${format.id}-slide${slide + 1}`,
+              label: `${format.label} · ${SLIDE_LABELS[slide]}`,
+              width: format.width,
+              height: format.height,
+              url: URL.createObjectURL(blob),
+              filename: buildSeriesCarouselFilename(composedEpisode, slide, format),
+            });
+          }
+        }
+      } else {
+        for (const format of formats) {
+          const blob = await renderAssetForExport(
+            effectiveTemplate,
+            content,
+            logoImage,
             format
-          ),
-        });
+          );
+          if (!blob) continue;
+          results.push({
+            formatId: format.id,
+            label: format.label,
+            width: format.width,
+            height: format.height,
+            url: URL.createObjectURL(blob),
+            filename:
+              isSeriesType && composedEpisode
+                ? buildSeriesStaticFilename(composedEpisode, format)
+                : buildFilename(
+                    contentTypeId,
+                    template,
+                    kuralContent,
+                    aathichoodiContent,
+                    format
+                  ),
+          });
+        }
       }
       setGeneratedAssets(results);
     } finally {
@@ -332,6 +447,9 @@ export default function PublishingWorkspace() {
   }, [
     availableFormats,
     selectedFormatIds,
+    isSeriesType,
+    composedEpisode,
+    effectiveTemplate,
     template,
     content,
     logoImage,
@@ -339,6 +457,37 @@ export default function PublishingWorkspace() {
     kuralContent,
     aathichoodiContent,
   ]);
+
+  const handleLoadEpisode = useCallback(
+    (targetEpisode: number) => {
+      const clamped = Math.min(Math.max(1, targetEpisode), TOTAL_EPISODES);
+      const result = composeEpisode(clamped, seriesHistory);
+      if (!result) return;
+      setComposedEpisode(result.episode);
+      setQualityWarnings(runQualityChecks(result.episode, seriesHistory).warnings);
+      setSeriesHistory(result.nextHistory);
+      saveHistory(result.nextHistory);
+      setEpisodeNumberInput(clamped);
+      setActiveSlideIndex(0);
+      setGeneratedAssets([]);
+      setGeneration((g) => g + 1);
+    },
+    [seriesHistory]
+  );
+
+  const handleGenerateNextEpisode = useCallback(() => {
+    handleLoadEpisode(nextEpisodeNumber(seriesHistory.lastEpisodeNumber));
+  }, [handleLoadEpisode, seriesHistory.lastEpisodeNumber]);
+
+  const handleCopyCaption = useCallback(() => {
+    if (!composedEpisode) return;
+    const caption = generateCaption(composedEpisode);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(caption).catch(() => {
+        /* clipboard permission unavailable -- caption is still shown in the textarea for manual copy */
+      });
+    }
+  }, [composedEpisode]);
 
   const handleDownloadAsset = useCallback((asset: GeneratedAsset) => {
     triggerDownload(asset.url, asset.filename);
@@ -390,6 +539,109 @@ export default function PublishingWorkspace() {
           </select>
         </label>
 
+        {isSeriesType && displayEpisode ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+                Episode ({TOTAL_EPISODES} total)
+              </span>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={TOTAL_EPISODES}
+                  value={episodeNumberInput}
+                  onChange={(e) => setEpisodeNumberInput(Number(e.target.value) || 1)}
+                  className="w-20 rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleLoadEpisode(episodeNumberInput)}
+                  className="flex-1 rounded-[var(--radius-button)] border border-[var(--color-primary)] px-3 py-2 text-xs font-medium text-[var(--color-primary)]"
+                >
+                  Load Episode
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateNextEpisode}
+                className="mt-1 rounded-[var(--radius-button)] bg-[var(--color-primary)] px-3 py-2 text-xs font-medium text-[var(--color-primary-foreground)]"
+              >
+                Generate Next Episode →
+              </button>
+              <p className="mt-1 text-[10px] text-[var(--color-muted-foreground)]">
+                Episode {displayEpisode.episodeNumber} · Theme: {displayEpisode.themeLabel}
+                {!displayEpisode.verified ? " · ⚠ unverified line, check source" : ""}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+                Format {" "}
+                <span className="normal-case text-[var(--color-muted-foreground)] opacity-70">
+                  (recommended: {displayEpisode.recommendedFormat})
+                </span>
+              </span>
+              <div className="flex gap-2">
+                {(["carousel", "static"] as const).map((fmt) => (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => setSeriesFormat(fmt)}
+                    className={`flex-1 rounded-[var(--radius-button)] border px-3 py-2 text-xs font-medium capitalize transition-colors ${
+                      seriesFormat === fmt
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                        : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)]"
+                    }`}
+                  >
+                    {fmt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {qualityWarnings.length > 0 && (
+              <div className="rounded-[var(--radius-photo)] border border-amber-300 bg-amber-50 p-3">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-amber-700">
+                  Quality Check Warnings
+                </p>
+                <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-amber-800">
+                  {qualityWarnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+                  Caption
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyCaption}
+                  className="text-xs font-medium text-[var(--color-primary)]"
+                >
+                  Copy
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={generateCaption(displayEpisode)}
+                rows={6}
+                className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs text-[var(--color-foreground)] outline-none"
+              />
+            </div>
+
+            <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                CTA · {displayEpisode.cta.type.replace(/_/g, " ")}
+              </p>
+              <p className="mt-1 text-xs text-[var(--color-foreground)]">{displayEpisode.cta.copy}</p>
+            </div>
+          </div>
+        ) : (
         <div className="flex flex-col gap-4">
           {template === "kka"
             ? FIELDS.map((field) => (
@@ -447,6 +699,7 @@ export default function PublishingWorkspace() {
                 );
               })}
         </div>
+        )}
 
         <div className="mt-6 flex flex-col gap-3">
           <div className="flex items-center justify-between">
@@ -529,6 +782,27 @@ export default function PublishingWorkspace() {
             })}
           </div>
         )}
+        {isSeriesType && effectiveTemplate === "aathichoodi-carousel" && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {SLIDE_LABELS.map((label, index) => {
+              const active = index === activeSlideIndex;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setActiveSlideIndex(index)}
+                  className={`rounded-[var(--radius-button)] border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                      : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)]"
+                  }`}
+                >
+                  {index + 1}. {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <p className="mb-2 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
           Preview — {previewFormat.label}, exports at exactly{" "}
           {previewFormat.width}×{previewFormat.height}px
@@ -541,11 +815,12 @@ export default function PublishingWorkspace() {
           }`}
         >
           <KuralHeroCanvas
-            template={template}
+            template={effectiveTemplate}
             content={content}
             generation={generation}
             logoImage={logoImage}
             format={previewFormat}
+            slideIndex={activeSlideIndex}
           />
         </div>
 
