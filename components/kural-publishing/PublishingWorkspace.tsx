@@ -50,6 +50,7 @@
 import { useCallback, useEffect, useState } from "react";
 import KuralHeroCanvas, {
   KKA_LOGO_PATH,
+  AIA_KOLAM_MARK_PATH,
   ASSET_FORMATS,
   formatsForTemplate,
   renderAssetForExport,
@@ -222,6 +223,11 @@ export default function PublishingWorkspace() {
   const [generation, setGeneration] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
+  // The Aathichoodi Carousel's brand lockup uses the real AiA kolam mark
+  // (a different asset from the KKA seal above -- see KuralHeroCanvas.tsx's
+  // AIA_KOLAM_MARK_PATH doc comment for why), loaded independently so both
+  // logos are ready whenever their respective template is selected.
+  const [aiaLogoImage, setAiaLogoImage] = useState<HTMLImageElement | null>(null);
   const [selectedFormatIds, setSelectedFormatIds] = useState<string[]>(() => {
     const formats = formatsForTemplate(getContentType("kka").template);
     return formats[0] ? [formats[0].id] : [];
@@ -252,6 +258,8 @@ export default function PublishingWorkspace() {
       : "aathichoodi-carousel"
     : template;
   const availableFormats = formatsForTemplate(effectiveTemplate);
+  const activeLogoImage =
+    effectiveTemplate === "aathichoodi-carousel" ? aiaLogoImage : logoImage;
 
   // A pure, cheap fallback so the preview always has a valid episode to
   // render during the brief one-render gap between switching to this
@@ -339,6 +347,22 @@ export default function PublishingWorkspace() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) setAiaLogoImage(img);
+    };
+    img.onerror = () => {
+      // Should not happen -- this asset is confirmed present on disk --
+      // but fails silently rather than crashing, same standing rule.
+    };
+    img.src = AIA_KOLAM_MARK_PATH;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Object URLs from a previous "Generate Selected Assets" run are revoked
   // the moment they're replaced (or the workspace unmounts) -- never leaked.
   useEffect(() => {
@@ -398,7 +422,7 @@ export default function PublishingWorkspace() {
             const blob = await renderAathichoodiCarouselAssetForExport(
               composedEpisode,
               slide,
-              logoImage,
+              aiaLogoImage,
               format
             );
             if (!blob) continue;
@@ -453,6 +477,7 @@ export default function PublishingWorkspace() {
     template,
     content,
     logoImage,
+    aiaLogoImage,
     contentTypeId,
     kuralContent,
     aathichoodiContent,
@@ -818,7 +843,7 @@ export default function PublishingWorkspace() {
             template={effectiveTemplate}
             content={content}
             generation={generation}
-            logoImage={logoImage}
+            logoImage={activeLogoImage}
             format={previewFormat}
             slideIndex={activeSlideIndex}
           />

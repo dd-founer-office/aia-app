@@ -70,6 +70,11 @@ export interface AssetFormat {
 
 export const ASSET_FORMATS: readonly AssetFormat[] = [
   { id: "kka-cover", label: "KKA Cover", width: CANVAS_WIDTH, height: CANVAS_HEIGHT, branding: false, templates: ["kka"] },
+  // GOLD MASTER: primary Aathichoodi carousel format, explicit founder
+  // direction -- Instagram's recommended 4:5 portrait carousel size, listed
+  // first among aathichoodi-carousel's templates so formatsForTemplate
+  // picks it as the default (never the 1:1 square below).
+  { id: "aathichoodi-carousel-4x5", label: "Aathichoodi Carousel (4:5)", width: 1080, height: 1350, branding: true, templates: ["aathichoodi-carousel"] },
   { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
   { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
   { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
@@ -97,12 +102,23 @@ export const BRANDING_HANDLE = "aram_in_action";
  *  per the standing rule against placeholder/generated marks. */
 export const KKA_LOGO_PATH = "/brand/kural-koorum-aram-logo.png";
 
+/** The actual AiA brand mark -- a distinct asset from the Kural Koorum Aram
+ *  seal above (that one is a different sub-brand's ornate seal, confirmed by
+ *  visual inspection: circuit-pattern bronze seal with its own wordmark
+ *  ring, wrong for a general "AiA" lockup). This file is unused elsewhere in
+ *  the app; the Aathichoodi Carousel is its first real usage, replacing that
+ *  carousel's previous (mismatched) reuse of KKA_LOGO_PATH. Per the standing
+ *  rule, this is the real, already-existing asset -- never approximated
+ *  with text, never recolored or redrawn. */
+export const AIA_KOLAM_MARK_PATH = "/brand/aia-kolam-mark.png";
+
 const TAMIL_FALLBACK =
   "'Noto Sans Tamil','Nirmala UI','Tamil Sangam MN','Tamil MN',sans-serif";
 const SANS_FALLBACK =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 const TAMIL_SERIF_FALLBACK = "'Noto Serif Tamil','Tamil Sangam MN','Tamil MN',serif";
 const SERIF_FALLBACK = "Georgia,'Times New Roman',serif";
+const DISPLAY_FALLBACK = "Georgia,'Times New Roman',serif";
 // No safe cross-platform fallback exists for Brahmi -- if the web font
 // hasn't loaded, glyphs render as tofu/boxes on most systems. Known, accepted
 // limitation (see lib/living-field/glyphs.ts), KKA template only.
@@ -123,6 +139,12 @@ function resolveAllFonts() {
     tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
     serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
     brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
+    // DM Serif Display -- the app's own designated display serif (see
+    // app/layout.tsx's --font-display), used only for the Aathichoodi
+    // Carousel's Slide 5 editorial statement, per explicit founder
+    // direction allowing "a very restrained serif...for a major closing
+    // statement only." Already loaded app-wide; no new font added.
+    displayFont: resolveFont("--font-display", DISPLAY_FALLBACK),
   };
 }
 
@@ -185,6 +207,7 @@ export default function KuralHeroCanvas({
           tamilFont: fonts.tamilFont,
           serifFont: fonts.serifFont,
           sansFont: fonts.sansFont,
+          displayFont: fonts.displayFont,
           logoImage: logoImage ?? null,
           brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
           brandingHandle: branding ? BRANDING_HANDLE : undefined,
