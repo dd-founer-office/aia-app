@@ -100,7 +100,7 @@ export const BRANDING_HANDLE = "aram_in_action";
  *  supplied. Nothing in this file generates a fallback if it's missing --
  *  PublishingWorkspace's loader simply fails silently and no logo draws,
  *  per the standing rule against placeholder/generated marks. */
-export const AIA_KOLAM_MARK_PATH = "/brand/aia-logo.png";
+export const AIA_KOLAM_MARK_PATH = "/brand/AiA.png";
 
 /** The actual AiA brand mark -- a distinct asset from the Kural Koorum Aram
  *  seal above (that one is a different sub-brand's ornate seal, confirmed by
@@ -110,7 +110,7 @@ export const AIA_KOLAM_MARK_PATH = "/brand/aia-logo.png";
  *  carousel's previous (mismatched) reuse of KKA_LOGO_PATH. Per the standing
  *  rule, this is the real, already-existing asset -- never approximated
  *  with text, never recolored or redrawn. */
-export const AIA_KOLAM_MARK_PATH = "/brand/aia-kolam-mark.png";
+export const AIA_KOLAM_MARK_PATH = "/brand/AiA.png";
 
 const TAMIL_FALLBACK =
   "'Noto Sans Tamil','Nirmala UI','Tamil Sangam MN','Tamil MN',sans-serif";
