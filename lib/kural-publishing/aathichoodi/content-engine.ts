@@ -12,7 +12,9 @@
  * renderers, or the UI.
  *
  * Locked slide framework (founder-approved, Episode 1 is the benchmark):
- *   1. STOP              -> hook (hooks.ts, theme-preference-driven)
+ *   1. STOP              -> hook (hooks.ts: the fixed series hook, "Have
+ *                            you taught your child this?", on every
+ *                            episode unless explicitly overridden)
  *   2. UNDERSTAND         -> understanding (understanding.ts: opener + the
  *                            episode's own meaning + a theme-rooted "what
  *                            this builds in a child" clause)
@@ -30,11 +32,11 @@
  * understanding/recommendedCta -- an editor already made that call
  * deliberately. Every other episode is composed live from the theme pools
  * with anti-repetition history (history-store.ts) so consistency comes
- * from STRUCTURE (the five-slide framework, the tone, the hook-preference
- * logic) rather than from repeating the same wording episode after episode.
- * Slide 1's hook is ALWAYS chosen by theme preference (see hooks.ts) --
- * even curated episodes don't hardcode it, since the hook is about which
- * question fits the emotional lesson, not editorial prose.
+ * from STRUCTURE (the five-slide framework, the tone) rather than from
+ * repeating the same wording episode after episode. Slide 1's hook is the
+ * one exception to "compose fresh every time": it's fixed (see hooks.ts)
+ * because it's the series' psychological entry point, not editorial prose
+ * that benefits from variety.
  *
  * `verified` reflects the canon entry's own flag (Tamil text confidence),
  * never invented per-episode.
@@ -42,7 +44,7 @@
 
 import { AATHICHOODI_CANON, getCanonEntry, type AathichoodiCanonEntry } from "./canon";
 import { themeLabel, type ThemeId } from "./themes";
-import { pickHook } from "./hooks";
+import { selectHook } from "./hooks";
 import { selectScenario } from "./scenarios";
 import { selectAction } from "./actions";
 import { selectChildLesson, selectAiaConnection } from "./voice";
@@ -99,10 +101,10 @@ export function composeEpisode(
   const theme = entry.primaryTheme;
   const curated = entry.curated;
 
-  // Slide 1's hook is always theme-preference-driven (see hooks.ts) --
-  // deliberate per the emotional lesson, not random, and not something
-  // curated episodes override with hand-written prose.
-  const hook = pickHook(theme, history.recentHookIds);
+  // Slide 1's hook is the fixed series hook (see hooks.ts) on every
+  // episode, unless this specific one has a hand-authored strategic
+  // override.
+  const hook = selectHook(curated?.hookOverride);
 
   const scenario = curated
     ? { id: "curated", text: curated.familyAngle }
@@ -141,7 +143,7 @@ export function composeEpisode(
     understanding: understanding.text,
     primaryTheme: theme,
     themeLabel: themeLabel(theme),
-    hook: hook.text,
+    hook,
     familyAngle: scenario.text,
     childLesson: childLesson.text,
     todayAction: action.text,
@@ -154,7 +156,6 @@ export function composeEpisode(
 
   const nextHistory: SeriesHistory = {
     lastEpisodeNumber: episodeNumber,
-    recentHookIds: clampRecent([...history.recentHookIds, hook.id]),
     recentScenarioIds: clampRecent([...history.recentScenarioIds, scenario.id]),
     recentActionIds: clampRecent([...history.recentActionIds, action.id]),
     recentChildLessonIds: clampRecent([...history.recentChildLessonIds, childLesson.id]),

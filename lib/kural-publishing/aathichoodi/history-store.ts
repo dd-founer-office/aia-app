@@ -18,7 +18,6 @@ const RECENT_LIMIT = 6;
 
 export interface SeriesHistory {
   lastEpisodeNumber: number;
-  recentHookIds: string[];
   recentScenarioIds: string[];
   recentActionIds: string[];
   recentChildLessonIds: string[];
@@ -34,7 +33,6 @@ export interface SeriesHistory {
 
 export const EMPTY_HISTORY: SeriesHistory = {
   lastEpisodeNumber: 0,
-  recentHookIds: [],
   recentScenarioIds: [],
   recentActionIds: [],
   recentChildLessonIds: [],
