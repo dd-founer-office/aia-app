@@ -99,17 +99,17 @@ export const BRANDING_HANDLE = "aram_in_action";
 /** Where the canonical Kural Koorum Aram logo is expected to live once
  *  supplied. Nothing in this file generates a fallback if it's missing --
  *  PublishingWorkspace's loader simply fails silently and no logo draws,
- *  per the standing rule against placeholder/generated marks. */
-export const AIA_KOLAM_MARK_PATH = "/brand/AiA.png";
+ *  per the standing rule against placeholder/generated marks. Used by the
+ *  original "kka" template only -- a different sub-brand's ornate seal
+ *  (circuit-pattern bronze seal with its own wordmark ring), wrong for a
+ *  general "AiA" lockup, so it stays separate from AIA_KOLAM_MARK_PATH
+ *  below. */
+export const KKA_LOGO_PATH = "/brand/kural-koorum-aram-logo.png";
 
-/** The actual AiA brand mark -- a distinct asset from the Kural Koorum Aram
- *  seal above (that one is a different sub-brand's ornate seal, confirmed by
- *  visual inspection: circuit-pattern bronze seal with its own wordmark
- *  ring, wrong for a general "AiA" lockup). This file is unused elsewhere in
- *  the app; the Aathichoodi Carousel is its first real usage, replacing that
- *  carousel's previous (mismatched) reuse of KKA_LOGO_PATH. Per the standing
- *  rule, this is the real, already-existing asset -- never approximated
- *  with text, never recolored or redrawn. */
+/** The actual AiA brand mark, used by the Aathichoodi Carousel's brand
+ *  lockup. Per the standing rule, this is the real, official logo file
+ *  supplied by the founder -- never approximated with text, never
+ *  recolored or redrawn. */
 export const AIA_KOLAM_MARK_PATH = "/brand/AiA.png";
 
 const TAMIL_FALLBACK =
