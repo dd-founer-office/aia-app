@@ -1,5 +1,5 @@
 /**
- * Daily Aathichoodi Series — Family Carousel Renderer (Visual System v3)
+ * Daily Aathichoodi Series — Family Carousel Renderer (Visual System v4)
  * ----------------------------------------------------------------------------
  * VISUAL-ONLY rewrite, explicit founder direction: the approved 5-slide
  * structure and content-generation logic (lib/kural-publishing/aathichoodi/)
@@ -13,58 +13,55 @@
  * measurement here is expressed as a fraction of width/height so the same
  * code renders correctly at any selected AssetFormat.
  *
- * Design philosophy (v3, superseding the ivory "quiet luxury" v2 system):
- * per explicit founder direction, decoration is OUT. The visual language is
- * reduced to exactly five ingredients -- Typography + Colour + Content +
- * Photography-when-needed (none exists in this app yet, so unused for now)
- * + the AiA brand mark. Removed entirely from v2: the oversized cropped
- * Tamil watermark letter, the procedural botanical sprout accent, and the
- * per-CTA-type line-art icon on Slide 5. Nothing decorative replaces them --
- * the deep green field and warm-white type ARE the design now.
+ * Design philosophy (v4, superseding the invented deep-green v3 palette):
+ * per explicit founder direction, the carousel now uses the ACTUAL AiA
+ * platform design tokens (app/globals.css), not a bespoke editorial palette
+ * -- brand consistency with the rest of the product over a one-off look for
+ * this feature. See COLORS below: it mirrors --color-background,
+ * --color-card, --color-border, --color-foreground, --color-muted-foreground,
+ * --color-primary, --color-primary-dark, and --color-badge-verified-bg
+ * verbatim. The "no decoration" hard rule from v3 still holds -- no
+ * watermark letter, no botanical accent, no per-CTA icon -- only now
+ * expressed in the platform's own light warm-off-white + forest-green
+ * system instead of an invented dark-green field.
  *
- * Colour: deep forest/heritage green is the dominant background on every
- * slide, warm white/off-white the dominant text colour -- a reversal of
- * v2's ivory-dominant palette. A warm cream tone appears in exactly one
- * functional place (Slide 4's quote panel, isolating the one actionable
- * line) -- not decoration, a content-structuring device.
- *
- * Typography: exactly two families, unchanged from v2 -- Noto Serif Tamil
- * for every Tamil glyph, DM Sans for all English UI text, DM Serif Display
- * reserved for Slide 5's single editorial statement only.
+ * Typography: exactly the platform's three type roles -- Noto Serif Tamil /
+ * Noto Sans Tamil for Tamil script, DM Sans for all body/UI text, DM Serif
+ * Display reserved for a display/wordmark moment only (Slide 5's single
+ * editorial statement, mirroring the app's own splash-screen usage).
  *
  * Brand mark: drawn from the real logo asset (KuralHeroCanvas.tsx's
- * AIA_KOLAM_MARK_PATH), never redrawn/approximated/regenerated -- see
- * getReversedLogo() below for the one legitimate transformation applied
- * (a solid warm-white silhouette of the same artwork's alpha channel, for
- * legibility against the dark green field). NOTE: this app currently wires
- * in the verified AiA kolam mark as the brand asset (the only real AiA
- * logo file present in the repo); if a different file is supplied as the
- * official source-of-truth logo, swap AIA_KOLAM_MARK_PATH in
- * KuralHeroCanvas.tsx to point at it -- this renderer draws whatever real
- * image it is given unmodified (or its computed reversed silhouette) and
- * requires no other change.
+ * AIA_KOLAM_MARK_PATH), never redrawn/approximated/regenerated, in its own
+ * real colors -- the light platform background needs no reversed/monochrome
+ * treatment (that was a v3-only necessity for legibility on a dark field).
+ * NOTE: this app currently wires in the verified AiA kolam mark as the
+ * brand asset (the only real AiA logo file present in the repo); if a
+ * different file is supplied as the official source-of-truth logo, swap
+ * AIA_KOLAM_MARK_PATH in KuralHeroCanvas.tsx to point at it -- this
+ * renderer draws whatever real image it is given unmodified and requires
+ * no other change.
  */
 
 import type { ComposedEpisode } from "./aathichoodi/content-engine";
 
 // ---------------------------------------------------------------------------
-// Design tokens -- the reusable palette/scale every slide and every future
-// episode draws from. Changing the system means changing these, never a
-// one-off value inside a slide case. Deliberately two hue families only
-// (green + warm white/cream), per the "no decoration" brief -- hierarchy
-// comes from shade/opacity/weight within those two families, not a third
-// accent colour.
+// Design tokens -- lifted verbatim from app/globals.css, the same palette
+// every other screen in the AiA platform uses. Changing the system means
+// changing these (or globals.css), never a one-off value inside a slide
+// case.
 // ---------------------------------------------------------------------------
 
 const COLORS = {
-  bgTop: "#15412C",
-  bgBottom: "#0D2A1C",
-  textPrimary: "#F8F3E7",
-  textSecondary: "#AFC6B4",
-  accentLine: "#3F7350",
-  panelBg: "#F3ECDD",
-  panelText: "#15352A",
-  hairline: "rgba(248, 243, 231, 0.18)",
+  background: "#EFF4F2",
+  backgroundDeep: "#E3ECE7",
+  card: "#FFFFFF",
+  border: "#DCE2DF",
+  foreground: "#2B2A26",
+  mutedForeground: "#8A8678",
+  primary: "#328D63",
+  primaryDark: "#236345",
+  primaryForeground: "#FFFFFF",
+  badgeVerifiedBg: "#E6F2EC",
 };
 
 export const CAROUSEL_SLIDE_COUNT = 5;
@@ -178,16 +175,23 @@ function splitQuotedAction(text: string): { before: string; quoted: string; afte
 }
 
 // ---------------------------------------------------------------------------
-// Background: a plain deep-green surface. No watermark letter, no botanical
-// accent -- per the "no decoration" hard rule, the field is just colour.
+// Background: the platform's own warm off-white surface with its own
+// hairline border. No watermark letter, no botanical accent -- per the
+// "no decoration" hard rule, the field is just colour.
 // ---------------------------------------------------------------------------
 
 function drawSurface(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, COLORS.bgTop);
-  gradient.addColorStop(1, COLORS.bgBottom);
+  gradient.addColorStop(0, COLORS.background);
+  gradient.addColorStop(1, COLORS.backgroundDeep);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
+
+  ctx.save();
+  ctx.strokeStyle = COLORS.border;
+  ctx.lineWidth = Math.max(1, Math.round(Math.min(width, height) * 0.0015));
+  ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, width - ctx.lineWidth, height - ctx.lineWidth);
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
@@ -254,11 +258,11 @@ function drawHeader(
     /* Canvas2D letterSpacing unsupported -- default tracking is fine */
   }
 
-  ctx.fillStyle = COLORS.textPrimary;
+  ctx.fillStyle = COLORS.foreground;
   ctx.font = `700 ${labelSize}px ${sansFont}`;
   ctx.fillText("AATHICHOODI", frame.contentX, frame.marginY + labelSize);
 
-  ctx.fillStyle = COLORS.textSecondary;
+  ctx.fillStyle = COLORS.mutedForeground;
   ctx.font = `500 ${labelSize}px ${sansFont}`;
   ctx.fillText(`EPISODE ${episode.episodeNumber}`, frame.contentX, frame.marginY + labelSize * 2.15);
 
@@ -270,12 +274,12 @@ function drawHeader(
 
   // Page indicator, top-right, refined smaller per the brief.
   ctx.textAlign = "right";
-  ctx.fillStyle = COLORS.textSecondary;
+  ctx.fillStyle = COLORS.mutedForeground;
   ctx.font = `500 ${Math.round(short * 0.019)}px ${sansFont}`;
   ctx.fillText(`${slideIndex + 1} / ${CAROUSEL_SLIDE_COUNT}`, frame.contentX + frame.contentW, frame.marginY + labelSize);
 
   // Short divider under the metadata block.
-  ctx.strokeStyle = COLORS.accentLine;
+  ctx.strokeStyle = COLORS.primary;
   ctx.lineWidth = Math.max(1.5, short * 0.003);
   ctx.beginPath();
   ctx.moveTo(frame.contentX, dividerY);
@@ -285,7 +289,7 @@ function drawHeader(
   const microLabel = SLIDE_MICRO_LABELS[slideIndex];
   if (microLabel) {
     ctx.textAlign = "left";
-    ctx.fillStyle = COLORS.textSecondary;
+    ctx.fillStyle = COLORS.primary;
     try {
       ctx.letterSpacing = `${Math.round(microSize * 0.12)}px`;
     } catch {
@@ -299,37 +303,6 @@ function drawHeader(
       /* no-op */
     }
   }
-}
-
-/** Produces a solid warm-white silhouette of a real logo image's own alpha
- *  channel -- the ONLY legitimate transformation of the brand mark this
- *  renderer performs, for legibility against the dark green field. This is
- *  not a redesign: it recolors the exact artwork already loaded, pixel for
- *  pixel, and changes nothing about its shape. Memoized per image so it's
- *  computed once, not on every repaint. */
-const reversedLogoCache = new WeakMap<HTMLImageElement, HTMLCanvasElement>();
-
-function getReversedLogo(img: HTMLImageElement): HTMLCanvasElement | null {
-  const cached = reversedLogoCache.get(img);
-  if (cached) return cached;
-  if (typeof document === "undefined") return null;
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  if (!w || !h) return null;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const offCtx = canvas.getContext("2d");
-  if (!offCtx) return null;
-
-  offCtx.drawImage(img, 0, 0, w, h);
-  offCtx.globalCompositeOperation = "source-in";
-  offCtx.fillStyle = COLORS.textPrimary;
-  offCtx.fillRect(0, 0, w, h);
-
-  reversedLogoCache.set(img, canvas);
-  return canvas;
 }
 
 function drawFooterLockup(
@@ -347,17 +320,17 @@ function drawFooterLockup(
   let cursorX = frame.contentX;
 
   if (opts.logoImage) {
-    const reversed = getReversedLogo(opts.logoImage);
-    const drawable = reversed ?? opts.logoImage;
+    // Real mark, unmodified colors -- the light platform background needs
+    // no reversed/monochrome treatment.
     const scale = Math.min(logoBox / opts.logoImage.width, logoBox / opts.logoImage.height);
     const drawW = opts.logoImage.width * scale;
     const drawH = opts.logoImage.height * scale;
-    ctx.drawImage(drawable, cursorX, rowY - drawH / 2, drawW, drawH);
+    ctx.drawImage(opts.logoImage, cursorX, rowY - drawH / 2, drawW, drawH);
     cursorX += drawW + short * 0.022;
   }
 
   const dividerX = cursorX;
-  ctx.strokeStyle = COLORS.hairline;
+  ctx.strokeStyle = COLORS.border;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(dividerX, rowY - logoBox * 0.4);
@@ -366,11 +339,11 @@ function drawFooterLockup(
 
   const textX = dividerX + short * 0.018;
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.textPrimary;
+  ctx.fillStyle = COLORS.foreground;
   ctx.font = `700 ${Math.round(short * 0.021)}px ${sansFont}`;
   ctx.fillText(opts.brandingWordmark.replace("AiA — ", ""), textX, rowY - logoBox * 0.06);
   if (opts.brandingHandle) {
-    ctx.fillStyle = COLORS.textSecondary;
+    ctx.fillStyle = COLORS.mutedForeground;
     ctx.font = `400 ${Math.round(short * 0.017)}px ${sansFont}`;
     ctx.fillText(`@${opts.brandingHandle}`, textX, rowY + logoBox * 0.46);
   }
@@ -378,7 +351,7 @@ function drawFooterLockup(
   // Series signature, right-aligned -- part of the brand system on every
   // slide, kept small/muted so it never competes with the main message.
   ctx.textAlign = "right";
-  ctx.fillStyle = COLORS.textSecondary;
+  ctx.fillStyle = COLORS.primary;
   ctx.font = `500 ${Math.round(short * 0.016)}px ${opts.tamilFont}`;
   ctx.fillText("சொல்லில் தமிழ்", frame.contentX + frame.contentW, rowY - logoBox * 0.06);
   ctx.fillText("செயலில் அறம்!", frame.contentX + frame.contentW, rowY + logoBox * 0.46);
@@ -398,10 +371,10 @@ function drawSlide0Stop(
   let cursorY = frame.contentTop + (frame.contentBottom - frame.contentTop) * 0.08;
 
   // The Tamil line is the hero -- largest element on the slide, sized to
-  // fill the available width rather than a fixed guess. Warm cream (the
-  // system's one secondary tone) gives it the strongest pop on the slide.
+  // fill the available width rather than a fixed guess. The platform's own
+  // deeper green gives it the strongest pop against the off-white field.
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.panelBg;
+  ctx.fillStyle = COLORS.primaryDark;
   const hero = fitText(
     ctx,
     episode.tamilText,
@@ -417,7 +390,7 @@ function drawSlide0Stop(
   }
 
   cursorY += hero.lineHeight * 0.55;
-  ctx.fillStyle = COLORS.textPrimary;
+  ctx.fillStyle = COLORS.foreground;
   const hook = fitText(
     ctx,
     episode.hook,
@@ -443,7 +416,7 @@ function drawEditorialParagraphs(
   size: number
 ): number {
   const paragraphs = splitEditorialParagraphs(text);
-  ctx.fillStyle = COLORS.textPrimary;
+  ctx.fillStyle = COLORS.foreground;
   ctx.font = `500 ${size}px ${sansFont}`;
   const lineHeight = size * 1.34;
   let cursorY = startY;
@@ -469,20 +442,20 @@ function drawSlide1Understand(
   let cursorY = frame.contentTop;
 
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.textSecondary;
+  ctx.fillStyle = COLORS.mutedForeground;
   const refSize = Math.round(frame.contentW * 0.036);
   ctx.font = `500 ${refSize}px ${tamilSerifFont}`;
   cursorY += refSize;
   ctx.fillText(episode.tamilText, frame.contentX, cursorY);
 
   cursorY += refSize * 1.5;
-  ctx.fillStyle = COLORS.panelBg;
+  ctx.fillStyle = COLORS.primaryDark;
   const transSize = Math.round(frame.contentW * 0.034);
   ctx.font = `700 ${transSize}px ${sansFont}`;
   ctx.fillText(episode.transliteration, frame.contentX, cursorY);
 
   cursorY += transSize * 1.6;
-  ctx.fillStyle = COLORS.textSecondary;
+  ctx.fillStyle = COLORS.mutedForeground;
   ctx.font = `italic 400 ${Math.round(frame.contentW * 0.03)}px ${sansFont}`;
   ctx.fillText(episode.simpleMeaning, frame.contentX, cursorY);
 
@@ -527,7 +500,7 @@ function drawSlide3Action(
 
   if (before) {
     ctx.textAlign = "left";
-    ctx.fillStyle = COLORS.textPrimary;
+    ctx.fillStyle = COLORS.foreground;
     ctx.font = `500 ${setupSize}px ${sansFont}`;
     const lines = wrapText(ctx, before, frame.contentW);
     for (const line of lines) {
@@ -537,8 +510,9 @@ function drawSlide3Action(
     cursorY += setupSize * 0.6;
   }
 
-  // Warm cream quote panel -- the system's one functional (non-decorative)
-  // structuring device, isolating the single actionable question.
+  // Light green quote panel (the platform's own --color-badge-verified-bg)
+  // -- the system's one functional (non-decorative) structuring device,
+  // isolating the single actionable question.
   const panelPadX = frame.contentW * 0.06;
   const panelPadY = frame.contentW * 0.05;
   const quoteSize = Math.round(frame.contentW * 0.05);
@@ -548,16 +522,16 @@ function drawSlide3Action(
   const panelH = panelPadY * 2 + quoteLines.length * quoteLineHeight;
   const panelY = cursorY;
 
-  ctx.fillStyle = COLORS.panelBg;
+  ctx.fillStyle = COLORS.badgeVerifiedBg;
   ctx.beginPath();
   ctx.roundRect(frame.contentX, panelY, frame.contentW, panelH, frame.contentW * 0.03);
   ctx.fill();
 
-  ctx.fillStyle = COLORS.accentLine;
+  ctx.fillStyle = COLORS.primary;
   ctx.font = `700 ${Math.round(frame.contentW * 0.1)}px Georgia, serif`;
   ctx.fillText("“", frame.contentX + panelPadX * 0.5, panelY + panelPadY + quoteSize * 0.8);
 
-  ctx.fillStyle = COLORS.panelText;
+  ctx.fillStyle = COLORS.primaryDark;
   ctx.font = `600 ${quoteSize}px ${sansFont}`;
   let qy = panelY + panelPadY + quoteSize * 0.85;
   for (const line of quoteLines) {
@@ -568,7 +542,7 @@ function drawSlide3Action(
   cursorY = panelY + panelH + setupSize * 0.9;
 
   if (after) {
-    ctx.fillStyle = COLORS.textPrimary;
+    ctx.fillStyle = COLORS.foreground;
     ctx.font = `600 ${setupSize}px ${sansFont}`;
     const lines = wrapText(ctx, after, frame.contentW);
     for (const line of lines) {
@@ -595,7 +569,7 @@ function drawSlide4Carry(
   const rest = emDashSplit.slice(1).join(" — ");
 
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.textPrimary;
+  ctx.fillStyle = COLORS.foreground;
   const leadFit = fitText(
     ctx,
     rest ? `${lead} —` : lead,
@@ -613,7 +587,7 @@ function drawSlide4Carry(
 
   if (rest) {
     cursorY += leadFit.lineHeight * 0.25;
-    ctx.fillStyle = COLORS.textSecondary;
+    ctx.fillStyle = COLORS.mutedForeground;
     ctx.font = `400 ${Math.round(frame.contentW * 0.042)}px ${sansFont}`;
     const lines = wrapText(ctx, rest, frame.contentW);
     for (const line of lines) {
@@ -625,7 +599,7 @@ function drawSlide4Carry(
   cursorY += frame.contentW * 0.09;
 
   if (episode.distantDevotionConnection) {
-    ctx.fillStyle = COLORS.textSecondary;
+    ctx.fillStyle = COLORS.mutedForeground;
     ctx.font = `italic 400 ${Math.round(frame.contentW * 0.036)}px ${sansFont}`;
     const lines = wrapText(ctx, episode.distantDevotionConnection, frame.contentW);
     for (const line of lines) {
@@ -636,10 +610,10 @@ function drawSlide4Carry(
   }
 
   // CTA line -- no icon (per the "no decoration" rule, Slide 5's per-CTA
-  // icon system from v2 is removed); the warm cream tone alone gives it
-  // the pop of an actionable line.
+  // icon system from v2 is removed); the platform's own primary green
+  // alone gives it the pop of an actionable line.
   const ctaSize = Math.round(frame.contentW * 0.044);
-  ctx.fillStyle = COLORS.panelBg;
+  ctx.fillStyle = COLORS.primary;
   ctx.font = `700 ${ctaSize}px ${sansFont}`;
   const ctaLines = wrapText(ctx, episode.cta.copy, frame.contentW);
   let ctaY = cursorY;
