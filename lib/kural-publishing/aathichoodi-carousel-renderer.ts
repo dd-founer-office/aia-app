@@ -1,5 +1,5 @@
 /**
- * Daily Aathichoodi Series — Family Carousel Renderer (Visual System v2)
+ * Daily Aathichoodi Series — Family Carousel Renderer (Visual System v3)
  * ----------------------------------------------------------------------------
  * VISUAL-ONLY rewrite, explicit founder direction: the approved 5-slide
  * structure and content-generation logic (lib/kural-publishing/aathichoodi/)
@@ -13,64 +13,58 @@
  * measurement here is expressed as a fraction of width/height so the same
  * code renders correctly at any selected AssetFormat.
  *
- * Design language: "quiet luxury" editorial, not a graphic-heavy social
- * template -- restraint over decoration (no gradients-on-gradients, no
- * icon clutter, no more than the two type families below). The whole
- * canvas IS the card now (no inset white rectangle floating on a duller
- * background, unlike the old v1 treatment) -- a single warm ivory surface
- * with a hairline edge, generous margins, and two very quiet background
- * accents:
- *   1. ONE oversized, partially-cropped, near-invisible Tamil letter
- *      (sourced from the episode's own text, never invented) bleeding off
- *      a corner -- "cultural texture without becoming ornamental," per
- *      the brief. Deliberately NOT the scattered-glyph-field technique in
- *      ambient-language-layer.ts (that's a different visual, tuned for a
- *      small inset card, still used as-is by the Static format and the KKA
- *      template -- untouched here).
- *   2. A restrained procedural botanical accent (simple bezier leaf/sprout
- *      shapes, no image assets) echoing wisdom/growth/roots.
- * No literal family photography/illustration exists in this app (no image
- * assets, no image-generation pipeline) -- Slide 3 leans on typography +
- * the same restrained botanical accent rather than a fabricated photo.
+ * Design philosophy (v3, superseding the ivory "quiet luxury" v2 system):
+ * per explicit founder direction, decoration is OUT. The visual language is
+ * reduced to exactly five ingredients -- Typography + Colour + Content +
+ * Photography-when-needed (none exists in this app yet, so unused for now)
+ * + the AiA brand mark. Removed entirely from v2: the oversized cropped
+ * Tamil watermark letter, the procedural botanical sprout accent, and the
+ * per-CTA-type line-art icon on Slide 5. Nothing decorative replaces them --
+ * the deep green field and warm-white type ARE the design now.
  *
- * Typography: exactly two families, per the brief's "no more than 1 Tamil
- * display + 1 English/UI font" rule -- Noto Serif Tamil (already loaded
- * app-wide) for every Tamil glyph, DM Sans (already loaded, `sansFont`)
- * for all English UI text. DM Serif Display (already loaded, `displayFont`
- * -- see KuralHeroCanvas.tsx) is used ONLY for Slide 5's single editorial
- * statement, matching the brief's explicit "a very restrained serif may be
- * used for a major closing statement only" allowance.
+ * Colour: deep forest/heritage green is the dominant background on every
+ * slide, warm white/off-white the dominant text colour -- a reversal of
+ * v2's ivory-dominant palette. A warm cream tone appears in exactly one
+ * functional place (Slide 4's quote panel, isolating the one actionable
+ * line) -- not decoration, a content-structuring device.
  *
- * Brand lockup (LOCKED structure, unchanged): round AiA mark -> vertical
- * divider -> "Aram in Action" -> handle beneath, bottom-left, on every
- * slide (consistency over novelty). Uses the real aia-kolam-mark.png asset
- * (see KuralHeroCanvas.tsx's AIA_KOLAM_MARK_PATH) inside a neutral tinted
- * circular badge for visual containment -- the mark itself is drawn
- * unmodified (real colors, no recolor/distortion), just clipped to a
- * circle like a standard avatar treatment.
+ * Typography: exactly two families, unchanged from v2 -- Noto Serif Tamil
+ * for every Tamil glyph, DM Sans for all English UI text, DM Serif Display
+ * reserved for Slide 5's single editorial statement only.
+ *
+ * Brand mark: drawn from the real logo asset (KuralHeroCanvas.tsx's
+ * AIA_KOLAM_MARK_PATH), never redrawn/approximated/regenerated -- see
+ * getReversedLogo() below for the one legitimate transformation applied
+ * (a solid warm-white silhouette of the same artwork's alpha channel, for
+ * legibility against the dark green field). NOTE: this app currently wires
+ * in the verified AiA kolam mark as the brand asset (the only real AiA
+ * logo file present in the repo); if a different file is supplied as the
+ * official source-of-truth logo, swap AIA_KOLAM_MARK_PATH in
+ * KuralHeroCanvas.tsx to point at it -- this renderer draws whatever real
+ * image it is given unmodified (or its computed reversed silhouette) and
+ * requires no other change.
  */
 
-import { createSeededRandom, type SeededRandom } from "./seeded-random";
-import { extractTamilGraphemes } from "./ambient-language-layer";
 import type { ComposedEpisode } from "./aathichoodi/content-engine";
-import type { CtaTypeId } from "./aathichoodi/cta";
 
 // ---------------------------------------------------------------------------
 // Design tokens -- the reusable palette/scale every slide and every future
 // episode draws from. Changing the system means changing these, never a
-// one-off value inside a slide case.
+// one-off value inside a slide case. Deliberately two hue families only
+// (green + warm white/cream), per the "no decoration" brief -- hierarchy
+// comes from shade/opacity/weight within those two families, not a third
+// accent colour.
 // ---------------------------------------------------------------------------
 
 const COLORS = {
-  ivory: "#F7F3EA",
-  ivoryDeep: "#F1EBDD",
-  hairline: "#E4DCC8",
-  forest: "#1F5C40",
-  forestDeep: "#153F2C",
-  sage: "#7FA588",
-  sagePanel: "#E8EFE6",
-  charcoal: "#232019",
-  muted: "#847F6E",
+  bgTop: "#15412C",
+  bgBottom: "#0D2A1C",
+  textPrimary: "#F8F3E7",
+  textSecondary: "#AFC6B4",
+  accentLine: "#3F7350",
+  panelBg: "#F3ECDD",
+  panelText: "#15352A",
+  hairline: "rgba(248, 243, 231, 0.18)",
 };
 
 export const CAROUSEL_SLIDE_COUNT = 5;
@@ -93,18 +87,6 @@ const SLIDE_MICRO_LABELS: readonly string[] = [
   "TRY THIS TODAY",
   "",
 ];
-
-const CTA_ICON: Record<CtaTypeId, "bookmark" | "share" | "chat" | "check" | "question" | "people" | "heart"> = {
-  SAVE: "bookmark",
-  SHARE: "share",
-  COMMENT: "chat",
-  TRY_TODAY: "check",
-  PARENT_REFLECTION: "question",
-  AIA_PARTICIPATION: "people",
-  DISTANT_DEVOTION: "heart",
-  STORY_TESTIMONIAL: "chat",
-  SOFT_ENQUIRY: "question",
-};
 
 export interface RenderCarouselSlideOptions {
   width: number;
@@ -196,117 +178,16 @@ function splitQuotedAction(text: string): { before: string; quoted: string; afte
 }
 
 // ---------------------------------------------------------------------------
-// Background: ivory surface + one oversized cropped Tamil letter + one
-// restrained botanical accent. No scattered glyph field here (see module
-// doc comment) -- this is a different, quieter visual for a full-bleed card.
+// Background: a plain deep-green surface. No watermark letter, no botanical
+// accent -- per the "no decoration" hard rule, the field is just colour.
 // ---------------------------------------------------------------------------
 
 function drawSurface(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, COLORS.ivory);
-  gradient.addColorStop(1, COLORS.ivoryDeep);
+  gradient.addColorStop(0, COLORS.bgTop);
+  gradient.addColorStop(1, COLORS.bgBottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
-
-  // Hairline edge -- "extremely light border," the whole canvas IS the card.
-  ctx.save();
-  ctx.strokeStyle = COLORS.hairline;
-  ctx.lineWidth = Math.max(1, Math.round(Math.min(width, height) * 0.0015));
-  ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, width - ctx.lineWidth, height - ctx.lineWidth);
-  ctx.restore();
-}
-
-/** ONE oversized, partially-cropped Tamil letter bleeding off a corner --
- *  "almost watermark-like," per the brief -- sourced from this episode's
- *  own Tamil text so it's rooted in real content, never invented. Corner
- *  alternates by episode number so 109 episodes don't all look identical. */
-function drawCroppedLetterWatermark(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  episode: ComposedEpisode,
-  tamilFont: string
-): void {
-  const glyphs = extractTamilGraphemes(episode.tamilText);
-  if (glyphs.length === 0) return;
-  const glyph = glyphs[episode.episodeNumber % glyphs.length];
-  const corners: Array<[number, number]> = [
-    [0, 0],
-    [width, 0],
-    [width, height],
-    [0, height],
-  ];
-  const [cx, cy] = corners[episode.episodeNumber % corners.length];
-
-  ctx.save();
-  ctx.globalAlpha = 0.05;
-  ctx.fillStyle = COLORS.forest;
-  ctx.font = `700 ${Math.round(Math.min(width, height) * 0.62)}px ${tamilFont}`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(glyph, cx, cy);
-  ctx.restore();
-}
-
-/** A restrained procedural botanical accent -- a simple two-leaf sprout
- *  drawn with bezier curves, no image asset. Deterministic per episode
- *  (position jitter only), very low opacity, sage/forest toned. */
-function drawSprout(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  scale: number,
-  rand: SeededRandom
-): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(scale, scale);
-  ctx.globalAlpha = 0.16 + rand.range(0, 0.04);
-  ctx.strokeStyle = COLORS.forest;
-  ctx.fillStyle = COLORS.sage;
-  ctx.lineWidth = 2.4;
-  // Stem.
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.quadraticCurveTo(-2, -40, 0, -78);
-  ctx.stroke();
-  // Two leaves.
-  for (const dir of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(0, -50);
-    ctx.quadraticCurveTo(dir * 34, -66, dir * 4, -92);
-    ctx.quadraticCurveTo(dir * 2, -70, 0, -50);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawBackground(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  episode: ComposedEpisode,
-  slideIndex: number,
-  tamilFont: string
-): void {
-  const rand = createSeededRandom(episode.episodeNumber * 1000 + slideIndex);
-  drawSurface(ctx, width, height);
-  drawCroppedLetterWatermark(ctx, width, height, episode, tamilFont);
-
-  // One botanical accent per slide, corner-anchored so it never sits under
-  // text; alternates corner by slide so the five-slide swipe has quiet
-  // rhythm without repeating identically.
-  const short = Math.min(width, height);
-  const anchors: Array<[number, number]> = [
-    [width * 0.12, height * 0.94],
-    [width * 0.88, height * 0.08],
-    [width * 0.9, height * 0.95],
-    [width * 0.1, height * 0.09],
-    [width * 0.9, height * 0.93],
-  ];
-  const [ax, ay] = anchors[slideIndex % anchors.length];
-  drawSprout(ctx, ax, ay, short / 420, rand);
 }
 
 // ---------------------------------------------------------------------------
@@ -373,11 +254,11 @@ function drawHeader(
     /* Canvas2D letterSpacing unsupported -- default tracking is fine */
   }
 
-  ctx.fillStyle = COLORS.charcoal;
+  ctx.fillStyle = COLORS.textPrimary;
   ctx.font = `700 ${labelSize}px ${sansFont}`;
   ctx.fillText("AATHICHOODI", frame.contentX, frame.marginY + labelSize);
 
-  ctx.fillStyle = COLORS.muted;
+  ctx.fillStyle = COLORS.textSecondary;
   ctx.font = `500 ${labelSize}px ${sansFont}`;
   ctx.fillText(`EPISODE ${episode.episodeNumber}`, frame.contentX, frame.marginY + labelSize * 2.15);
 
@@ -389,12 +270,12 @@ function drawHeader(
 
   // Page indicator, top-right, refined smaller per the brief.
   ctx.textAlign = "right";
-  ctx.fillStyle = COLORS.muted;
+  ctx.fillStyle = COLORS.textSecondary;
   ctx.font = `500 ${Math.round(short * 0.019)}px ${sansFont}`;
   ctx.fillText(`${slideIndex + 1} / ${CAROUSEL_SLIDE_COUNT}`, frame.contentX + frame.contentW, frame.marginY + labelSize);
 
-  // Short green divider under the metadata block.
-  ctx.strokeStyle = COLORS.forest;
+  // Short divider under the metadata block.
+  ctx.strokeStyle = COLORS.accentLine;
   ctx.lineWidth = Math.max(1.5, short * 0.003);
   ctx.beginPath();
   ctx.moveTo(frame.contentX, dividerY);
@@ -404,7 +285,7 @@ function drawHeader(
   const microLabel = SLIDE_MICRO_LABELS[slideIndex];
   if (microLabel) {
     ctx.textAlign = "left";
-    ctx.fillStyle = COLORS.forest;
+    ctx.fillStyle = COLORS.textSecondary;
     try {
       ctx.letterSpacing = `${Math.round(microSize * 0.12)}px`;
     } catch {
@@ -420,31 +301,35 @@ function drawHeader(
   }
 }
 
-function drawCircularLogo(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  cx: number,
-  cy: number,
-  radius: number
-): void {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fillStyle = COLORS.sagePanel;
-  ctx.fill();
-  ctx.strokeStyle = COLORS.hairline;
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.clip();
-  // Real mark, unmodified colors -- inset slightly so it reads clearly
-  // inside the circular badge rather than touching its edge.
-  const inset = radius * 0.32;
-  const size = (radius - inset) * 2;
-  const scale = Math.min(size / img.width, size / img.height);
-  const drawW = img.width * scale;
-  const drawH = img.height * scale;
-  ctx.drawImage(img, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
-  ctx.restore();
+/** Produces a solid warm-white silhouette of a real logo image's own alpha
+ *  channel -- the ONLY legitimate transformation of the brand mark this
+ *  renderer performs, for legibility against the dark green field. This is
+ *  not a redesign: it recolors the exact artwork already loaded, pixel for
+ *  pixel, and changes nothing about its shape. Memoized per image so it's
+ *  computed once, not on every repaint. */
+const reversedLogoCache = new WeakMap<HTMLImageElement, HTMLCanvasElement>();
+
+function getReversedLogo(img: HTMLImageElement): HTMLCanvasElement | null {
+  const cached = reversedLogoCache.get(img);
+  if (cached) return cached;
+  if (typeof document === "undefined") return null;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const offCtx = canvas.getContext("2d");
+  if (!offCtx) return null;
+
+  offCtx.drawImage(img, 0, 0, w, h);
+  offCtx.globalCompositeOperation = "source-in";
+  offCtx.fillStyle = COLORS.textPrimary;
+  offCtx.fillRect(0, 0, w, h);
+
+  reversedLogoCache.set(img, canvas);
+  return canvas;
 }
 
 function drawFooterLockup(
@@ -457,129 +342,46 @@ function drawFooterLockup(
 ): void {
   if (!opts.brandingWordmark) return;
   const short = Math.min(width, height);
-  const logoRadius = short * 0.028;
-  const rowY = height - frame.marginY - logoRadius;
-  const logoX = frame.contentX + logoRadius;
+  const logoBox = short * 0.06;
+  const rowY = height - frame.marginY - logoBox / 2;
+  let cursorX = frame.contentX;
 
   if (opts.logoImage) {
-    drawCircularLogo(ctx, opts.logoImage, logoX, rowY, logoRadius);
+    const reversed = getReversedLogo(opts.logoImage);
+    const drawable = reversed ?? opts.logoImage;
+    const scale = Math.min(logoBox / opts.logoImage.width, logoBox / opts.logoImage.height);
+    const drawW = opts.logoImage.width * scale;
+    const drawH = opts.logoImage.height * scale;
+    ctx.drawImage(drawable, cursorX, rowY - drawH / 2, drawW, drawH);
+    cursorX += drawW + short * 0.022;
   }
 
-  const dividerX = logoX + logoRadius + short * 0.02;
+  const dividerX = cursorX;
   ctx.strokeStyle = COLORS.hairline;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(dividerX, rowY - logoRadius * 0.8);
-  ctx.lineTo(dividerX, rowY + logoRadius * 0.8);
+  ctx.moveTo(dividerX, rowY - logoBox * 0.4);
+  ctx.lineTo(dividerX, rowY + logoBox * 0.4);
   ctx.stroke();
 
   const textX = dividerX + short * 0.018;
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.charcoal;
+  ctx.fillStyle = COLORS.textPrimary;
   ctx.font = `700 ${Math.round(short * 0.021)}px ${sansFont}`;
-  ctx.fillText(opts.brandingWordmark.replace("AiA — ", ""), textX, rowY - logoRadius * 0.08);
+  ctx.fillText(opts.brandingWordmark.replace("AiA — ", ""), textX, rowY - logoBox * 0.06);
   if (opts.brandingHandle) {
-    ctx.fillStyle = COLORS.muted;
+    ctx.fillStyle = COLORS.textSecondary;
     ctx.font = `400 ${Math.round(short * 0.017)}px ${sansFont}`;
-    ctx.fillText(`@${opts.brandingHandle}`, textX, rowY + logoRadius * 0.62);
+    ctx.fillText(`@${opts.brandingHandle}`, textX, rowY + logoBox * 0.46);
   }
 
   // Series signature, right-aligned -- part of the brand system on every
   // slide, kept small/muted so it never competes with the main message.
   ctx.textAlign = "right";
-  ctx.fillStyle = COLORS.sage;
+  ctx.fillStyle = COLORS.textSecondary;
   ctx.font = `500 ${Math.round(short * 0.016)}px ${opts.tamilFont}`;
-  ctx.fillText("சொல்லில் தமிழ்", frame.contentX + frame.contentW, rowY - logoRadius * 0.08);
-  ctx.fillText("செயலில் அறம்!", frame.contentX + frame.contentW, rowY + logoRadius * 0.62);
-}
-
-// ---------------------------------------------------------------------------
-// CTA icons -- simple line-art, drawn with canvas paths (no image assets),
-// picked from the episode's own cta.type so Slide 5 never shows a fixed
-// multi-icon menu the content model doesn't actually produce.
-// ---------------------------------------------------------------------------
-
-function drawCtaIcon(
-  ctx: CanvasRenderingContext2D,
-  icon: ReturnType<typeof iconFor>,
-  x: number,
-  y: number,
-  size: number
-): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.strokeStyle = COLORS.forest;
-  ctx.fillStyle = COLORS.forest;
-  ctx.lineWidth = size * 0.09;
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  const s = size / 2;
-  switch (icon) {
-    case "bookmark":
-      ctx.beginPath();
-      ctx.moveTo(-s * 0.6, -s);
-      ctx.lineTo(s * 0.6, -s);
-      ctx.lineTo(s * 0.6, s);
-      ctx.lineTo(0, s * 0.4);
-      ctx.lineTo(-s * 0.6, s);
-      ctx.closePath();
-      ctx.stroke();
-      break;
-    case "share":
-      ctx.beginPath();
-      ctx.moveTo(-s, s * 0.7);
-      ctx.lineTo(s * 0.2, -s * 0.7);
-      ctx.lineTo(s, 0);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(s * 0.2, -s * 0.7);
-      ctx.lineTo(s * 0.2, s * 0.5);
-      ctx.stroke();
-      break;
-    case "chat":
-      ctx.beginPath();
-      ctx.roundRect(-s, -s * 0.7, s * 2, s * 1.3, s * 0.4);
-      ctx.stroke();
-      break;
-    case "check":
-      ctx.beginPath();
-      ctx.arc(0, 0, s, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(-s * 0.45, 0);
-      ctx.lineTo(-s * 0.1, s * 0.4);
-      ctx.lineTo(s * 0.5, -s * 0.4);
-      ctx.stroke();
-      break;
-    case "question":
-      ctx.font = `700 ${size}px ${ctx.font.split("px ")[1] ?? "sans-serif"}`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("?", 0, size * 0.05);
-      break;
-    case "people":
-      ctx.beginPath();
-      ctx.arc(-s * 0.35, -s * 0.3, s * 0.35, 0, Math.PI * 2);
-      ctx.arc(s * 0.35, -s * 0.3, s * 0.35, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(-s * 0.35, s * 0.5, s * 0.55, Math.PI, 0);
-      ctx.arc(s * 0.35, s * 0.5, s * 0.55, Math.PI, 0);
-      ctx.stroke();
-      break;
-    case "heart":
-      ctx.beginPath();
-      ctx.moveTo(0, s * 0.7);
-      ctx.bezierCurveTo(-s * 1.1, -s * 0.1, -s * 0.4, -s, 0, -s * 0.35);
-      ctx.bezierCurveTo(s * 0.4, -s, s * 1.1, -s * 0.1, 0, s * 0.7);
-      ctx.fill();
-      break;
-  }
-  ctx.restore();
-}
-
-function iconFor(cta: CtaTypeId) {
-  return CTA_ICON[cta];
+  ctx.fillText("சொல்லில் தமிழ்", frame.contentX + frame.contentW, rowY - logoBox * 0.06);
+  ctx.fillText("செயலில் அறம்!", frame.contentX + frame.contentW, rowY + logoBox * 0.46);
 }
 
 // ---------------------------------------------------------------------------
@@ -596,9 +398,10 @@ function drawSlide0Stop(
   let cursorY = frame.contentTop + (frame.contentBottom - frame.contentTop) * 0.08;
 
   // The Tamil line is the hero -- largest element on the slide, sized to
-  // fill the available width rather than a fixed guess.
+  // fill the available width rather than a fixed guess. Warm cream (the
+  // system's one secondary tone) gives it the strongest pop on the slide.
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.forest;
+  ctx.fillStyle = COLORS.panelBg;
   const hero = fitText(
     ctx,
     episode.tamilText,
@@ -614,7 +417,7 @@ function drawSlide0Stop(
   }
 
   cursorY += hero.lineHeight * 0.55;
-  ctx.fillStyle = COLORS.charcoal;
+  ctx.fillStyle = COLORS.textPrimary;
   const hook = fitText(
     ctx,
     episode.hook,
@@ -640,7 +443,7 @@ function drawEditorialParagraphs(
   size: number
 ): number {
   const paragraphs = splitEditorialParagraphs(text);
-  ctx.fillStyle = COLORS.charcoal;
+  ctx.fillStyle = COLORS.textPrimary;
   ctx.font = `500 ${size}px ${sansFont}`;
   const lineHeight = size * 1.34;
   let cursorY = startY;
@@ -666,20 +469,20 @@ function drawSlide1Understand(
   let cursorY = frame.contentTop;
 
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.muted;
+  ctx.fillStyle = COLORS.textSecondary;
   const refSize = Math.round(frame.contentW * 0.036);
   ctx.font = `500 ${refSize}px ${tamilSerifFont}`;
   cursorY += refSize;
   ctx.fillText(episode.tamilText, frame.contentX, cursorY);
 
   cursorY += refSize * 1.5;
-  ctx.fillStyle = COLORS.forest;
+  ctx.fillStyle = COLORS.panelBg;
   const transSize = Math.round(frame.contentW * 0.034);
   ctx.font = `700 ${transSize}px ${sansFont}`;
   ctx.fillText(episode.transliteration, frame.contentX, cursorY);
 
   cursorY += transSize * 1.6;
-  ctx.fillStyle = COLORS.muted;
+  ctx.fillStyle = COLORS.textSecondary;
   ctx.font = `italic 400 ${Math.round(frame.contentW * 0.03)}px ${sansFont}`;
   ctx.fillText(episode.simpleMeaning, frame.contentX, cursorY);
 
@@ -724,7 +527,7 @@ function drawSlide3Action(
 
   if (before) {
     ctx.textAlign = "left";
-    ctx.fillStyle = COLORS.charcoal;
+    ctx.fillStyle = COLORS.textPrimary;
     ctx.font = `500 ${setupSize}px ${sansFont}`;
     const lines = wrapText(ctx, before, frame.contentW);
     for (const line of lines) {
@@ -734,8 +537,8 @@ function drawSlide3Action(
     cursorY += setupSize * 0.6;
   }
 
-  // Sage quote panel -- soft rounded rect containing the actionable
-  // question, sized to the actual wrapped/measured text.
+  // Warm cream quote panel -- the system's one functional (non-decorative)
+  // structuring device, isolating the single actionable question.
   const panelPadX = frame.contentW * 0.06;
   const panelPadY = frame.contentW * 0.05;
   const quoteSize = Math.round(frame.contentW * 0.05);
@@ -745,16 +548,16 @@ function drawSlide3Action(
   const panelH = panelPadY * 2 + quoteLines.length * quoteLineHeight;
   const panelY = cursorY;
 
-  ctx.fillStyle = COLORS.sagePanel;
+  ctx.fillStyle = COLORS.panelBg;
   ctx.beginPath();
   ctx.roundRect(frame.contentX, panelY, frame.contentW, panelH, frame.contentW * 0.03);
   ctx.fill();
 
-  ctx.fillStyle = COLORS.forest;
+  ctx.fillStyle = COLORS.accentLine;
   ctx.font = `700 ${Math.round(frame.contentW * 0.1)}px Georgia, serif`;
   ctx.fillText("“", frame.contentX + panelPadX * 0.5, panelY + panelPadY + quoteSize * 0.8);
 
-  ctx.fillStyle = COLORS.forestDeep;
+  ctx.fillStyle = COLORS.panelText;
   ctx.font = `600 ${quoteSize}px ${sansFont}`;
   let qy = panelY + panelPadY + quoteSize * 0.85;
   for (const line of quoteLines) {
@@ -765,7 +568,7 @@ function drawSlide3Action(
   cursorY = panelY + panelH + setupSize * 0.9;
 
   if (after) {
-    ctx.fillStyle = COLORS.charcoal;
+    ctx.fillStyle = COLORS.textPrimary;
     ctx.font = `600 ${setupSize}px ${sansFont}`;
     const lines = wrapText(ctx, after, frame.contentW);
     for (const line of lines) {
@@ -792,7 +595,7 @@ function drawSlide4Carry(
   const rest = emDashSplit.slice(1).join(" — ");
 
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.charcoal;
+  ctx.fillStyle = COLORS.textPrimary;
   const leadFit = fitText(
     ctx,
     rest ? `${lead} —` : lead,
@@ -810,6 +613,7 @@ function drawSlide4Carry(
 
   if (rest) {
     cursorY += leadFit.lineHeight * 0.25;
+    ctx.fillStyle = COLORS.textSecondary;
     ctx.font = `400 ${Math.round(frame.contentW * 0.042)}px ${sansFont}`;
     const lines = wrapText(ctx, rest, frame.contentW);
     for (const line of lines) {
@@ -821,7 +625,7 @@ function drawSlide4Carry(
   cursorY += frame.contentW * 0.09;
 
   if (episode.distantDevotionConnection) {
-    ctx.fillStyle = COLORS.muted;
+    ctx.fillStyle = COLORS.textSecondary;
     ctx.font = `italic 400 ${Math.round(frame.contentW * 0.036)}px ${sansFont}`;
     const lines = wrapText(ctx, episode.distantDevotionConnection, frame.contentW);
     for (const line of lines) {
@@ -831,17 +635,17 @@ function drawSlide4Carry(
     cursorY += frame.contentW * 0.04;
   }
 
-  // CTA line with its matching icon.
-  const ctaSize = Math.round(frame.contentW * 0.04);
-  const iconSize = ctaSize * 1.4;
-  drawCtaIcon(ctx, iconFor(episode.cta.type), frame.contentX + iconSize * 0.4, cursorY + ctaSize * 0.3, iconSize);
-  ctx.fillStyle = COLORS.forest;
+  // CTA line -- no icon (per the "no decoration" rule, Slide 5's per-CTA
+  // icon system from v2 is removed); the warm cream tone alone gives it
+  // the pop of an actionable line.
+  const ctaSize = Math.round(frame.contentW * 0.044);
+  ctx.fillStyle = COLORS.panelBg;
   ctx.font = `700 ${ctaSize}px ${sansFont}`;
-  const ctaLines = wrapText(ctx, episode.cta.copy, frame.contentW - iconSize * 1.3);
+  const ctaLines = wrapText(ctx, episode.cta.copy, frame.contentW);
   let ctaY = cursorY;
   for (const line of ctaLines) {
     ctaY += ctaSize * 1.4;
-    ctx.fillText(line, frame.contentX + iconSize * 1.3, ctaY);
+    ctx.fillText(line, frame.contentX, ctaY);
   }
 }
 
@@ -852,7 +656,7 @@ export function renderAathichoodiCarouselSlide(
   const { width, height, episode, slideIndex, tamilSerifFont, sansFont, displayFont } = opts;
   const frame = computeFrame(width, height, slideIndex);
 
-  drawBackground(ctx, width, height, episode, slideIndex, tamilSerifFont);
+  drawSurface(ctx, width, height);
   drawHeader(ctx, frame, width, height, episode, slideIndex, sansFont);
 
   ctx.textBaseline = "alphabetic";
