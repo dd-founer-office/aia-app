@@ -47,7 +47,7 @@
  * appears in both the preview and every export with no further code change.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import KuralHeroCanvas, {
   KKA_LOGO_PATH,
   AIA_KOLAM_MARK_PATH,
@@ -90,7 +90,24 @@ import { generateCaption } from "@/lib/kural-publishing/aathichoodi/caption";
 import {
   CAROUSEL_SLIDE_COUNT,
   SLIDE_LABELS,
+  resolveStyle,
+  type CarouselStyleOverrides,
+  type CarouselTextOverrides,
+  type CarouselColors,
+  type CarouselLayout,
+  type Slide0Style,
+  type Slide1Style,
+  type Slide2Style,
+  type Slide3Style,
+  type Slide4Style,
 } from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
+import {
+  loadStyleOverrides,
+  saveStyleOverrides,
+  loadTextOverrides,
+  saveTextOverrides,
+  buildDesignOverrides,
+} from "@/lib/kural-publishing/aathichoodi-carousel-design-store";
 
 type ContentField = keyof KuralPublishingContent;
 
@@ -204,6 +221,146 @@ interface GeneratedAsset {
   filename: string;
 }
 
+/** Small reusable field components for the Design Controls panel below --
+ *  every carousel design/text field editable, grouped per slide. */
+function NumField({
+  label,
+  value,
+  onChange,
+  step = 1,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  step?: number;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-foreground)]">
+      <span className="text-[var(--color-muted-foreground)]">{label}</span>
+      <input
+        type="number"
+        value={value}
+        step={step}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-20 rounded border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-right text-[11px] text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+      />
+    </label>
+  );
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-foreground)]">
+      <span className="text-[var(--color-muted-foreground)]">{label}</span>
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-6 w-10 cursor-pointer rounded border border-[var(--color-border)] bg-transparent p-0"
+      />
+    </label>
+  );
+}
+
+function TextColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-foreground)]">
+      <span className="text-[var(--color-muted-foreground)]">{label}</span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-32 rounded border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-[10px] text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+      />
+    </label>
+  );
+}
+
+function CheckField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-foreground)]">
+      <span className="text-[var(--color-muted-foreground)]">{label}</span>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    </label>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-[11px] text-[var(--color-foreground)]">
+      <span className="text-[var(--color-muted-foreground)]">{label}</span>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-[11px] text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+      />
+    </label>
+  );
+}
+
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-[11px] text-[var(--color-foreground)]">
+      <span className="text-[var(--color-muted-foreground)]">{label}</span>
+      <textarea
+        value={value}
+        placeholder={placeholder}
+        rows={rows}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-[11px] text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+      />
+    </label>
+  );
+}
+
 function triggerDownload(url: string, filename: string): void {
   const link = document.createElement("a");
   link.href = url;
@@ -248,6 +405,13 @@ export default function PublishingWorkspace() {
   const [qualityWarnings, setQualityWarnings] = useState<string[]>([]);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [seriesHistory, setSeriesHistory] = useState<SeriesHistory>(() => loadHistory());
+
+  // Live-editable carousel design system (colours/sizes/layout, shared
+  // across every episode) and per-episode text overrides -- see the
+  // Design Controls panel below. Persisted to localStorage so edits
+  // survive a reload; see aathichoodi-carousel-design-store.ts.
+  const [styleOverrides, setStyleOverrides] = useState<CarouselStyleOverrides>(() => loadStyleOverrides());
+  const [textOverrides, setTextOverrides] = useState<CarouselTextOverrides>(() => loadTextOverrides(1));
 
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
@@ -371,6 +535,75 @@ export default function PublishingWorkspace() {
     };
   }, [generatedAssets]);
 
+  // Persist design-panel edits as they change -- style is shared across
+  // episodes, text is keyed per episode number.
+  useEffect(() => {
+    saveStyleOverrides(styleOverrides);
+  }, [styleOverrides]);
+  useEffect(() => {
+    if (composedEpisode) saveTextOverrides(composedEpisode.episodeNumber, textOverrides);
+  }, [textOverrides, composedEpisode]);
+
+  const carouselDesign = useMemo(
+    () => buildDesignOverrides(styleOverrides, textOverrides),
+    [styleOverrides, textOverrides]
+  );
+  const resolvedStyle = useMemo(() => resolveStyle(styleOverrides), [styleOverrides]);
+
+  const patchColor = useCallback((key: keyof CarouselColors, value: string) => {
+    setStyleOverrides((prev) => ({ ...prev, colors: { ...prev.colors, [key]: value } }));
+  }, []);
+  const patchLayout = useCallback((key: keyof CarouselLayout, value: number) => {
+    setStyleOverrides((prev) => ({ ...prev, layout: { ...prev.layout, [key]: value } }));
+  }, []);
+  const patchSlide0 = useCallback((key: keyof Slide0Style, value: number) => {
+    setStyleOverrides((prev) => ({ ...prev, slide0: { ...prev.slide0, [key]: value } }));
+  }, []);
+  const patchSlide1 = useCallback((key: keyof Slide1Style, value: string | number) => {
+    setStyleOverrides((prev) => ({ ...prev, slide1: { ...prev.slide1, [key]: value } }));
+  }, []);
+  const patchSlide2 = useCallback((key: keyof Slide2Style, value: string | number) => {
+    setStyleOverrides((prev) => ({ ...prev, slide2: { ...prev.slide2, [key]: value } }));
+  }, []);
+  const patchSlide3 = useCallback((key: keyof Slide3Style, value: string | number | boolean) => {
+    setStyleOverrides((prev) => ({ ...prev, slide3: { ...prev.slide3, [key]: value } }));
+  }, []);
+  const patchSlide4 = useCallback((key: keyof Slide4Style, value: string | number | boolean) => {
+    setStyleOverrides((prev) => ({ ...prev, slide4: { ...prev.slide4, [key]: value } }));
+  }, []);
+
+  const patchText0 = useCallback((hook: string) => {
+    setTextOverrides((prev) => ({ ...prev, slide0: { hook } }));
+  }, []);
+  const patchText1 = useCallback((understanding: string) => {
+    setTextOverrides((prev) => ({ ...prev, slide1: { understanding } }));
+  }, []);
+  const patchText2 = useCallback((familyAngle: string) => {
+    setTextOverrides((prev) => ({ ...prev, slide2: { familyAngle } }));
+  }, []);
+  const patchText3 = useCallback((todayAction: string) => {
+    setTextOverrides((prev) => ({ ...prev, slide3: { todayAction } }));
+  }, []);
+  const patchText4 = useCallback((patch: { aiaConnection?: string; ctaCopy?: string }) => {
+    setTextOverrides((prev) => ({ ...prev, slide4: { ...prev.slide4, ...patch } }));
+  }, []);
+
+  const handleResetDesign = useCallback(() => {
+    setStyleOverrides({});
+    saveStyleOverrides({});
+    setTextOverrides({});
+    if (composedEpisode) saveTextOverrides(composedEpisode.episodeNumber, {});
+  }, [composedEpisode]);
+
+  const handleCopyDesignJSON = useCallback(() => {
+    const json = JSON.stringify({ style: styleOverrides, text: textOverrides }, null, 2);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(json).catch(() => {
+        /* clipboard permission unavailable */
+      });
+    }
+  }, [styleOverrides, textOverrides]);
+
   const previewFormat =
     availableFormats.find((f) => f.id === activePreviewFormatId) ??
     availableFormats[0] ??
@@ -423,7 +656,8 @@ export default function PublishingWorkspace() {
               composedEpisode,
               slide,
               aiaLogoImage,
-              format
+              format,
+              carouselDesign
             );
             if (!blob) continue;
             results.push({
@@ -481,6 +715,7 @@ export default function PublishingWorkspace() {
     contentTypeId,
     kuralContent,
     aathichoodiContent,
+    carouselDesign,
   ]);
 
   const handleLoadEpisode = useCallback(
@@ -496,6 +731,7 @@ export default function PublishingWorkspace() {
       setActiveSlideIndex(0);
       setGeneratedAssets([]);
       setGeneration((g) => g + 1);
+      setTextOverrides(loadTextOverrides(clamped));
     },
     [seriesHistory]
   );
@@ -665,6 +901,160 @@ export default function PublishingWorkspace() {
               </p>
               <p className="mt-1 text-xs text-[var(--color-foreground)]">{displayEpisode.cta.copy}</p>
             </div>
+
+            {effectiveTemplate === "aathichoodi-carousel" && (
+              <details className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+                <summary className="cursor-pointer text-xs font-medium text-[var(--color-foreground)]">
+                  Design Controls
+                </summary>
+                <div className="mt-3 flex flex-col gap-4">
+                  <fieldset className="flex flex-col gap-1.5">
+                    <legend className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                      Global — Colors
+                    </legend>
+                    <ColorField label="Background (top)" value={resolvedStyle.colors.background} onChange={(v) => patchColor("background", v)} />
+                    <ColorField label="Background (bottom)" value={resolvedStyle.colors.backgroundDeep} onChange={(v) => patchColor("backgroundDeep", v)} />
+                    <ColorField label="Text — primary" value={resolvedStyle.colors.textPrimary} onChange={(v) => patchColor("textPrimary", v)} />
+                    <ColorField label="Text — secondary" value={resolvedStyle.colors.textSecondary} onChange={(v) => patchColor("textSecondary", v)} />
+                    <ColorField label="Accent (green)" value={resolvedStyle.colors.accent} onChange={(v) => patchColor("accent", v)} />
+                    <TextColorField label="Panel fill (rgba)" value={resolvedStyle.colors.panelFill} onChange={(v) => patchColor("panelFill", v)} />
+                    <TextColorField label="Panel border (rgba)" value={resolvedStyle.colors.panelBorder} onChange={(v) => patchColor("panelBorder", v)} />
+                    <TextColorField label="Badge ring (rgba)" value={resolvedStyle.colors.badgeRing} onChange={(v) => patchColor("badgeRing", v)} />
+                  </fieldset>
+
+                  <fieldset className="flex flex-col gap-1.5">
+                    <legend className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                      Global — Layout
+                    </legend>
+                    <NumField label="Margin X (fraction)" value={resolvedStyle.layout.marginX} step={0.005} onChange={(v) => patchLayout("marginX", v)} />
+                    <NumField label="Margin Y (fraction)" value={resolvedStyle.layout.marginY} step={0.005} onChange={(v) => patchLayout("marginY", v)} />
+                    <NumField label="Vertical balance (0=top, 0.5=center)" value={resolvedStyle.layout.verticalBalanceBias} step={0.01} onChange={(v) => patchLayout("verticalBalanceBias", v)} />
+                    <NumField label="Eyebrow size (px)" value={resolvedStyle.layout.eyebrowSize} onChange={(v) => patchLayout("eyebrowSize", v)} />
+                    <NumField label="Divider length (fraction)" value={resolvedStyle.layout.dividerLength} step={0.005} onChange={(v) => patchLayout("dividerLength", v)} />
+                    <NumField label="Body line-height" value={resolvedStyle.layout.bodyLineHeight} step={0.01} onChange={(v) => patchLayout("bodyLineHeight", v)} />
+                  </fieldset>
+
+                  <details className="rounded border border-[var(--color-border)] p-2">
+                    <summary className="cursor-pointer text-[11px] font-medium text-[var(--color-foreground)]">
+                      Slide 1 — STOP
+                    </summary>
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      <NumField label="Hero size (px)" value={resolvedStyle.slide0.heroSize} onChange={(v) => patchSlide0("heroSize", v)} />
+                      <NumField label="Hero min size (px)" value={resolvedStyle.slide0.heroMinSize} onChange={(v) => patchSlide0("heroMinSize", v)} />
+                      <NumField label="Hook size (px)" value={resolvedStyle.slide0.hookSize} onChange={(v) => patchSlide0("hookSize", v)} />
+                      <TextField
+                        label="Hook text override"
+                        value={textOverrides.slide0?.hook ?? ""}
+                        placeholder={displayEpisode.hook}
+                        onChange={patchText0}
+                      />
+                    </div>
+                  </details>
+
+                  <details className="rounded border border-[var(--color-border)] p-2">
+                    <summary className="cursor-pointer text-[11px] font-medium text-[var(--color-foreground)]">
+                      Slide 2 — UNDERSTAND
+                    </summary>
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      <TextField label="Section heading" value={resolvedStyle.slide1.sectionHeadingText} onChange={(v) => patchSlide1("sectionHeadingText", v)} />
+                      <NumField label="Section heading size (px)" value={resolvedStyle.slide1.sectionHeadingSize} onChange={(v) => patchSlide1("sectionHeadingSize", v)} />
+                      <NumField label="Tamil reference size (px)" value={resolvedStyle.slide1.tamilRefSize} onChange={(v) => patchSlide1("tamilRefSize", v)} />
+                      <NumField label="Transliteration size (px)" value={resolvedStyle.slide1.transliterationSize} onChange={(v) => patchSlide1("transliterationSize", v)} />
+                      <NumField label="Meaning size (px)" value={resolvedStyle.slide1.meaningSize} onChange={(v) => patchSlide1("meaningSize", v)} />
+                      <NumField label="Body size (px)" value={resolvedStyle.slide1.bodySize} onChange={(v) => patchSlide1("bodySize", v)} />
+                      <TextAreaField
+                        label="Explanation text override"
+                        value={textOverrides.slide1?.understanding ?? ""}
+                        placeholder={displayEpisode.understanding}
+                        onChange={patchText1}
+                      />
+                    </div>
+                  </details>
+
+                  <details className="rounded border border-[var(--color-border)] p-2">
+                    <summary className="cursor-pointer text-[11px] font-medium text-[var(--color-foreground)]">
+                      Slide 3 — FAMILY SITUATION
+                    </summary>
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      <TextField label="Section heading" value={resolvedStyle.slide2.sectionHeadingText} onChange={(v) => patchSlide2("sectionHeadingText", v)} />
+                      <NumField label="Section heading size (px)" value={resolvedStyle.slide2.sectionHeadingSize} onChange={(v) => patchSlide2("sectionHeadingSize", v)} />
+                      <NumField label="Body size (px)" value={resolvedStyle.slide2.bodySize} onChange={(v) => patchSlide2("bodySize", v)} />
+                      <TextAreaField
+                        label="Family story text override"
+                        value={textOverrides.slide2?.familyAngle ?? ""}
+                        placeholder={displayEpisode.familyAngle}
+                        onChange={patchText2}
+                      />
+                    </div>
+                  </details>
+
+                  <details className="rounded border border-[var(--color-border)] p-2">
+                    <summary className="cursor-pointer text-[11px] font-medium text-[var(--color-foreground)]">
+                      Slide 4 — TODAY&apos;S ACTION
+                    </summary>
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      <TextField label="Section heading" value={resolvedStyle.slide3.sectionHeadingText} onChange={(v) => patchSlide3("sectionHeadingText", v)} />
+                      <NumField label="Section heading size (px)" value={resolvedStyle.slide3.sectionHeadingSize} onChange={(v) => patchSlide3("sectionHeadingSize", v)} />
+                      <NumField label="Body size (px)" value={resolvedStyle.slide3.bodySize} onChange={(v) => patchSlide3("bodySize", v)} />
+                      <NumField label="Question size (px)" value={resolvedStyle.slide3.questionSize} onChange={(v) => patchSlide3("questionSize", v)} />
+                      <NumField label="Panel padding X (fraction)" value={resolvedStyle.slide3.panelPadX} step={0.005} onChange={(v) => patchSlide3("panelPadX", v)} />
+                      <NumField label="Panel padding Y (fraction)" value={resolvedStyle.slide3.panelPadY} step={0.005} onChange={(v) => patchSlide3("panelPadY", v)} />
+                      <NumField label="Panel corner radius (fraction)" value={resolvedStyle.slide3.panelRadius} step={0.005} onChange={(v) => patchSlide3("panelRadius", v)} />
+                      <CheckField label="Show decorative quote mark" checked={resolvedStyle.slide3.showQuoteMark} onChange={(v) => patchSlide3("showQuoteMark", v)} />
+                      <TextAreaField
+                        label="Action text override (keep quotes around the question)"
+                        value={textOverrides.slide3?.todayAction ?? ""}
+                        placeholder={displayEpisode.todayAction}
+                        onChange={patchText3}
+                      />
+                    </div>
+                  </details>
+
+                  <details className="rounded border border-[var(--color-border)] p-2">
+                    <summary className="cursor-pointer text-[11px] font-medium text-[var(--color-foreground)]">
+                      Slide 5 — CARRY IT FORWARD
+                    </summary>
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      <NumField label="Headline size (px)" value={resolvedStyle.slide4.heroSize} onChange={(v) => patchSlide4("heroSize", v)} />
+                      <NumField label="Support size (px)" value={resolvedStyle.slide4.supportSize} onChange={(v) => patchSlide4("supportSize", v)} />
+                      <NumField label="CTA size (px)" value={resolvedStyle.slide4.ctaSize} onChange={(v) => patchSlide4("ctaSize", v)} />
+                      <NumField label="Brand name size (px)" value={resolvedStyle.slide4.brandNameSize} onChange={(v) => patchSlide4("brandNameSize", v)} />
+                      <NumField label="Handle size (px)" value={resolvedStyle.slide4.handleSize} onChange={(v) => patchSlide4("handleSize", v)} />
+                      <CheckField label="Show AiA branding on this slide" checked={resolvedStyle.slide4.showBranding} onChange={(v) => patchSlide4("showBranding", v)} />
+                      <TextAreaField
+                        label="Headline text override"
+                        value={textOverrides.slide4?.aiaConnection ?? ""}
+                        placeholder={displayEpisode.aiaConnection}
+                        onChange={(v) => patchText4({ aiaConnection: v })}
+                      />
+                      <TextField
+                        label="CTA text override"
+                        value={textOverrides.slide4?.ctaCopy ?? ""}
+                        placeholder={displayEpisode.cta.copy}
+                        onChange={(v) => patchText4({ ctaCopy: v })}
+                      />
+                    </div>
+                  </details>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResetDesign}
+                      className="flex-1 rounded-[var(--radius-button)] border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-foreground)]"
+                    >
+                      Reset to defaults
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyDesignJSON}
+                      className="flex-1 rounded-[var(--radius-button)] border border-[var(--color-primary)] px-3 py-2 text-xs font-medium text-[var(--color-primary)]"
+                    >
+                      Copy config JSON
+                    </button>
+                  </div>
+                </div>
+              </details>
+            )}
           </div>
         ) : (
         <div className="flex flex-col gap-4">
@@ -846,6 +1236,7 @@ export default function PublishingWorkspace() {
             logoImage={activeLogoImage}
             format={previewFormat}
             slideIndex={activeSlideIndex}
+            carouselDesign={effectiveTemplate === "aathichoodi-carousel" ? carouselDesign : undefined}
           />
         </div>
 

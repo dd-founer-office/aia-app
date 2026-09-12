@@ -41,6 +41,7 @@ import {
 import {
   renderAathichoodiCarouselSlide,
   renderAathichoodiCarouselSlideForExport,
+  type CarouselDesignOverrides,
 } from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
 import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
 import type { ComposedEpisode } from "@/lib/kural-publishing/aathichoodi/content-engine";
@@ -164,6 +165,10 @@ interface KuralHeroCanvasProps {
   /** aathichoodi-carousel template only: which of the 5 slides to render
    *  (0-indexed). Ignored by every other template. Defaults to 0. */
   slideIndex?: number;
+  /** aathichoodi-carousel template only: live design/text overrides for
+   *  the editable design-controls panel. Ignored by every other template.
+   *  Omit for the founder-approved default look. */
+  carouselDesign?: CarouselDesignOverrides;
 }
 
 export default function KuralHeroCanvas({
@@ -174,6 +179,7 @@ export default function KuralHeroCanvas({
   debugFormationLogic = false,
   format,
   slideIndex = 0,
+  carouselDesign,
 }: KuralHeroCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { width, height, branding } = format;
@@ -211,6 +217,7 @@ export default function KuralHeroCanvas({
           logoImage: logoImage ?? null,
           brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
           brandingHandle: branding ? BRANDING_HANDLE : undefined,
+          design: carouselDesign,
         });
       } else {
         renderAathichoodi(ctx, {
@@ -244,7 +251,7 @@ export default function KuralHeroCanvas({
     return () => {
       cancelled = true;
     };
-  }, [template, content, generation, logoImage, debugFormationLogic, width, height, branding, slideIndex]);
+  }, [template, content, generation, logoImage, debugFormationLogic, width, height, branding, slideIndex, carouselDesign]);
 
   return (
     <canvas
@@ -339,7 +346,8 @@ export async function renderAathichoodiCarouselAssetForExport(
   episode: ComposedEpisode,
   slideIndex: number,
   logoImage: HTMLImageElement | null,
-  format: AssetFormat
+  format: AssetFormat,
+  carouselDesign?: CarouselDesignOverrides
 ): Promise<Blob | null> {
   return renderAathichoodiCarouselSlideForExport(
     episode,
@@ -348,6 +356,7 @@ export async function renderAathichoodiCarouselAssetForExport(
     format,
     resolveAllFonts(),
     format.branding ? BRANDING_WORDMARK : undefined,
-    format.branding ? BRANDING_HANDLE : undefined
+    format.branding ? BRANDING_HANDLE : undefined,
+    carouselDesign
   );
 }
