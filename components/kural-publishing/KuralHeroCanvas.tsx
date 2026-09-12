@@ -42,6 +42,7 @@ import {
   renderAathichoodiCarouselSlide,
   renderAathichoodiCarouselSlideForExport,
   type CarouselDesignOverrides,
+  type CarouselHotspot,
 } from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
 import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
 import type { ComposedEpisode } from "@/lib/kural-publishing/aathichoodi/content-engine";
@@ -169,6 +170,10 @@ interface KuralHeroCanvasProps {
    *  the editable design-controls panel. Ignored by every other template.
    *  Omit for the founder-approved default look. */
   carouselDesign?: CarouselDesignOverrides;
+  /** aathichoodi-carousel template only: called after every repaint with
+   *  the current slide's clickable hotspot regions, for the workspace's
+   *  click-to-edit overlay. Ignored by every other template. */
+  onCarouselHotspots?: (hotspots: CarouselHotspot[]) => void;
 }
 
 export default function KuralHeroCanvas({
@@ -180,6 +185,7 @@ export default function KuralHeroCanvas({
   format,
   slideIndex = 0,
   carouselDesign,
+  onCarouselHotspots,
 }: KuralHeroCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { width, height, branding } = format;
@@ -204,7 +210,7 @@ export default function KuralHeroCanvas({
           brandingHandle: branding ? BRANDING_HANDLE : undefined,
         });
       } else if (template === "aathichoodi-carousel") {
-        renderAathichoodiCarouselSlide(ctx, {
+        const hotspots = renderAathichoodiCarouselSlide(ctx, {
           width,
           height,
           episode: content as ComposedEpisode,
@@ -219,6 +225,7 @@ export default function KuralHeroCanvas({
           brandingHandle: branding ? BRANDING_HANDLE : undefined,
           design: carouselDesign,
         });
+        onCarouselHotspots?.(hotspots);
       } else {
         renderAathichoodi(ctx, {
           width,
@@ -251,7 +258,7 @@ export default function KuralHeroCanvas({
     return () => {
       cancelled = true;
     };
-  }, [template, content, generation, logoImage, debugFormationLogic, width, height, branding, slideIndex, carouselDesign]);
+  }, [template, content, generation, logoImage, debugFormationLogic, width, height, branding, slideIndex, carouselDesign, onCarouselHotspots]);
 
   return (
     <canvas

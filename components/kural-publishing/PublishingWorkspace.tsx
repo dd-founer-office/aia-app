@@ -100,6 +100,7 @@ import {
   type Slide2Style,
   type Slide3Style,
   type Slide4Style,
+  type CarouselHotspot,
 } from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
 import {
   loadStyleOverrides,
@@ -603,6 +604,161 @@ export default function PublishingWorkspace() {
       });
     }
   }, [styleOverrides, textOverrides]);
+
+  // Click-to-edit overlay: KuralHeroCanvas reports the current slide's
+  // clickable regions (canvas-pixel space) after every repaint; clicking
+  // one opens a small inline popover with just that element's controls,
+  // right where it is, instead of hunting through the sidebar panel.
+  const [hotspots, setHotspots] = useState<CarouselHotspot[]>([]);
+  const [activeHotspotId, setActiveHotspotId] = useState<string | null>(null);
+
+  interface HotspotSizeField {
+    label: string;
+    value: number;
+    onChange: (v: number) => void;
+  }
+  interface HotspotConfig {
+    label: string;
+    textValue?: string;
+    textPlaceholder?: string;
+    onTextChange?: (v: string) => void;
+    sizeFields: HotspotSizeField[];
+  }
+
+  const getHotspotConfig = useCallback(
+    (id: string): HotspotConfig | null => {
+      switch (id) {
+        case "header.eyebrow":
+          return {
+            label: "Eyebrow (AATHICHOODI)",
+            sizeFields: [{ label: "Size", value: resolvedStyle.layout.eyebrowSize, onChange: (v) => patchLayout("eyebrowSize", v) }],
+          };
+        case "slide1.sectionHeading":
+          return {
+            label: "Section heading",
+            textValue: resolvedStyle.slide1.sectionHeadingText,
+            onTextChange: (v) => patchSlide1("sectionHeadingText", v),
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide1.sectionHeadingSize, onChange: (v) => patchSlide1("sectionHeadingSize", v) }],
+          };
+        case "slide2.sectionHeading":
+          return {
+            label: "Section heading",
+            textValue: resolvedStyle.slide2.sectionHeadingText,
+            onTextChange: (v) => patchSlide2("sectionHeadingText", v),
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide2.sectionHeadingSize, onChange: (v) => patchSlide2("sectionHeadingSize", v) }],
+          };
+        case "slide3.sectionHeading":
+          return {
+            label: "Section heading",
+            textValue: resolvedStyle.slide3.sectionHeadingText,
+            onTextChange: (v) => patchSlide3("sectionHeadingText", v),
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide3.sectionHeadingSize, onChange: (v) => patchSlide3("sectionHeadingSize", v) }],
+          };
+        case "slide0.hero":
+          return {
+            label: "Tamil hero (canonical text — size only)",
+            sizeFields: [
+              { label: "Size", value: resolvedStyle.slide0.heroSize, onChange: (v) => patchSlide0("heroSize", v) },
+              { label: "Min size", value: resolvedStyle.slide0.heroMinSize, onChange: (v) => patchSlide0("heroMinSize", v) },
+            ],
+          };
+        case "slide0.hook":
+          return {
+            label: "Hook",
+            textValue: textOverrides.slide0?.hook ?? "",
+            textPlaceholder: displayEpisode?.hook,
+            onTextChange: patchText0,
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide0.hookSize, onChange: (v) => patchSlide0("hookSize", v) }],
+          };
+        case "slide1.tamilRef":
+          return {
+            label: "Tamil reference (canonical text — size only)",
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide1.tamilRefSize, onChange: (v) => patchSlide1("tamilRefSize", v) }],
+          };
+        case "slide1.transliteration":
+          return {
+            label: "Transliteration (canonical text — size only)",
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide1.transliterationSize, onChange: (v) => patchSlide1("transliterationSize", v) }],
+          };
+        case "slide1.meaning":
+          return {
+            label: "Meaning gloss (canonical text — size only)",
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide1.meaningSize, onChange: (v) => patchSlide1("meaningSize", v) }],
+          };
+        case "slide1.body":
+          return {
+            label: "Explanation",
+            textValue: textOverrides.slide1?.understanding ?? "",
+            textPlaceholder: displayEpisode?.understanding,
+            onTextChange: patchText1,
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide1.bodySize, onChange: (v) => patchSlide1("bodySize", v) }],
+          };
+        case "slide2.body":
+          return {
+            label: "Family story",
+            textValue: textOverrides.slide2?.familyAngle ?? "",
+            textPlaceholder: displayEpisode?.familyAngle,
+            onTextChange: patchText2,
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide2.bodySize, onChange: (v) => patchSlide2("bodySize", v) }],
+          };
+        case "slide3.action":
+          return {
+            label: "Today's action (keep the quotes around the question)",
+            textValue: textOverrides.slide3?.todayAction ?? "",
+            textPlaceholder: displayEpisode?.todayAction,
+            onTextChange: patchText3,
+            sizeFields: [
+              { label: "Body size", value: resolvedStyle.slide3.bodySize, onChange: (v) => patchSlide3("bodySize", v) },
+              { label: "Question size", value: resolvedStyle.slide3.questionSize, onChange: (v) => patchSlide3("questionSize", v) },
+            ],
+          };
+        case "slide4.headline":
+          return {
+            label: "Headline",
+            textValue: textOverrides.slide4?.aiaConnection ?? "",
+            textPlaceholder: displayEpisode?.aiaConnection,
+            onTextChange: (v) => patchText4({ aiaConnection: v }),
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide4.heroSize, onChange: (v) => patchSlide4("heroSize", v) }],
+          };
+        case "slide4.cta":
+          return {
+            label: "CTA",
+            textValue: textOverrides.slide4?.ctaCopy ?? "",
+            textPlaceholder: displayEpisode?.cta.copy,
+            onTextChange: (v) => patchText4({ ctaCopy: v }),
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide4.ctaSize, onChange: (v) => patchSlide4("ctaSize", v) }],
+          };
+        case "footer.brandName":
+          return {
+            label: "Brand name (size only)",
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide4.brandNameSize, onChange: (v) => patchSlide4("brandNameSize", v) }],
+          };
+        case "footer.handle":
+          return {
+            label: "Handle (size only)",
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide4.handleSize, onChange: (v) => patchSlide4("handleSize", v) }],
+          };
+        default:
+          return null;
+      }
+    },
+    [
+      resolvedStyle,
+      textOverrides,
+      displayEpisode,
+      patchLayout,
+      patchSlide0,
+      patchSlide1,
+      patchSlide2,
+      patchSlide3,
+      patchSlide4,
+      patchText0,
+      patchText1,
+      patchText2,
+      patchText3,
+      patchText4,
+    ]
+  );
 
   const previewFormat =
     availableFormats.find((f) => f.id === activePreviewFormatId) ??
@@ -1223,7 +1379,7 @@ export default function PublishingWorkspace() {
           {previewFormat.width}×{previewFormat.height}px
         </p>
         <div
-          className={`mx-auto ${
+          className={`relative mx-auto ${
             previewFormat.width >= previewFormat.height
               ? "max-w-4xl"
               : "max-w-md"
@@ -1237,7 +1393,71 @@ export default function PublishingWorkspace() {
             format={previewFormat}
             slideIndex={activeSlideIndex}
             carouselDesign={effectiveTemplate === "aathichoodi-carousel" ? carouselDesign : undefined}
+            onCarouselHotspots={effectiveTemplate === "aathichoodi-carousel" ? setHotspots : undefined}
           />
+          {effectiveTemplate === "aathichoodi-carousel" && (
+            <div className="pointer-events-none absolute inset-0">
+              {hotspots.map((h) => {
+                const leftPct = (h.x / previewFormat.width) * 100;
+                const topPct = (h.y / previewFormat.height) * 100;
+                const wPct = (h.width / previewFormat.width) * 100;
+                const hPct = (h.height / previewFormat.height) * 100;
+                const active = activeHotspotId === h.id;
+                return (
+                  <button
+                    key={h.id}
+                    type="button"
+                    title="Click to edit"
+                    onClick={() => setActiveHotspotId(active ? null : h.id)}
+                    className={`pointer-events-auto absolute rounded-sm border-2 transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 ${
+                      active ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10" : "border-transparent"
+                    }`}
+                    style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, height: `${hPct}%` }}
+                    aria-label={`Edit ${h.id}`}
+                  />
+                );
+              })}
+            </div>
+          )}
+          {effectiveTemplate === "aathichoodi-carousel" &&
+            activeHotspotId &&
+            (() => {
+              const h = hotspots.find((x) => x.id === activeHotspotId);
+              const config = h ? getHotspotConfig(activeHotspotId) : null;
+              if (!h || !config) return null;
+              const topPct = ((h.y + h.height) / previewFormat.height) * 100;
+              return (
+                <div
+                  className="absolute left-2 right-2 z-10 rounded-[var(--radius-photo)] border border-[var(--color-primary)] bg-[var(--color-card)] p-3 shadow-lg"
+                  style={{ top: `calc(${topPct}% + 6px)` }}
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-[var(--color-foreground)]">{config.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveHotspotId(null)}
+                      className="text-xs text-[var(--color-muted-foreground)]"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {config.onTextChange && (
+                    <TextAreaField
+                      label="Text"
+                      value={config.textValue ?? ""}
+                      placeholder={config.textPlaceholder}
+                      onChange={config.onTextChange}
+                      rows={3}
+                    />
+                  )}
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {config.sizeFields.map((f) => (
+                      <NumField key={f.label} label={f.label} value={f.value} onChange={f.onChange} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
         </div>
 
         <div className="mt-8">
