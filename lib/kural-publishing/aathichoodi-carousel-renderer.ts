@@ -1,6 +1,6 @@
 /**
- * Daily Aathichoodi Series — Family Carousel Renderer (Visual System v7:
- * DARK EDITORIAL, NO LEAF / NO PHOTOGRAPHY)
+ * Daily Aathichoodi Series — Family Carousel Renderer (Visual System v8:
+ * DARK EDITORIAL, NO WATERMARK, GENEROUS VERTICAL SPACING)
  * ----------------------------------------------------------------------------
  * VISUAL-ONLY rewrite, explicit founder direction: the approved 5-slide
  * structure and content-generation logic (lib/kural-publishing/aathichoodi/)
@@ -13,50 +13,36 @@
  * proportionally off the actual rendered width via px() below (so the same
  * code works at any selected AssetFormat), and the numbers themselves stay
  * the founder's exact locked design-system pixel values for a 1080-wide
- * canvas (see SIZE below) -- this version changes COLOUR and TYPE FAMILY
- * choices, not the size scale or the 5-slide content structure.
+ * canvas (see SIZE below) -- this version changes vertical rhythm, not the
+ * size scale or the 5-slide content structure.
  *
- * Design direction (v7, replacing v6's plain light system): the founder
- * supplied a reference mockup -- dark forest-green dominant background,
- * cream/off-white text, a serif voice for all narrative copy (not just
- * Slide 5), a single quiet oversized Tamil letterform per slide, and a
- * translucent highlight panel with a small quote glyph on Slide 4 -- and
- * asked for "the same" MINUS two specific elements: the botanical leaf
- * illustration and the real photograph. Both are gone; everything else
- * from the reference is implemented:
- *   - Background: a dark green gradient (COLORS.background ->
- *     backgroundDeep), no image, no leaf.
- *   - Type family split: DM Sans stays reserved for the eyebrow and
- *     section-heading labels only (uppercase, tracked). Every narrative
- *     line -- hero Tamil, transliteration, meaning gloss, Slide 2/3
- *     paragraphs, Slide 4's setup/question/close, Slide 5's supporting
- *     line -- now uses `serifFont` (the app's general English serif),
- *     matching the reference's serif-forward voice. DM Serif Display
- *     stays reserved for Slide 5's headline only.
- *   - Colour: cream/off-white (COLORS.textPrimary) is the dominant text
- *     colour -- including the Tamil hero, which the reference does NOT
- *     render in green (green-on-dark-green would fail contrast anyway).
- *     Green (COLORS.accent) is reserved for the eyebrow's thin rule, the
- *     section-heading labels, and the CTA line -- exactly the "accent,
- *     never a field" role, just against a dark ground instead of a light
- *     one.
- *   - drawTamilWatermark: one quiet, oversized, edge-cropped Tamil
- *     letterform per slide, sourced from the episode's own text (never
- *     invented), echoing the reference's background letterforms -- with
- *     no leaf and no photograph, this is the only background texture, so
- *     it stays at a low-but-visible opacity (legible on close look,
- *     never competing with the type).
- *   - Slide 4's highlight panel is a translucent light-on-dark card
- *     (glass effect) with a small decorative opening quote mark, matching
- *     the reference -- reinstated after v6 removed it under the
- *     plain-background system, since a dark, more editorial system reads
- *     differently.
+ * Dark editorial palette (v7): dark forest-green background gradient
+ * (COLORS.background -> backgroundDeep), cream/off-white text
+ * (COLORS.textPrimary) as the dominant colour -- including the Tamil hero,
+ * which is NOT rendered in green (green-on-dark-green would fail contrast).
+ * Green (COLORS.accent) is reserved for the eyebrow's thin rule, the
+ * section-heading labels, and the CTA line. Type family split: DM Sans for
+ * the eyebrow/section-heading labels only, `serifFont` (the app's general
+ * English serif) for every narrative line, DM Serif Display reserved for
+ * Slide 5's headline only. No leaf illustration, no photograph -- neither
+ * exists as a real asset in this app.
+ *
+ * v8 removes the oversized Tamil letterform watermark entirely (explicit
+ * founder direction: "no need for the large tamil letter in the
+ * background") and instead fixes the "empty at the bottom" problem the
+ * watermark had been papering over by giving each slide's own content
+ * generous internal spacing -- bigger gaps between the reference line,
+ * transliteration, meaning gloss, divider and paragraphs on Slide 2, a
+ * bigger highlight panel with more room before/after it on Slide 4, and
+ * bigger gaps around Slide 5's divider and closing lines -- so the copy
+ * itself occupies more of the frame instead of clustering at the top with
+ * a large dead zone below. The background is otherwise plain -- filling
+ * the frame is a typography/spacing decision, not a decoration one.
+ *
  * The brand lockup (circular badge, Slide 5 only) and the removed episode
- * numbering / Tamil signature line are unchanged from v6.
+ * numbering / Tamil signature line are unchanged from v7.
  */
 
-import { createSeededRandom } from "./seeded-random";
-import { extractTamilGraphemes } from "./ambient-language-layer";
 import type { ComposedEpisode } from "./aathichoodi/content-engine";
 
 // ---------------------------------------------------------------------------
@@ -220,10 +206,11 @@ function splitQuotedAction(text: string): { before: string; quoted: string; afte
 }
 
 // ---------------------------------------------------------------------------
-// Background: a dark green gradient (no image) plus ONE quiet, oversized,
-// edge-cropped Tamil letterform per slide -- the only texture in this
-// system now that the leaf illustration and photograph are gone. Sourced
-// from the episode's own Tamil text, never invented.
+// Background: a plain dark green gradient. No watermark letterform, no
+// leaf, no photograph -- per founder direction, the field is just colour;
+// the fix for "the frame reads empty" is spacing/distribution within the
+// content itself (see each slide's draw function below), not a texture
+// layered behind it.
 // ---------------------------------------------------------------------------
 
 function drawSurface(ctx: CanvasRenderingContext2D, width: number, height: number): void {
@@ -232,61 +219,6 @@ function drawSurface(ctx: CanvasRenderingContext2D, width: number, height: numbe
   gradient.addColorStop(1, COLORS.backgroundDeep);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
-}
-
-const WATERMARK_ANCHORS: ReadonlyArray<ReadonlyArray<[number, number]>> = [
-  [
-    [1.12, 0.1],
-    [-0.14, 0.94],
-  ],
-  [
-    [-0.15, 0.18],
-    [1.13, 0.86],
-  ],
-  [
-    [1.14, 0.66],
-    [0.1, -0.12],
-  ],
-  [
-    [-0.12, 0.56],
-    [0.88, 1.12],
-  ],
-  [
-    [1.13, 0.28],
-    [-0.08, 1.0],
-  ],
-];
-const WATERMARK_SCALES: readonly [number, number] = [0.68, 0.32];
-const WATERMARK_OPACITIES: readonly [number, number] = [0.07, 0.09];
-
-function drawTamilWatermark(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  episode: ComposedEpisode,
-  slideIndex: number,
-  tamilFont: string
-): void {
-  const glyphs = extractTamilGraphemes(episode.tamilText);
-  if (glyphs.length === 0) return;
-  const rand = createSeededRandom(episode.episodeNumber * 733 + slideIndex * 31 + 17);
-  const short = Math.min(width, height);
-  const anchors = WATERMARK_ANCHORS[slideIndex % WATERMARK_ANCHORS.length];
-
-  ctx.save();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = COLORS.textPrimary;
-  anchors.forEach(([ax, ay], i) => {
-    const glyph = glyphs[(episode.episodeNumber + slideIndex + i * 3) % glyphs.length];
-    const size = short * WATERMARK_SCALES[i % WATERMARK_SCALES.length];
-    ctx.globalAlpha = WATERMARK_OPACITIES[i % WATERMARK_OPACITIES.length];
-    ctx.font = `700 ${Math.round(size)}px ${tamilFont}`;
-    const jitterX = rand.range(-short * 0.02, short * 0.02);
-    const jitterY = rand.range(-short * 0.02, short * 0.02);
-    ctx.fillText(glyph, width * ax + jitterX, height * ay + jitterY);
-  });
-  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
@@ -461,9 +393,11 @@ function drawSlide0Stop(
   width: number,
   episode: ComposedEpisode,
   tamilSerifFont: string,
-  serifFont: string
-): void {
-  let cursorY = frame.contentTop + (frame.contentBottom - frame.contentTop) * 0.08;
+  serifFont: string,
+  startY: number,
+  draw: boolean
+): number {
+  let cursorY = startY;
 
   // The Tamil line is the hero -- 86px, dramatically the largest element
   // on the slide, in the dominant cream tone (not green -- green-on-dark-
@@ -471,7 +405,7 @@ function drawSlide0Stop(
   // for labels only). May reduce toward 72px (never below) only if a
   // specific episode's line genuinely doesn't fit.
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.textPrimary;
+  if (draw) ctx.fillStyle = COLORS.textPrimary;
   const hero = fitText(
     ctx,
     episode.tamilText,
@@ -483,18 +417,19 @@ function drawSlide0Stop(
   );
   for (const line of hero.lines) {
     cursorY += hero.lineHeight;
-    ctx.fillText(line, frame.contentX, cursorY);
+    if (draw) ctx.fillText(line, frame.contentX, cursorY);
   }
 
   cursorY += hero.lineHeight * 0.6;
-  ctx.fillStyle = COLORS.textPrimary;
+  if (draw) ctx.fillStyle = COLORS.textPrimary;
   const hookSize = px(SIZE.hook, width);
   ctx.font = `600 ${Math.round(hookSize)}px ${serifFont}`;
   const hookLines = wrapText(ctx, episode.hook, frame.contentW);
   for (const line of hookLines) {
     cursorY += hookSize * 1.3;
-    ctx.fillText(line, frame.contentX, cursorY);
+    if (draw) ctx.fillText(line, frame.contentX, cursorY);
   }
+  return cursorY;
 }
 
 function drawEditorialParagraphs(
@@ -504,10 +439,11 @@ function drawEditorialParagraphs(
   maxY: number,
   text: string,
   serifFont: string,
-  size: number
+  size: number,
+  draw: boolean
 ): number {
   const paragraphs = splitEditorialParagraphs(text);
-  ctx.fillStyle = COLORS.textPrimary;
+  if (draw) ctx.fillStyle = COLORS.textPrimary;
   ctx.font = `400 ${Math.round(size)}px ${serifFont}`;
   const lineHeight = size * SIZE.bodyLineHeight;
   let cursorY = startY;
@@ -516,9 +452,12 @@ function drawEditorialParagraphs(
     for (const line of lines) {
       if (cursorY > maxY) return cursorY;
       cursorY += lineHeight;
-      ctx.fillText(line, frame.contentX, cursorY);
+      if (draw) ctx.fillText(line, frame.contentX, cursorY);
     }
-    cursorY += lineHeight * 0.4;
+    // Generous paragraph gap -- distinct visual breaks between grafs
+    // rather than a dense block, so the copy occupies its natural share
+    // of the frame instead of reading as one cramped paragraph.
+    cursorY += lineHeight * 0.85;
   }
   return cursorY;
 }
@@ -529,39 +468,43 @@ function drawSlide1Understand(
   width: number,
   episode: ComposedEpisode,
   tamilSerifFont: string,
-  serifFont: string
-): void {
+  serifFont: string,
+  startY: number,
+  draw: boolean
+): number {
   const transliteration = px(SIZE.transliteration, width);
   const meaning = px(SIZE.meaning, width);
   const body = px(SIZE.body, width);
-  let cursorY = frame.contentTop;
+  let cursorY = startY;
 
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.textPrimary;
-  ctx.font = `700 ${Math.round(px(SIZE.transliteration * 1.6, width))}px ${tamilSerifFont}`;
-  cursorY += px(SIZE.transliteration * 1.6, width);
-  ctx.fillText(episode.tamilText, frame.contentX, cursorY);
+  if (draw) ctx.fillStyle = COLORS.textPrimary;
+  ctx.font = `700 ${Math.round(px(SIZE.transliteration * 2.0, width))}px ${tamilSerifFont}`;
+  cursorY += px(SIZE.transliteration * 2.0, width);
+  if (draw) ctx.fillText(episode.tamilText, frame.contentX, cursorY);
 
-  cursorY += transliteration * 1.9;
-  ctx.fillStyle = COLORS.textPrimary;
+  cursorY += transliteration * 2.4;
+  if (draw) ctx.fillStyle = COLORS.textPrimary;
   ctx.font = `700 ${Math.round(transliteration)}px ${serifFont}`;
-  ctx.fillText(episode.transliteration, frame.contentX, cursorY);
+  if (draw) ctx.fillText(episode.transliteration, frame.contentX, cursorY);
 
-  cursorY += transliteration * 1.6;
-  ctx.fillStyle = COLORS.textSecondary;
+  cursorY += transliteration * 2.0;
+  if (draw) ctx.fillStyle = COLORS.textSecondary;
   ctx.font = `italic 400 ${Math.round(meaning)}px ${serifFont}`;
-  ctx.fillText(episode.simpleMeaning, frame.contentX, cursorY);
+  if (draw) ctx.fillText(episode.simpleMeaning, frame.contentX, cursorY);
 
-  cursorY += meaning * 1.6;
-  ctx.strokeStyle = COLORS.panelBorder;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(frame.contentX, cursorY);
-  ctx.lineTo(frame.contentX + width * 0.08, cursorY);
-  ctx.stroke();
+  cursorY += meaning * 2.2;
+  if (draw) {
+    ctx.strokeStyle = COLORS.panelBorder;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(frame.contentX, cursorY);
+    ctx.lineTo(frame.contentX + width * 0.08, cursorY);
+    ctx.stroke();
+  }
 
-  cursorY += meaning * 1.4;
-  drawEditorialParagraphs(ctx, frame, cursorY, frame.contentBottom, episode.understanding, serifFont, body);
+  cursorY += meaning * 2.2;
+  return drawEditorialParagraphs(ctx, frame, cursorY, frame.contentBottom, episode.understanding, serifFont, body, draw);
 }
 
 function drawSlide2Family(
@@ -569,16 +512,19 @@ function drawSlide2Family(
   frame: Frame,
   width: number,
   episode: ComposedEpisode,
-  serifFont: string
-): void {
-  drawEditorialParagraphs(
+  serifFont: string,
+  startY: number,
+  draw: boolean
+): number {
+  return drawEditorialParagraphs(
     ctx,
     frame,
-    frame.contentTop,
+    startY,
     frame.contentBottom,
     episode.familyAngle,
     serifFont,
-    px(SIZE.body, width)
+    px(SIZE.body, width),
+    draw
   );
 }
 
@@ -587,67 +533,72 @@ function drawSlide3Action(
   frame: Frame,
   width: number,
   episode: ComposedEpisode,
-  serifFont: string
-): void {
+  serifFont: string,
+  startY: number,
+  draw: boolean
+): number {
   const body = px(SIZE.body, width);
   const questionSize = px(SIZE.hook, width);
   const { before, quoted, after } = splitQuotedAction(episode.todayAction);
-  let cursorY = frame.contentTop;
+  let cursorY = startY;
 
   if (before) {
     ctx.textAlign = "left";
-    ctx.fillStyle = COLORS.textPrimary;
+    if (draw) ctx.fillStyle = COLORS.textPrimary;
     ctx.font = `400 ${Math.round(body)}px ${serifFont}`;
     const lines = wrapText(ctx, before, frame.contentW);
     for (const line of lines) {
       cursorY += body * SIZE.bodyLineHeight;
-      ctx.fillText(line, frame.contentX, cursorY);
+      if (draw) ctx.fillText(line, frame.contentX, cursorY);
     }
-    cursorY += body * 0.7;
+    cursorY += body * 1.2;
   }
 
   // Translucent glass-effect highlight panel with a small decorative
   // opening quote mark, matching the reference -- isolates the single
   // actionable question, which carries the strongest hierarchy here.
-  const panelPadX = frame.contentW * 0.07;
-  const panelPadY = frame.contentW * 0.055;
+  const panelPadX = frame.contentW * 0.075;
+  const panelPadY = frame.contentW * 0.07;
   ctx.font = `600 ${Math.round(questionSize)}px ${serifFont}`;
   const quoteLines = wrapText(ctx, quoted, frame.contentW - panelPadX * 2);
   const quoteLineHeight = questionSize * 1.36;
   const panelH = panelPadY * 2 + quoteLines.length * quoteLineHeight;
   const panelY = cursorY;
 
-  ctx.fillStyle = COLORS.panelFill;
-  ctx.strokeStyle = COLORS.panelBorder;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(frame.contentX, panelY, frame.contentW, panelH, frame.contentW * 0.03);
-  ctx.fill();
-  ctx.stroke();
+  if (draw) {
+    ctx.fillStyle = COLORS.panelFill;
+    ctx.strokeStyle = COLORS.panelBorder;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(frame.contentX, panelY, frame.contentW, panelH, frame.contentW * 0.03);
+    ctx.fill();
+    ctx.stroke();
 
-  ctx.fillStyle = COLORS.textSecondary;
-  ctx.font = `700 ${Math.round(frame.contentW * 0.09)}px Georgia, serif`;
-  ctx.fillText("“", frame.contentX + panelPadX * 0.55, panelY + panelPadY + questionSize * 0.75);
+    ctx.fillStyle = COLORS.textSecondary;
+    ctx.font = `700 ${Math.round(frame.contentW * 0.09)}px Georgia, serif`;
+    ctx.fillText("“", frame.contentX + panelPadX * 0.55, panelY + panelPadY + questionSize * 0.75);
 
-  ctx.fillStyle = COLORS.textPrimary;
-  ctx.font = `700 ${Math.round(questionSize)}px ${serifFont}`;
-  let qy = panelY + panelPadY + questionSize * 0.85;
-  for (const line of quoteLines) {
-    ctx.fillText(line, frame.contentX + panelPadX, qy);
-    qy += quoteLineHeight;
+    ctx.fillStyle = COLORS.textPrimary;
+    ctx.font = `700 ${Math.round(questionSize)}px ${serifFont}`;
+    let qy = panelY + panelPadY + questionSize * 0.85;
+    for (const line of quoteLines) {
+      ctx.fillText(line, frame.contentX + panelPadX, qy);
+      qy += quoteLineHeight;
+    }
   }
 
-  cursorY = panelY + panelH + body * 0.9;
+  cursorY = panelY + panelH + body * 1.3;
 
   if (after) {
-    ctx.fillStyle = COLORS.textPrimary;
+    if (draw) ctx.fillStyle = COLORS.textPrimary;
     ctx.font = `400 ${Math.round(body)}px ${serifFont}`;
     const lines = wrapText(ctx, after, frame.contentW);
     for (const line of lines) {
       cursorY += body * SIZE.bodyLineHeight;
-      if (cursorY <= frame.contentBottom) ctx.fillText(line, frame.contentX, cursorY);
+      if (draw && cursorY <= frame.contentBottom) ctx.fillText(line, frame.contentX, cursorY);
     }
   }
+  return cursorY;
 }
 
 function drawSlide4Carry(
@@ -656,104 +607,164 @@ function drawSlide4Carry(
   width: number,
   episode: ComposedEpisode,
   serifFont: string,
-  displayFont: string
-): void {
-  const heroSize = px(SIZE.slide5Hero, width);
+  displayFont: string,
+  startY: number,
+  draw: boolean
+): number {
   const supportSize = px(SIZE.slide5Support, width);
   const ctaSize = px(SIZE.cta, width);
-  let cursorY = frame.contentTop + frame.contentW * 0.05;
+  let cursorY = startY;
 
   // The main statement gets the premium editorial (display serif)
   // treatment at 48px -- the strongest typography on this slide. Split at
   // an em dash when present so the first clause can read heavier than the
   // rest, matching the approved benchmark's shape.
+  const heroSize = px(SIZE.slide5Hero, width);
   const emDashSplit = episode.aiaConnection.split(" — ");
   const lead = emDashSplit[0];
   const rest = emDashSplit.slice(1).join(" — ");
 
   ctx.textAlign = "left";
-  ctx.fillStyle = COLORS.textPrimary;
+  if (draw) ctx.fillStyle = COLORS.textPrimary;
   ctx.font = `700 ${Math.round(heroSize)}px ${displayFont}`;
   const leadLines = wrapText(ctx, rest ? `${lead} —` : lead, frame.contentW);
   const leadLineHeight = heroSize * 1.22;
   for (const line of leadLines) {
     cursorY += leadLineHeight;
-    ctx.fillText(line, frame.contentX, cursorY);
+    if (draw) ctx.fillText(line, frame.contentX, cursorY);
   }
 
   if (rest) {
     cursorY += leadLineHeight * 0.25;
-    ctx.fillStyle = COLORS.textSecondary;
+    if (draw) ctx.fillStyle = COLORS.textSecondary;
     ctx.font = `400 ${Math.round(supportSize)}px ${serifFont}`;
     const lines = wrapText(ctx, rest, frame.contentW);
     for (const line of lines) {
       cursorY += supportSize * SIZE.bodyLineHeight;
-      ctx.fillText(line, frame.contentX, cursorY);
+      if (draw) ctx.fillText(line, frame.contentX, cursorY);
     }
   }
 
-  cursorY += frame.contentW * 0.07;
-  ctx.strokeStyle = COLORS.panelBorder;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(frame.contentX, cursorY);
-  ctx.lineTo(frame.contentX + width * 0.08, cursorY);
-  ctx.stroke();
-  cursorY += frame.contentW * 0.05;
+  cursorY += frame.contentW * 0.11;
+  if (draw) {
+    ctx.strokeStyle = COLORS.panelBorder;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(frame.contentX, cursorY);
+    ctx.lineTo(frame.contentX + width * 0.08, cursorY);
+    ctx.stroke();
+  }
+  cursorY += frame.contentW * 0.09;
 
   if (episode.distantDevotionConnection) {
-    ctx.fillStyle = COLORS.textSecondary;
+    if (draw) ctx.fillStyle = COLORS.textSecondary;
     ctx.font = `400 ${Math.round(supportSize)}px ${serifFont}`;
     const lines = wrapText(ctx, episode.distantDevotionConnection, frame.contentW);
     for (const line of lines) {
       cursorY += supportSize * SIZE.bodyLineHeight;
-      ctx.fillText(line, frame.contentX, cursorY);
+      if (draw) ctx.fillText(line, frame.contentX, cursorY);
     }
-    cursorY += frame.contentW * 0.04;
+    cursorY += frame.contentW * 0.06;
   }
 
-  // CTA -- no icon, no decorative graphic; the accent green alone gives it
-  // the pop of an actionable line.
-  ctx.fillStyle = COLORS.accent;
+  // CTA -- no icon, no decorative graphic. Matches the reference's own
+  // closing line treatment: muted, not bright accent green -- the
+  // headline already carries the slide's emphasis.
+  if (draw) ctx.fillStyle = COLORS.textSecondary;
   ctx.font = `700 ${Math.round(ctaSize)}px ${serifFont}`;
   const ctaLines = wrapText(ctx, episode.cta.copy, frame.contentW);
   let ctaY = cursorY;
   for (const line of ctaLines) {
     ctaY += ctaSize * 1.4;
-    ctx.fillText(line, frame.contentX, ctaY);
+    if (draw) ctx.fillText(line, frame.contentX, ctaY);
+  }
+  return ctaY;
+}
+
+/** Runs one slide's own layout in either "measure" (draw=false, no fillText/
+ *  fill/stroke calls -- just font metrics via wrapText/measureText) or
+ *  "draw" mode, starting from startY. Returns the final cursorY either way,
+ *  which is what makes the vertical-balancing pass in
+ *  renderAathichoodiCarouselSlide below possible: run once to measure the
+ *  content's natural height, then again, shifted down, to actually draw
+ *  it -- so short copy doesn't just pile up under the header with a dead
+ *  zone below it. */
+function layoutSlide(
+  ctx: CanvasRenderingContext2D,
+  frame: Frame,
+  width: number,
+  episode: ComposedEpisode,
+  slideIndex: number,
+  tamilSerifFont: string,
+  serifFont: string,
+  displayFont: string,
+  startY: number,
+  draw: boolean
+): number {
+  switch (slideIndex) {
+    case 0:
+      return drawSlide0Stop(ctx, frame, width, episode, tamilSerifFont, serifFont, startY, draw);
+    case 1:
+      return drawSlide1Understand(ctx, frame, width, episode, tamilSerifFont, serifFont, startY, draw);
+    case 2:
+      return drawSlide2Family(ctx, frame, width, episode, serifFont, startY, draw);
+    case 3:
+      return drawSlide3Action(ctx, frame, width, episode, serifFont, startY, draw);
+    case 4:
+    default:
+      return drawSlide4Carry(ctx, frame, width, episode, serifFont, displayFont, startY, draw);
   }
 }
+
+/** How much of the leftover vertical space (frame height minus the
+ *  content's own natural height) goes ABOVE the content -- the rest goes
+ *  below. The reference mockup keeps every slide's content top-anchored
+ *  close to the header rule, not centered -- 0.5 would dead-center it;
+ *  this stays low so only a small amount of breathing room is added above
+ *  the header, matching that reference rhythm. */
+const VERTICAL_BALANCE_BIAS = 0.12;
 
 export function renderAathichoodiCarouselSlide(
   ctx: CanvasRenderingContext2D,
   opts: RenderCarouselSlideOptions
 ): void {
-  const { width, height, episode, slideIndex, tamilSerifFont, tamilFont, serifFont, sansFont, displayFont } = opts;
+  const { width, height, episode, slideIndex, tamilSerifFont, serifFont, sansFont, displayFont } = opts;
   const frame = computeFrame(width, height, slideIndex);
 
   drawSurface(ctx, width, height);
-  drawTamilWatermark(ctx, width, height, episode, slideIndex, tamilFont);
   drawHeader(ctx, frame, width, height, slideIndex, sansFont);
 
   ctx.textBaseline = "alphabetic";
-  switch (slideIndex) {
-    case 0:
-      drawSlide0Stop(ctx, frame, width, episode, tamilSerifFont, serifFont);
-      break;
-    case 1:
-      drawSlide1Understand(ctx, frame, width, episode, tamilSerifFont, serifFont);
-      break;
-    case 2:
-      drawSlide2Family(ctx, frame, width, episode, serifFont);
-      break;
-    case 3:
-      drawSlide3Action(ctx, frame, width, episode, serifFont);
-      break;
-    case 4:
-    default:
-      drawSlide4Carry(ctx, frame, width, episode, serifFont, displayFont);
-      break;
-  }
+
+  const measuredEndY = layoutSlide(
+    ctx,
+    frame,
+    width,
+    episode,
+    slideIndex,
+    tamilSerifFont,
+    serifFont,
+    displayFont,
+    frame.contentTop,
+    false
+  );
+  const contentHeight = measuredEndY - frame.contentTop;
+  const available = frame.contentBottom - frame.contentTop;
+  const slack = Math.max(0, available - contentHeight);
+  const balancedStartY = frame.contentTop + slack * VERTICAL_BALANCE_BIAS;
+
+  layoutSlide(
+    ctx,
+    frame,
+    width,
+    episode,
+    slideIndex,
+    tamilSerifFont,
+    serifFont,
+    displayFont,
+    balancedStartY,
+    true
+  );
 
   drawFooterLockup(ctx, frame, width, height, sansFont, opts);
 }
