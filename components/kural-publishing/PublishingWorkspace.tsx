@@ -557,7 +557,7 @@ export default function PublishingWorkspace() {
   const patchLayout = useCallback((key: keyof CarouselLayout, value: number) => {
     setStyleOverrides((prev) => ({ ...prev, layout: { ...prev.layout, [key]: value } }));
   }, []);
-  const patchSlide0 = useCallback((key: keyof Slide0Style, value: number) => {
+  const patchSlide0 = useCallback((key: keyof Slide0Style, value: string | number | boolean) => {
     setStyleOverrides((prev) => ({ ...prev, slide0: { ...prev.slide0, [key]: value } }));
   }, []);
   const patchSlide1 = useCallback((key: keyof Slide1Style, value: string | number) => {
@@ -669,6 +669,13 @@ export default function PublishingWorkspace() {
             textPlaceholder: displayEpisode?.hook,
             onTextChange: patchText0,
             sizeFields: [{ label: "Size", value: resolvedStyle.slide0.hookSize, onChange: (v) => patchSlide0("hookSize", v) }],
+          };
+        case "slide0.tagline":
+          return {
+            label: "Closing tagline (use \\n for a line break)",
+            textValue: resolvedStyle.slide0.tagline,
+            onTextChange: (v) => patchSlide0("tagline", v),
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide0.taglineSize, onChange: (v) => patchSlide0("taglineSize", v) }],
           };
         case "slide1.tamilRef":
           return {
@@ -1103,6 +1110,18 @@ export default function PublishingWorkspace() {
                         value={textOverrides.slide0?.hook ?? ""}
                         placeholder={displayEpisode.hook}
                         onChange={patchText0}
+                      />
+                      <NumField label="Tagline size (px)" value={resolvedStyle.slide0.taglineSize} onChange={(v) => patchSlide0("taglineSize", v)} />
+                      <TextAreaField
+                        label="Tagline (use \n for a line break)"
+                        value={resolvedStyle.slide0.tagline}
+                        onChange={(v) => patchSlide0("tagline", v)}
+                        rows={2}
+                      />
+                      <CheckField
+                        label="Show AiA branding on this slide"
+                        checked={resolvedStyle.slide0.showBranding}
+                        onChange={(v) => patchSlide0("showBranding", v)}
                       />
                     </div>
                   </details>

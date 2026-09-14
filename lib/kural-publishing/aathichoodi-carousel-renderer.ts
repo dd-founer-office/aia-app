@@ -82,6 +82,13 @@ export interface Slide0Style {
   heroSize: number;
   heroMinSize: number;
   hookSize: number;
+  /** Recurring closing tagline shown under the hook, muted -- fixed
+   *  design-system copy (like the section headings), not per-episode
+   *  generated content. "\n" forces the two-line break shown in the
+   *  reference rather than word-wrapping. */
+  tagline: string;
+  taglineSize: number;
+  showBranding: boolean;
 }
 export interface Slide1Style {
   sectionHeadingText: string;
@@ -214,6 +221,9 @@ export const DEFAULT_STYLE: CarouselStyle = {
     heroSize: 86,
     heroMinSize: 72,
     hookSize: 32,
+    tagline: "Small values today.\nA kinder tomorrow.",
+    taglineSize: 25,
+    showBranding: true,
   },
   slide1: {
     sectionHeadingText: "WHAT DOES THIS MEAN?",
@@ -570,7 +580,9 @@ function drawFooterLockup(
   opts: RenderCarouselSlideOptions,
   hotspots?: CarouselHotspot[]
 ): void {
-  if (!opts.brandingWordmark || !style.slide4.showBranding || opts.slideIndex !== 4) return;
+  const isBrandedSlide =
+    (opts.slideIndex === 0 && style.slide0.showBranding) || (opts.slideIndex === 4 && style.slide4.showBranding);
+  if (!opts.brandingWordmark || !isBrandedSlide) return;
   const brandName = px(style.slide4.brandNameSize, width);
   const handle = px(style.slide4.handleSize, width);
   const lineGap = px(6, width);
@@ -645,7 +657,20 @@ function drawSlide0Stop(
   }
   pushHotspot(hotspots, "slide0.hero", frame.contentX, frame.contentW, heroFirst, cursorY, hero.size);
 
-  cursorY += hero.lineHeight * 0.6;
+  // Thin divider between the Aathichoodi and the hook question, matching
+  // the reference -- same muted-line treatment used between sections on
+  // Slides 2 and 5.
+  cursorY += hero.lineHeight * 0.35;
+  if (draw) {
+    ctx.strokeStyle = style.colors.panelBorder;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(frame.contentX, cursorY);
+    ctx.lineTo(frame.contentX + width * style.layout.dividerLength, cursorY);
+    ctx.stroke();
+  }
+  cursorY += hero.lineHeight * 0.35;
+
   if (draw) ctx.fillStyle = style.colors.textPrimary;
   const hookSize = px(style.slide0.hookSize, width);
   ctx.font = `600 ${Math.round(hookSize)}px ${serifFont}`;
@@ -657,6 +682,22 @@ function drawSlide0Stop(
     if (draw) ctx.fillText(line, frame.contentX, cursorY);
   }
   pushHotspot(hotspots, "slide0.hook", frame.contentX, frame.contentW, hookFirst, cursorY, hookSize);
+
+  // Recurring closing tagline -- fixed design-system copy (like the
+  // section headings), muted, two explicit lines.
+  cursorY += hookSize * 0.9;
+  if (draw) ctx.fillStyle = style.colors.textSecondary;
+  const taglineSize = px(style.slide0.taglineSize, width);
+  ctx.font = `400 ${Math.round(taglineSize)}px ${serifFont}`;
+  const taglineLines = style.slide0.tagline.split("\n").filter(Boolean);
+  let taglineFirst = 0;
+  for (const line of taglineLines) {
+    cursorY += taglineSize * 1.3;
+    if (taglineFirst === 0) taglineFirst = cursorY;
+    if (draw) ctx.fillText(line, frame.contentX, cursorY);
+  }
+  pushHotspot(hotspots, "slide0.tagline", frame.contentX, frame.contentW, taglineFirst, cursorY, taglineSize);
+
   return cursorY;
 }
 
