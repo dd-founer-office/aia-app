@@ -174,6 +174,18 @@ function slugify(text: string): string {
   return slug || "untitled";
 }
 
+/** Mirrors drawSlide4Carry's own split exactly -- the trailing "—" is
+ *  baked into the lead clause itself (not appended separately at render
+ *  time), so what the placeholder shows in the in-canvas editor is a real,
+ *  editable/removable character, not a render-only artifact the user
+ *  could see on the canvas but never actually delete from the textbox. */
+function splitHeadline(aiaConnection: string): { lead: string; rest: string } {
+  const split = aiaConnection.split(" — ");
+  const leadClause = split[0];
+  const rest = split.slice(1).join(" — ");
+  return { lead: rest ? `${leadClause} —` : leadClause, rest };
+}
+
 function buildAathichoodiFilename(
   contentTypeId: ContentTypeId,
   content: AathichoodiContent,
@@ -837,12 +849,11 @@ export default function PublishingWorkspace() {
           };
         }
         case "slide4.headline": {
-          const generatedLead = displayEpisode ? displayEpisode.aiaConnection.split(" — ")[0] : "";
           const headlineSize = emphasisOverrides["slide4.headline"]?.size ?? resolvedStyle.slide4.heroSize;
           return {
             label: "Headline (lead clause)",
             textValue: textOverrides.slide4?.headline ?? "",
-            textPlaceholder: generatedLead,
+            textPlaceholder: displayEpisode ? splitHeadline(displayEpisode.aiaConnection).lead : "",
             onTextChange: (v) => patchText4({ headline: v }),
             sizeFields: [{ label: "Size", value: headlineSize, onChange: (v) => patchEmphasis("slide4.headline", { size: v }) }],
             fontVar: "--font-display",
@@ -850,12 +861,11 @@ export default function PublishingWorkspace() {
           };
         }
         case "slide4.support": {
-          const generatedRest = displayEpisode ? displayEpisode.aiaConnection.split(" — ").slice(1).join(" — ") : "";
           const supportSize = emphasisOverrides["slide4.support"]?.size ?? resolvedStyle.slide4.supportSize;
           return {
             label: "Headline (trailing clause)",
             textValue: textOverrides.slide4?.support ?? "",
-            textPlaceholder: generatedRest,
+            textPlaceholder: displayEpisode ? splitHeadline(displayEpisode.aiaConnection).rest : "",
             onTextChange: (v) => patchText4({ support: v }),
             sizeFields: [{ label: "Size", value: supportSize, onChange: (v) => patchEmphasis("slide4.support", { size: v }) }],
             fontVar: "--font-serif",
@@ -1488,13 +1498,13 @@ export default function PublishingWorkspace() {
                       <TextAreaField
                         label="Headline (lead clause) text override"
                         value={textOverrides.slide4?.headline ?? ""}
-                        placeholder={displayEpisode.aiaConnection.split(" — ")[0]}
+                        placeholder={splitHeadline(displayEpisode.aiaConnection).lead}
                         onChange={(v) => patchText4({ headline: v })}
                       />
                       <TextAreaField
                         label="Headline (trailing clause) text override"
                         value={textOverrides.slide4?.support ?? ""}
-                        placeholder={displayEpisode.aiaConnection.split(" — ").slice(1).join(" — ")}
+                        placeholder={splitHeadline(displayEpisode.aiaConnection).rest}
                         onChange={(v) => patchText4({ support: v })}
                       />
                       <TextField
@@ -1802,8 +1812,17 @@ export default function PublishingWorkspace() {
                       </div>
                       <textarea
                         autoFocus
-                        value={config.textValue || ""}
-                        placeholder={config.textPlaceholder}
+                        // Pre-filled with the REAL current text (the
+                        // override if one exists, else the generated
+                        // default) -- not left empty with the generated
+                        // text shown only as a faded, unselectable
+                        // placeholder. Editing in place (e.g. deleting one
+                        // character) has to start from the actual text,
+                        // not force retyping the whole line from scratch.
+                        // Clearing the box entirely still reverts to the
+                        // generated default, per the same convention every
+                        // other override field already follows.
+                        value={config.textValue || config.textPlaceholder || ""}
                         onChange={(e) => config.onTextChange?.(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Escape") e.currentTarget.blur();

@@ -1211,10 +1211,15 @@ function drawSlide4Carry(
   // The main statement gets the premium editorial (display serif)
   // treatment -- the strongest typography on this slide. Split at an em
   // dash when present so the first clause can read heavier than the rest,
-  // matching the approved benchmark's shape.
+  // matching the approved benchmark's shape. The trailing "—" is baked
+  // into generatedLead itself (not appended separately at render time),
+  // so it's a real, editable/removable character in the in-canvas
+  // textbox -- not a render-only artifact the user could see but never
+  // actually edit out.
   const generatedSplit = episode.aiaConnection.split(" — ");
-  const generatedLead = generatedSplit[0];
+  const generatedLeadClause = generatedSplit[0];
   const generatedRest = generatedSplit.slice(1).join(" — ");
+  const generatedLead = generatedRest ? `${generatedLeadClause} —` : generatedLeadClause;
   const lead = overrides?.headline || generatedLead;
   const rest = overrides?.support || generatedRest;
 
@@ -1226,7 +1231,7 @@ function drawSlide4Carry(
   ctx.textAlign = "left";
   if (draw) ctx.fillStyle = style.colors.textPrimary;
   ctx.font = `${styleFor(false, leadEmphasis)} ${weightFor(700, leadEmphasis)} ${Math.round(heroSize)}px ${displayFont}`;
-  const leadLines = wrapText(ctx, rest ? `${lead} —` : lead, frame.contentW);
+  const leadLines = wrapText(ctx, lead, frame.contentW);
   const leadLineHeight = heroSize * 1.22;
   for (const line of leadLines) {
     cursorY += leadLineHeight;
