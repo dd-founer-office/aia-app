@@ -20,7 +20,8 @@
  * constants, per explicit founder direction ("make the generator's working
  * space editable... all fields, per-slide"). DEFAULT_STYLE below captures
  * exactly the values the founder had approved as of the last locked pass
- * (dark forest-green background, cream text, green accent, the exact px
+ * (background, text, and divider colours sampled directly from the real
+ * AiA wordmark -- see DEFAULT_STYLE's own doc comment -- and the exact px
  * sizes from that round) -- resolveStyle() merges any override on top of
  * those defaults, so an empty/undefined override reproduces today's
  * approved look bit-for-bit. PublishingWorkspace.tsx is where a human
@@ -277,14 +278,14 @@ function pushHotspot(
   });
 }
 
-/** Draws one of the muted divider rules used between sections throughout
- *  the carousel, and registers it as its own draggable hotspot (a bare
- *  line has ~0 height, so the hotspot gets generous fixed padding rather
- *  than the font-size-based padding pushHotspot uses for text). Same
- *  thickness formula as the header's own accent rule (the "top divider")
- *  and the surrounding body text's colour, rather than the barely-visible
- *  translucent panel-border tone -- and a bit longer, so it reads clearly
- *  against the dark background instead of disappearing into it. */
+/** Draws one of the divider rules used between sections throughout the
+ *  carousel, and registers it as its own draggable hotspot (a bare line
+ *  has ~0 height, so the hotspot gets generous fixed padding rather than
+ *  the font-size-based padding pushHotspot uses for text). Same thickness
+ *  formula as the header's own rule (the "top divider") -- both read
+ *  colors.accent, the grey sampled from the AiA wordmark's "i", not a
+ *  text colour -- and a bit longer, so it reads clearly against the green
+ *  background instead of disappearing into it. */
 function drawDivider(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
@@ -299,7 +300,7 @@ function drawDivider(
   const { dx, dy } = posFor(positions, id);
   const lineLength = width * style.layout.dividerLength * 1.3;
   if (draw) {
-    ctx.strokeStyle = style.colors.textSecondary;
+    ctx.strokeStyle = style.colors.accent;
     ctx.lineWidth = Math.max(1.5, width * 0.003);
     ctx.beginPath();
     ctx.moveTo(frame.contentX + dx, y + dy);
@@ -312,16 +313,19 @@ function drawDivider(
   }
 }
 
-/** The founder-approved baseline as of the last locked visual pass -- dark
- *  forest-green background, cream text, green accent, exact px sizes.
- *  resolveStyle(undefined) reproduces this exactly. */
+/** The founder-approved baseline as of the last locked visual pass --
+ *  colours sampled directly from the real AiA wordmark (public/brand/
+ *  AiA.png): the "A" letters' green (#328D63), the "i"'s grey (#8A8678,
+ *  repurposed here as the divider colour), and the mark's own light
+ *  background (#EFF4F2, used for every text element -- headings included,
+ *  not just body copy). resolveStyle(undefined) reproduces this exactly. */
 export const DEFAULT_STYLE: CarouselStyle = {
   colors: {
-    background: "#15422C",
-    backgroundDeep: "#0C2A1B",
-    textPrimary: "#F6F1E3",
-    textSecondary: "#A9C4B1",
-    accent: "#4FAE7C",
+    background: "#328D63",
+    backgroundDeep: "#328D63",
+    textPrimary: "#EFF4F2",
+    textSecondary: "#EFF4F2",
+    accent: "#8A8678",
     panelFill: "rgba(255, 255, 255, 0.07)",
     panelBorder: "rgba(255, 255, 255, 0.12)",
     badgeRing: "rgba(255, 255, 255, 0.16)",
@@ -661,9 +665,9 @@ function drawHeader(
     /* no-op */
   }
 
-  // Short green accent rule under the eyebrow -- drawn via drawDivider so
-  // it's its own draggable element too, but in the accent color rather
-  // than the muted divider color the helper defaults to.
+  // Short accent rule under the eyebrow -- drawn inline rather than via
+  // drawDivider only because its length doesn't get the 1.3x extension
+  // the other dividers use; same colors.accent (grey) either way.
   const dividerOffset = posFor(positions, "header.divider");
   ctx.strokeStyle = style.colors.accent;
   ctx.lineWidth = Math.max(1.5, width * 0.003);
@@ -686,7 +690,7 @@ function drawHeader(
     const headingOffset = posFor(positions, `slide${slideIndex}.sectionHeading`);
     const headingEmphasis = emphasisFor(emphases, `slide${slideIndex}.sectionHeading`);
     ctx.textAlign = "left";
-    ctx.fillStyle = style.colors.accent;
+    ctx.fillStyle = style.colors.textPrimary;
     try {
       ctx.letterSpacing = `${Math.round(px(2.5, width))}px`;
     } catch {
@@ -830,9 +834,10 @@ function drawSlide0Stop(
   const taglineEmphasis = emphasisFor(emphases, "slide0.tagline");
 
   // The Tamil line is the hero -- dramatically the largest element on the
-  // slide, in the dominant cream tone (not green -- green-on-dark-green
-  // would fail contrast). May reduce toward heroMinSize (never below) only
-  // if a specific episode's line genuinely doesn't fit. Uses the same Noto
+  // slide, in the light wordmark-background tone (not green -- green text
+  // on the green canvas background would fail contrast). May reduce
+  // toward heroMinSize (never below) only if a specific episode's line
+  // genuinely doesn't fit. Uses the same Noto
   // Sans Tamil family as the Kural Koorum Aram cover (tamilFont), not the
   // serif Tamil face, for typographic consistency across the app.
   ctx.textAlign = "left";
