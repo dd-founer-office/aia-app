@@ -86,12 +86,15 @@ export const AATHICHOODI_SOURCE_URL =
   "https://github.com/tk120404/Aathichudi";
 
 export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
-  { episodeNumber: 1, tamilText: "அறஞ்செய விரும்பு", simpleMeaning: "Desire to do righteous deeds.", transliteration: "Aram Seya Virumbu", primaryTheme: "character", verified: true,
+  { episodeNumber: 1, tamilText: "அறம் செய விரும்பு", simpleMeaning: "Desire to do righteous deeds.", transliteration: "Aram Seya Virumbu", primaryTheme: "character", verified: true,
     // GOLD MASTER: founder-approved benchmark for the whole series (see
     // content-engine.ts's own doc comment). Every field here was reviewed
     // and corrected in two passes -- this is the exact approved copy, not
     // a draft. Do not regenerate this episode from the pools; that would
     // replace the approved benchmark with an unreviewed composition.
+    // tamilText is deliberately spelled split ("அறம் செய", not the sandhi'd
+    // "அறஞ்செய" the cited source repo uses) -- explicit founder style
+    // choice, not a typo; don't "fix" it back to match the source.
     curated: {
       understanding: "Avvaiyar begins with a powerful idea: don't just do good when someone's watching or asking — want to. That desire, once a child has it, becomes the root every other value in this series grows from.",
       familyAngle: "Your older child sees a sibling struggling to reach something on a high shelf. No one asked them to help — but they climb up and get it anyway. That small, unprompted choice is exactly what today's line is about.",
