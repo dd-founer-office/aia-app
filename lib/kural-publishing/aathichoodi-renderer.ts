@@ -87,7 +87,10 @@ export function renderAathichoodi(
   ctx: CanvasRenderingContext2D,
   opts: RenderAathichoodiOptions
 ): void {
-  const { width, height, content, tamilSerifFont, sansFont } = opts;
+  // Tamil glyphs use the same Noto Sans Tamil family as the Kural Koorum
+  // Aram cover (tamilFont), not the serif Tamil face -- consistency across
+  // the app's Tamil rendering, current and future.
+  const { width, height, content, tamilFont, sansFont } = opts;
   const rand = createSeededRandom(deriveSeed(content));
 
   // 1. Base surface.
@@ -114,7 +117,7 @@ export function renderAathichoodi(
     width,
     height,
     rand,
-    font: tamilSerifFont,
+    font: tamilFont,
     glyphPool: glyphPool.length > 0 ? glyphPool : FALLBACK_GLYPHS,
     color: PRIMARY,
     clearBox: { x: cardX, y: cardY, width: cardW, height: cardH },
@@ -153,7 +156,7 @@ export function renderAathichoodi(
 
   if (content.letter) {
     ctx.fillStyle = PRIMARY;
-    ctx.font = `600 ${Math.round(cardH * 0.09)}px ${tamilSerifFont}`;
+    ctx.font = `600 ${Math.round(cardH * 0.09)}px ${tamilFont}`;
     cursorY += cardH * 0.06;
     ctx.fillText(content.letter, contentX, cursorY);
     cursorY += cardH * 0.05;
@@ -161,7 +164,7 @@ export function renderAathichoodi(
 
   if (content.tamilLine) {
     ctx.fillStyle = FOREGROUND;
-    ctx.font = `500 ${Math.round(cardH * 0.072)}px ${tamilSerifFont}`;
+    ctx.font = `500 ${Math.round(cardH * 0.072)}px ${tamilFont}`;
     const tamilLines = wrapText(ctx, content.tamilLine, contentW);
     for (const line of tamilLines) {
       cursorY += cardH * 0.09;

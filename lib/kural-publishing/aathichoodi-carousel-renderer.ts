@@ -153,12 +153,25 @@ export interface CarouselTextOverrides {
   slide1?: { understanding?: string };
   slide2?: { familyAngle?: string };
   slide3?: { todayAction?: string };
-  slide4?: { aiaConnection?: string; ctaCopy?: string };
+  slide4?: { aiaConnection?: string; ctaCopy?: string; distantDevotionConnection?: string };
 }
+
+/** A drag nudge applied on top of an element's own computed flow position --
+ *  keyed by the same hotspot id used for click-to-edit (see CarouselHotspot
+ *  below). Purely a rendering-time offset: it never feeds back into the
+ *  vertical-flow layout, so dragging one element never reflows any other --
+ *  each element's own natural position is still computed exactly as before,
+ *  then nudged by (dx, dy) at the moment it's actually drawn. */
+export interface CarouselPositionOverride {
+  dx: number;
+  dy: number;
+}
+export type CarouselPositions = Record<string, CarouselPositionOverride>;
 
 export interface CarouselDesignOverrides {
   style?: CarouselStyleOverrides;
   text?: CarouselTextOverrides;
+  positions?: CarouselPositions;
 }
 
 /** A clickable region on the rendered canvas, in canvas-pixel space, for
@@ -176,12 +189,22 @@ export interface CarouselHotspot {
   height: number;
 }
 
+const ZERO_OFFSET: CarouselPositionOverride = { dx: 0, dy: 0 };
+
+/** Looks up an element's drag nudge by hotspot id -- (0, 0) if it has never
+ *  been dragged. */
+function posFor(positions: CarouselPositions | undefined, id: string): CarouselPositionOverride {
+  return positions?.[id] ?? ZERO_OFFSET;
+}
+
 /** Appends a hotspot spanning from the first to the last drawn line's
  *  baseline (a generous, forgiving click target, not pixel-exact) --
  *  padded above/below using the line's own font size as a proxy for
  *  ascent/descent/leading. No-ops if hotspots collection wasn't
  *  requested, or if no lines were actually drawn (firstBaseline stays 0,
- *  the sentinel for "nothing drawn"). */
+ *  the sentinel for "nothing drawn"). The hotspot's own position already
+ *  includes its drag offset (dx, dy passed in as `offset`) so the overlay
+ *  button tracks the element wherever it's been dragged to. */
 function pushHotspot(
   hotspots: CarouselHotspot[] | undefined,
   id: string,
@@ -189,10 +212,48 @@ function pushHotspot(
   width: number,
   firstBaseline: number,
   lastBaseline: number,
-  size: number
+  size: number,
+  offset: CarouselPositionOverride = ZERO_OFFSET
 ): void {
   if (!hotspots || firstBaseline === 0) return;
-  hotspots.push({ id, x, y: firstBaseline - size * 0.9, width, height: lastBaseline - firstBaseline + size * 1.2 });
+  hotspots.push({
+    id,
+    x: x + offset.dx,
+    y: firstBaseline - size * 0.9 + offset.dy,
+    width,
+    height: lastBaseline - firstBaseline + size * 1.2,
+  });
+}
+
+/** Draws one of the thin muted divider rules used between sections
+ *  throughout the carousel, and registers it as its own draggable hotspot
+ *  (a bare line has ~0 height, so the hotspot gets generous fixed padding
+ *  rather than the font-size-based padding pushHotspot uses for text). */
+function drawDivider(
+  ctx: CanvasRenderingContext2D,
+  style: CarouselStyle,
+  frame: Frame,
+  width: number,
+  y: number,
+  draw: boolean,
+  positions: CarouselPositions | undefined,
+  id: string,
+  hotspots?: CarouselHotspot[]
+): void {
+  const { dx, dy } = posFor(positions, id);
+  const lineLength = width * style.layout.dividerLength;
+  if (draw) {
+    ctx.strokeStyle = style.colors.panelBorder;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(frame.contentX + dx, y + dy);
+    ctx.lineTo(frame.contentX + dx + lineLength, y + dy);
+    ctx.stroke();
+    if (hotspots) {
+      const pad = Math.max(14, width * 0.015);
+      hotspots.push({ id, x: frame.contentX + dx, y: y + dy - pad, width: Math.max(lineLength, width * 0.12), height: pad * 2 });
+    }
+  }
 }
 
 /** The founder-approved baseline as of the last locked visual pass -- dark
@@ -284,6 +345,7 @@ function applyTextOverrides(episode: ComposedEpisode, text?: CarouselTextOverrid
     familyAngle: text.slide2?.familyAngle || episode.familyAngle,
     todayAction: text.slide3?.todayAction || episode.todayAction,
     aiaConnection: text.slide4?.aiaConnection || episode.aiaConnection,
+    distantDevotionConnection: text.slide4?.distantDevotionConnection || episode.distantDevotionConnection,
     cta: ctaCopy ? { ...episode.cta, copy: ctaCopy } : episode.cta,
   };
 }
@@ -484,6 +546,7 @@ function drawHeader(
   height: number,
   slideIndex: number,
   sansFont: string,
+  positions: CarouselPositions | undefined,
   hotspots?: CarouselHotspot[]
 ): void {
   const { eyebrow, heading, headingText, dividerY } = headerMetrics(style, width, height, slideIndex);
@@ -496,11 +559,12 @@ function drawHeader(
     /* Canvas2D letterSpacing unsupported -- default tracking is fine */
   }
 
+  const eyebrowOffset = posFor(positions, "header.eyebrow");
   ctx.fillStyle = style.colors.textPrimary;
   ctx.font = `700 ${Math.round(eyebrow)}px ${sansFont}`;
   const eyebrowY = frame.marginY + eyebrow;
-  ctx.fillText("AATHICHOODI", frame.contentX, eyebrowY);
-  pushHotspot(hotspots, "header.eyebrow", frame.contentX, frame.contentW, eyebrowY, eyebrowY, eyebrow);
+  ctx.fillText("AATHICHOODI", frame.contentX + eyebrowOffset.dx, eyebrowY + eyebrowOffset.dy);
+  pushHotspot(hotspots, "header.eyebrow", frame.contentX, frame.contentW, eyebrowY, eyebrowY, eyebrow, eyebrowOffset);
 
   try {
     ctx.letterSpacing = "0px";
@@ -508,15 +572,29 @@ function drawHeader(
     /* no-op */
   }
 
-  // Short green accent rule under the eyebrow.
+  // Short green accent rule under the eyebrow -- drawn via drawDivider so
+  // it's its own draggable element too, but in the accent color rather
+  // than the muted divider color the helper defaults to.
+  const dividerOffset = posFor(positions, "header.divider");
   ctx.strokeStyle = style.colors.accent;
   ctx.lineWidth = Math.max(1.5, width * 0.003);
   ctx.beginPath();
-  ctx.moveTo(frame.contentX, dividerY);
-  ctx.lineTo(frame.contentX + width * style.layout.dividerLength, dividerY);
+  ctx.moveTo(frame.contentX + dividerOffset.dx, dividerY + dividerOffset.dy);
+  ctx.lineTo(frame.contentX + dividerOffset.dx + width * style.layout.dividerLength, dividerY + dividerOffset.dy);
   ctx.stroke();
+  if (hotspots) {
+    const pad = Math.max(14, width * 0.015);
+    hotspots.push({
+      id: "header.divider",
+      x: frame.contentX + dividerOffset.dx,
+      y: dividerY + dividerOffset.dy - pad,
+      width: Math.max(width * style.layout.dividerLength, width * 0.12),
+      height: pad * 2,
+    });
+  }
 
   if (headingText) {
+    const headingOffset = posFor(positions, `slide${slideIndex}.sectionHeading`);
     ctx.textAlign = "left";
     ctx.fillStyle = style.colors.accent;
     try {
@@ -526,7 +604,7 @@ function drawHeader(
     }
     ctx.font = `700 ${Math.round(heading)}px ${sansFont}`;
     const headingLineY = dividerY + heading * 1.7;
-    ctx.fillText(headingText, frame.contentX, headingLineY);
+    ctx.fillText(headingText, frame.contentX + headingOffset.dx, headingLineY + headingOffset.dy);
     pushHotspot(
       hotspots,
       `slide${slideIndex}.sectionHeading`,
@@ -534,7 +612,8 @@ function drawHeader(
       frame.contentW,
       headingLineY,
       headingLineY,
-      heading
+      heading,
+      headingOffset
     );
     try {
       ctx.letterSpacing = "0px";
@@ -578,6 +657,7 @@ function drawFooterLockup(
   height: number,
   sansFont: string,
   opts: RenderCarouselSlideOptions,
+  positions: CarouselPositions | undefined,
   hotspots?: CarouselHotspot[]
 ): void {
   const isBrandedSlide =
@@ -596,23 +676,35 @@ function drawFooterLockup(
   const logoX = frame.contentX + logoRadius;
 
   if (opts.logoImage) {
-    drawCircularBadge(ctx, style.colors, opts.logoImage, logoX, rowY, logoRadius);
+    const logoOffset = posFor(positions, "footer.logo");
+    drawCircularBadge(ctx, style.colors, opts.logoImage, logoX + logoOffset.dx, rowY + logoOffset.dy, logoRadius);
+    if (hotspots) {
+      hotspots.push({
+        id: "footer.logo",
+        x: logoX + logoOffset.dx - logoRadius,
+        y: rowY + logoOffset.dy - logoRadius,
+        width: logoRadius * 2,
+        height: logoRadius * 2,
+      });
+    }
   }
 
   const textX = logoX + logoRadius + width * 0.028;
   const textEndX = frame.contentX + frame.contentW;
+  const brandNameOffset = posFor(positions, "footer.brandName");
   ctx.textAlign = "left";
   ctx.fillStyle = style.colors.textPrimary;
   ctx.font = `700 ${Math.round(brandName)}px ${sansFont}`;
   const brandNameY = rowY - textBlockHeight / 2 + brandName;
-  ctx.fillText(opts.brandingWordmark.replace("AiA — ", ""), textX, brandNameY);
-  pushHotspot(hotspots, "footer.brandName", textX, textEndX - textX, brandNameY, brandNameY, brandName);
+  ctx.fillText(opts.brandingWordmark.replace("AiA — ", ""), textX + brandNameOffset.dx, brandNameY + brandNameOffset.dy);
+  pushHotspot(hotspots, "footer.brandName", textX, textEndX - textX, brandNameY, brandNameY, brandName, brandNameOffset);
   if (opts.brandingHandle) {
+    const handleOffset = posFor(positions, "footer.handle");
     ctx.fillStyle = style.colors.textSecondary;
     ctx.font = `400 ${Math.round(handle)}px ${sansFont}`;
     const handleY = rowY + textBlockHeight / 2 - handle * 0.25;
-    ctx.fillText(`@${opts.brandingHandle}`, textX, handleY);
-    pushHotspot(hotspots, "footer.handle", textX, textEndX - textX, handleY, handleY, handle);
+    ctx.fillText(`@${opts.brandingHandle}`, textX + handleOffset.dx, handleY + handleOffset.dy);
+    pushHotspot(hotspots, "footer.handle", textX, textEndX - textX, handleY, handleY, handle, handleOffset);
   }
 }
 
@@ -626,10 +718,11 @@ function drawSlide0Stop(
   frame: Frame,
   width: number,
   episode: ComposedEpisode,
-  tamilSerifFont: string,
+  tamilFont: string,
   serifFont: string,
   startY: number,
   draw: boolean,
+  positions: CarouselPositions | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   let cursorY = startY;
@@ -637,51 +730,48 @@ function drawSlide0Stop(
   // The Tamil line is the hero -- dramatically the largest element on the
   // slide, in the dominant cream tone (not green -- green-on-dark-green
   // would fail contrast). May reduce toward heroMinSize (never below) only
-  // if a specific episode's line genuinely doesn't fit.
+  // if a specific episode's line genuinely doesn't fit. Uses the same Noto
+  // Sans Tamil family as the Kural Koorum Aram cover (tamilFont), not the
+  // serif Tamil face, for typographic consistency across the app.
   ctx.textAlign = "left";
   if (draw) ctx.fillStyle = style.colors.textPrimary;
   const hero = fitText(
     ctx,
     episode.tamilText,
-    (size) => `700 ${size}px ${tamilSerifFont}`,
+    (size) => `700 ${size}px ${tamilFont}`,
     frame.contentW,
     (frame.contentBottom - frame.contentTop) * 0.46,
     Math.round(px(style.slide0.heroSize, width)),
     Math.round(px(style.slide0.heroMinSize, width))
   );
+  const heroOffset = posFor(positions, "slide0.hero");
   let heroFirst = 0;
   for (const line of hero.lines) {
     cursorY += hero.lineHeight;
     if (heroFirst === 0) heroFirst = cursorY;
-    if (draw) ctx.fillText(line, frame.contentX, cursorY);
+    if (draw) ctx.fillText(line, frame.contentX + heroOffset.dx, cursorY + heroOffset.dy);
   }
-  pushHotspot(hotspots, "slide0.hero", frame.contentX, frame.contentW, heroFirst, cursorY, hero.size);
+  pushHotspot(hotspots, "slide0.hero", frame.contentX, frame.contentW, heroFirst, cursorY, hero.size, heroOffset);
 
   // Thin divider between the Aathichoodi and the hook question, matching
   // the reference -- same muted-line treatment used between sections on
   // Slides 2 and 5.
   cursorY += hero.lineHeight * 0.35;
-  if (draw) {
-    ctx.strokeStyle = style.colors.panelBorder;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(frame.contentX, cursorY);
-    ctx.lineTo(frame.contentX + width * style.layout.dividerLength, cursorY);
-    ctx.stroke();
-  }
+  drawDivider(ctx, style, frame, width, cursorY, draw, positions, "slide0.divider", hotspots);
   cursorY += hero.lineHeight * 0.35;
 
   if (draw) ctx.fillStyle = style.colors.textPrimary;
   const hookSize = px(style.slide0.hookSize, width);
   ctx.font = `600 ${Math.round(hookSize)}px ${serifFont}`;
   const hookLines = wrapText(ctx, episode.hook, frame.contentW);
+  const hookOffset = posFor(positions, "slide0.hook");
   let hookFirst = 0;
   for (const line of hookLines) {
     cursorY += hookSize * 1.3;
     if (hookFirst === 0) hookFirst = cursorY;
-    if (draw) ctx.fillText(line, frame.contentX, cursorY);
+    if (draw) ctx.fillText(line, frame.contentX + hookOffset.dx, cursorY + hookOffset.dy);
   }
-  pushHotspot(hotspots, "slide0.hook", frame.contentX, frame.contentW, hookFirst, cursorY, hookSize);
+  pushHotspot(hotspots, "slide0.hook", frame.contentX, frame.contentW, hookFirst, cursorY, hookSize, hookOffset);
 
   // Recurring closing tagline -- fixed design-system copy (like the
   // section headings), muted, two explicit lines.
@@ -690,13 +780,14 @@ function drawSlide0Stop(
   const taglineSize = px(style.slide0.taglineSize, width);
   ctx.font = `400 ${Math.round(taglineSize)}px ${serifFont}`;
   const taglineLines = style.slide0.tagline.split("\n").filter(Boolean);
+  const taglineOffset = posFor(positions, "slide0.tagline");
   let taglineFirst = 0;
   for (const line of taglineLines) {
     cursorY += taglineSize * 1.3;
     if (taglineFirst === 0) taglineFirst = cursorY;
-    if (draw) ctx.fillText(line, frame.contentX, cursorY);
+    if (draw) ctx.fillText(line, frame.contentX + taglineOffset.dx, cursorY + taglineOffset.dy);
   }
-  pushHotspot(hotspots, "slide0.tagline", frame.contentX, frame.contentW, taglineFirst, cursorY, taglineSize);
+  pushHotspot(hotspots, "slide0.tagline", frame.contentX, frame.contentW, taglineFirst, cursorY, taglineSize, taglineOffset);
 
   return cursorY;
 }
@@ -711,6 +802,7 @@ function drawEditorialParagraphs(
   serifFont: string,
   size: number,
   draw: boolean,
+  positions: CarouselPositions | undefined,
   hotspots?: CarouselHotspot[],
   hotspotId?: string
 ): number {
@@ -718,25 +810,26 @@ function drawEditorialParagraphs(
   if (draw) ctx.fillStyle = style.colors.textPrimary;
   ctx.font = `400 ${Math.round(size)}px ${serifFont}`;
   const lineHeight = size * style.layout.bodyLineHeight;
+  const offset = posFor(positions, hotspotId ?? "");
   let cursorY = startY;
   let firstBaseline = 0;
   for (const paragraph of paragraphs) {
     const lines = wrapText(ctx, paragraph, frame.contentW);
     for (const line of lines) {
       if (cursorY > maxY) {
-        pushHotspot(hotspots, hotspotId ?? "", frame.contentX, frame.contentW, firstBaseline, cursorY, size);
+        pushHotspot(hotspots, hotspotId ?? "", frame.contentX, frame.contentW, firstBaseline, cursorY, size, offset);
         return cursorY;
       }
       cursorY += lineHeight;
       if (firstBaseline === 0) firstBaseline = cursorY;
-      if (draw) ctx.fillText(line, frame.contentX, cursorY);
+      if (draw) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
     }
     // Generous paragraph gap -- distinct visual breaks between grafs
     // rather than a dense block, so the copy occupies its natural share
     // of the frame instead of reading as one cramped paragraph.
     cursorY += lineHeight * 0.85;
   }
-  pushHotspot(hotspots, hotspotId ?? "", frame.contentX, frame.contentW, firstBaseline, cursorY - lineHeight * 0.85, size);
+  pushHotspot(hotspots, hotspotId ?? "", frame.contentX, frame.contentW, firstBaseline, cursorY - lineHeight * 0.85, size, offset);
   return cursorY;
 }
 
@@ -746,10 +839,11 @@ function drawSlide1Understand(
   frame: Frame,
   width: number,
   episode: ComposedEpisode,
-  tamilSerifFont: string,
+  tamilFont: string,
   serifFont: string,
   startY: number,
   draw: boolean,
+  positions: CarouselPositions | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   const transliteration = px(style.slide1.transliterationSize, width);
@@ -758,34 +852,41 @@ function drawSlide1Understand(
   const tamilRef = px(style.slide1.tamilRefSize, width);
   let cursorY = startY;
 
+  // Same Noto Sans Tamil family as the Kural Koorum Aram cover, not the
+  // serif Tamil face -- consistency across the app's Tamil rendering.
   ctx.textAlign = "left";
   if (draw) ctx.fillStyle = style.colors.textPrimary;
-  ctx.font = `700 ${Math.round(tamilRef)}px ${tamilSerifFont}`;
+  ctx.font = `700 ${Math.round(tamilRef)}px ${tamilFont}`;
   cursorY += tamilRef;
-  if (draw) ctx.fillText(episode.tamilText, frame.contentX, cursorY);
-  pushHotspot(hotspots, "slide1.tamilRef", frame.contentX, frame.contentW, cursorY, cursorY, tamilRef);
+  const tamilRefOffset = posFor(positions, "slide1.tamilRef");
+  if (draw) ctx.fillText(episode.tamilText, frame.contentX + tamilRefOffset.dx, cursorY + tamilRefOffset.dy);
+  pushHotspot(hotspots, "slide1.tamilRef", frame.contentX, frame.contentW, cursorY, cursorY, tamilRef, tamilRefOffset);
 
   cursorY += transliteration * 2.4;
   if (draw) ctx.fillStyle = style.colors.textPrimary;
   ctx.font = `700 ${Math.round(transliteration)}px ${serifFont}`;
-  if (draw) ctx.fillText(episode.transliteration, frame.contentX, cursorY);
-  pushHotspot(hotspots, "slide1.transliteration", frame.contentX, frame.contentW, cursorY, cursorY, transliteration);
+  const transliterationOffset = posFor(positions, "slide1.transliteration");
+  if (draw) ctx.fillText(episode.transliteration, frame.contentX + transliterationOffset.dx, cursorY + transliterationOffset.dy);
+  pushHotspot(
+    hotspots,
+    "slide1.transliteration",
+    frame.contentX,
+    frame.contentW,
+    cursorY,
+    cursorY,
+    transliteration,
+    transliterationOffset
+  );
 
   cursorY += transliteration * 2.0;
   if (draw) ctx.fillStyle = style.colors.textSecondary;
   ctx.font = `italic 400 ${Math.round(meaning)}px ${serifFont}`;
-  if (draw) ctx.fillText(episode.simpleMeaning, frame.contentX, cursorY);
-  pushHotspot(hotspots, "slide1.meaning", frame.contentX, frame.contentW, cursorY, cursorY, meaning);
+  const meaningOffset = posFor(positions, "slide1.meaning");
+  if (draw) ctx.fillText(episode.simpleMeaning, frame.contentX + meaningOffset.dx, cursorY + meaningOffset.dy);
+  pushHotspot(hotspots, "slide1.meaning", frame.contentX, frame.contentW, cursorY, cursorY, meaning, meaningOffset);
 
   cursorY += meaning * 2.2;
-  if (draw) {
-    ctx.strokeStyle = style.colors.panelBorder;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(frame.contentX, cursorY);
-    ctx.lineTo(frame.contentX + width * style.layout.dividerLength, cursorY);
-    ctx.stroke();
-  }
+  drawDivider(ctx, style, frame, width, cursorY, draw, positions, "slide1.divider", hotspots);
 
   cursorY += meaning * 2.2;
   return drawEditorialParagraphs(
@@ -798,6 +899,7 @@ function drawSlide1Understand(
     serifFont,
     body,
     draw,
+    positions,
     hotspots,
     "slide1.body"
   );
@@ -812,6 +914,7 @@ function drawSlide2Family(
   serifFont: string,
   startY: number,
   draw: boolean,
+  positions: CarouselPositions | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   return drawEditorialParagraphs(
@@ -824,6 +927,7 @@ function drawSlide2Family(
     serifFont,
     px(style.slide2.bodySize, width),
     draw,
+    positions,
     hotspots,
     "slide2.body"
   );
@@ -838,12 +942,15 @@ function drawSlide3Action(
   serifFont: string,
   startY: number,
   draw: boolean,
+  positions: CarouselPositions | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   const blockStartY = startY;
   const body = px(style.slide3.bodySize, width);
   const questionSize = px(style.slide3.questionSize, width);
   const { before, quoted, after } = splitQuotedAction(episode.todayAction);
+  const { dx, dy } = posFor(positions, "slide3.action");
+  const ox = frame.contentX + dx;
   let cursorY = startY;
 
   if (before) {
@@ -853,7 +960,7 @@ function drawSlide3Action(
     const lines = wrapText(ctx, before, frame.contentW);
     for (const line of lines) {
       cursorY += body * style.layout.bodyLineHeight;
-      if (draw) ctx.fillText(line, frame.contentX, cursorY);
+      if (draw) ctx.fillText(line, ox, cursorY + dy);
     }
     cursorY += body * 1.2;
   }
@@ -874,21 +981,21 @@ function drawSlide3Action(
     ctx.strokeStyle = style.colors.panelBorder;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(frame.contentX, panelY, frame.contentW, panelH, frame.contentW * style.slide3.panelRadius);
+    ctx.roundRect(ox, panelY + dy, frame.contentW, panelH, frame.contentW * style.slide3.panelRadius);
     ctx.fill();
     ctx.stroke();
 
     if (style.slide3.showQuoteMark) {
       ctx.fillStyle = style.colors.textSecondary;
       ctx.font = `700 ${Math.round(frame.contentW * 0.09)}px Georgia, serif`;
-      ctx.fillText("“", frame.contentX + panelPadX * 0.55, panelY + panelPadY + questionSize * 0.75);
+      ctx.fillText("“", ox + panelPadX * 0.55, panelY + dy + panelPadY + questionSize * 0.75);
     }
 
     ctx.fillStyle = style.colors.textPrimary;
     ctx.font = `700 ${Math.round(questionSize)}px ${serifFont}`;
-    let qy = panelY + panelPadY + questionSize * 0.85;
+    let qy = panelY + dy + panelPadY + questionSize * 0.85;
     for (const line of quoteLines) {
-      ctx.fillText(line, frame.contentX + panelPadX, qy);
+      ctx.fillText(line, ox + panelPadX, qy);
       qy += quoteLineHeight;
     }
   }
@@ -901,11 +1008,11 @@ function drawSlide3Action(
     const lines = wrapText(ctx, after, frame.contentW);
     for (const line of lines) {
       cursorY += body * style.layout.bodyLineHeight;
-      if (draw && cursorY <= frame.contentBottom) ctx.fillText(line, frame.contentX, cursorY);
+      if (draw && cursorY <= frame.contentBottom) ctx.fillText(line, ox, cursorY + dy);
     }
   }
   if (draw && hotspots) {
-    hotspots.push({ id: "slide3.action", x: frame.contentX, y: blockStartY, width: frame.contentW, height: cursorY - blockStartY });
+    hotspots.push({ id: "slide3.action", x: ox, y: blockStartY + dy, width: frame.contentW, height: cursorY - blockStartY });
   }
   return cursorY;
 }
@@ -920,6 +1027,7 @@ function drawSlide4Carry(
   displayFont: string,
   startY: number,
   draw: boolean,
+  positions: CarouselPositions | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   const supportSize = px(style.slide4.supportSize, width);
@@ -941,9 +1049,10 @@ function drawSlide4Carry(
   ctx.font = `700 ${Math.round(heroSize)}px ${displayFont}`;
   const leadLines = wrapText(ctx, rest ? `${lead} —` : lead, frame.contentW);
   const leadLineHeight = heroSize * 1.22;
+  const headlineOffset = posFor(positions, "slide4.headline");
   for (const line of leadLines) {
     cursorY += leadLineHeight;
-    if (draw) ctx.fillText(line, frame.contentX, cursorY);
+    if (draw) ctx.fillText(line, frame.contentX + headlineOffset.dx, cursorY + headlineOffset.dy);
   }
 
   if (rest) {
@@ -953,30 +1062,45 @@ function drawSlide4Carry(
     const lines = wrapText(ctx, rest, frame.contentW);
     for (const line of lines) {
       cursorY += supportSize * style.layout.bodyLineHeight;
-      if (draw) ctx.fillText(line, frame.contentX, cursorY);
+      if (draw) ctx.fillText(line, frame.contentX + headlineOffset.dx, cursorY + headlineOffset.dy);
     }
   }
-  pushHotspot(hotspots, "slide4.headline", frame.contentX, frame.contentW, headlineStartY + heroSize, cursorY, heroSize);
+  pushHotspot(
+    hotspots,
+    "slide4.headline",
+    frame.contentX,
+    frame.contentW,
+    headlineStartY + heroSize,
+    cursorY,
+    heroSize,
+    headlineOffset
+  );
 
   cursorY += frame.contentW * 0.11;
-  if (draw) {
-    ctx.strokeStyle = style.colors.panelBorder;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(frame.contentX, cursorY);
-    ctx.lineTo(frame.contentX + width * style.layout.dividerLength, cursorY);
-    ctx.stroke();
-  }
+  drawDivider(ctx, style, frame, width, cursorY, draw, positions, "slide4.divider", hotspots);
   cursorY += frame.contentW * 0.09;
 
   if (episode.distantDevotionConnection) {
     if (draw) ctx.fillStyle = style.colors.textSecondary;
     ctx.font = `400 ${Math.round(supportSize)}px ${serifFont}`;
     const lines = wrapText(ctx, episode.distantDevotionConnection, frame.contentW);
+    const connectionOffset = posFor(positions, "slide4.connection");
+    let connectionFirst = 0;
     for (const line of lines) {
       cursorY += supportSize * style.layout.bodyLineHeight;
-      if (draw) ctx.fillText(line, frame.contentX, cursorY);
+      if (connectionFirst === 0) connectionFirst = cursorY;
+      if (draw) ctx.fillText(line, frame.contentX + connectionOffset.dx, cursorY + connectionOffset.dy);
     }
+    pushHotspot(
+      hotspots,
+      "slide4.connection",
+      frame.contentX,
+      frame.contentW,
+      connectionFirst,
+      cursorY,
+      supportSize,
+      connectionOffset
+    );
     cursorY += frame.contentW * 0.06;
   }
 
@@ -985,14 +1109,15 @@ function drawSlide4Carry(
   if (draw) ctx.fillStyle = style.colors.textSecondary;
   ctx.font = `700 ${Math.round(ctaSize)}px ${serifFont}`;
   const ctaLines = wrapText(ctx, episode.cta.copy, frame.contentW);
+  const ctaOffset = posFor(positions, "slide4.cta");
   let ctaY = cursorY;
   let ctaFirst = 0;
   for (const line of ctaLines) {
     ctaY += ctaSize * 1.4;
     if (ctaFirst === 0) ctaFirst = ctaY;
-    if (draw) ctx.fillText(line, frame.contentX, ctaY);
+    if (draw) ctx.fillText(line, frame.contentX + ctaOffset.dx, ctaY + ctaOffset.dy);
   }
-  pushHotspot(hotspots, "slide4.cta", frame.contentX, frame.contentW, ctaFirst, ctaY, ctaSize);
+  pushHotspot(hotspots, "slide4.cta", frame.contentX, frame.contentW, ctaFirst, ctaY, ctaSize, ctaOffset);
   return ctaY;
 }
 
@@ -1011,25 +1136,26 @@ function layoutSlide(
   width: number,
   episode: ComposedEpisode,
   slideIndex: number,
-  tamilSerifFont: string,
+  tamilFont: string,
   serifFont: string,
   displayFont: string,
   startY: number,
   draw: boolean,
+  positions: CarouselPositions | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   switch (slideIndex) {
     case 0:
-      return drawSlide0Stop(ctx, style, frame, width, episode, tamilSerifFont, serifFont, startY, draw, hotspots);
+      return drawSlide0Stop(ctx, style, frame, width, episode, tamilFont, serifFont, startY, draw, positions, hotspots);
     case 1:
-      return drawSlide1Understand(ctx, style, frame, width, episode, tamilSerifFont, serifFont, startY, draw, hotspots);
+      return drawSlide1Understand(ctx, style, frame, width, episode, tamilFont, serifFont, startY, draw, positions, hotspots);
     case 2:
-      return drawSlide2Family(ctx, style, frame, width, episode, serifFont, startY, draw, hotspots);
+      return drawSlide2Family(ctx, style, frame, width, episode, serifFont, startY, draw, positions, hotspots);
     case 3:
-      return drawSlide3Action(ctx, style, frame, width, episode, serifFont, startY, draw, hotspots);
+      return drawSlide3Action(ctx, style, frame, width, episode, serifFont, startY, draw, positions, hotspots);
     case 4:
     default:
-      return drawSlide4Carry(ctx, style, frame, width, episode, serifFont, displayFont, startY, draw, hotspots);
+      return drawSlide4Carry(ctx, style, frame, width, episode, serifFont, displayFont, startY, draw, positions, hotspots);
   }
 }
 
@@ -1041,14 +1167,19 @@ export function renderAathichoodiCarouselSlide(
   ctx: CanvasRenderingContext2D,
   opts: RenderCarouselSlideOptions
 ): CarouselHotspot[] {
-  const { width, height, slideIndex, tamilSerifFont, serifFont, sansFont, displayFont } = opts;
+  // Tamil glyphs use the same Noto Sans Tamil family as the Kural Koorum
+  // Aram cover (opts.tamilFont), not the serif Tamil face (opts.
+  // tamilSerifFont, now unused here) -- explicit founder direction for
+  // consistency across the app's Tamil rendering, current and future.
+  const { width, height, slideIndex, tamilFont, serifFont, sansFont, displayFont } = opts;
   const style = resolveStyle(opts.design?.style);
   const episode = applyTextOverrides(opts.episode, opts.design?.text);
   const frame = computeFrame(style, width, height, slideIndex);
+  const positions = opts.design?.positions;
   const hotspots: CarouselHotspot[] = [];
 
   drawSurface(ctx, width, height, style.colors);
-  drawHeader(ctx, style, frame, width, height, slideIndex, sansFont, hotspots);
+  drawHeader(ctx, style, frame, width, height, slideIndex, sansFont, positions, hotspots);
 
   ctx.textBaseline = "alphabetic";
 
@@ -1059,11 +1190,12 @@ export function renderAathichoodiCarouselSlide(
     width,
     episode,
     slideIndex,
-    tamilSerifFont,
+    tamilFont,
     serifFont,
     displayFont,
     frame.contentTop,
-    false
+    false,
+    positions
   );
   const contentHeight = measuredEndY - frame.contentTop;
   const available = frame.contentBottom - frame.contentTop;
@@ -1077,15 +1209,16 @@ export function renderAathichoodiCarouselSlide(
     width,
     episode,
     slideIndex,
-    tamilSerifFont,
+    tamilFont,
     serifFont,
     displayFont,
     balancedStartY,
     true,
+    positions,
     hotspots
   );
 
-  drawFooterLockup(ctx, style, frame, width, height, sansFont, opts, hotspots);
+  drawFooterLockup(ctx, style, frame, width, height, sansFont, opts, positions, hotspots);
 
   return hotspots;
 }

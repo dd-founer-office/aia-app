@@ -47,7 +47,8 @@
  * appears in both the preview and every export with no further code change.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import KuralHeroCanvas, {
   KKA_LOGO_PATH,
   AIA_KOLAM_MARK_PATH,
@@ -101,12 +102,15 @@ import {
   type Slide3Style,
   type Slide4Style,
   type CarouselHotspot,
+  type CarouselPositions,
 } from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
 import {
   loadStyleOverrides,
   saveStyleOverrides,
   loadTextOverrides,
   saveTextOverrides,
+  loadPositions,
+  savePositions,
   buildDesignOverrides,
 } from "@/lib/kural-publishing/aathichoodi-carousel-design-store";
 
@@ -413,6 +417,9 @@ export default function PublishingWorkspace() {
   // survive a reload; see aathichoodi-carousel-design-store.ts.
   const [styleOverrides, setStyleOverrides] = useState<CarouselStyleOverrides>(() => loadStyleOverrides());
   const [textOverrides, setTextOverrides] = useState<CarouselTextOverrides>(() => loadTextOverrides(1));
+  // Per-element drag nudges (see CarouselPositionOverride) -- shared across
+  // episodes like style, since they describe the design system's layout.
+  const [positionOverrides, setPositionOverrides] = useState<CarouselPositions>(() => loadPositions());
 
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
@@ -544,10 +551,13 @@ export default function PublishingWorkspace() {
   useEffect(() => {
     if (composedEpisode) saveTextOverrides(composedEpisode.episodeNumber, textOverrides);
   }, [textOverrides, composedEpisode]);
+  useEffect(() => {
+    savePositions(positionOverrides);
+  }, [positionOverrides]);
 
   const carouselDesign = useMemo(
-    () => buildDesignOverrides(styleOverrides, textOverrides),
-    [styleOverrides, textOverrides]
+    () => buildDesignOverrides(styleOverrides, textOverrides, positionOverrides),
+    [styleOverrides, textOverrides, positionOverrides]
   );
   const resolvedStyle = useMemo(() => resolveStyle(styleOverrides), [styleOverrides]);
 
@@ -585,25 +595,30 @@ export default function PublishingWorkspace() {
   const patchText3 = useCallback((todayAction: string) => {
     setTextOverrides((prev) => ({ ...prev, slide3: { todayAction } }));
   }, []);
-  const patchText4 = useCallback((patch: { aiaConnection?: string; ctaCopy?: string }) => {
-    setTextOverrides((prev) => ({ ...prev, slide4: { ...prev.slide4, ...patch } }));
-  }, []);
+  const patchText4 = useCallback(
+    (patch: { aiaConnection?: string; ctaCopy?: string; distantDevotionConnection?: string }) => {
+      setTextOverrides((prev) => ({ ...prev, slide4: { ...prev.slide4, ...patch } }));
+    },
+    []
+  );
 
   const handleResetDesign = useCallback(() => {
     setStyleOverrides({});
     saveStyleOverrides({});
     setTextOverrides({});
     if (composedEpisode) saveTextOverrides(composedEpisode.episodeNumber, {});
+    setPositionOverrides({});
+    savePositions({});
   }, [composedEpisode]);
 
   const handleCopyDesignJSON = useCallback(() => {
-    const json = JSON.stringify({ style: styleOverrides, text: textOverrides }, null, 2);
+    const json = JSON.stringify({ style: styleOverrides, text: textOverrides, positions: positionOverrides }, null, 2);
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(json).catch(() => {
         /* clipboard permission unavailable */
       });
     }
-  }, [styleOverrides, textOverrides]);
+  }, [styleOverrides, textOverrides, positionOverrides]);
 
   // Click-to-edit overlay: KuralHeroCanvas reports the current slide's
   // clickable regions (canvas-pixel space) after every repaint; clicking
@@ -623,6 +638,13 @@ export default function PublishingWorkspace() {
     textPlaceholder?: string;
     onTextChange?: (v: string) => void;
     sizeFields: HotspotSizeField[];
+    /** For text-editable hotspots only -- lets the in-canvas edit overlay
+     *  approximate the drawn text's font (CSS variable name, e.g.
+     *  "--font-serif") and size (1080-reference px, same scale as the
+     *  renderer's own px() helper) so typing in place looks close to the
+     *  real render instead of using a generic form-field font. */
+    fontVar?: string;
+    refSize?: number;
   }
 
   const getHotspotConfig = useCallback(
@@ -639,6 +661,8 @@ export default function PublishingWorkspace() {
             textValue: resolvedStyle.slide1.sectionHeadingText,
             onTextChange: (v) => patchSlide1("sectionHeadingText", v),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide1.sectionHeadingSize, onChange: (v) => patchSlide1("sectionHeadingSize", v) }],
+            fontVar: "--font-sans",
+            refSize: resolvedStyle.slide1.sectionHeadingSize,
           };
         case "slide2.sectionHeading":
           return {
@@ -646,6 +670,8 @@ export default function PublishingWorkspace() {
             textValue: resolvedStyle.slide2.sectionHeadingText,
             onTextChange: (v) => patchSlide2("sectionHeadingText", v),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide2.sectionHeadingSize, onChange: (v) => patchSlide2("sectionHeadingSize", v) }],
+            fontVar: "--font-sans",
+            refSize: resolvedStyle.slide2.sectionHeadingSize,
           };
         case "slide3.sectionHeading":
           return {
@@ -653,6 +679,8 @@ export default function PublishingWorkspace() {
             textValue: resolvedStyle.slide3.sectionHeadingText,
             onTextChange: (v) => patchSlide3("sectionHeadingText", v),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide3.sectionHeadingSize, onChange: (v) => patchSlide3("sectionHeadingSize", v) }],
+            fontVar: "--font-sans",
+            refSize: resolvedStyle.slide3.sectionHeadingSize,
           };
         case "slide0.hero":
           return {
@@ -669,6 +697,8 @@ export default function PublishingWorkspace() {
             textPlaceholder: displayEpisode?.hook,
             onTextChange: patchText0,
             sizeFields: [{ label: "Size", value: resolvedStyle.slide0.hookSize, onChange: (v) => patchSlide0("hookSize", v) }],
+            fontVar: "--font-serif",
+            refSize: resolvedStyle.slide0.hookSize,
           };
         case "slide0.tagline":
           return {
@@ -676,6 +706,8 @@ export default function PublishingWorkspace() {
             textValue: resolvedStyle.slide0.tagline,
             onTextChange: (v) => patchSlide0("tagline", v),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide0.taglineSize, onChange: (v) => patchSlide0("taglineSize", v) }],
+            fontVar: "--font-serif",
+            refSize: resolvedStyle.slide0.taglineSize,
           };
         case "slide1.tamilRef":
           return {
@@ -699,6 +731,8 @@ export default function PublishingWorkspace() {
             textPlaceholder: displayEpisode?.understanding,
             onTextChange: patchText1,
             sizeFields: [{ label: "Size", value: resolvedStyle.slide1.bodySize, onChange: (v) => patchSlide1("bodySize", v) }],
+            fontVar: "--font-serif",
+            refSize: resolvedStyle.slide1.bodySize,
           };
         case "slide2.body":
           return {
@@ -707,6 +741,8 @@ export default function PublishingWorkspace() {
             textPlaceholder: displayEpisode?.familyAngle,
             onTextChange: patchText2,
             sizeFields: [{ label: "Size", value: resolvedStyle.slide2.bodySize, onChange: (v) => patchSlide2("bodySize", v) }],
+            fontVar: "--font-serif",
+            refSize: resolvedStyle.slide2.bodySize,
           };
         case "slide3.action":
           return {
@@ -718,6 +754,8 @@ export default function PublishingWorkspace() {
               { label: "Body size", value: resolvedStyle.slide3.bodySize, onChange: (v) => patchSlide3("bodySize", v) },
               { label: "Question size", value: resolvedStyle.slide3.questionSize, onChange: (v) => patchSlide3("questionSize", v) },
             ],
+            fontVar: "--font-serif",
+            refSize: resolvedStyle.slide3.bodySize,
           };
         case "slide4.headline":
           return {
@@ -726,6 +764,18 @@ export default function PublishingWorkspace() {
             textPlaceholder: displayEpisode?.aiaConnection,
             onTextChange: (v) => patchText4({ aiaConnection: v }),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide4.heroSize, onChange: (v) => patchSlide4("heroSize", v) }],
+            fontVar: "--font-display",
+            refSize: resolvedStyle.slide4.heroSize,
+          };
+        case "slide4.connection":
+          return {
+            label: "Distant Devotion connection line",
+            textValue: textOverrides.slide4?.distantDevotionConnection ?? "",
+            textPlaceholder: displayEpisode?.distantDevotionConnection,
+            onTextChange: (v) => patchText4({ distantDevotionConnection: v }),
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide4.supportSize, onChange: (v) => patchSlide4("supportSize", v) }],
+            fontVar: "--font-serif",
+            refSize: resolvedStyle.slide4.supportSize,
           };
         case "slide4.cta":
           return {
@@ -734,6 +784,8 @@ export default function PublishingWorkspace() {
             textPlaceholder: displayEpisode?.cta.copy,
             onTextChange: (v) => patchText4({ ctaCopy: v }),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide4.ctaSize, onChange: (v) => patchSlide4("ctaSize", v) }],
+            fontVar: "--font-serif",
+            refSize: resolvedStyle.slide4.ctaSize,
           };
         case "footer.brandName":
           return {
@@ -771,6 +823,83 @@ export default function PublishingWorkspace() {
     availableFormats.find((f) => f.id === activePreviewFormatId) ??
     availableFormats[0] ??
     ASSET_FORMATS[0];
+
+  // Drag-to-reposition: the preview container's own rendered width/height
+  // (not the canvas's internal pixel resolution) is what a screen-pixel
+  // pointer delta needs scaling against to land in canvas-pixel space --
+  // see KuralHeroCanvas's `width: 100%, height: auto` canvas styling, which
+  // is exactly what makes the container's own box the right reference.
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  // Tracked in state (never read from the ref during render -- refs are for
+  // effects/handlers only) so the in-canvas text editor's font-size
+  // approximation can react to the container's actual displayed width.
+  const [previewContainerWidth, setPreviewContainerWidth] = useState(0);
+  useEffect(() => {
+    const el = previewContainerRef.current;
+    if (!el) return;
+    const update = () => setPreviewContainerWidth(el.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [effectiveTemplate, previewFormat.id]);
+  const dragStateRef = useRef<{
+    id: string;
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    startDx: number;
+    startDy: number;
+    moved: boolean;
+    scaleX: number;
+    scaleY: number;
+  } | null>(null);
+
+  const handleHotspotPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>, hotspotId: string) => {
+      const container = previewContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const current = positionOverrides[hotspotId] ?? { dx: 0, dy: 0 };
+      dragStateRef.current = {
+        id: hotspotId,
+        pointerId: e.pointerId,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startDx: current.dx,
+        startDy: current.dy,
+        moved: false,
+        scaleX: previewFormat.width / rect.width,
+        scaleY: previewFormat.height / rect.height,
+      };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [positionOverrides, previewFormat.width, previewFormat.height]
+  );
+
+  const handleHotspotPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragStateRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const deltaClientX = e.clientX - drag.startClientX;
+    const deltaClientY = e.clientY - drag.startClientY;
+    if (!drag.moved && Math.hypot(deltaClientX, deltaClientY) < 4) return;
+    drag.moved = true;
+    const dx = drag.startDx + deltaClientX * drag.scaleX;
+    const dy = drag.startDy + deltaClientY * drag.scaleY;
+    setPositionOverrides((prev) => ({ ...prev, [drag.id]: { dx, dy } }));
+  }, []);
+
+  const handleHotspotPointerUp = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>, hotspotId: string) => {
+      const drag = dragStateRef.current;
+      dragStateRef.current = null;
+      if (drag?.moved) return; // Drag already applied live -- nothing else to do.
+      // A plain click (no movement) toggles this hotspot's editor.
+      setActiveHotspotId((prev) => (prev === hotspotId ? null : hotspotId));
+    },
+    [setActiveHotspotId]
+  );
 
   const handleKuralFieldChange = useCallback(
     (key: ContentField, value: string) => {
@@ -1397,7 +1526,14 @@ export default function PublishingWorkspace() {
           Preview — {previewFormat.label}, exports at exactly{" "}
           {previewFormat.width}×{previewFormat.height}px
         </p>
+        {effectiveTemplate === "aathichoodi-carousel" && (
+          <p className="mb-2 text-[10px] text-[var(--color-muted-foreground)]">
+            Drag any highlighted element (including the thin divider lines) to reposition it. Click text to edit it
+            right there on the canvas — press Enter for a new line.
+          </p>
+        )}
         <div
+          ref={previewContainerRef}
           className={`relative mx-auto ${
             previewFormat.width >= previewFormat.height
               ? "max-w-4xl"
@@ -1415,24 +1551,31 @@ export default function PublishingWorkspace() {
             onCarouselHotspots={effectiveTemplate === "aathichoodi-carousel" ? setHotspots : undefined}
           />
           {effectiveTemplate === "aathichoodi-carousel" && (
-            <div className="pointer-events-none absolute inset-0">
+            <div className="absolute inset-0">
               {hotspots.map((h) => {
                 const leftPct = (h.x / previewFormat.width) * 100;
                 const topPct = (h.y / previewFormat.height) * 100;
                 const wPct = (h.width / previewFormat.width) * 100;
                 const hPct = (h.height / previewFormat.height) * 100;
                 const active = activeHotspotId === h.id;
+                // The active text hotspot's own overlay button is hidden --
+                // the inline textarea below takes its place at the exact
+                // same position while editing.
+                if (active && getHotspotConfig(h.id)?.onTextChange) return null;
                 return (
-                  <button
+                  <div
                     key={h.id}
-                    type="button"
-                    title="Click to edit"
-                    onClick={() => setActiveHotspotId(active ? null : h.id)}
-                    className={`pointer-events-auto absolute rounded-sm border-2 transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 ${
+                    role="button"
+                    tabIndex={0}
+                    title="Drag to move, click to edit"
+                    onPointerDown={(e) => handleHotspotPointerDown(e, h.id)}
+                    onPointerMove={handleHotspotPointerMove}
+                    onPointerUp={(e) => handleHotspotPointerUp(e, h.id)}
+                    className={`absolute touch-none select-none rounded-sm border-2 transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 ${
                       active ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10" : "border-transparent"
                     }`}
-                    style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, height: `${hPct}%` }}
-                    aria-label={`Edit ${h.id}`}
+                    style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, height: `${hPct}%`, cursor: "grab" }}
+                    aria-label={`Move or edit ${h.id}`}
                   />
                 );
               })}
@@ -1444,11 +1587,61 @@ export default function PublishingWorkspace() {
               const h = hotspots.find((x) => x.id === activeHotspotId);
               const config = h ? getHotspotConfig(activeHotspotId) : null;
               if (!h || !config) return null;
-              const topPct = ((h.y + h.height) / previewFormat.height) * 100;
+              const leftPct = (h.x / previewFormat.width) * 100;
+              const topPct = (h.y / previewFormat.height) * 100;
+              const wPct = (h.width / previewFormat.width) * 100;
+              const hPct = (h.height / previewFormat.height) * 100;
+
+              if (config.onTextChange) {
+                // True in-canvas editing: a borderless textarea sitting
+                // exactly where the text is drawn, roughly matching its
+                // font/size/color, instead of a separate form field
+                // elsewhere in the UI. Enter inserts a real newline (a
+                // plain textarea's native behavior) -- never submits
+                // anything, since this isn't inside a <form>.
+                const containerWidthPx = previewContainerWidth || previewFormat.width;
+                const fontPx = config.refSize ? (config.refSize / 1080) * containerWidthPx : undefined;
+                return (
+                  <div
+                    className="absolute z-10"
+                    style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, minWidth: "40px" }}
+                  >
+                    <textarea
+                      autoFocus
+                      value={config.textValue || ""}
+                      placeholder={config.textPlaceholder}
+                      onChange={(e) => config.onTextChange?.(e.target.value)}
+                      onBlur={() => setActiveHotspotId(null)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") e.currentTarget.blur();
+                      }}
+                      ref={(el) => {
+                        if (!el) return;
+                        el.style.height = "auto";
+                        el.style.height = `${el.scrollHeight}px`;
+                      }}
+                      className="w-full resize-none overflow-hidden rounded-sm border-2 px-1 py-0.5 leading-tight outline-none"
+                      style={{
+                        minHeight: `${hPct}%`,
+                        fontFamily: `var(${config.fontVar ?? "--font-serif"})`,
+                        fontSize: fontPx ? `${Math.max(fontPx, 10)}px` : undefined,
+                        color: resolvedStyle.colors.textPrimary,
+                        backgroundColor: resolvedStyle.colors.background,
+                        borderColor: "var(--color-primary)",
+                      }}
+                    />
+                  </div>
+                );
+              }
+
+              // Canonical/fixed-size hotspots (no live text to edit inline)
+              // keep the small floating popover with just size steppers,
+              // positioned below the element.
+              const belowPct = ((h.y + h.height) / previewFormat.height) * 100;
               return (
                 <div
                   className="absolute left-2 right-2 z-10 rounded-[var(--radius-photo)] border border-[var(--color-primary)] bg-[var(--color-card)] p-3 shadow-lg"
-                  style={{ top: `calc(${topPct}% + 6px)` }}
+                  style={{ top: `calc(${belowPct}% + 6px)` }}
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-semibold text-[var(--color-foreground)]">{config.label}</span>
@@ -1460,16 +1653,7 @@ export default function PublishingWorkspace() {
                       ✕
                     </button>
                   </div>
-                  {config.onTextChange && (
-                    <TextAreaField
-                      label="Text"
-                      value={config.textValue ?? ""}
-                      placeholder={config.textPlaceholder}
-                      onChange={config.onTextChange}
-                      rows={3}
-                    />
-                  )}
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {config.sizeFields.map((f) => (
                       <NumField key={f.label} label={f.label} value={f.value} onChange={f.onChange} />
                     ))}
@@ -1478,6 +1662,15 @@ export default function PublishingWorkspace() {
               );
             })()}
         </div>
+        {effectiveTemplate === "aathichoodi-carousel" && (
+          <button
+            type="button"
+            onClick={() => setPositionOverrides({})}
+            className="mt-2 text-[10px] font-medium text-[var(--color-muted-foreground)] underline"
+          >
+            Reset dragged positions
+          </button>
+        )}
 
         <div className="mt-8">
           <div className="mb-3 flex items-center justify-between">

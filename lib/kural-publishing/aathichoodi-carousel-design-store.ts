@@ -11,10 +11,18 @@
 
 "use client";
 
-import type { CarouselDesignOverrides, CarouselStyleOverrides, CarouselTextOverrides } from "./aathichoodi-carousel-renderer";
+import type {
+  CarouselDesignOverrides,
+  CarouselPositions,
+  CarouselStyleOverrides,
+  CarouselTextOverrides,
+} from "./aathichoodi-carousel-renderer";
 
 const STYLE_STORAGE_KEY = "aia-aathichoodi-carousel-style-v1";
 const TEXT_STORAGE_KEY_PREFIX = "aia-aathichoodi-carousel-text-v1-";
+// Drag positions are shared across episodes, same as style -- they describe
+// the design SYSTEM's layout, not one episode's content.
+const POSITIONS_STORAGE_KEY = "aia-aathichoodi-carousel-positions-v1";
 
 export function loadStyleOverrides(): CarouselStyleOverrides {
   if (typeof window === "undefined") return {};
@@ -54,9 +62,29 @@ export function saveTextOverrides(episodeNumber: number, text: CarouselTextOverr
   }
 }
 
+export function loadPositions(): CarouselPositions {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(POSITIONS_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as CarouselPositions) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function savePositions(positions: CarouselPositions): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(positions));
+  } catch {
+    /* storage unavailable (private browsing, quota) -- edits just won't persist */
+  }
+}
+
 export function buildDesignOverrides(
   style: CarouselStyleOverrides,
-  text: CarouselTextOverrides
+  text: CarouselTextOverrides,
+  positions: CarouselPositions
 ): CarouselDesignOverrides {
-  return { style, text };
+  return { style, text, positions };
 }
