@@ -160,7 +160,11 @@ export interface CarouselTextOverrides {
    *  question, and a trailing line (see splitQuotedAction) -- each is its
    *  own separately draggable/editable text box (see drawSlide3Action). */
   slide3?: { before?: string; question?: string; after?: string };
-  slide4?: { aiaConnection?: string; ctaCopy?: string; distantDevotionConnection?: string };
+  /** aiaConnection's generated copy splits at an em dash into a heavier
+   *  lead clause and a lighter trailing clause (see drawSlide4Carry) --
+   *  each is its own separately draggable/editable text box, same pattern
+   *  as Slide 4's before/question/after. */
+  slide4?: { headline?: string; support?: string; ctaCopy?: string; distantDevotionConnection?: string };
 }
 
 /** A drag nudge applied on top of an element's own computed flow position --
@@ -175,14 +179,21 @@ export interface CarouselPositionOverride {
 }
 export type CarouselPositions = Record<string, CarouselPositionOverride>;
 
-/** Bold/italic toggle for one element, keyed by the same hotspot id as
- *  CarouselPositions -- undefined means "use this element's own default
- *  weight/style" (most elements are already deliberately bold or italic by
- *  design; this only overrides that choice when the founder explicitly
- *  sets it). */
+/** Per-element style toggle, keyed by the same hotspot id as
+ *  CarouselPositions -- undefined fields mean "use this element's own
+ *  default" (most elements are already deliberately bold/regular or
+ *  upright/italic by design; bold/italic only override that choice when
+ *  the founder explicitly sets it). `size` matters specifically for
+ *  elements that share ONE style field across several hotspots -- e.g.
+ *  each "Family Situation" paragraph (slide2.body.N) or Slide 4's
+ *  before/after lines all read their base size from one Slide*Style field,
+ *  so without a per-id override, resizing one would resize all of them.
+ *  An element with its own dedicated style field (most of them) never
+ *  needs this -- its one hotspot already maps 1:1 to that field. */
 export interface CarouselTextEmphasis {
   bold?: boolean;
   italic?: boolean;
+  size?: number;
 }
 export type CarouselTextEmphases = Record<string, CarouselTextEmphasis>;
 
@@ -266,10 +277,14 @@ function pushHotspot(
   });
 }
 
-/** Draws one of the thin muted divider rules used between sections
- *  throughout the carousel, and registers it as its own draggable hotspot
- *  (a bare line has ~0 height, so the hotspot gets generous fixed padding
- *  rather than the font-size-based padding pushHotspot uses for text). */
+/** Draws one of the muted divider rules used between sections throughout
+ *  the carousel, and registers it as its own draggable hotspot (a bare
+ *  line has ~0 height, so the hotspot gets generous fixed padding rather
+ *  than the font-size-based padding pushHotspot uses for text). Same
+ *  thickness formula as the header's own accent rule (the "top divider")
+ *  and the surrounding body text's colour, rather than the barely-visible
+ *  translucent panel-border tone -- and a bit longer, so it reads clearly
+ *  against the dark background instead of disappearing into it. */
 function drawDivider(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
@@ -282,10 +297,10 @@ function drawDivider(
   hotspots?: CarouselHotspot[]
 ): void {
   const { dx, dy } = posFor(positions, id);
-  const lineLength = width * style.layout.dividerLength;
+  const lineLength = width * style.layout.dividerLength * 1.3;
   if (draw) {
-    ctx.strokeStyle = style.colors.panelBorder;
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = style.colors.textSecondary;
+    ctx.lineWidth = Math.max(1.5, width * 0.003);
     ctx.beginPath();
     ctx.moveTo(frame.contentX + dx, y + dy);
     ctx.lineTo(frame.contentX + dx + lineLength, y + dy);
@@ -379,15 +394,15 @@ export function resolveStyle(overrides?: CarouselStyleOverrides): CarouselStyle 
 function applyTextOverrides(episode: ComposedEpisode, text?: CarouselTextOverrides): ComposedEpisode {
   if (!text) return episode;
   const ctaCopy = text.slide4?.ctaCopy;
-  // familyAngle and todayAction are NOT patched here -- their per-paragraph
-  // / per-segment overrides (slide2.paragraphs, slide3.before/question/
-  // after) are applied directly in drawSlide2Family/drawSlide3Action
-  // instead, since they no longer fit a single whole-string replacement.
+  // familyAngle, todayAction, and aiaConnection are NOT patched here --
+  // their per-paragraph / per-segment overrides (slide2.paragraphs,
+  // slide3.before/question/after, slide4.headline/support) are applied
+  // directly in drawSlide2Family/drawSlide3Action/drawSlide4Carry instead,
+  // since they no longer fit a single whole-string replacement.
   return {
     ...episode,
     hook: text.slide0?.hook || episode.hook,
     understanding: text.slide1?.understanding || episode.understanding,
-    aiaConnection: text.slide4?.aiaConnection || episode.aiaConnection,
     distantDevotionConnection: text.slide4?.distantDevotionConnection || episode.distantDevotionConnection,
     cta: ctaCopy ? { ...episode.cta, copy: ctaCopy } : episode.cta,
   };
@@ -581,8 +596,16 @@ function headerMetrics(style: CarouselStyle, width: number, height: number, slid
   const dividerY = marginY + eyebrow * 1.5;
   const hasHeading = Boolean(headingText);
   const headingY = dividerY + heading * 1.7;
-  const headerBottom = hasHeading ? headingY + heading * 0.6 : dividerY + heading * 0.6;
-  return { marginX, marginY, eyebrow, heading, headingText, dividerY, hasHeading, headingY, headerBottom };
+  // A manual "\n" in the heading (typed via the in-canvas editor) forces a
+  // second line -- headerBottom (and therefore where the slide's own
+  // content starts) grows to match, so a two-line heading never overlaps
+  // the body copy below it. A single-line heading (headingLines.length===1)
+  // reproduces the original headerBottom formula exactly.
+  const headingLines = headingText ? headingText.split("\n") : [];
+  const headingLineHeight = heading * 1.3;
+  const headingBlockExtra = headingLines.length > 1 ? (headingLines.length - 1) * headingLineHeight : 0;
+  const headerBottom = hasHeading ? headingY + headingBlockExtra + heading * 0.6 : dividerY + heading * 0.6;
+  return { marginX, marginY, eyebrow, heading, headingText, headingLines, headingLineHeight, dividerY, hasHeading, headingY, headerBottom };
 }
 
 function computeFrame(style: CarouselStyle, width: number, height: number, slideIndex: number): Frame {
@@ -609,7 +632,12 @@ function drawHeader(
   emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[]
 ): void {
-  const { eyebrow, heading, headingText, dividerY } = headerMetrics(style, width, height, slideIndex);
+  const { eyebrow, heading, headingText, headingLines, headingLineHeight, dividerY, headingY } = headerMetrics(
+    style,
+    width,
+    height,
+    slideIndex
+  );
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
 
@@ -665,15 +693,20 @@ function drawHeader(
       /* no-op */
     }
     ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(700, headingEmphasis)} ${Math.round(heading)}px ${sansFont}`;
-    const headingLineY = dividerY + heading * 1.7;
-    ctx.fillText(headingText, frame.contentX + headingOffset.dx, headingLineY + headingOffset.dy);
+    let headingCursorY = headingY;
+    let headingFirst = 0;
+    for (const line of headingLines) {
+      if (headingFirst === 0) headingFirst = headingCursorY;
+      ctx.fillText(line, frame.contentX + headingOffset.dx, headingCursorY + headingOffset.dy);
+      headingCursorY += headingLineHeight;
+    }
     pushHotspot(
       hotspots,
       `slide${slideIndex}.sectionHeading`,
       frame.contentX,
       frame.contentW,
-      headingLineY,
-      headingLineY,
+      headingFirst,
+      headingCursorY - headingLineHeight,
       heading,
       headingOffset
     );
@@ -1002,8 +1035,6 @@ function drawSlide2Family(
   hotspots?: CarouselHotspot[]
 ): number {
   const generatedParagraphs = splitEditorialParagraphs(episode.familyAngle);
-  const size = px(style.slide2.bodySize, width);
-  const lineHeight = size * style.layout.bodyLineHeight;
   let cursorY = startY;
 
   for (let i = 0; i < generatedParagraphs.length; i++) {
@@ -1012,6 +1043,11 @@ function drawSlide2Family(
     const text = overrideParagraphs?.[i] || generatedParagraphs[i];
     const offset = posFor(positions, id);
     const emphasis = emphasisFor(emphases, id);
+    // Own size per paragraph (emphasis.size), not the shared
+    // style.slide2.bodySize -- otherwise resizing one paragraph would
+    // resize every paragraph, since they'd all be reading the same field.
+    const size = px(emphasis.size ?? style.slide2.bodySize, width);
+    const lineHeight = size * style.layout.bodyLineHeight;
     if (draw) ctx.fillStyle = style.colors.textPrimary;
     ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${serifFont}`;
     const lines = wrapText(ctx, text, frame.contentW);
@@ -1050,8 +1086,6 @@ function drawSlide3Action(
   overrides: { before?: string; question?: string; after?: string } | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
-  const body = px(style.slide3.bodySize, width);
-  const questionSize = px(style.slide3.questionSize, width);
   const generated = splitQuotedAction(episode.todayAction);
   const before = overrides?.before || generated.before;
   const quoted = overrides?.question || generated.quoted;
@@ -1062,18 +1096,22 @@ function drawSlide3Action(
     const id = "slide3.before";
     const offset = posFor(positions, id);
     const emphasis = emphasisFor(emphases, id);
+    // Own size (emphasis.size), not the shared style.slide3.bodySize --
+    // otherwise resizing this line would also resize the trailing line,
+    // since both would be reading the same field.
+    const beforeSize = px(emphasis.size ?? style.slide3.bodySize, width);
     ctx.textAlign = "left";
     if (draw) ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(body)}px ${serifFont}`;
+    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(beforeSize)}px ${serifFont}`;
     const lines = wrapText(ctx, before, frame.contentW);
     let firstBaseline = 0;
     for (const line of lines) {
-      cursorY += body * style.layout.bodyLineHeight;
+      cursorY += beforeSize * style.layout.bodyLineHeight;
       if (firstBaseline === 0) firstBaseline = cursorY;
       if (draw) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
     }
-    pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, body, offset);
-    cursorY += body * 1.2;
+    pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, beforeSize, offset);
+    cursorY += beforeSize * 1.2;
   }
 
   // Translucent glass-effect highlight panel, optionally with a small
@@ -1084,6 +1122,7 @@ function drawSlide3Action(
   const qEmphasis = emphasisFor(emphases, questionId);
   const qStyle = styleFor(false, qEmphasis);
   const qWeight = weightFor(700, qEmphasis);
+  const questionSize = px(qEmphasis.size ?? style.slide3.questionSize, width);
   const panelPadX = frame.contentW * style.slide3.panelPadX;
   const panelPadY = frame.contentW * style.slide3.panelPadY;
   ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${serifFont}`;
@@ -1120,26 +1159,35 @@ function drawSlide3Action(
     hotspots.push({ id: questionId, x: qx, y: panelY + qOffset.dy, width: frame.contentW, height: panelH });
   }
 
-  cursorY = panelY + panelH + body * 1.3;
+  // Generic spacing gap below the panel -- not tied to any one element's
+  // own (possibly overridden) size, so it stays based on the shared style
+  // field rather than "before" or "after"'s individual size.
+  cursorY = panelY + panelH + px(style.slide3.bodySize, width) * 1.3;
 
   if (after) {
     const id = "slide3.after";
     const offset = posFor(positions, id);
     const emphasis = emphasisFor(emphases, id);
+    const afterSize = px(emphasis.size ?? style.slide3.bodySize, width);
     if (draw) ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(body)}px ${serifFont}`;
+    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(afterSize)}px ${serifFont}`;
     const lines = wrapText(ctx, after, frame.contentW);
     let firstBaseline = 0;
     for (const line of lines) {
-      cursorY += body * style.layout.bodyLineHeight;
+      cursorY += afterSize * style.layout.bodyLineHeight;
       if (firstBaseline === 0) firstBaseline = cursorY;
       if (draw && cursorY <= frame.contentBottom) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
     }
-    pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, body, offset);
+    pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, afterSize, offset);
   }
   return cursorY;
 }
 
+/** "AiA · Save · Share" -- the headline's lead clause and trailing clause
+ *  (split at an em dash) are two separately draggable/editable/sizable
+ *  components (slide4.headline / slide4.support), alongside the already-
+ *  separate connection line and CTA, per explicit founder direction that
+ *  every field on this slide be independently editable. */
 function drawSlide4Carry(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
@@ -1152,89 +1200,84 @@ function drawSlide4Carry(
   draw: boolean,
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
+  overrides: { headline?: string; support?: string } | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
-  const supportSize = px(style.slide4.supportSize, width);
-  const ctaSize = px(style.slide4.ctaSize, width);
+  const ctaEmphasisForSize = emphasisFor(emphases, "slide4.cta");
+  const ctaSize = px(ctaEmphasisForSize.size ?? style.slide4.ctaSize, width);
   let cursorY = startY;
   const headlineStartY = cursorY;
-  const headlineEmphasis = emphasisFor(emphases, "slide4.headline");
 
   // The main statement gets the premium editorial (display serif)
   // treatment -- the strongest typography on this slide. Split at an em
   // dash when present so the first clause can read heavier than the rest,
   // matching the approved benchmark's shape.
-  const heroSize = px(style.slide4.heroSize, width);
-  const emDashSplit = episode.aiaConnection.split(" — ");
-  const lead = emDashSplit[0];
-  const rest = emDashSplit.slice(1).join(" — ");
+  const generatedSplit = episode.aiaConnection.split(" — ");
+  const generatedLead = generatedSplit[0];
+  const generatedRest = generatedSplit.slice(1).join(" — ");
+  const lead = overrides?.headline || generatedLead;
+  const rest = overrides?.support || generatedRest;
+
+  const leadId = "slide4.headline";
+  const leadOffset = posFor(positions, leadId);
+  const leadEmphasis = emphasisFor(emphases, leadId);
+  const heroSize = px(leadEmphasis.size ?? style.slide4.heroSize, width);
 
   ctx.textAlign = "left";
   if (draw) ctx.fillStyle = style.colors.textPrimary;
-  ctx.font = `${styleFor(false, headlineEmphasis)} ${weightFor(700, headlineEmphasis)} ${Math.round(heroSize)}px ${displayFont}`;
+  ctx.font = `${styleFor(false, leadEmphasis)} ${weightFor(700, leadEmphasis)} ${Math.round(heroSize)}px ${displayFont}`;
   const leadLines = wrapText(ctx, rest ? `${lead} —` : lead, frame.contentW);
   const leadLineHeight = heroSize * 1.22;
-  const headlineOffset = posFor(positions, "slide4.headline");
   for (const line of leadLines) {
     cursorY += leadLineHeight;
-    if (draw) ctx.fillText(line, frame.contentX + headlineOffset.dx, cursorY + headlineOffset.dy);
+    if (draw) ctx.fillText(line, frame.contentX + leadOffset.dx, cursorY + leadOffset.dy);
   }
+  pushHotspot(hotspots, leadId, frame.contentX, frame.contentW, headlineStartY + heroSize, cursorY, heroSize, leadOffset);
 
   if (rest) {
+    const supportId = "slide4.support";
+    const supportOffset = posFor(positions, supportId);
+    const supportEmphasis = emphasisFor(emphases, supportId);
+    const supportSize = px(supportEmphasis.size ?? style.slide4.supportSize, width);
     cursorY += leadLineHeight * 0.25;
     if (draw) ctx.fillStyle = style.colors.textSecondary;
-    ctx.font = `${styleFor(false, headlineEmphasis)} ${weightFor(400, headlineEmphasis)} ${Math.round(supportSize)}px ${serifFont}`;
+    ctx.font = `${styleFor(false, supportEmphasis)} ${weightFor(400, supportEmphasis)} ${Math.round(supportSize)}px ${serifFont}`;
     const lines = wrapText(ctx, rest, frame.contentW);
+    let firstBaseline = 0;
     for (const line of lines) {
       cursorY += supportSize * style.layout.bodyLineHeight;
-      if (draw) ctx.fillText(line, frame.contentX + headlineOffset.dx, cursorY + headlineOffset.dy);
+      if (firstBaseline === 0) firstBaseline = cursorY;
+      if (draw) ctx.fillText(line, frame.contentX + supportOffset.dx, cursorY + supportOffset.dy);
     }
+    pushHotspot(hotspots, supportId, frame.contentX, frame.contentW, firstBaseline, cursorY, supportSize, supportOffset);
   }
-  pushHotspot(
-    hotspots,
-    "slide4.headline",
-    frame.contentX,
-    frame.contentW,
-    headlineStartY + heroSize,
-    cursorY,
-    heroSize,
-    headlineOffset
-  );
 
   cursorY += frame.contentW * 0.11;
   drawDivider(ctx, style, frame, width, cursorY, draw, positions, "slide4.divider", hotspots);
   cursorY += frame.contentW * 0.09;
 
   if (episode.distantDevotionConnection) {
-    const connectionEmphasis = emphasisFor(emphases, "slide4.connection");
+    const connectionId = "slide4.connection";
+    const connectionEmphasis = emphasisFor(emphases, connectionId);
+    const connectionSize = px(connectionEmphasis.size ?? style.slide4.supportSize, width);
     if (draw) ctx.fillStyle = style.colors.textSecondary;
-    ctx.font = `${styleFor(false, connectionEmphasis)} ${weightFor(400, connectionEmphasis)} ${Math.round(supportSize)}px ${serifFont}`;
+    ctx.font = `${styleFor(false, connectionEmphasis)} ${weightFor(400, connectionEmphasis)} ${Math.round(connectionSize)}px ${serifFont}`;
     const lines = wrapText(ctx, episode.distantDevotionConnection, frame.contentW);
-    const connectionOffset = posFor(positions, "slide4.connection");
+    const connectionOffset = posFor(positions, connectionId);
     let connectionFirst = 0;
     for (const line of lines) {
-      cursorY += supportSize * style.layout.bodyLineHeight;
+      cursorY += connectionSize * style.layout.bodyLineHeight;
       if (connectionFirst === 0) connectionFirst = cursorY;
       if (draw) ctx.fillText(line, frame.contentX + connectionOffset.dx, cursorY + connectionOffset.dy);
     }
-    pushHotspot(
-      hotspots,
-      "slide4.connection",
-      frame.contentX,
-      frame.contentW,
-      connectionFirst,
-      cursorY,
-      supportSize,
-      connectionOffset
-    );
+    pushHotspot(hotspots, connectionId, frame.contentX, frame.contentW, connectionFirst, cursorY, connectionSize, connectionOffset);
     cursorY += frame.contentW * 0.06;
   }
 
   // CTA -- no icon, no decorative graphic. Muted, not bright accent green
   // -- the headline already carries the slide's emphasis.
-  const ctaEmphasis = emphasisFor(emphases, "slide4.cta");
   if (draw) ctx.fillStyle = style.colors.textSecondary;
-  ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(700, ctaEmphasis)} ${Math.round(ctaSize)}px ${serifFont}`;
+  ctx.font = `${styleFor(false, ctaEmphasisForSize)} ${weightFor(700, ctaEmphasisForSize)} ${Math.round(ctaSize)}px ${serifFont}`;
   const ctaLines = wrapText(ctx, episode.cta.copy, frame.contentW);
   const ctaOffset = posFor(positions, "slide4.cta");
   let ctaY = cursorY;
@@ -1297,7 +1340,21 @@ function layoutSlide(
       return drawSlide3Action(ctx, style, frame, width, episode, serifFont, startY, draw, positions, emphases, text?.slide3, hotspots);
     case 4:
     default:
-      return drawSlide4Carry(ctx, style, frame, width, episode, serifFont, displayFont, startY, draw, positions, emphases, hotspots);
+      return drawSlide4Carry(
+        ctx,
+        style,
+        frame,
+        width,
+        episode,
+        serifFont,
+        displayFont,
+        startY,
+        draw,
+        positions,
+        emphases,
+        text?.slide4,
+        hotspots
+      );
   }
 }
 

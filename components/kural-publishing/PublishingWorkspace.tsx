@@ -615,7 +615,7 @@ export default function PublishingWorkspace() {
     setTextOverrides((prev) => ({ ...prev, slide3: { ...prev.slide3, ...patch } }));
   }, []);
   const patchText4 = useCallback(
-    (patch: { aiaConnection?: string; ctaCopy?: string; distantDevotionConnection?: string }) => {
+    (patch: { headline?: string; support?: string; ctaCopy?: string; distantDevotionConnection?: string }) => {
       setTextOverrides((prev) => ({ ...prev, slide4: { ...prev.slide4, ...patch } }));
     },
     []
@@ -689,14 +689,18 @@ export default function PublishingWorkspace() {
       if (paragraphMatch) {
         const index = Number(paragraphMatch[1]);
         const generated = displayEpisode ? (splitEditorialParagraphs(displayEpisode.familyAngle)[index] ?? "") : "";
+        // Own size per paragraph (via patchEmphasis), not the shared
+        // slide2.bodySize style field -- otherwise resizing one paragraph
+        // would resize every paragraph, since they'd share one field.
+        const paragraphSize = emphasisOverrides[id]?.size ?? resolvedStyle.slide2.bodySize;
         return {
           label: `Family story — paragraph ${index + 1}`,
           textValue: textOverrides.slide2?.paragraphs?.[index] ?? "",
           textPlaceholder: generated,
           onTextChange: (v) => patchText2Paragraph(index, v),
-          sizeFields: [{ label: "Size", value: resolvedStyle.slide2.bodySize, onChange: (v) => patchSlide2("bodySize", v) }],
+          sizeFields: [{ label: "Size", value: paragraphSize, onChange: (v) => patchEmphasis(id, { size: v }) }],
           fontVar: "--font-serif",
-          refSize: resolvedStyle.slide2.bodySize,
+          refSize: paragraphSize,
           emphasisId: id,
           emphasis: emphasisOverrides[id] ?? {},
         };
@@ -790,52 +794,74 @@ export default function PublishingWorkspace() {
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide1.bodySize,
           };
+        // "before"/"after" both fall back to the same shared
+        // slide3.bodySize style field, so each needs its own size override
+        // (via patchEmphasis) to stay independently resizable.
         case "slide3.before": {
           const generated = displayEpisode ? splitQuotedAction(displayEpisode.todayAction).before : "";
+          const size = emphasisOverrides[id]?.size ?? resolvedStyle.slide3.bodySize;
           return {
             label: "Lead-in line",
             textValue: textOverrides.slide3?.before ?? "",
             textPlaceholder: generated,
             onTextChange: (v) => patchText3({ before: v }),
-            sizeFields: [{ label: "Body size", value: resolvedStyle.slide3.bodySize, onChange: (v) => patchSlide3("bodySize", v) }],
+            sizeFields: [{ label: "Size", value: size, onChange: (v) => patchEmphasis(id, { size: v }) }],
             fontVar: "--font-serif",
-            refSize: resolvedStyle.slide3.bodySize,
+            refSize: size,
           };
         }
         case "slide3.question": {
           const generated = displayEpisode ? splitQuotedAction(displayEpisode.todayAction).quoted : "";
+          const size = emphasisOverrides[id]?.size ?? resolvedStyle.slide3.questionSize;
           return {
             label: "The question (highlighted panel)",
             textValue: textOverrides.slide3?.question ?? "",
             textPlaceholder: generated,
             onTextChange: (v) => patchText3({ question: v }),
-            sizeFields: [{ label: "Question size", value: resolvedStyle.slide3.questionSize, onChange: (v) => patchSlide3("questionSize", v) }],
+            sizeFields: [{ label: "Size", value: size, onChange: (v) => patchEmphasis(id, { size: v }) }],
             fontVar: "--font-serif",
-            refSize: resolvedStyle.slide3.questionSize,
+            refSize: size,
           };
         }
         case "slide3.after": {
           const generated = displayEpisode ? splitQuotedAction(displayEpisode.todayAction).after : "";
+          const size = emphasisOverrides[id]?.size ?? resolvedStyle.slide3.bodySize;
           return {
             label: "Trailing line",
             textValue: textOverrides.slide3?.after ?? "",
             textPlaceholder: generated,
             onTextChange: (v) => patchText3({ after: v }),
-            sizeFields: [{ label: "Body size", value: resolvedStyle.slide3.bodySize, onChange: (v) => patchSlide3("bodySize", v) }],
+            sizeFields: [{ label: "Size", value: size, onChange: (v) => patchEmphasis(id, { size: v }) }],
             fontVar: "--font-serif",
-            refSize: resolvedStyle.slide3.bodySize,
+            refSize: size,
           };
         }
-        case "slide4.headline":
+        case "slide4.headline": {
+          const generatedLead = displayEpisode ? displayEpisode.aiaConnection.split(" — ")[0] : "";
+          const headlineSize = emphasisOverrides["slide4.headline"]?.size ?? resolvedStyle.slide4.heroSize;
           return {
-            label: "Headline",
-            textValue: textOverrides.slide4?.aiaConnection ?? "",
-            textPlaceholder: displayEpisode?.aiaConnection,
-            onTextChange: (v) => patchText4({ aiaConnection: v }),
-            sizeFields: [{ label: "Size", value: resolvedStyle.slide4.heroSize, onChange: (v) => patchSlide4("heroSize", v) }],
+            label: "Headline (lead clause)",
+            textValue: textOverrides.slide4?.headline ?? "",
+            textPlaceholder: generatedLead,
+            onTextChange: (v) => patchText4({ headline: v }),
+            sizeFields: [{ label: "Size", value: headlineSize, onChange: (v) => patchEmphasis("slide4.headline", { size: v }) }],
             fontVar: "--font-display",
-            refSize: resolvedStyle.slide4.heroSize,
+            refSize: headlineSize,
           };
+        }
+        case "slide4.support": {
+          const generatedRest = displayEpisode ? displayEpisode.aiaConnection.split(" — ").slice(1).join(" — ") : "";
+          const supportSize = emphasisOverrides["slide4.support"]?.size ?? resolvedStyle.slide4.supportSize;
+          return {
+            label: "Headline (trailing clause)",
+            textValue: textOverrides.slide4?.support ?? "",
+            textPlaceholder: generatedRest,
+            onTextChange: (v) => patchText4({ support: v }),
+            sizeFields: [{ label: "Size", value: supportSize, onChange: (v) => patchEmphasis("slide4.support", { size: v }) }],
+            fontVar: "--font-serif",
+            refSize: supportSize,
+          };
+        }
         case "slide4.connection":
           return {
             label: "Distant Devotion connection line",
@@ -884,6 +910,7 @@ export default function PublishingWorkspace() {
       patchSlide2,
       patchSlide3,
       patchSlide4,
+      patchEmphasis,
       patchText0,
       patchText1,
       patchText2Paragraph,
@@ -1459,10 +1486,16 @@ export default function PublishingWorkspace() {
                       <NumField label="Handle size (px)" value={resolvedStyle.slide4.handleSize} onChange={(v) => patchSlide4("handleSize", v)} />
                       <CheckField label="Show AiA branding on this slide" checked={resolvedStyle.slide4.showBranding} onChange={(v) => patchSlide4("showBranding", v)} />
                       <TextAreaField
-                        label="Headline text override"
-                        value={textOverrides.slide4?.aiaConnection ?? ""}
-                        placeholder={displayEpisode.aiaConnection}
-                        onChange={(v) => patchText4({ aiaConnection: v })}
+                        label="Headline (lead clause) text override"
+                        value={textOverrides.slide4?.headline ?? ""}
+                        placeholder={displayEpisode.aiaConnection.split(" — ")[0]}
+                        onChange={(v) => patchText4({ headline: v })}
+                      />
+                      <TextAreaField
+                        label="Headline (trailing clause) text override"
+                        value={textOverrides.slide4?.support ?? ""}
+                        placeholder={displayEpisode.aiaConnection.split(" — ").slice(1).join(" — ")}
+                        onChange={(v) => patchText4({ support: v })}
                       />
                       <TextField
                         label="CTA text override"
@@ -1743,6 +1776,7 @@ export default function PublishingWorkspace() {
                   color: resolvedStyle.colors.textPrimary,
                   backgroundColor: resolvedStyle.colors.background,
                   borderColor: "var(--color-primary)",
+                  caretColor: resolvedStyle.colors.textPrimary,
                 };
                 return (
                   <div
@@ -1779,7 +1813,12 @@ export default function PublishingWorkspace() {
                           el.style.height = "auto";
                           el.style.height = `${el.scrollHeight}px`;
                         }}
-                        className="w-full resize-none overflow-hidden rounded-sm border-2 px-1 py-0.5 leading-tight outline-none"
+                        // A thin dashed selection outline (Canva's own
+                        // in-place text editing look), not a heavy solid
+                        // form-field border -- this is meant to feel like
+                        // editing the design directly, not filling out a
+                        // form next to it.
+                        className="w-full resize-none overflow-hidden rounded-[2px] border border-dashed px-0.5 py-0 leading-tight outline-none"
                         style={emphasisStyle}
                       />
                     </div>
