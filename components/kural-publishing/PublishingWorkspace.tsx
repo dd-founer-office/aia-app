@@ -48,7 +48,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import KuralHeroCanvas, {
   KKA_LOGO_PATH,
   AIA_KOLAM_MARK_PATH,
@@ -92,6 +92,8 @@ import {
   CAROUSEL_SLIDE_COUNT,
   SLIDE_LABELS,
   resolveStyle,
+  splitEditorialParagraphs,
+  splitQuotedAction,
   type CarouselStyleOverrides,
   type CarouselTextOverrides,
   type CarouselColors,
@@ -103,6 +105,8 @@ import {
   type Slide4Style,
   type CarouselHotspot,
   type CarouselPositions,
+  type CarouselTextEmphases,
+  type CarouselTextEmphasis,
 } from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
 import {
   loadStyleOverrides,
@@ -111,6 +115,8 @@ import {
   saveTextOverrides,
   loadPositions,
   savePositions,
+  loadEmphases,
+  saveEmphases,
   buildDesignOverrides,
 } from "@/lib/kural-publishing/aathichoodi-carousel-design-store";
 
@@ -420,6 +426,8 @@ export default function PublishingWorkspace() {
   // Per-element drag nudges (see CarouselPositionOverride) -- shared across
   // episodes like style, since they describe the design system's layout.
   const [positionOverrides, setPositionOverrides] = useState<CarouselPositions>(() => loadPositions());
+  // Per-element bold/italic toggles -- shared across episodes like style.
+  const [emphasisOverrides, setEmphasisOverrides] = useState<CarouselTextEmphases>(() => loadEmphases());
 
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
@@ -554,10 +562,13 @@ export default function PublishingWorkspace() {
   useEffect(() => {
     savePositions(positionOverrides);
   }, [positionOverrides]);
+  useEffect(() => {
+    saveEmphases(emphasisOverrides);
+  }, [emphasisOverrides]);
 
   const carouselDesign = useMemo(
-    () => buildDesignOverrides(styleOverrides, textOverrides, positionOverrides),
-    [styleOverrides, textOverrides, positionOverrides]
+    () => buildDesignOverrides(styleOverrides, textOverrides, positionOverrides, emphasisOverrides),
+    [styleOverrides, textOverrides, positionOverrides, emphasisOverrides]
   );
   const resolvedStyle = useMemo(() => resolveStyle(styleOverrides), [styleOverrides]);
 
@@ -589,11 +600,19 @@ export default function PublishingWorkspace() {
   const patchText1 = useCallback((understanding: string) => {
     setTextOverrides((prev) => ({ ...prev, slide1: { understanding } }));
   }, []);
-  const patchText2 = useCallback((familyAngle: string) => {
-    setTextOverrides((prev) => ({ ...prev, slide2: { familyAngle } }));
+  // Each "Family Situation" paragraph is its own independently editable
+  // text box -- patching index i only touches that slot's override,
+  // leaving the others (and any un-overridden slots, which fall back to
+  // the generated paragraph at that index) untouched.
+  const patchText2Paragraph = useCallback((index: number, value: string) => {
+    setTextOverrides((prev) => {
+      const paragraphs = [...(prev.slide2?.paragraphs ?? [])];
+      paragraphs[index] = value;
+      return { ...prev, slide2: { paragraphs } };
+    });
   }, []);
-  const patchText3 = useCallback((todayAction: string) => {
-    setTextOverrides((prev) => ({ ...prev, slide3: { todayAction } }));
+  const patchText3 = useCallback((patch: { before?: string; question?: string; after?: string }) => {
+    setTextOverrides((prev) => ({ ...prev, slide3: { ...prev.slide3, ...patch } }));
   }, []);
   const patchText4 = useCallback(
     (patch: { aiaConnection?: string; ctaCopy?: string; distantDevotionConnection?: string }) => {
@@ -602,6 +621,10 @@ export default function PublishingWorkspace() {
     []
   );
 
+  const patchEmphasis = useCallback((id: string, patch: Partial<CarouselTextEmphasis>) => {
+    setEmphasisOverrides((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  }, []);
+
   const handleResetDesign = useCallback(() => {
     setStyleOverrides({});
     saveStyleOverrides({});
@@ -609,16 +632,22 @@ export default function PublishingWorkspace() {
     if (composedEpisode) saveTextOverrides(composedEpisode.episodeNumber, {});
     setPositionOverrides({});
     savePositions({});
+    setEmphasisOverrides({});
+    saveEmphases({});
   }, [composedEpisode]);
 
   const handleCopyDesignJSON = useCallback(() => {
-    const json = JSON.stringify({ style: styleOverrides, text: textOverrides, positions: positionOverrides }, null, 2);
+    const json = JSON.stringify(
+      { style: styleOverrides, text: textOverrides, positions: positionOverrides, emphases: emphasisOverrides },
+      null,
+      2
+    );
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(json).catch(() => {
         /* clipboard permission unavailable */
       });
     }
-  }, [styleOverrides, textOverrides, positionOverrides]);
+  }, [styleOverrides, textOverrides, positionOverrides, emphasisOverrides]);
 
   // Click-to-edit overlay: KuralHeroCanvas reports the current slide's
   // clickable regions (canvas-pixel space) after every repaint; clicking
@@ -645,11 +674,38 @@ export default function PublishingWorkspace() {
      *  real render instead of using a generic form-field font. */
     fontVar?: string;
     refSize?: number;
+    /** This hotspot's current bold/italic state, keyed by its own id --
+     *  present on every hotspot (text-editable or canonical/size-only
+     *  alike), since style toggles are independent of content editing. */
+    emphasisId: string;
+    emphasis: CarouselTextEmphasis;
   }
 
   const getHotspotConfig = useCallback(
     (id: string): HotspotConfig | null => {
-      switch (id) {
+      // "Family Situation" -- each generated paragraph is its own hotspot,
+      // id `slide2.body.<index>` (see drawSlide2Family).
+      const paragraphMatch = id.match(/^slide2\.body\.(\d+)$/);
+      if (paragraphMatch) {
+        const index = Number(paragraphMatch[1]);
+        const generated = displayEpisode ? (splitEditorialParagraphs(displayEpisode.familyAngle)[index] ?? "") : "";
+        return {
+          label: `Family story — paragraph ${index + 1}`,
+          textValue: textOverrides.slide2?.paragraphs?.[index] ?? "",
+          textPlaceholder: generated,
+          onTextChange: (v) => patchText2Paragraph(index, v),
+          sizeFields: [{ label: "Size", value: resolvedStyle.slide2.bodySize, onChange: (v) => patchSlide2("bodySize", v) }],
+          fontVar: "--font-serif",
+          refSize: resolvedStyle.slide2.bodySize,
+          emphasisId: id,
+          emphasis: emphasisOverrides[id] ?? {},
+        };
+      }
+
+      const base = (():
+        | Omit<HotspotConfig, "emphasisId" | "emphasis">
+        | null => {
+        switch (id) {
         case "header.eyebrow":
           return {
             label: "Eyebrow (AATHICHOODI)",
@@ -734,29 +790,42 @@ export default function PublishingWorkspace() {
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide1.bodySize,
           };
-        case "slide2.body":
+        case "slide3.before": {
+          const generated = displayEpisode ? splitQuotedAction(displayEpisode.todayAction).before : "";
           return {
-            label: "Family story",
-            textValue: textOverrides.slide2?.familyAngle ?? "",
-            textPlaceholder: displayEpisode?.familyAngle,
-            onTextChange: patchText2,
-            sizeFields: [{ label: "Size", value: resolvedStyle.slide2.bodySize, onChange: (v) => patchSlide2("bodySize", v) }],
-            fontVar: "--font-serif",
-            refSize: resolvedStyle.slide2.bodySize,
-          };
-        case "slide3.action":
-          return {
-            label: "Today's action (keep the quotes around the question)",
-            textValue: textOverrides.slide3?.todayAction ?? "",
-            textPlaceholder: displayEpisode?.todayAction,
-            onTextChange: patchText3,
-            sizeFields: [
-              { label: "Body size", value: resolvedStyle.slide3.bodySize, onChange: (v) => patchSlide3("bodySize", v) },
-              { label: "Question size", value: resolvedStyle.slide3.questionSize, onChange: (v) => patchSlide3("questionSize", v) },
-            ],
+            label: "Lead-in line",
+            textValue: textOverrides.slide3?.before ?? "",
+            textPlaceholder: generated,
+            onTextChange: (v) => patchText3({ before: v }),
+            sizeFields: [{ label: "Body size", value: resolvedStyle.slide3.bodySize, onChange: (v) => patchSlide3("bodySize", v) }],
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide3.bodySize,
           };
+        }
+        case "slide3.question": {
+          const generated = displayEpisode ? splitQuotedAction(displayEpisode.todayAction).quoted : "";
+          return {
+            label: "The question (highlighted panel)",
+            textValue: textOverrides.slide3?.question ?? "",
+            textPlaceholder: generated,
+            onTextChange: (v) => patchText3({ question: v }),
+            sizeFields: [{ label: "Question size", value: resolvedStyle.slide3.questionSize, onChange: (v) => patchSlide3("questionSize", v) }],
+            fontVar: "--font-serif",
+            refSize: resolvedStyle.slide3.questionSize,
+          };
+        }
+        case "slide3.after": {
+          const generated = displayEpisode ? splitQuotedAction(displayEpisode.todayAction).after : "";
+          return {
+            label: "Trailing line",
+            textValue: textOverrides.slide3?.after ?? "",
+            textPlaceholder: generated,
+            onTextChange: (v) => patchText3({ after: v }),
+            sizeFields: [{ label: "Body size", value: resolvedStyle.slide3.bodySize, onChange: (v) => patchSlide3("bodySize", v) }],
+            fontVar: "--font-serif",
+            refSize: resolvedStyle.slide3.bodySize,
+          };
+        }
         case "slide4.headline":
           return {
             label: "Headline",
@@ -799,11 +868,15 @@ export default function PublishingWorkspace() {
           };
         default:
           return null;
-      }
+        }
+      })();
+      if (!base) return null;
+      return { ...base, emphasisId: id, emphasis: emphasisOverrides[id] ?? {} };
     },
     [
       resolvedStyle,
       textOverrides,
+      emphasisOverrides,
       displayEpisode,
       patchLayout,
       patchSlide0,
@@ -813,7 +886,7 @@ export default function PublishingWorkspace() {
       patchSlide4,
       patchText0,
       patchText1,
-      patchText2,
+      patchText2Paragraph,
       patchText3,
       patchText4,
     ]
@@ -823,6 +896,51 @@ export default function PublishingWorkspace() {
     availableFormats.find((f) => f.id === activePreviewFormatId) ??
     availableFormats[0] ??
     ASSET_FORMATS[0];
+
+  // Shared by both the inline text-edit overlay and the canonical/size-only
+  // popover: size steppers plus Bold/Italic toggles for this hotspot,
+  // wired to patchEmphasis by the hotspot's own id. Present on every
+  // hotspot -- style toggles are independent of content editing.
+  const renderStyleToolbar = (config: HotspotConfig) => (
+    <div className="flex flex-wrap items-center gap-2">
+      {config.sizeFields.map((f) => (
+        <NumField key={f.label} label={f.label} value={f.value} onChange={f.onChange} />
+      ))}
+      <div className="ml-auto flex gap-1">
+        <button
+          type="button"
+          // Keep focus on the in-canvas textarea (when present) so this
+          // click doesn't blur-and-close the editor before the click
+          // itself registers -- a plain onClick alone would lose the race.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => patchEmphasis(config.emphasisId, { bold: !config.emphasis.bold })}
+          aria-pressed={Boolean(config.emphasis.bold)}
+          title="Bold"
+          className={`h-6 w-6 rounded border text-xs font-bold ${
+            config.emphasis.bold
+              ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+              : "border-[var(--color-border)] text-[var(--color-foreground)]"
+          }`}
+        >
+          B
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => patchEmphasis(config.emphasisId, { italic: !config.emphasis.italic })}
+          aria-pressed={Boolean(config.emphasis.italic)}
+          title="Italic"
+          className={`h-6 w-6 rounded border text-xs italic ${
+            config.emphasis.italic
+              ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+              : "border-[var(--color-border)] text-[var(--color-foreground)]"
+          }`}
+        >
+          I
+        </button>
+      </div>
+    </div>
+  );
 
   // Drag-to-reposition: the preview container's own rendered width/height
   // (not the canvas's internal pixel resolution) is what a screen-pixel
@@ -1283,12 +1401,15 @@ export default function PublishingWorkspace() {
                       <TextField label="Section heading" value={resolvedStyle.slide2.sectionHeadingText} onChange={(v) => patchSlide2("sectionHeadingText", v)} />
                       <NumField label="Section heading size (px)" value={resolvedStyle.slide2.sectionHeadingSize} onChange={(v) => patchSlide2("sectionHeadingSize", v)} />
                       <NumField label="Body size (px)" value={resolvedStyle.slide2.bodySize} onChange={(v) => patchSlide2("bodySize", v)} />
-                      <TextAreaField
-                        label="Family story text override"
-                        value={textOverrides.slide2?.familyAngle ?? ""}
-                        placeholder={displayEpisode.familyAngle}
-                        onChange={patchText2}
-                      />
+                      {splitEditorialParagraphs(displayEpisode.familyAngle).map((generated, i) => (
+                        <TextAreaField
+                          key={i}
+                          label={`Paragraph ${i + 1} text override`}
+                          value={textOverrides.slide2?.paragraphs?.[i] ?? ""}
+                          placeholder={generated}
+                          onChange={(v) => patchText2Paragraph(i, v)}
+                        />
+                      ))}
                     </div>
                   </details>
 
@@ -1306,10 +1427,22 @@ export default function PublishingWorkspace() {
                       <NumField label="Panel corner radius (fraction)" value={resolvedStyle.slide3.panelRadius} step={0.005} onChange={(v) => patchSlide3("panelRadius", v)} />
                       <CheckField label="Show decorative quote mark" checked={resolvedStyle.slide3.showQuoteMark} onChange={(v) => patchSlide3("showQuoteMark", v)} />
                       <TextAreaField
-                        label="Action text override (keep quotes around the question)"
-                        value={textOverrides.slide3?.todayAction ?? ""}
-                        placeholder={displayEpisode.todayAction}
-                        onChange={patchText3}
+                        label="Lead-in line override"
+                        value={textOverrides.slide3?.before ?? ""}
+                        placeholder={splitQuotedAction(displayEpisode.todayAction).before}
+                        onChange={(v) => patchText3({ before: v })}
+                      />
+                      <TextAreaField
+                        label="Question override (highlighted panel)"
+                        value={textOverrides.slide3?.question ?? ""}
+                        placeholder={splitQuotedAction(displayEpisode.todayAction).quoted}
+                        onChange={(v) => patchText3({ question: v })}
+                      />
+                      <TextAreaField
+                        label="Trailing line override"
+                        value={textOverrides.slide3?.after ?? ""}
+                        placeholder={splitQuotedAction(displayEpisode.todayAction).after}
+                        onChange={(v) => patchText3({ after: v })}
                       />
                     </div>
                   </details>
@@ -1601,35 +1734,55 @@ export default function PublishingWorkspace() {
                 // anything, since this isn't inside a <form>.
                 const containerWidthPx = previewContainerWidth || previewFormat.width;
                 const fontPx = config.refSize ? (config.refSize / 1080) * containerWidthPx : undefined;
+                const emphasisStyle: CSSProperties = {
+                  minHeight: `${hPct}%`,
+                  fontFamily: `var(${config.fontVar ?? "--font-serif"})`,
+                  fontSize: fontPx ? `${Math.max(fontPx, 10)}px` : undefined,
+                  fontWeight: config.emphasis.bold ? 700 : undefined,
+                  fontStyle: config.emphasis.italic ? "italic" : undefined,
+                  color: resolvedStyle.colors.textPrimary,
+                  backgroundColor: resolvedStyle.colors.background,
+                  borderColor: "var(--color-primary)",
+                };
                 return (
                   <div
                     className="absolute z-10"
-                    style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, minWidth: "40px" }}
+                    style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, minWidth: "160px" }}
                   >
-                    <textarea
-                      autoFocus
-                      value={config.textValue || ""}
-                      placeholder={config.textPlaceholder}
-                      onChange={(e) => config.onTextChange?.(e.target.value)}
-                      onBlur={() => setActiveHotspotId(null)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") e.currentTarget.blur();
+                    <div
+                      className="relative"
+                      // Blur-to-close lives on this wrapper (not the
+                      // textarea itself) and only fires when focus actually
+                      // leaves the whole editor -- moving focus into the
+                      // toolbar's own size field must not close it out from
+                      // under the click. React's onBlur bubbles like
+                      // focusout, so this catches focus leaving any child.
+                      onBlur={(e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                          setActiveHotspotId(null);
+                        }
                       }}
-                      ref={(el) => {
-                        if (!el) return;
-                        el.style.height = "auto";
-                        el.style.height = `${el.scrollHeight}px`;
-                      }}
-                      className="w-full resize-none overflow-hidden rounded-sm border-2 px-1 py-0.5 leading-tight outline-none"
-                      style={{
-                        minHeight: `${hPct}%`,
-                        fontFamily: `var(${config.fontVar ?? "--font-serif"})`,
-                        fontSize: fontPx ? `${Math.max(fontPx, 10)}px` : undefined,
-                        color: resolvedStyle.colors.textPrimary,
-                        backgroundColor: resolvedStyle.colors.background,
-                        borderColor: "var(--color-primary)",
-                      }}
-                    />
+                    >
+                      <div className="absolute bottom-full left-0 mb-1 w-max min-w-full rounded-[var(--radius-photo)] border border-[var(--color-primary)] bg-[var(--color-card)] p-2 shadow-lg">
+                        {renderStyleToolbar(config)}
+                      </div>
+                      <textarea
+                        autoFocus
+                        value={config.textValue || ""}
+                        placeholder={config.textPlaceholder}
+                        onChange={(e) => config.onTextChange?.(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") e.currentTarget.blur();
+                        }}
+                        ref={(el) => {
+                          if (!el) return;
+                          el.style.height = "auto";
+                          el.style.height = `${el.scrollHeight}px`;
+                        }}
+                        className="w-full resize-none overflow-hidden rounded-sm border-2 px-1 py-0.5 leading-tight outline-none"
+                        style={emphasisStyle}
+                      />
+                    </div>
                   </div>
                 );
               }
@@ -1653,11 +1806,7 @@ export default function PublishingWorkspace() {
                       ✕
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {config.sizeFields.map((f) => (
-                      <NumField key={f.label} label={f.label} value={f.value} onChange={f.onChange} />
-                    ))}
-                  </div>
+                  {renderStyleToolbar(config)}
                 </div>
               );
             })()}

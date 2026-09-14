@@ -151,8 +151,15 @@ export interface CarouselStyleOverrides {
 export interface CarouselTextOverrides {
   slide0?: { hook?: string };
   slide1?: { understanding?: string };
-  slide2?: { familyAngle?: string };
-  slide3?: { todayAction?: string };
+  /** One override slot per generated paragraph, by index -- each paragraph
+   *  is its own separately draggable/editable text box (see
+   *  drawSlide2Family), so overrides are per-paragraph rather than one
+   *  whole-block string. */
+  slide2?: { paragraphs?: string[] };
+  /** todayAction's generated copy splits into a lead-in, the highlighted
+   *  question, and a trailing line (see splitQuotedAction) -- each is its
+   *  own separately draggable/editable text box (see drawSlide3Action). */
+  slide3?: { before?: string; question?: string; after?: string };
   slide4?: { aiaConnection?: string; ctaCopy?: string; distantDevotionConnection?: string };
 }
 
@@ -168,10 +175,22 @@ export interface CarouselPositionOverride {
 }
 export type CarouselPositions = Record<string, CarouselPositionOverride>;
 
+/** Bold/italic toggle for one element, keyed by the same hotspot id as
+ *  CarouselPositions -- undefined means "use this element's own default
+ *  weight/style" (most elements are already deliberately bold or italic by
+ *  design; this only overrides that choice when the founder explicitly
+ *  sets it). */
+export interface CarouselTextEmphasis {
+  bold?: boolean;
+  italic?: boolean;
+}
+export type CarouselTextEmphases = Record<string, CarouselTextEmphasis>;
+
 export interface CarouselDesignOverrides {
   style?: CarouselStyleOverrides;
   text?: CarouselTextOverrides;
   positions?: CarouselPositions;
+  emphases?: CarouselTextEmphases;
 }
 
 /** A clickable region on the rendered canvas, in canvas-pixel space, for
@@ -190,11 +209,33 @@ export interface CarouselHotspot {
 }
 
 const ZERO_OFFSET: CarouselPositionOverride = { dx: 0, dy: 0 };
+const NO_EMPHASIS: CarouselTextEmphasis = {};
 
 /** Looks up an element's drag nudge by hotspot id -- (0, 0) if it has never
  *  been dragged. */
 function posFor(positions: CarouselPositions | undefined, id: string): CarouselPositionOverride {
   return positions?.[id] ?? ZERO_OFFSET;
+}
+
+function emphasisFor(emphases: CarouselTextEmphases | undefined, id: string): CarouselTextEmphasis {
+  return emphases?.[id] ?? NO_EMPHASIS;
+}
+
+/** Resolves a CSS font weight, honoring an explicit bold override when
+ *  present (forcing 700/400) and falling back to the element's own default
+ *  numeric weight (already deliberately set by design, e.g. 600 for the
+ *  Slide 1 hook) otherwise. */
+function weightFor(defaultWeight: number, emphasis: CarouselTextEmphasis): number {
+  if (emphasis.bold === true) return 700;
+  if (emphasis.bold === false) return 400;
+  return defaultWeight;
+}
+
+/** Resolves the CSS font-style keyword, honoring an explicit italic
+ *  override when present and falling back to the element's own default
+ *  (e.g. the meaning gloss is italic by design) otherwise. */
+function styleFor(defaultItalic: boolean, emphasis: CarouselTextEmphasis): string {
+  return (emphasis.italic ?? defaultItalic) ? "italic" : "normal";
 }
 
 /** Appends a hotspot spanning from the first to the last drawn line's
@@ -338,12 +379,14 @@ export function resolveStyle(overrides?: CarouselStyleOverrides): CarouselStyle 
 function applyTextOverrides(episode: ComposedEpisode, text?: CarouselTextOverrides): ComposedEpisode {
   if (!text) return episode;
   const ctaCopy = text.slide4?.ctaCopy;
+  // familyAngle and todayAction are NOT patched here -- their per-paragraph
+  // / per-segment overrides (slide2.paragraphs, slide3.before/question/
+  // after) are applied directly in drawSlide2Family/drawSlide3Action
+  // instead, since they no longer fit a single whole-string replacement.
   return {
     ...episode,
     hook: text.slide0?.hook || episode.hook,
     understanding: text.slide1?.understanding || episode.understanding,
-    familyAngle: text.slide2?.familyAngle || episode.familyAngle,
-    todayAction: text.slide3?.todayAction || episode.todayAction,
     aiaConnection: text.slide4?.aiaConnection || episode.aiaConnection,
     distantDevotionConnection: text.slide4?.distantDevotionConnection || episode.distantDevotionConnection,
     cta: ctaCopy ? { ...episode.cta, copy: ctaCopy } : episode.cta,
@@ -397,7 +440,8 @@ export interface RenderCarouselSlideOptions {
 // straight from the resolved style and copy is expected to fit them.
 // ---------------------------------------------------------------------------
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+/** Word-wraps one paragraph (no literal newlines) at maxWidth. */
+function wrapParagraph(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";
@@ -411,6 +455,21 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
     }
   }
   if (line) lines.push(line);
+  return lines;
+}
+
+/** Word-wraps text at maxWidth, honoring literal "\n" characters as forced
+ *  line breaks first -- so a manual Enter typed in the in-canvas text
+ *  editor actually produces a second line on the canvas, not just in the
+ *  edit box. A run of "\n\n" (an intentionally blank line) is preserved as
+ *  an empty line rather than collapsed away. */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  if (!text.includes("\n")) return wrapParagraph(ctx, text, maxWidth);
+  const lines: string[] = [];
+  for (const paragraph of text.split("\n")) {
+    const paragraphLines = wrapParagraph(ctx, paragraph, maxWidth);
+    lines.push(...(paragraphLines.length ? paragraphLines : [""]));
+  }
   return lines;
 }
 
@@ -446,7 +505,7 @@ function fitText(
  *  ending period followed by a capital letter, so e.g. understanding's
  *  "{opener}: {meaning}. {reframing}" reads as 2-3 short grafs instead of
  *  one dense block, matching the approved benchmark's editorial rhythm. */
-function splitEditorialParagraphs(text: string): string[] {
+export function splitEditorialParagraphs(text: string): string[] {
   return text
     .split(/(?<=:)\s+|(?<=\.)\s+(?=[A-Z])/)
     .map((p) => p.trim())
@@ -458,7 +517,7 @@ function splitEditorialParagraphs(text: string): string[] {
  *  can get its own visual highlight treatment. Falls back to treating the
  *  whole string as the highlighted part when no quotes are present, so the
  *  layout adapts to copy rather than assuming a fixed shape. */
-function splitQuotedAction(text: string): { before: string; quoted: string; after: string } {
+export function splitQuotedAction(text: string): { before: string; quoted: string; after: string } {
   const match = text.match(/^([\s\S]*?)"([^"]+)"([\s\S]*)$/);
   if (!match) return { before: "", quoted: text, after: "" };
   return { before: match[1].trim(), quoted: match[2].trim(), after: match[3].trim() };
@@ -547,6 +606,7 @@ function drawHeader(
   slideIndex: number,
   sansFont: string,
   positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[]
 ): void {
   const { eyebrow, heading, headingText, dividerY } = headerMetrics(style, width, height, slideIndex);
@@ -560,8 +620,9 @@ function drawHeader(
   }
 
   const eyebrowOffset = posFor(positions, "header.eyebrow");
+  const eyebrowEmphasis = emphasisFor(emphases, "header.eyebrow");
   ctx.fillStyle = style.colors.textPrimary;
-  ctx.font = `700 ${Math.round(eyebrow)}px ${sansFont}`;
+  ctx.font = `${styleFor(false, eyebrowEmphasis)} ${weightFor(700, eyebrowEmphasis)} ${Math.round(eyebrow)}px ${sansFont}`;
   const eyebrowY = frame.marginY + eyebrow;
   ctx.fillText("AATHICHOODI", frame.contentX + eyebrowOffset.dx, eyebrowY + eyebrowOffset.dy);
   pushHotspot(hotspots, "header.eyebrow", frame.contentX, frame.contentW, eyebrowY, eyebrowY, eyebrow, eyebrowOffset);
@@ -595,6 +656,7 @@ function drawHeader(
 
   if (headingText) {
     const headingOffset = posFor(positions, `slide${slideIndex}.sectionHeading`);
+    const headingEmphasis = emphasisFor(emphases, `slide${slideIndex}.sectionHeading`);
     ctx.textAlign = "left";
     ctx.fillStyle = style.colors.accent;
     try {
@@ -602,7 +664,7 @@ function drawHeader(
     } catch {
       /* no-op */
     }
-    ctx.font = `700 ${Math.round(heading)}px ${sansFont}`;
+    ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(700, headingEmphasis)} ${Math.round(heading)}px ${sansFont}`;
     const headingLineY = dividerY + heading * 1.7;
     ctx.fillText(headingText, frame.contentX + headingOffset.dx, headingLineY + headingOffset.dy);
     pushHotspot(
@@ -658,6 +720,7 @@ function drawFooterLockup(
   sansFont: string,
   opts: RenderCarouselSlideOptions,
   positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[]
 ): void {
   const isBrandedSlide =
@@ -692,16 +755,18 @@ function drawFooterLockup(
   const textX = logoX + logoRadius + width * 0.028;
   const textEndX = frame.contentX + frame.contentW;
   const brandNameOffset = posFor(positions, "footer.brandName");
+  const brandNameEmphasis = emphasisFor(emphases, "footer.brandName");
   ctx.textAlign = "left";
   ctx.fillStyle = style.colors.textPrimary;
-  ctx.font = `700 ${Math.round(brandName)}px ${sansFont}`;
+  ctx.font = `${styleFor(false, brandNameEmphasis)} ${weightFor(700, brandNameEmphasis)} ${Math.round(brandName)}px ${sansFont}`;
   const brandNameY = rowY - textBlockHeight / 2 + brandName;
   ctx.fillText(opts.brandingWordmark.replace("AiA — ", ""), textX + brandNameOffset.dx, brandNameY + brandNameOffset.dy);
   pushHotspot(hotspots, "footer.brandName", textX, textEndX - textX, brandNameY, brandNameY, brandName, brandNameOffset);
   if (opts.brandingHandle) {
     const handleOffset = posFor(positions, "footer.handle");
+    const handleEmphasis = emphasisFor(emphases, "footer.handle");
     ctx.fillStyle = style.colors.textSecondary;
-    ctx.font = `400 ${Math.round(handle)}px ${sansFont}`;
+    ctx.font = `${styleFor(false, handleEmphasis)} ${weightFor(400, handleEmphasis)} ${Math.round(handle)}px ${sansFont}`;
     const handleY = rowY + textBlockHeight / 2 - handle * 0.25;
     ctx.fillText(`@${opts.brandingHandle}`, textX + handleOffset.dx, handleY + handleOffset.dy);
     pushHotspot(hotspots, "footer.handle", textX, textEndX - textX, handleY, handleY, handle, handleOffset);
@@ -723,9 +788,13 @@ function drawSlide0Stop(
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   let cursorY = startY;
+  const heroEmphasis = emphasisFor(emphases, "slide0.hero");
+  const hookEmphasis = emphasisFor(emphases, "slide0.hook");
+  const taglineEmphasis = emphasisFor(emphases, "slide0.tagline");
 
   // The Tamil line is the hero -- dramatically the largest element on the
   // slide, in the dominant cream tone (not green -- green-on-dark-green
@@ -738,7 +807,7 @@ function drawSlide0Stop(
   const hero = fitText(
     ctx,
     episode.tamilText,
-    (size) => `700 ${size}px ${tamilFont}`,
+    (size) => `${styleFor(false, heroEmphasis)} ${weightFor(700, heroEmphasis)} ${size}px ${tamilFont}`,
     frame.contentW,
     (frame.contentBottom - frame.contentTop) * 0.46,
     Math.round(px(style.slide0.heroSize, width)),
@@ -762,7 +831,7 @@ function drawSlide0Stop(
 
   if (draw) ctx.fillStyle = style.colors.textPrimary;
   const hookSize = px(style.slide0.hookSize, width);
-  ctx.font = `600 ${Math.round(hookSize)}px ${serifFont}`;
+  ctx.font = `${styleFor(false, hookEmphasis)} ${weightFor(600, hookEmphasis)} ${Math.round(hookSize)}px ${serifFont}`;
   const hookLines = wrapText(ctx, episode.hook, frame.contentW);
   const hookOffset = posFor(positions, "slide0.hook");
   let hookFirst = 0;
@@ -778,7 +847,7 @@ function drawSlide0Stop(
   cursorY += hookSize * 0.9;
   if (draw) ctx.fillStyle = style.colors.textSecondary;
   const taglineSize = px(style.slide0.taglineSize, width);
-  ctx.font = `400 ${Math.round(taglineSize)}px ${serifFont}`;
+  ctx.font = `${styleFor(false, taglineEmphasis)} ${weightFor(400, taglineEmphasis)} ${Math.round(taglineSize)}px ${serifFont}`;
   const taglineLines = style.slide0.tagline.split("\n").filter(Boolean);
   const taglineOffset = posFor(positions, "slide0.tagline");
   let taglineFirst = 0;
@@ -803,12 +872,14 @@ function drawEditorialParagraphs(
   size: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[],
   hotspotId?: string
 ): number {
   const paragraphs = splitEditorialParagraphs(text);
+  const emphasis = emphasisFor(emphases, hotspotId ?? "");
   if (draw) ctx.fillStyle = style.colors.textPrimary;
-  ctx.font = `400 ${Math.round(size)}px ${serifFont}`;
+  ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${serifFont}`;
   const lineHeight = size * style.layout.bodyLineHeight;
   const offset = posFor(positions, hotspotId ?? "");
   let cursorY = startY;
@@ -844,6 +915,7 @@ function drawSlide1Understand(
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   const transliteration = px(style.slide1.transliterationSize, width);
@@ -854,17 +926,19 @@ function drawSlide1Understand(
 
   // Same Noto Sans Tamil family as the Kural Koorum Aram cover, not the
   // serif Tamil face -- consistency across the app's Tamil rendering.
+  const tamilRefEmphasis = emphasisFor(emphases, "slide1.tamilRef");
   ctx.textAlign = "left";
   if (draw) ctx.fillStyle = style.colors.textPrimary;
-  ctx.font = `700 ${Math.round(tamilRef)}px ${tamilFont}`;
+  ctx.font = `${styleFor(false, tamilRefEmphasis)} ${weightFor(700, tamilRefEmphasis)} ${Math.round(tamilRef)}px ${tamilFont}`;
   cursorY += tamilRef;
   const tamilRefOffset = posFor(positions, "slide1.tamilRef");
   if (draw) ctx.fillText(episode.tamilText, frame.contentX + tamilRefOffset.dx, cursorY + tamilRefOffset.dy);
   pushHotspot(hotspots, "slide1.tamilRef", frame.contentX, frame.contentW, cursorY, cursorY, tamilRef, tamilRefOffset);
 
   cursorY += transliteration * 2.4;
+  const transliterationEmphasis = emphasisFor(emphases, "slide1.transliteration");
   if (draw) ctx.fillStyle = style.colors.textPrimary;
-  ctx.font = `700 ${Math.round(transliteration)}px ${serifFont}`;
+  ctx.font = `${styleFor(false, transliterationEmphasis)} ${weightFor(700, transliterationEmphasis)} ${Math.round(transliteration)}px ${serifFont}`;
   const transliterationOffset = posFor(positions, "slide1.transliteration");
   if (draw) ctx.fillText(episode.transliteration, frame.contentX + transliterationOffset.dx, cursorY + transliterationOffset.dy);
   pushHotspot(
@@ -879,8 +953,9 @@ function drawSlide1Understand(
   );
 
   cursorY += transliteration * 2.0;
+  const meaningEmphasis = emphasisFor(emphases, "slide1.meaning");
   if (draw) ctx.fillStyle = style.colors.textSecondary;
-  ctx.font = `italic 400 ${Math.round(meaning)}px ${serifFont}`;
+  ctx.font = `${styleFor(true, meaningEmphasis)} ${weightFor(400, meaningEmphasis)} ${Math.round(meaning)}px ${serifFont}`;
   const meaningOffset = posFor(positions, "slide1.meaning");
   if (draw) ctx.fillText(episode.simpleMeaning, frame.contentX + meaningOffset.dx, cursorY + meaningOffset.dy);
   pushHotspot(hotspots, "slide1.meaning", frame.contentX, frame.contentW, cursorY, cursorY, meaning, meaningOffset);
@@ -900,11 +975,18 @@ function drawSlide1Understand(
     body,
     draw,
     positions,
+    emphases,
     hotspots,
     "slide1.body"
   );
 }
 
+/** "Family Situation" -- each generated paragraph is its own independently
+ *  draggable/editable text box (id `slide2.body.N`), not one combined
+ *  block, per explicit founder direction. An override at index N replaces
+ *  just that paragraph's text (falling back to the generated paragraph
+ *  when empty); the paragraph COUNT always follows the generated content --
+ *  overrides can only reword an existing paragraph, not add/remove one. */
 function drawSlide2Family(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
@@ -915,24 +997,45 @@ function drawSlide2Family(
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined,
+  overrideParagraphs: string[] | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
-  return drawEditorialParagraphs(
-    ctx,
-    style,
-    frame,
-    startY,
-    frame.contentBottom,
-    episode.familyAngle,
-    serifFont,
-    px(style.slide2.bodySize, width),
-    draw,
-    positions,
-    hotspots,
-    "slide2.body"
-  );
+  const generatedParagraphs = splitEditorialParagraphs(episode.familyAngle);
+  const size = px(style.slide2.bodySize, width);
+  const lineHeight = size * style.layout.bodyLineHeight;
+  let cursorY = startY;
+
+  for (let i = 0; i < generatedParagraphs.length; i++) {
+    if (cursorY > frame.contentBottom) break;
+    const id = `slide2.body.${i}`;
+    const text = overrideParagraphs?.[i] || generatedParagraphs[i];
+    const offset = posFor(positions, id);
+    const emphasis = emphasisFor(emphases, id);
+    if (draw) ctx.fillStyle = style.colors.textPrimary;
+    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${serifFont}`;
+    const lines = wrapText(ctx, text, frame.contentW);
+    let firstBaseline = 0;
+    for (const line of lines) {
+      cursorY += lineHeight;
+      if (firstBaseline === 0) firstBaseline = cursorY;
+      if (draw) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
+    }
+    pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, size, offset);
+    // Generous paragraph gap -- distinct visual breaks between grafs
+    // rather than a dense block, so the copy occupies its natural share
+    // of the frame instead of reading as one cramped paragraph.
+    cursorY += lineHeight * 0.85;
+  }
+  return cursorY;
 }
 
+/** "Today's Action" -- the lead-in line, the highlighted question, and the
+ *  trailing line are three separately draggable/editable components (ids
+ *  slide3.before / slide3.question / slide3.after), not one combined
+ *  block, per explicit founder direction. Each falls back independently to
+ *  its own slice of the generated todayAction text (see splitQuotedAction)
+ *  when not overridden. */
 function drawSlide3Action(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
@@ -943,76 +1046,96 @@ function drawSlide3Action(
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined,
+  overrides: { before?: string; question?: string; after?: string } | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
-  const blockStartY = startY;
   const body = px(style.slide3.bodySize, width);
   const questionSize = px(style.slide3.questionSize, width);
-  const { before, quoted, after } = splitQuotedAction(episode.todayAction);
-  const { dx, dy } = posFor(positions, "slide3.action");
-  const ox = frame.contentX + dx;
+  const generated = splitQuotedAction(episode.todayAction);
+  const before = overrides?.before || generated.before;
+  const quoted = overrides?.question || generated.quoted;
+  const after = overrides?.after || generated.after;
   let cursorY = startY;
 
   if (before) {
+    const id = "slide3.before";
+    const offset = posFor(positions, id);
+    const emphasis = emphasisFor(emphases, id);
     ctx.textAlign = "left";
     if (draw) ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `400 ${Math.round(body)}px ${serifFont}`;
+    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(body)}px ${serifFont}`;
     const lines = wrapText(ctx, before, frame.contentW);
+    let firstBaseline = 0;
     for (const line of lines) {
       cursorY += body * style.layout.bodyLineHeight;
-      if (draw) ctx.fillText(line, ox, cursorY + dy);
+      if (firstBaseline === 0) firstBaseline = cursorY;
+      if (draw) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
     }
+    pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, body, offset);
     cursorY += body * 1.2;
   }
 
   // Translucent glass-effect highlight panel, optionally with a small
   // decorative opening quote mark -- isolates the single actionable
   // question, which carries the strongest hierarchy here.
+  const questionId = "slide3.question";
+  const qOffset = posFor(positions, questionId);
+  const qEmphasis = emphasisFor(emphases, questionId);
+  const qStyle = styleFor(false, qEmphasis);
+  const qWeight = weightFor(700, qEmphasis);
   const panelPadX = frame.contentW * style.slide3.panelPadX;
   const panelPadY = frame.contentW * style.slide3.panelPadY;
-  ctx.font = `600 ${Math.round(questionSize)}px ${serifFont}`;
+  ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${serifFont}`;
   const quoteLines = wrapText(ctx, quoted, frame.contentW - panelPadX * 2);
   const quoteLineHeight = questionSize * 1.36;
   const panelH = panelPadY * 2 + quoteLines.length * quoteLineHeight;
   const panelY = cursorY;
+  const qx = frame.contentX + qOffset.dx;
 
   if (draw) {
     ctx.fillStyle = style.colors.panelFill;
     ctx.strokeStyle = style.colors.panelBorder;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(ox, panelY + dy, frame.contentW, panelH, frame.contentW * style.slide3.panelRadius);
+    ctx.roundRect(qx, panelY + qOffset.dy, frame.contentW, panelH, frame.contentW * style.slide3.panelRadius);
     ctx.fill();
     ctx.stroke();
 
     if (style.slide3.showQuoteMark) {
       ctx.fillStyle = style.colors.textSecondary;
       ctx.font = `700 ${Math.round(frame.contentW * 0.09)}px Georgia, serif`;
-      ctx.fillText("“", ox + panelPadX * 0.55, panelY + dy + panelPadY + questionSize * 0.75);
+      ctx.fillText("“", qx + panelPadX * 0.55, panelY + qOffset.dy + panelPadY + questionSize * 0.75);
     }
 
     ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `700 ${Math.round(questionSize)}px ${serifFont}`;
-    let qy = panelY + dy + panelPadY + questionSize * 0.85;
+    ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${serifFont}`;
+    let qy = panelY + qOffset.dy + panelPadY + questionSize * 0.85;
     for (const line of quoteLines) {
-      ctx.fillText(line, ox + panelPadX, qy);
+      ctx.fillText(line, qx + panelPadX, qy);
       qy += quoteLineHeight;
     }
+  }
+  if (hotspots) {
+    hotspots.push({ id: questionId, x: qx, y: panelY + qOffset.dy, width: frame.contentW, height: panelH });
   }
 
   cursorY = panelY + panelH + body * 1.3;
 
   if (after) {
+    const id = "slide3.after";
+    const offset = posFor(positions, id);
+    const emphasis = emphasisFor(emphases, id);
     if (draw) ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `400 ${Math.round(body)}px ${serifFont}`;
+    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(body)}px ${serifFont}`;
     const lines = wrapText(ctx, after, frame.contentW);
+    let firstBaseline = 0;
     for (const line of lines) {
       cursorY += body * style.layout.bodyLineHeight;
-      if (draw && cursorY <= frame.contentBottom) ctx.fillText(line, ox, cursorY + dy);
+      if (firstBaseline === 0) firstBaseline = cursorY;
+      if (draw && cursorY <= frame.contentBottom) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
     }
-  }
-  if (draw && hotspots) {
-    hotspots.push({ id: "slide3.action", x: ox, y: blockStartY + dy, width: frame.contentW, height: cursorY - blockStartY });
+    pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, body, offset);
   }
   return cursorY;
 }
@@ -1028,12 +1151,14 @@ function drawSlide4Carry(
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   const supportSize = px(style.slide4.supportSize, width);
   const ctaSize = px(style.slide4.ctaSize, width);
   let cursorY = startY;
   const headlineStartY = cursorY;
+  const headlineEmphasis = emphasisFor(emphases, "slide4.headline");
 
   // The main statement gets the premium editorial (display serif)
   // treatment -- the strongest typography on this slide. Split at an em
@@ -1046,7 +1171,7 @@ function drawSlide4Carry(
 
   ctx.textAlign = "left";
   if (draw) ctx.fillStyle = style.colors.textPrimary;
-  ctx.font = `700 ${Math.round(heroSize)}px ${displayFont}`;
+  ctx.font = `${styleFor(false, headlineEmphasis)} ${weightFor(700, headlineEmphasis)} ${Math.round(heroSize)}px ${displayFont}`;
   const leadLines = wrapText(ctx, rest ? `${lead} —` : lead, frame.contentW);
   const leadLineHeight = heroSize * 1.22;
   const headlineOffset = posFor(positions, "slide4.headline");
@@ -1058,7 +1183,7 @@ function drawSlide4Carry(
   if (rest) {
     cursorY += leadLineHeight * 0.25;
     if (draw) ctx.fillStyle = style.colors.textSecondary;
-    ctx.font = `400 ${Math.round(supportSize)}px ${serifFont}`;
+    ctx.font = `${styleFor(false, headlineEmphasis)} ${weightFor(400, headlineEmphasis)} ${Math.round(supportSize)}px ${serifFont}`;
     const lines = wrapText(ctx, rest, frame.contentW);
     for (const line of lines) {
       cursorY += supportSize * style.layout.bodyLineHeight;
@@ -1081,8 +1206,9 @@ function drawSlide4Carry(
   cursorY += frame.contentW * 0.09;
 
   if (episode.distantDevotionConnection) {
+    const connectionEmphasis = emphasisFor(emphases, "slide4.connection");
     if (draw) ctx.fillStyle = style.colors.textSecondary;
-    ctx.font = `400 ${Math.round(supportSize)}px ${serifFont}`;
+    ctx.font = `${styleFor(false, connectionEmphasis)} ${weightFor(400, connectionEmphasis)} ${Math.round(supportSize)}px ${serifFont}`;
     const lines = wrapText(ctx, episode.distantDevotionConnection, frame.contentW);
     const connectionOffset = posFor(positions, "slide4.connection");
     let connectionFirst = 0;
@@ -1106,8 +1232,9 @@ function drawSlide4Carry(
 
   // CTA -- no icon, no decorative graphic. Muted, not bright accent green
   // -- the headline already carries the slide's emphasis.
+  const ctaEmphasis = emphasisFor(emphases, "slide4.cta");
   if (draw) ctx.fillStyle = style.colors.textSecondary;
-  ctx.font = `700 ${Math.round(ctaSize)}px ${serifFont}`;
+  ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(700, ctaEmphasis)} ${Math.round(ctaSize)}px ${serifFont}`;
   const ctaLines = wrapText(ctx, episode.cta.copy, frame.contentW);
   const ctaOffset = posFor(positions, "slide4.cta");
   let ctaY = cursorY;
@@ -1142,20 +1269,35 @@ function layoutSlide(
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined,
+  text: CarouselTextOverrides | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   switch (slideIndex) {
     case 0:
-      return drawSlide0Stop(ctx, style, frame, width, episode, tamilFont, serifFont, startY, draw, positions, hotspots);
+      return drawSlide0Stop(ctx, style, frame, width, episode, tamilFont, serifFont, startY, draw, positions, emphases, hotspots);
     case 1:
-      return drawSlide1Understand(ctx, style, frame, width, episode, tamilFont, serifFont, startY, draw, positions, hotspots);
+      return drawSlide1Understand(ctx, style, frame, width, episode, tamilFont, serifFont, startY, draw, positions, emphases, hotspots);
     case 2:
-      return drawSlide2Family(ctx, style, frame, width, episode, serifFont, startY, draw, positions, hotspots);
+      return drawSlide2Family(
+        ctx,
+        style,
+        frame,
+        width,
+        episode,
+        serifFont,
+        startY,
+        draw,
+        positions,
+        emphases,
+        text?.slide2?.paragraphs,
+        hotspots
+      );
     case 3:
-      return drawSlide3Action(ctx, style, frame, width, episode, serifFont, startY, draw, positions, hotspots);
+      return drawSlide3Action(ctx, style, frame, width, episode, serifFont, startY, draw, positions, emphases, text?.slide3, hotspots);
     case 4:
     default:
-      return drawSlide4Carry(ctx, style, frame, width, episode, serifFont, displayFont, startY, draw, positions, hotspots);
+      return drawSlide4Carry(ctx, style, frame, width, episode, serifFont, displayFont, startY, draw, positions, emphases, hotspots);
   }
 }
 
@@ -1176,10 +1318,12 @@ export function renderAathichoodiCarouselSlide(
   const episode = applyTextOverrides(opts.episode, opts.design?.text);
   const frame = computeFrame(style, width, height, slideIndex);
   const positions = opts.design?.positions;
+  const emphases = opts.design?.emphases;
+  const text = opts.design?.text;
   const hotspots: CarouselHotspot[] = [];
 
   drawSurface(ctx, width, height, style.colors);
-  drawHeader(ctx, style, frame, width, height, slideIndex, sansFont, positions, hotspots);
+  drawHeader(ctx, style, frame, width, height, slideIndex, sansFont, positions, emphases, hotspots);
 
   ctx.textBaseline = "alphabetic";
 
@@ -1195,7 +1339,9 @@ export function renderAathichoodiCarouselSlide(
     displayFont,
     frame.contentTop,
     false,
-    positions
+    positions,
+    emphases,
+    text
   );
   const contentHeight = measuredEndY - frame.contentTop;
   const available = frame.contentBottom - frame.contentTop;
@@ -1215,10 +1361,12 @@ export function renderAathichoodiCarouselSlide(
     balancedStartY,
     true,
     positions,
+    emphases,
+    text,
     hotspots
   );
 
-  drawFooterLockup(ctx, style, frame, width, height, sansFont, opts, positions, hotspots);
+  drawFooterLockup(ctx, style, frame, width, height, sansFont, opts, positions, emphases, hotspots);
 
   return hotspots;
 }
