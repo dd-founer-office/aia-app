@@ -55,15 +55,19 @@ export const KURAL_SCROLL_FORMATION_CONFIG = {
    *  90px was just as much dead space BEFORE it, between the "குறள்
    *  கூறும் அறம்" heading above this container and the verse itself. With
    *  realText's topOffsetPx 20 + its two lines at fontSizePx 19 *
-   *  lineHeight 1.5 (~57px), the formed verse now spans y=20..77, so
-   *  heightPx is trimmed again to 100 (20px above, ~23px below) --
-   *  matching gap-4 spacing on both sides instead of a large void on
-   *  either one. Scatter bounds are untouched (still fractions of the
-   *  container's own, now-smaller, box), so the convergence animation
-   *  still plays across the full section -- just a more tightly framed
-   *  one, consistent with the rest of the page's spacing. */
+   *  lineHeight 1.5 (~57px), the formed verse spans y=20..77.
+   *
+   *  Bumped from 100 to 115 as part of the fluid-font-size fix below
+   *  (realText's own header comment): that fix guarantees each line stays
+   *  on one row at every viewport width, but leaves a little headroom
+   *  here anyway as a second, independent safety net against real-font
+   *  ascent/descent metrics (Tamil vowel signs in particular) running
+   *  slightly taller than the 1.5 lineHeight box assumes -- overflowY
+   *  visible (below) is the first net, this is the belt-and-suspenders
+   *  second one, same philosophy as the container-measurement effect's
+   *  own defensive re-measure. */
   container: {
-    heightPx: 100,
+    heightPx: 115,
   },
 
   /** Approximate target position for each animated glyph as it converges --
@@ -86,11 +90,43 @@ export const KURAL_SCROLL_FORMATION_CONFIG = {
    *  reads once formation completes. Ordinary text, not animated spans, so
    *  it reads exactly like any other correctly-shaped Tamil text in the
    *  app. Positioned to visually line up with approxFormed above so the
-   *  crossfade doesn't jump. */
+   *  crossfade doesn't jump.
+   *
+   *  Each of the two lines (KKA_001_RAW's own line break: "அகர முதல
+   *  எழுத்தெல்லாம் ஆதி" / "பகவன் முதற்றே உலகு" -- 4 words then 3, never
+   *  split any other way) must render as exactly one row apiece. At a
+   *  fixed fontSizePx 19 that broke on real phones: measured natural
+   *  (unwrapped) width of line 1 is ~316.7px in the app's actual Tamil
+   *  font, but the box it renders into is only viewport-width minus ~80px
+   *  of combined padding (main's own px-5 + this component's own
+   *  horizontalMarginPx, both sides) -- comfortably short of 316.7px on
+   *  any phone under ~420px wide (most of them). The browser's own line
+   *  wrap then silently turned line 1 into two rows, pushed line 2 down
+   *  past the container's bottom edge, and clipped part of it -- not a
+   *  rendering glitch, a real bug reported from a live phone.
+   *
+   *  Fixed at the root: the component forces whiteSpace: 'nowrap' on
+   *  both lines (never wrap, no matter what -- satisfies "no breaking"
+   *  exactly), and fontSizePx below is now the CEILING of a fluid size,
+   *  not a fixed one. minFontSizePx/fluidVwCoefficient/fluidOffsetPx
+   *  together build a CSS clamp() the component applies as fontSize:
+   *  `clamp(minFontSizePx, calc((100vw - fluidOffsetPx) * fluidVwCoefficient), fontSizePx)`.
+   *  fluidVwCoefficient (0.056) is (fontSizePx / line 1's measured
+   *  316.7px natural width) with roughly a 7% safety margin folded in
+   *  (the raw, zero-margin ratio is ~0.06) -- so at any viewport width
+   *  the computed size keeps line 1 a bit short of the available box
+   *  instead of exactly matching it, absorbing kerning/rounding
+   *  differences between environments. Above ~419px-wide viewports the
+   *  clamp saturates at the fontSizePx ceiling (19px, this feature's
+   *  original fixed size) since there's room to spare; minFontSizePx
+   *  (13px) is a readability floor for the narrowest real phones. */
   realText: {
     topOffsetPx: 20,
     horizontalMarginPx: 20,
     fontSizePx: 19,
+    minFontSizePx: 13,
+    fluidVwCoefficient: 0.056,
+    fluidOffsetPx: 80,
     lineHeight: 1.5,
   },
 
