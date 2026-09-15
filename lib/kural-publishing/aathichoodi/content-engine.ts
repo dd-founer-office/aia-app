@@ -12,9 +12,10 @@
  * renderers, or the UI.
  *
  * Locked slide framework (founder-approved, Episode 1 is the benchmark):
- *   1. STOP              -> hook (hooks.ts: the fixed series hook, "Have
- *                            you taught your child this?", on every
- *                            episode unless explicitly overridden)
+ *   1. STOP              -> hook + tagline (hooks.ts / taglines.ts: each
+ *                            episode gets its own, per explicit founder
+ *                            direction -- no line is fixed/repeated across
+ *                            the series anymore)
  *   2. UNDERSTAND         -> understanding (understanding.ts: opener + the
  *                            episode's own meaning + a theme-rooted "what
  *                            this builds in a child" clause)
@@ -30,13 +31,12 @@
  * A canon entry's own `curated` fields (see canon.ts), when present, are
  * used verbatim for familyAngle/todayAction/childLesson/aiaConnection/
  * understanding/recommendedCta -- an editor already made that call
- * deliberately. Every other episode is composed live from the theme pools
- * with anti-repetition history (history-store.ts) so consistency comes
- * from STRUCTURE (the five-slide framework, the tone) rather than from
- * repeating the same wording episode after episode. Slide 1's hook is the
- * one exception to "compose fresh every time": it's fixed (see hooks.ts)
- * because it's the series' psychological entry point, not editorial prose
- * that benefits from variety.
+ * deliberately. Every other episode -- including the hook and tagline now
+ * -- is composed live from the theme pools with anti-repetition history
+ * (history-store.ts) so consistency comes from STRUCTURE (the five-slide
+ * framework, the tone) rather than from repeating the same wording episode
+ * after episode. A curated hookOverride still wins when an editor has
+ * hand-authored one for a specific episode.
  *
  * `verified` reflects the canon entry's own flag (Tamil text confidence),
  * never invented per-episode.
@@ -45,6 +45,8 @@
 import { AATHICHOODI_CANON, getCanonEntry, type AathichoodiCanonEntry } from "./canon";
 import { themeLabel, type ThemeId } from "./themes";
 import { selectHook } from "./hooks";
+import { selectTagline } from "./taglines";
+import { selectHashtags } from "./hashtags";
 import { selectScenario } from "./scenarios";
 import { selectAction } from "./actions";
 import { selectChildLesson, selectAiaConnection } from "./voice";
@@ -67,12 +69,18 @@ export interface ComposedEpisode {
   primaryTheme: ThemeId;
   themeLabel: string;
   hook: string;
+  /** Slide 1's closing couplet (e.g. "One pause today. / A calmer child
+   *  tomorrow.") -- per-episode now, not fixed design copy (see
+   *  taglines.ts). "\n" separates the two lines. */
+  tagline: string;
   familyAngle: string;
   childLesson: string;
   todayAction: string;
   aiaConnection: string;
   distantDevotionConnection?: string;
   cta: CtaSelection;
+  /** Exactly 3: brand + theme + a rotated broad-reach tag (hashtags.ts). */
+  hashtags: string[];
   recommendedFormat: AathichoodiFormat;
   verified: boolean;
 }
@@ -101,10 +109,15 @@ export function composeEpisode(
   const theme = entry.primaryTheme;
   const curated = entry.curated;
 
-  // Slide 1's hook is the fixed series hook (see hooks.ts) on every
-  // episode, unless this specific one has a hand-authored strategic
-  // override.
-  const hook = selectHook(curated?.hookOverride);
+  // Slide 1's hook and closing tagline are per-episode now (hooks.ts/
+  // taglines.ts), same theme-pool + anti-repetition pattern as every other
+  // generated field, unless this specific episode has a hand-authored
+  // hook override.
+  const hook = curated?.hookOverride
+    ? { id: "curated", text: curated.hookOverride }
+    : selectHook(theme, episodeNumber, history.recentHookIds);
+  const tagline = selectTagline(theme, episodeNumber, history.recentTaglineIds);
+  const hashtags = selectHashtags(theme, episodeNumber, history.recentReachHashtagIds);
 
   const scenario = curated
     ? { id: "curated", text: curated.familyAngle }
@@ -143,13 +156,15 @@ export function composeEpisode(
     understanding: understanding.text,
     primaryTheme: theme,
     themeLabel: themeLabel(theme),
-    hook,
+    hook: hook.text,
+    tagline: tagline.text,
     familyAngle: scenario.text,
     childLesson: childLesson.text,
     todayAction: action.text,
     aiaConnection: aiaConnection.text,
     distantDevotionConnection: curated?.distantDevotionConnection,
     cta,
+    hashtags: hashtags.tags,
     recommendedFormat: recommendFormat(entry),
     verified: entry.verified,
   };
@@ -163,6 +178,9 @@ export function composeEpisode(
     recentCtaTypes: clampRecent([...history.recentCtaTypes, cta.type]),
     recentUnderstandingOpenerIds: clampRecent([...history.recentUnderstandingOpenerIds, understanding.openerId]),
     recentReframingIds: clampRecent([...history.recentReframingIds, understanding.reframingId]),
+    recentHookIds: clampRecent([...history.recentHookIds, hook.id]),
+    recentTaglineIds: clampRecent([...history.recentTaglineIds, tagline.id]),
+    recentReachHashtagIds: clampRecent([...history.recentReachHashtagIds, hashtags.id]),
   };
 
   return { episode, nextHistory };

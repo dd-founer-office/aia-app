@@ -617,8 +617,8 @@ export default function PublishingWorkspace() {
     setStyleOverrides((prev) => ({ ...prev, slide4: { ...prev.slide4, [key]: value } }));
   }, []);
 
-  const patchText0 = useCallback((hook: string) => {
-    setTextOverrides((prev) => ({ ...prev, slide0: { hook } }));
+  const patchText0 = useCallback((patch: { hook?: string; tagline?: string }) => {
+    setTextOverrides((prev) => ({ ...prev, slide0: { ...prev.slide0, ...patch } }));
   }, []);
   const patchText1 = useCallback((understanding: string) => {
     setTextOverrides((prev) => ({ ...prev, slide1: { understanding } }));
@@ -786,7 +786,7 @@ export default function PublishingWorkspace() {
             label: "Hook",
             textValue: textOverrides.slide0?.hook ?? "",
             textPlaceholder: displayEpisode?.hook,
-            onTextChange: patchText0,
+            onTextChange: (v) => patchText0({ hook: v }),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide0.hookSize, onChange: (v) => patchSlide0("hookSize", v) }],
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide0.hookSize,
@@ -794,8 +794,9 @@ export default function PublishingWorkspace() {
         case "slide0.tagline":
           return {
             label: "Closing tagline (use \\n for a line break)",
-            textValue: resolvedStyle.slide0.tagline,
-            onTextChange: (v) => patchSlide0("tagline", v),
+            textValue: textOverrides.slide0?.tagline ?? "",
+            textPlaceholder: displayEpisode?.tagline,
+            onTextChange: (v) => patchText0({ tagline: v }),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide0.taglineSize, onChange: (v) => patchSlide0("taglineSize", v) }],
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide0.taglineSize,
@@ -1425,13 +1426,14 @@ export default function PublishingWorkspace() {
                         label="Hook text override"
                         value={textOverrides.slide0?.hook ?? ""}
                         placeholder={displayEpisode.hook}
-                        onChange={patchText0}
+                        onChange={(v) => patchText0({ hook: v })}
                       />
                       <NumField label="Tagline size (px)" value={resolvedStyle.slide0.taglineSize} onChange={(v) => patchSlide0("taglineSize", v)} />
                       <TextAreaField
-                        label="Tagline (use \n for a line break)"
-                        value={resolvedStyle.slide0.tagline}
-                        onChange={(v) => patchSlide0("tagline", v)}
+                        label="Tagline text override (use \n for a line break)"
+                        value={textOverrides.slide0?.tagline ?? ""}
+                        placeholder={displayEpisode.tagline}
+                        onChange={(v) => patchText0({ tagline: v })}
                         rows={2}
                       />
                       <CheckField

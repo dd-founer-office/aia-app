@@ -82,11 +82,11 @@ export interface Slide0Style {
   heroSize: number;
   heroMinSize: number;
   hookSize: number;
-  /** Recurring closing tagline shown under the hook, muted -- fixed
-   *  design-system copy (like the section headings), not per-episode
-   *  generated content. "\n" forces the two-line break shown in the
-   *  reference rather than word-wrapping. */
-  tagline: string;
+  /** Only the SIZE lives here -- the tagline's own text is per-episode
+   *  generated content now (ComposedEpisode.tagline, see content-engine.ts/
+   *  taglines.ts), not fixed design-system copy, so it's read from the
+   *  episode (via CarouselTextOverrides.slide0.tagline for the founder's
+   *  own edit), same pattern as the hook. */
   taglineSize: number;
   showBranding: boolean;
 }
@@ -149,7 +149,7 @@ export interface CarouselStyleOverrides {
  *  clearing a field in the editor reverts to the engine's own copy rather
  *  than rendering blank. */
 export interface CarouselTextOverrides {
-  slide0?: { hook?: string };
+  slide0?: { hook?: string; tagline?: string };
   slide1?: { understanding?: string };
   /** One override slot per generated paragraph, by index -- each paragraph
    *  is its own separately draggable/editable text box (see
@@ -343,7 +343,6 @@ export const DEFAULT_STYLE: CarouselStyle = {
     heroSize: 86,
     heroMinSize: 72,
     hookSize: 32,
-    tagline: "Small values today.\nA kinder tomorrow.",
     taglineSize: 25,
     showBranding: true,
   },
@@ -427,6 +426,7 @@ function applyTextOverrides(episode: ComposedEpisode, text?: CarouselTextOverrid
   return {
     ...episode,
     hook: text.slide0?.hook || episode.hook,
+    tagline: text.slide0?.tagline || episode.tagline,
     understanding: text.slide1?.understanding || episode.understanding,
     distantDevotionConnection: text.slide4?.distantDevotionConnection || episode.distantDevotionConnection,
     cta: ctaCopy ? { ...episode.cta, copy: ctaCopy } : episode.cta,
@@ -900,13 +900,14 @@ function drawSlide0Stop(
   }
   pushHotspot(hotspots, "slide0.hook", frame.contentX, frame.contentW, hookFirst, cursorY, hookSize, hookOffset);
 
-  // Recurring closing tagline -- fixed design-system copy (like the
-  // section headings), muted, two explicit lines.
+  // Closing tagline -- per-episode generated content now (episode.tagline,
+  // see taglines.ts), muted, two explicit lines ("\n" forces the break
+  // rather than word-wrapping).
   cursorY += hookSize * 0.9;
   if (draw) ctx.fillStyle = style.colors.textSecondary;
   const taglineSize = px(style.slide0.taglineSize, width);
   ctx.font = `${styleFor(false, taglineEmphasis)} ${weightFor(400, taglineEmphasis)} ${Math.round(taglineSize)}px ${serifFont}`;
-  const taglineLines = style.slide0.tagline.split("\n").filter(Boolean);
+  const taglineLines = episode.tagline.split("\n").filter(Boolean);
   const taglineOffset = posFor(positions, "slide0.tagline");
   let taglineFirst = 0;
   for (const line of taglineLines) {

@@ -56,11 +56,11 @@ export interface CuratedEpisodeContent {
    *  omitted, understanding.ts composes it from the theme pools like every
    *  other field content-engine.ts doesn't have curated prose for. */
   understanding?: string;
-  /** Optional override for Slide 1's hook. Per explicit founder direction,
-   *  "Have you taught your child this?" is the recurring hook for every
-   *  Aathichoodi post -- this exists only for the rare episode where an
-   *  editor has a genuinely strong strategic reason to depart from it, not
-   *  for automatic per-theme variety (see hooks.ts). */
+  /** Optional hand-authored override for Slide 1's hook, for the rare
+   *  episode where an editor wants something more specific than the
+   *  theme's own generated pool (see hooks.ts). Every other episode gets
+   *  its own per-theme hook automatically -- there is no more single fixed
+   *  hook repeated across the series. */
   hookOverride?: string;
 }
 

@@ -1,45 +1,34 @@
 /**
  * Daily Aathichoodi Series — Caption Generator
  * ----------------------------------------------------------------------------
- * A separate text artifact from the carousel/static slide copy -- per the
- * brief, NOT a repeat of all five slides. Structure: Hook -> Aathichoodi ->
- * short reflection -> parent question -> today's action -> AiA connection
- * -> CTA -> the fixed sign-off line.
+ * A separate text artifact from the carousel/static slide copy, not a
+ * repeat of it -- per explicit founder direction, short and punchy rather
+ * than restating the long slide paragraphs (understanding/familyAngle/
+ * todayAction), optimized for feed reach: a strong hook line up front
+ * (what shows before Instagram truncates with "...more"), then the day's
+ * Aathichoodi, the closing tagline as the emotional payoff, the CTA, the
+ * fixed sign-off, and exactly 3 hashtags (episode.hashtags -- brand + theme
+ * + a rotated broad-reach tag, see hashtags.ts).
  */
 
 import type { ComposedEpisode } from "./content-engine";
 
 const SIGNOFF = "சொல்லில் தமிழ் • செயலில் அறம்!";
 
-/** Hooks phrased as statements (not questions) get a standard parent
- *  question appended, so the caption always has a distinct reflection
- *  question -- per the brief's fixed structure. Hooks already phrased as a
- *  question (most of them are) don't get a second, duplicate question --
- *  the hook itself already fills that role. */
-function parentQuestion(hook: string): string | null {
-  if (hook.trim().endsWith("?")) return null;
-  return "What would it look like to live this out with your child today?";
-}
-
 export function generateCaption(episode: ComposedEpisode): string {
-  const question = parentQuestion(episode.hook);
   const lines = [
     episode.hook,
     "",
-    `Today's Aathichoodi: ${episode.tamilText} (${episode.transliteration})`,
-    episode.simpleMeaning,
-    ...(question ? ["", question] : []),
+    `${episode.tamilText} (${episode.transliteration}) — ${episode.simpleMeaning}`,
     "",
-    `Today's action: ${episode.todayAction}`,
+    ...episode.tagline.split("\n"),
     "",
-    episode.aiaConnection,
+    episode.cta.copy,
+    "",
+    SIGNOFF,
+    "",
+    episode.hashtags.join(" "),
   ];
-
-  if (episode.distantDevotionConnection) {
-    lines.push("", episode.distantDevotionConnection);
-  }
-
-  lines.push("", episode.cta.copy, "", SIGNOFF);
 
   return lines.join("\n");
 }

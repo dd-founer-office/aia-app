@@ -29,6 +29,15 @@ export interface SeriesHistory {
   recentUnderstandingOpenerIds: string[];
   /** Slide 2's per-theme "what this builds in a child" clause. */
   recentReframingIds: string[];
+  /** Slide 1's hook (hooks.ts) -- per-episode now, not the old fixed line. */
+  recentHookIds: string[];
+  /** Slide 1's closing tagline (taglines.ts) -- per-episode now, not the
+   *  old fixed "Small values today. / A kinder tomorrow." copy. */
+  recentTaglineIds: string[];
+  /** Caption's broad-reach hashtag (hashtags.ts) -- the brand and theme
+   *  tags don't need anti-repetition (theme already rotates episode to
+   *  episode; the brand tag is deliberately constant). */
+  recentReachHashtagIds: string[];
 }
 
 export const EMPTY_HISTORY: SeriesHistory = {
@@ -40,6 +49,9 @@ export const EMPTY_HISTORY: SeriesHistory = {
   recentCtaTypes: [],
   recentUnderstandingOpenerIds: [],
   recentReframingIds: [],
+  recentHookIds: [],
+  recentTaglineIds: [],
+  recentReachHashtagIds: [],
 };
 
 export function loadHistory(): SeriesHistory {
