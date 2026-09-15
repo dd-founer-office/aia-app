@@ -167,6 +167,10 @@ function buildKuralFilename(
   return `kural-koorum-aram-issue-${issue}-kural-${kural}-${format.id}.png`;
 }
 
+/** Canva-style smart-guide snap distance, in canvas pixels (1080-wide
+ *  reference canvas), not screen pixels. */
+const SNAP_PX = 6;
+
 function slugify(text: string): string {
   const slug = text
     .trim()
@@ -1028,7 +1032,24 @@ export default function PublishingWorkspace() {
     moved: boolean;
     scaleX: number;
     scaleY: number;
+    // The hotspot's own position/size with NO drag offset applied,
+    // captured once at drag start -- NOT re-derived from the live
+    // `hotspots` array during the move, since that array reflects
+    // whatever offset the LAST move already committed (it updates via a
+    // canvas redraw mid-drag), which would make a "hotspot.x - startDx"
+    // recomputation drift further off with every event instead of
+    // staying fixed.
+    naturalX: number;
+    naturalY: number;
+    width: number;
+    height: number;
   } | null>(null);
+
+  // Canva-style smart guides: while dragging, the element's edges/center
+  // snap to the canvas's own content margins and center once within a few
+  // canvas pixels, and a thin line is drawn at that position so it's
+  // obvious *why* it stopped there -- not just an invisible snap.
+  const [activeGuides, setActiveGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] });
 
   const handleHotspotPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>, hotspotId: string) => {
@@ -1037,6 +1058,7 @@ export default function PublishingWorkspace() {
       const rect = container.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return;
       const current = positionOverrides[hotspotId] ?? { dx: 0, dy: 0 };
+      const hotspot = hotspots.find((h) => h.id === hotspotId);
       dragStateRef.current = {
         id: hotspotId,
         pointerId: e.pointerId,
@@ -1047,28 +1069,73 @@ export default function PublishingWorkspace() {
         moved: false,
         scaleX: previewFormat.width / rect.width,
         scaleY: previewFormat.height / rect.height,
+        naturalX: hotspot ? hotspot.x - current.dx : 0,
+        naturalY: hotspot ? hotspot.y - current.dy : 0,
+        width: hotspot?.width ?? 0,
+        height: hotspot?.height ?? 0,
       };
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [positionOverrides, previewFormat.width, previewFormat.height]
+    [positionOverrides, previewFormat.width, previewFormat.height, hotspots]
   );
 
-  const handleHotspotPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = dragStateRef.current;
-    if (!drag || e.pointerId !== drag.pointerId) return;
-    const deltaClientX = e.clientX - drag.startClientX;
-    const deltaClientY = e.clientY - drag.startClientY;
-    if (!drag.moved && Math.hypot(deltaClientX, deltaClientY) < 4) return;
-    drag.moved = true;
-    const dx = drag.startDx + deltaClientX * drag.scaleX;
-    const dy = drag.startDy + deltaClientY * drag.scaleY;
-    setPositionOverrides((prev) => ({ ...prev, [drag.id]: { dx, dy } }));
-  }, []);
+  const handleHotspotPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const drag = dragStateRef.current;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      const deltaClientX = e.clientX - drag.startClientX;
+      const deltaClientY = e.clientY - drag.startClientY;
+      if (!drag.moved && Math.hypot(deltaClientX, deltaClientY) < 4) return;
+      drag.moved = true;
+      let dx = drag.startDx + deltaClientX * drag.scaleX;
+      let dy = drag.startDy + deltaClientY * drag.scaleY;
+
+      // Snap to the canvas's own content margins/center, Canva-style --
+      // drag.naturalX/naturalY (captured once at drag start, see
+      // handleHotspotPointerDown) plus this drag's own delta gives the
+      // candidate box for THIS move. Deliberately NOT re-derived from the
+      // live `hotspots` array here -- that reflects whatever offset the
+      // last move already committed, which would drift the "natural"
+      // baseline off with every event instead of staying fixed.
+      const guidesX: number[] = [];
+      const guidesY: number[] = [];
+      const candidateLeft = drag.naturalX + dx;
+      const candidateRight = candidateLeft + drag.width;
+      const candidateCenterX = candidateLeft + drag.width / 2;
+      const candidateCenterY = drag.naturalY + dy + drag.height / 2;
+
+      const contentX = Math.round(previewFormat.width * resolvedStyle.layout.marginX);
+      const contentRight = previewFormat.width - contentX;
+      const centerX = previewFormat.width / 2;
+      const centerY = previewFormat.height / 2;
+
+      if (Math.abs(candidateLeft - contentX) <= SNAP_PX) {
+        dx += contentX - candidateLeft;
+        guidesX.push(contentX);
+      } else if (Math.abs(candidateRight - contentRight) <= SNAP_PX) {
+        dx += contentRight - candidateRight;
+        guidesX.push(contentRight);
+      } else if (Math.abs(candidateCenterX - centerX) <= SNAP_PX) {
+        dx += centerX - candidateCenterX;
+        guidesX.push(centerX);
+      }
+
+      if (Math.abs(candidateCenterY - centerY) <= SNAP_PX) {
+        dy += centerY - candidateCenterY;
+        guidesY.push(centerY);
+      }
+
+      setActiveGuides({ x: guidesX, y: guidesY });
+      setPositionOverrides((prev) => ({ ...prev, [drag.id]: { dx, dy } }));
+    },
+    [previewFormat.width, previewFormat.height, resolvedStyle.layout.marginX]
+  );
 
   const handleHotspotPointerUp = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>, hotspotId: string) => {
       const drag = dragStateRef.current;
       dragStateRef.current = null;
+      setActiveGuides({ x: [], y: [] });
       if (drag?.moved) return; // Drag already applied live -- nothing else to do.
       // A plain click (no movement) toggles this hotspot's editor.
       setActiveHotspotId((prev) => (prev === hotspotId ? null : hotspotId));
@@ -1789,6 +1856,24 @@ export default function PublishingWorkspace() {
                   />
                 );
               })}
+            </div>
+          )}
+          {effectiveTemplate === "aathichoodi-carousel" && (activeGuides.x.length > 0 || activeGuides.y.length > 0) && (
+            <div className="pointer-events-none absolute inset-0 z-20">
+              {activeGuides.x.map((x) => (
+                <div
+                  key={`guide-x-${x}`}
+                  className="absolute inset-y-0 w-px bg-[#FF3EA5]"
+                  style={{ left: `${(x / previewFormat.width) * 100}%` }}
+                />
+              ))}
+              {activeGuides.y.map((y) => (
+                <div
+                  key={`guide-y-${y}`}
+                  className="absolute inset-x-0 h-px bg-[#FF3EA5]"
+                  style={{ top: `${(y / previewFormat.height) * 100}%` }}
+                />
+              ))}
             </div>
           )}
           {effectiveTemplate === "aathichoodi-carousel" &&

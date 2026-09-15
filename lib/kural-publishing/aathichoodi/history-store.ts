@@ -38,6 +38,12 @@ export interface SeriesHistory {
    *  tags don't need anti-repetition (theme already rotates episode to
    *  episode; the brand tag is deliberately constant). */
   recentReachHashtagIds: string[];
+  /** Caption-only copy (caption-copy.ts) -- deliberately its own pools,
+   *  never the slide's own hook/tagline/CTA text, so the caption reads as
+   *  a separate piece of writing rather than a copy of the graphic. */
+  recentCaptionOpenerIds: string[];
+  recentCaptionCloserIds: string[];
+  recentCaptionCtaIds: string[];
 }
 
 export const EMPTY_HISTORY: SeriesHistory = {
@@ -52,6 +58,9 @@ export const EMPTY_HISTORY: SeriesHistory = {
   recentHookIds: [],
   recentTaglineIds: [],
   recentReachHashtagIds: [],
+  recentCaptionOpenerIds: [],
+  recentCaptionCloserIds: [],
+  recentCaptionCtaIds: [],
 };
 
 export function loadHistory(): SeriesHistory {

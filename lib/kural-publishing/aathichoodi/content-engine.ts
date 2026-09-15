@@ -47,6 +47,7 @@ import { themeLabel, type ThemeId } from "./themes";
 import { selectHook } from "./hooks";
 import { selectTagline } from "./taglines";
 import { selectHashtags } from "./hashtags";
+import { selectCaptionOpener, selectCaptionCloser, selectCaptionCta } from "./caption-copy";
 import { selectScenario } from "./scenarios";
 import { selectAction } from "./actions";
 import { selectChildLesson, selectAiaConnection } from "./voice";
@@ -81,6 +82,13 @@ export interface ComposedEpisode {
   cta: CtaSelection;
   /** Exactly 3: brand + theme + a rotated broad-reach tag (hashtags.ts). */
   hashtags: string[];
+  /** Caption-only copy (caption-copy.ts) -- deliberately separate writing
+   *  from hook/tagline/cta.copy above, which are the SLIDE's own text.
+   *  caption.ts builds the caption from these, never from the slide
+   *  fields, so the caption reads as its own piece, not a copy. */
+  captionOpener: string;
+  captionCloser: string;
+  captionCta: string;
   recommendedFormat: AathichoodiFormat;
   verified: boolean;
 }
@@ -147,6 +155,13 @@ export function composeEpisode(
     curated?.recommendedCta
   );
 
+  // Caption-only copy -- deliberately its own writing (caption-copy.ts),
+  // never the slide's own hook/tagline/cta.copy above, so the caption
+  // reads as a separate piece rather than a copy of the graphic.
+  const captionOpener = selectCaptionOpener(theme, episodeNumber, history.recentCaptionOpenerIds);
+  const captionCloser = selectCaptionCloser(theme, episodeNumber, history.recentCaptionCloserIds);
+  const captionCta = selectCaptionCta(cta.type, episodeNumber, history.recentCaptionCtaIds);
+
   const episode: ComposedEpisode = {
     episodeNumber: entry.episodeNumber,
     totalEpisodes: AATHICHOODI_CANON.length,
@@ -165,6 +180,9 @@ export function composeEpisode(
     distantDevotionConnection: curated?.distantDevotionConnection,
     cta,
     hashtags: hashtags.tags,
+    captionOpener: captionOpener.text,
+    captionCloser: captionCloser.text,
+    captionCta: captionCta.text,
     recommendedFormat: recommendFormat(entry),
     verified: entry.verified,
   };
@@ -181,6 +199,9 @@ export function composeEpisode(
     recentHookIds: clampRecent([...history.recentHookIds, hook.id]),
     recentTaglineIds: clampRecent([...history.recentTaglineIds, tagline.id]),
     recentReachHashtagIds: clampRecent([...history.recentReachHashtagIds, hashtags.id]),
+    recentCaptionOpenerIds: clampRecent([...history.recentCaptionOpenerIds, captionOpener.id]),
+    recentCaptionCloserIds: clampRecent([...history.recentCaptionCloserIds, captionCloser.id]),
+    recentCaptionCtaIds: clampRecent([...history.recentCaptionCtaIds, captionCta.id]),
   };
 
   return { episode, nextHistory };
