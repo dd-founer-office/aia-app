@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Bookmark, Images, TrendingUp, MapPin, Milestone, ShieldCheck, FileText } from "lucide-react";
 import type { MockAct } from "@/lib/mock-data";
-import { mockKuralOfTheDay } from "@/lib/mock-data";
 import { buildActMedia } from "@/lib/act-media";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { ChipCard } from "@/components/shared/ChipCard";
@@ -123,17 +122,6 @@ export function ActDetailClient({ act, id }: { act: MockAct; id: string }) {
               label="Records"
               value={`${act.documents.length} documents`}
             />
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <p className="font-tamil-sans font-medium text-sm">குறள் கூறும் அறம்</p>
-            <p className="font-tamil-sans font-normal whitespace-pre-line text-base leading-relaxed">
-              {mockKuralOfTheDay.kural_tamil}
-            </p>
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              {mockKuralOfTheDay.core_principle}
-            </p>
-            <p className="text-sm italic leading-relaxed">{mockKuralOfTheDay.aram_for_today_body}</p>
           </div>
         </div>
       </main>
