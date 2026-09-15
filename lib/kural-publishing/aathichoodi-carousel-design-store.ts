@@ -26,6 +26,10 @@ const TEXT_STORAGE_KEY_PREFIX = "aia-aathichoodi-carousel-text-v1-";
 // content.
 const POSITIONS_STORAGE_KEY = "aia-aathichoodi-carousel-positions-v1";
 const EMPHASES_STORAGE_KEY = "aia-aathichoodi-carousel-emphases-v1";
+// The invert-colors toggle is per episode (like text), not shared (like
+// style) -- the whole point is picking it per episode so alternating
+// episodes can checkerboard light/dark on an Instagram grid.
+const INVERT_STORAGE_KEY_PREFIX = "aia-aathichoodi-carousel-invert-v1-";
 
 export function loadStyleOverrides(): CarouselStyleOverrides {
   if (typeof window === "undefined") return {};
@@ -103,11 +107,30 @@ export function saveEmphases(emphases: CarouselTextEmphases): void {
   }
 }
 
+export function loadInvertColors(episodeNumber: number): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(`${INVERT_STORAGE_KEY_PREFIX}${episodeNumber}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function saveInvertColors(episodeNumber: number, invert: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(`${INVERT_STORAGE_KEY_PREFIX}${episodeNumber}`, invert ? "1" : "0");
+  } catch {
+    /* storage unavailable (private browsing, quota) -- edits just won't persist */
+  }
+}
+
 export function buildDesignOverrides(
   style: CarouselStyleOverrides,
   text: CarouselTextOverrides,
   positions: CarouselPositions,
-  emphases: CarouselTextEmphases
+  emphases: CarouselTextEmphases,
+  invertColors: boolean
 ): CarouselDesignOverrides {
-  return { style, text, positions, emphases };
+  return { style, text, positions, emphases, invertColors };
 }

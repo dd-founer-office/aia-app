@@ -202,6 +202,11 @@ export interface CarouselDesignOverrides {
   text?: CarouselTextOverrides;
   positions?: CarouselPositions;
   emphases?: CarouselTextEmphases;
+  /** Manual per-episode toggle -- swaps the base palette to INVERTED_COLORS
+   *  (see its own doc comment) so alternating episodes can checkerboard
+   *  light/dark on an Instagram grid. Founder-controlled per episode, not
+   *  automatic -- see PublishingWorkspace.tsx's "Invert colors" toggle. */
+  invertColors?: boolean;
 }
 
 /** A clickable region on the rendered canvas, in canvas-pixel space, for
@@ -375,9 +380,29 @@ export const DEFAULT_STYLE: CarouselStyle = {
   },
 };
 
-export function resolveStyle(overrides?: CarouselStyleOverrides): CarouselStyle {
+/** A hand-tuned reverse of DEFAULT_STYLE.colors -- background and text
+ *  swap roles (the cream becomes the field, the dark forest-green becomes
+ *  the ink) rather than an automated colour-math invert, so it reads as a
+ *  deliberate second look, not an accessibility mistake. Selected per
+ *  episode via the founder's manual toggle (RenderCarouselSlideOptions'
+ *  design.invertColors), so alternating episodes can checkerboard
+ *  light/dark on an Instagram grid. The accent green is left as-is -- it
+ *  already has enough contrast against both fields. */
+export const INVERTED_COLORS: CarouselColors = {
+  background: "#F6F1E3",
+  backgroundDeep: "#EDE4CE",
+  textPrimary: "#15422C",
+  textSecondary: "#4A6B57",
+  accent: "#3C8F62",
+  panelFill: "rgba(21, 66, 44, 0.06)",
+  panelBorder: "rgba(21, 66, 44, 0.14)",
+  badgeRing: "rgba(21, 66, 44, 0.18)",
+};
+
+export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
+  const baseColors = invertColors ? INVERTED_COLORS : DEFAULT_STYLE.colors;
   return {
-    colors: { ...DEFAULT_STYLE.colors, ...overrides?.colors },
+    colors: { ...baseColors, ...overrides?.colors },
     layout: { ...DEFAULT_STYLE.layout, ...overrides?.layout },
     slide0: { ...DEFAULT_STYLE.slide0, ...overrides?.slide0 },
     slide1: { ...DEFAULT_STYLE.slide1, ...overrides?.slide1 },
@@ -1376,7 +1401,7 @@ export function renderAathichoodiCarouselSlide(
   // tamilSerifFont, now unused here) -- explicit founder direction for
   // consistency across the app's Tamil rendering, current and future.
   const { width, height, slideIndex, tamilFont, serifFont, sansFont, displayFont } = opts;
-  const style = resolveStyle(opts.design?.style);
+  const style = resolveStyle(opts.design?.style, opts.design?.invertColors);
   const episode = applyTextOverrides(opts.episode, opts.design?.text);
   const frame = computeFrame(style, width, height, slideIndex);
   const positions = opts.design?.positions;

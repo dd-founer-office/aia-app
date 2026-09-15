@@ -117,6 +117,8 @@ import {
   savePositions,
   loadEmphases,
   saveEmphases,
+  loadInvertColors,
+  saveInvertColors,
   buildDesignOverrides,
 } from "@/lib/kural-publishing/aathichoodi-carousel-design-store";
 
@@ -440,6 +442,12 @@ export default function PublishingWorkspace() {
   const [positionOverrides, setPositionOverrides] = useState<CarouselPositions>(() => loadPositions());
   // Per-element bold/italic toggles -- shared across episodes like style.
   const [emphasisOverrides, setEmphasisOverrides] = useState<CarouselTextEmphases>(() => loadEmphases());
+  // Manual per-episode toggle -- swaps the whole palette to its inverted
+  // counterpart (see INVERTED_COLORS) so alternating episodes can
+  // checkerboard light/dark on an Instagram grid. Per episode, like text,
+  // not shared like style/positions/emphases -- reloaded in
+  // handleLoadEpisode alongside textOverrides.
+  const [invertColors, setInvertColors] = useState(() => loadInvertColors(1));
 
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
@@ -577,12 +585,15 @@ export default function PublishingWorkspace() {
   useEffect(() => {
     saveEmphases(emphasisOverrides);
   }, [emphasisOverrides]);
+  useEffect(() => {
+    if (composedEpisode) saveInvertColors(composedEpisode.episodeNumber, invertColors);
+  }, [invertColors, composedEpisode]);
 
   const carouselDesign = useMemo(
-    () => buildDesignOverrides(styleOverrides, textOverrides, positionOverrides, emphasisOverrides),
-    [styleOverrides, textOverrides, positionOverrides, emphasisOverrides]
+    () => buildDesignOverrides(styleOverrides, textOverrides, positionOverrides, emphasisOverrides, invertColors),
+    [styleOverrides, textOverrides, positionOverrides, emphasisOverrides, invertColors]
   );
-  const resolvedStyle = useMemo(() => resolveStyle(styleOverrides), [styleOverrides]);
+  const resolvedStyle = useMemo(() => resolveStyle(styleOverrides, invertColors), [styleOverrides, invertColors]);
 
   const patchColor = useCallback((key: keyof CarouselColors, value: string) => {
     setStyleOverrides((prev) => ({ ...prev, colors: { ...prev.colors, [key]: value } }));
@@ -646,11 +657,19 @@ export default function PublishingWorkspace() {
     savePositions({});
     setEmphasisOverrides({});
     saveEmphases({});
+    setInvertColors(false);
+    if (composedEpisode) saveInvertColors(composedEpisode.episodeNumber, false);
   }, [composedEpisode]);
 
   const handleCopyDesignJSON = useCallback(() => {
     const json = JSON.stringify(
-      { style: styleOverrides, text: textOverrides, positions: positionOverrides, emphases: emphasisOverrides },
+      {
+        style: styleOverrides,
+        text: textOverrides,
+        positions: positionOverrides,
+        emphases: emphasisOverrides,
+        invertColors,
+      },
       null,
       2
     );
@@ -659,7 +678,7 @@ export default function PublishingWorkspace() {
         /* clipboard permission unavailable */
       });
     }
-  }, [styleOverrides, textOverrides, positionOverrides, emphasisOverrides]);
+  }, [styleOverrides, textOverrides, positionOverrides, emphasisOverrides, invertColors]);
 
   // Click-to-edit overlay: KuralHeroCanvas reports the current slide's
   // clickable regions (canvas-pixel space) after every repaint; clicking
@@ -1179,6 +1198,7 @@ export default function PublishingWorkspace() {
       setGeneratedAssets([]);
       setGeneration((g) => g + 1);
       setTextOverrides(loadTextOverrides(clamped));
+      setInvertColors(loadInvertColors(clamped));
     },
     [seriesHistory]
   );
@@ -1355,6 +1375,18 @@ export default function PublishingWorkspace() {
                   Design Controls
                 </summary>
                 <div className="mt-3 flex flex-col gap-4">
+                  <div className="rounded border border-[var(--color-border)] p-2">
+                    <CheckField
+                      label={`Invert colors for Episode ${displayEpisode.episodeNumber} (checkerboard the Instagram grid)`}
+                      checked={invertColors}
+                      onChange={setInvertColors}
+                    />
+                    <p className="mt-1 text-[10px] text-[var(--color-muted-foreground)]">
+                      Per-episode, not global -- toggle it on for every other episode to alternate light/dark down
+                      your feed.
+                    </p>
+                  </div>
+
                   <fieldset className="flex flex-col gap-1.5">
                     <legend className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
                       Global — Colors
