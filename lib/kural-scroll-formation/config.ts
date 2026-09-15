@@ -46,9 +46,18 @@ export const KURAL_SCROLL_FORMATION_CONFIG = {
   /** Container the whole feature lives in -- a normal block in the page
    *  flow, directly after Shared Acts of Aram, not a viewport-fixed
    *  overlay. Reserves real vertical space so the page's layout doesn't
-   *  jump once JS mounts. */
+   *  jump once JS mounts.
+   *
+   *  heightPx trimmed from an earlier 260 down to 175: with realText's
+   *  topOffsetPx 90 + its two lines at fontSizePx 19 * lineHeight 1.5
+   *  (~57px), the formed verse ends around y=147 -- 260 left ~110px of
+   *  dead space below the verse before the reflection text that now
+   *  follows this section on Home, on top of that stack's own gap-4. 175
+   *  keeps a small breathing margin below the verse without reintroducing
+   *  that gap; topOffsetPx and scatter bounds are untouched, so formation
+   *  and crossfade timing are unaffected. */
   container: {
-    heightPx: 260,
+    heightPx: 175,
   },
 
   /** Approximate target position for each animated glyph as it converges --
