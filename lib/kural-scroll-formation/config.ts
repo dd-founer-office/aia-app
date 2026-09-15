@@ -48,16 +48,22 @@ export const KURAL_SCROLL_FORMATION_CONFIG = {
    *  overlay. Reserves real vertical space so the page's layout doesn't
    *  jump once JS mounts.
    *
-   *  heightPx trimmed from an earlier 260 down to 175: with realText's
-   *  topOffsetPx 90 + its two lines at fontSizePx 19 * lineHeight 1.5
-   *  (~57px), the formed verse ends around y=147 -- 260 left ~110px of
-   *  dead space below the verse before the reflection text that now
-   *  follows this section on Home, on top of that stack's own gap-4. 175
-   *  keeps a small breathing margin below the verse without reintroducing
-   *  that gap; topOffsetPx and scatter bounds are untouched, so formation
-   *  and crossfade timing are unaffected. */
+   *  heightPx trimmed twice: first from 260 to 175 (removed the dead
+   *  space below the verse, before the reflection text that now follows
+   *  this section on Home). Then topOffsetPx below dropped from 90 to 20
+   *  as well -- that first cut only addressed the gap AFTER the verse;
+   *  90px was just as much dead space BEFORE it, between the "குறள்
+   *  கூறும் அறம்" heading above this container and the verse itself. With
+   *  realText's topOffsetPx 20 + its two lines at fontSizePx 19 *
+   *  lineHeight 1.5 (~57px), the formed verse now spans y=20..77, so
+   *  heightPx is trimmed again to 100 (20px above, ~23px below) --
+   *  matching gap-4 spacing on both sides instead of a large void on
+   *  either one. Scatter bounds are untouched (still fractions of the
+   *  container's own, now-smaller, box), so the convergence animation
+   *  still plays across the full section -- just a more tightly framed
+   *  one, consistent with the rest of the page's spacing. */
   container: {
-    heightPx: 175,
+    heightPx: 100,
   },
 
   /** Approximate target position for each animated glyph as it converges --
@@ -70,7 +76,7 @@ export const KURAL_SCROLL_FORMATION_CONFIG = {
    *  container's own box, not the viewport. */
   approxFormed: {
     horizontalMarginPx: 20,
-    topOffsetPx: 90,
+    topOffsetPx: 20,
     letterAdvancePx: 13,
     wordGapPx: 11,
     lineGapPx: 24,
@@ -82,7 +88,7 @@ export const KURAL_SCROLL_FORMATION_CONFIG = {
    *  app. Positioned to visually line up with approxFormed above so the
    *  crossfade doesn't jump. */
   realText: {
-    topOffsetPx: 90,
+    topOffsetPx: 20,
     horizontalMarginPx: 20,
     fontSizePx: 19,
     lineHeight: 1.5,
