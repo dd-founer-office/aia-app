@@ -8,6 +8,7 @@ import {
   mockContributor,
   mockJourney,
   mockLatestAct,
+  mockKuralOfTheDay,
   getCurrentMonthParticipation,
 } from "@/lib/mock-data";
 import { STAGE_LABELS, STAGE_ORDER } from "@/types";
@@ -276,17 +277,29 @@ export default function HomePage() {
           </p>
         </Card>
 
-        {/* Kural Scroll Formation replacement (supersedes Sprint 04A Living
-            Region entirely, founder-directed). This wrapping div still
+        {/* Kural Koorum Aram -- heading, Kural Scroll Formation, and
+            reflection text, all now living here in full (supersedes
+            Sprint 04A Living Region entirely, founder-directed). The
+            heading + reflection text (core_principle, aram_for_today_body)
+            were previously duplicated inline on every single Act of Aram
+            detail page -- moved here completely, this section's one home,
+            rather than existing in two places. This wrapping div still
             carries kuralSectionRef (unchanged -- the ambient
             recognition-pulse IntersectionObserver above still needs a real
-            DOM target to watch) and now hosts KuralScrollFormation, which
-            is fully isolated from lib/living-field/ (see its own file
-            header for why) -- it spawns and animates its own KKA-001
-            letters, converging as the page scrolls toward this point,
-            holding briefly, then dissolving back into ambient scatter. */}
-        <div ref={kuralSectionRef}>
+            DOM target to watch), now spanning the whole section rather than
+            just the formation box. KuralScrollFormation itself is fully
+            isolated from lib/living-field/ (see its own file header for
+            why) -- it spawns and animates its own KKA-001 letters,
+            converging as the page scrolls toward this point, holding
+            briefly as real text, then dissolving back into ambient
+            scatter; the verse text lives only there, not repeated below. */}
+        <div ref={kuralSectionRef} className="flex flex-col gap-4">
+          <p className="font-tamil-sans font-medium text-sm">குறள் கூறும் அறம்</p>
           <KuralScrollFormation />
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            {mockKuralOfTheDay.core_principle}
+          </p>
+          <p className="text-sm italic leading-relaxed">{mockKuralOfTheDay.aram_for_today_body}</p>
         </div>
       </main>
 
