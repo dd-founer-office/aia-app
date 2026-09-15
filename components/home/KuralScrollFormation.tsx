@@ -298,7 +298,14 @@ export default function KuralScrollFormation() {
       style={{
         position: "relative",
         height: CFG.container.heightPx,
-        overflow: "hidden",
+        // X clipped (keeps ambient scatter from spilling sideways off the
+        // section); Y left visible as a safety net so the real verse text
+        // is NEVER clipped even if some environment's font metrics run a
+        // little taller than the lineHeight box assumes -- see realText's
+        // config comment for the actual fix (fluid font-size + nowrap)
+        // this backs up.
+        overflowX: "hidden",
+        overflowY: "visible",
       }}
     >
       {/* Animated glyph layer -- decorative, purely visual approach to
@@ -346,16 +353,25 @@ export default function KuralScrollFormation() {
           left: CFG.realText.horizontalMarginPx,
           top: CFG.realText.topOffsetPx,
           right: CFG.realText.horizontalMarginPx,
-          fontSize: CFG.realText.fontSizePx,
+          // Fluid, not fixed -- see realText's config comment for the
+          // measured widths and safety margin this formula is built from.
+          // Keeps each line inside its available box at every viewport
+          // width instead of the fixed 19px that used to wrap on phones.
+          fontSize: `clamp(${CFG.realText.minFontSizePx}px, calc((100vw - ${CFG.realText.fluidOffsetPx}px) * ${CFG.realText.fluidVwCoefficient}), ${CFG.realText.fontSizePx}px)`,
           fontWeight: CFG.fontWeight,
           lineHeight: CFG.realText.lineHeight,
           color: colorString,
           opacity: reducedMotion ? 1 : 0,
           textAlign: "left",
+          // Belongs on the wrapper (inherited) as well as each line below --
+          // this is the actual fix for the wrap-then-clip bug: neither line
+          // is ever allowed to break, matching KKA_001_RAW's own line
+          // break (4 words, then 3) at every screen size.
+          whiteSpace: "nowrap",
         }}
       >
         {VERSE_LINES.map((line, i) => (
-          <p key={i} style={{ margin: 0 }}>
+          <p key={i} style={{ margin: 0, whiteSpace: "nowrap" }}>
             {line}
           </p>
         ))}
