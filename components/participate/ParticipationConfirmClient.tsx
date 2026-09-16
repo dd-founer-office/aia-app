@@ -36,13 +36,19 @@ export function ParticipationConfirmClient({
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (mounted && state.selectedCauses.length === 0) router.replace("/participate/causes");
-  }, [mounted, state.selectedCauses, router]);
+    if (!mounted) return;
+    if (state.selectedCauses.length === 0) router.replace("/participate/causes");
+    else if (!state.totalAmountRupees) router.replace("/participate/amount");
+  }, [mounted, state.selectedCauses, state.totalAmountRupees, router]);
 
   async function handleRecord() {
     setSubmitting(true);
     setError(null);
-    const result = await recordParticipationAction(state.selectedCauses);
+    const result = await recordParticipationAction(
+      state.selectedCauses,
+      state.totalAmountRupees ?? 0,
+      state.causeAllocationsRupees
+    );
     if (result.error) {
       setError(result.error);
       setSubmitting(false);
@@ -52,17 +58,19 @@ export function ParticipationConfirmClient({
     router.push("/participate/recorded");
   }
 
-  if (!mounted || state.selectedCauses.length === 0) return null;
+  if (!mounted || state.selectedCauses.length === 0 || !state.totalAmountRupees) return null;
 
   return (
     <div className="flex min-h-screen flex-col">
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-1 px-5 pt-10">
-        <ProgressIndicator current={3} total={4} />
+        <ProgressIndicator current={4} total={5} />
         <ScreenHeader title="Confirmation" subtitle="Commit your participation." />
 
         <div className="mt-6 flex flex-1 flex-col gap-4 pb-32">
           <ParticipationSummaryCard
             selectedCauseIds={state.selectedCauses}
+            causeAllocationsRupees={state.causeAllocationsRupees}
+            totalAmountRupees={state.totalAmountRupees}
             monthLabel={monthLabel}
             stageLabel={stageLabel}
             continuityMonthCount={continuityMonthCount}

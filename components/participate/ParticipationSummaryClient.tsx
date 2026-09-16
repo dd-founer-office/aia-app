@@ -41,22 +41,27 @@ export function ParticipationSummaryClient({
 
   // Defensive: nothing selected means this page was reached directly (a
   // fresh tab, a stale bookmark) rather than via Step 1 -- send back there
-  // instead of rendering an empty summary.
+  // instead of rendering an empty summary. No amount yet means Step 2
+  // (Enter Amount) was skipped -- send back there instead.
   useEffect(() => {
-    if (mounted && state.selectedCauses.length === 0) router.replace("/participate/causes");
-  }, [mounted, state.selectedCauses, router]);
+    if (!mounted) return;
+    if (state.selectedCauses.length === 0) router.replace("/participate/causes");
+    else if (!state.totalAmountRupees) router.replace("/participate/amount");
+  }, [mounted, state.selectedCauses, state.totalAmountRupees, router]);
 
-  if (!mounted || state.selectedCauses.length === 0) return null;
+  if (!mounted || state.selectedCauses.length === 0 || !state.totalAmountRupees) return null;
 
   return (
     <div className="flex min-h-screen flex-col">
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-1 px-5 pt-10">
-        <ProgressIndicator current={2} total={4} />
+        <ProgressIndicator current={3} total={5} />
         <ScreenHeader title="Participation Summary" subtitle="Review your participation." />
 
         <div className="mt-6 flex flex-1 flex-col gap-4 pb-32">
           <ParticipationSummaryCard
             selectedCauseIds={state.selectedCauses}
+            causeAllocationsRupees={state.causeAllocationsRupees}
+            totalAmountRupees={state.totalAmountRupees}
             monthLabel={monthLabel}
             stageLabel={stageLabel}
             continuityMonthCount={continuityMonthCount}
