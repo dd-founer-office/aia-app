@@ -99,7 +99,12 @@ export function OpsDashboard({ data }: { data: OpsDashboardData }) {
 
       {/* Row 2 -- Opportunity Overview + SLA */}
       <section>
-        <SectionHeader title="Opportunity Overview" />
+        <div className="flex items-baseline justify-between border-b border-[var(--color-border)] pb-2.5">
+          <h2 className="text-base font-medium">Opportunity Overview</h2>
+          <Link href="/ops/opportunities" className="text-sm text-[var(--color-primary)]">
+            View Opportunities
+          </Link>
+        </div>
         <Card className="mt-3 flex flex-col gap-4">
           <div className="flex flex-wrap gap-x-6 gap-y-3">
             {Object.entries(PIPELINE_LABELS).map(([status, label]) => (
