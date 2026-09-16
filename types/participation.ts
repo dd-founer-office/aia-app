@@ -49,7 +49,16 @@ export const CAUSES: readonly Cause[] = [
  * Nothing here is written to the backend until the Confirmation step
  * (per the Commitment domain model — Recorded happens at submission,
  * not during selection).
+ *
+ * totalAmountRupees / causeAllocationsRupees: founder-directed addition
+ * (per-founder product decision -- the contributor enters a total amount,
+ * then splits it themselves across their selected causes; that becomes the
+ * "order" the backend records for AiA to execute and later publish as an
+ * Act of Aram). Whole rupees only, no decimals -- avoids floating-point
+ * summation issues when validating the split against the total.
  */
 export interface ParticipationFlowState {
   selectedCauses: CauseId[];
+  totalAmountRupees: number | null;
+  causeAllocationsRupees: Partial<Record<CauseId, number>>;
 }

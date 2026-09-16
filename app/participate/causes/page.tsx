@@ -9,10 +9,11 @@ import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useParticipationFlow } from "@/lib/participation-flow-context";
 import { CAUSES } from "@/types/participation";
 
-// CA-014 Locked v1.0: "Progress indicator always visible: Step X of 4" --
-// fixed at 4 (Cause Selection, Participation Summary, Confirmation,
-// Participation Recorded), not a theoretical/dynamic count.
-const VISIBLE_STEP_COUNT = 4;
+// CA-014 Locked v1.0's own step count was 4 (Cause Selection,
+// Participation Summary, Confirmation, Participation Recorded). Founder
+// direction (2026-09-16) inserted a new Enter Amount step between Cause
+// Selection and Participation Summary, bringing the total to 5.
+const VISIBLE_STEP_COUNT = 5;
 
 export default function ChooseCausesPage() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function ChooseCausesPage() {
       setShowValidation(true);
       return;
     }
-    router.push("/participate/summary");
+    router.push("/participate/amount");
   }
 
   return (
