@@ -75,3 +75,13 @@ export function selectAiaConnection(episodeNumber: number, recentIds: readonly s
   const template = pickFresh(AIA_CONNECTIONS, recentIds, episodeNumber);
   return { id: template.id, text: template.text };
 }
+
+/** A curated episode's aiaConnection is sometimes the exact approved
+ *  phrase (e.g. Episode 1's gold master uses AIA_CONNECTIONS[0] verbatim).
+ *  When it matches a pool entry, the caller should record that entry's
+ *  real id in history -- not a generic "curated" sentinel -- so
+ *  anti-repetition actually knows that sentence was used and won't hand
+ *  it back out to a later, non-curated episode. */
+export function matchAiaConnectionId(text: string): string | undefined {
+  return AIA_CONNECTIONS.find((template) => template.text === text)?.id;
+}

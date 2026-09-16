@@ -50,7 +50,7 @@ import { selectHashtags } from "./hashtags";
 import { selectCaptionOpener, selectCaptionCloser, selectCaptionCta } from "./caption-copy";
 import { selectScenario } from "./scenarios";
 import { selectAction } from "./actions";
-import { selectChildLesson, selectAiaConnection } from "./voice";
+import { selectChildLesson, selectAiaConnection, matchAiaConnectionId } from "./voice";
 import { composeUnderstanding } from "./understanding";
 import { classifyCta, type CtaSelection } from "./cta";
 import {
@@ -137,7 +137,7 @@ export function composeEpisode(
     ? { id: "curated", text: curated.childLesson }
     : selectChildLesson(theme, episodeNumber, history.recentChildLessonIds);
   const aiaConnection = curated
-    ? { id: "curated", text: curated.aiaConnection }
+    ? { id: matchAiaConnectionId(curated.aiaConnection) ?? "curated", text: curated.aiaConnection }
     : selectAiaConnection(episodeNumber, history.recentAiaConnectionIds);
   const understanding = curated?.understanding
     ? { text: curated.understanding, openerId: "curated", reframingId: "curated" }
