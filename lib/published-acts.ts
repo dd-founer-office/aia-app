@@ -58,6 +58,23 @@ export interface PublishedActSummary {
   missionDate: string;
   landmark: string | null;
   heroImageUrl: string | null;
+  // CA-011 Section 2 (Impact Snapshot) / Section 3 (Story) -- nullable,
+  // see mission_publications_impact_story_fields migration. Genuinely
+  // unknown for a mission published before these fields existed, or any
+  // future one Ops hasn't filled in yet -- never fabricated.
+  beneficiaryCount: number | null;
+  storySituation: string | null;
+  storyAction: string | null;
+  storyOutcome: string | null;
+  // CA-011 Section 5 (Verification Summary) -- derived, not stored.
+  // gpsVerified is true when at least one evidence item has real GPS
+  // coordinates (Mission Camera always requests them, but a row could
+  // still lack them if capture happened without location permission).
+  evidenceCount: number;
+  gpsVerified: boolean;
+  capturedBy: string;
+  verifiedBy: string;
+  publishedAtDisplay: string;
 }
 
 export async function getPublishedActSummary(missionId: string): Promise<PublishedActSummary | null> {
@@ -91,6 +108,11 @@ export async function getPublishedActSummary(missionId: string): Promise<Publish
     heroImageUrl = featured?.photo_url ?? null;
   }
 
+  const { data: evidence } = await supabase
+    .from('evidence')
+    .select('gps_lat, gps_lng')
+    .eq('mission_id', missionId);
+
   return {
     id: mission.id,
     cause: mission.cause,
@@ -100,6 +122,15 @@ export async function getPublishedActSummary(missionId: string): Promise<Publish
     missionDate: formatDisplayDate(mission.mission_date),
     landmark: publication.landmark,
     heroImageUrl,
+    beneficiaryCount: publication.beneficiary_count ?? null,
+    storySituation: publication.story_situation ?? null,
+    storyAction: publication.story_action ?? null,
+    storyOutcome: publication.story_outcome ?? null,
+    evidenceCount: evidence?.length ?? 0,
+    gpsVerified: (evidence ?? []).some((e) => e.gps_lat != null && e.gps_lng != null),
+    capturedBy: mission.field_executive,
+    verifiedBy: prettifyReviewerName(publication.published_by as string),
+    publishedAtDisplay: formatDisplayDate(publication.published_at as string),
   };
 }
 
@@ -191,8 +222,19 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
   });
 }
 
-export interface PublishedActFeedItem extends PublishedActSummary {
+// Deliberately its own shape rather than extending PublishedActSummary --
+// the feed card doesn't need the detail-only fields (beneficiary count,
+// story, verification data) that PublishedActSummary carries for CA-011.
+export interface PublishedActFeedItem {
+  id: string;
+  cause: string;
+  title: string;
+  description: string;
+  organization: string;
+  missionDate: string;
   missionDateIso: string;
+  landmark: string | null;
+  heroImageUrl: string | null;
   evidenceCount: number;
 }
 
