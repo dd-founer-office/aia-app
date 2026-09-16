@@ -3,6 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { getSupabaseServerClient } from "@/lib/supabase/server-client";
 import { getOperatorAuthState } from "@/lib/operator";
+import { canApproveOpportunity, type ImpactAssuranceChecklist, type RiskLevel } from "@/lib/opportunity-detail";
+import type { OpportunityStatus } from "@/lib/ops-dashboard";
+
+const VALID_RISK_LEVELS: RiskLevel[] = ["low", "medium", "high", "critical"];
+
+function revalidateOpportunity(id: string) {
+  revalidatePath(`/ops/opportunities/${id}`);
+  revalidatePath("/ops/opportunities");
+  revalidatePath("/ops");
+}
 
 const VALID_CAUSES = ["Education", "Medical", "Annadhanam", "Environment"];
 const VALID_PRIORITIES = ["critical", "high", "normal", "low"];
@@ -71,5 +81,184 @@ export async function createOpportunityAction(formData: FormData): Promise<{ err
 
   revalidatePath("/ops/opportunities");
   revalidatePath("/ops");
+  return {};
+}
+
+/**
+ * OP-003 Section 2/5/6 combined save: Impact Assurance checklist, Risk
+ * Assessment, and Execution Readiness's owner field, all in one form so
+ * an operator working through the checklist doesn't lose Section 6's
+ * risk notes on an unrelated checkbox toggle.
+ *
+ * Two side effects, both real-data-driven, not manual status edits:
+ * - opportunity_verified flipping true for the first time stamps
+ *   verified_at (feeds the Activity Timeline's "Verification completed"
+ *   entry and OP-001's SLA indicator -- the same column that trigger
+ *   already reads).
+ * - status auto-advances submitted -> assuring the first time any
+ *   checklist item is set, matching OP-002's own "assuring" bucket
+ *   definition (opportunities actively being verified).
+ */
+export async function updateImpactAssuranceAction(
+  opportunityId: string,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const auth = await getOperatorAuthState();
+  if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
+
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) return { error: "Supabase is not configured on this deployment." };
+
+  const { data: current } = await supabase
+    .from("opportunities")
+    .select("status, verified_at")
+    .eq("id", opportunityId)
+    .maybeSingle();
+  if (!current) return { error: "Opportunity not found." };
+
+  const riskLevel = (formData.get("risk_level") as string | null) ?? "low";
+  if (!VALID_RISK_LEVELS.includes(riskLevel as RiskLevel)) {
+    return { error: "Choose a valid risk level." };
+  }
+
+  const checklist = {
+    opportunity_verified: formData.get("opportunity_verified") === "on",
+    partner_verified: formData.get("partner_verified") === "on",
+    documentation_complete: formData.get("documentation_complete") === "on",
+    site_validation_complete: formData.get("site_validation_complete") === "on",
+    execution_feasibility_confirmed: formData.get("execution_feasibility_confirmed") === "on",
+    risk_assessment_complete: formData.get("risk_assessment_complete") === "on",
+  };
+  const anyChecklistItem = Object.values(checklist).some(Boolean);
+
+  const update: Record<string, unknown> = {
+    ...checklist,
+    risk_level: riskLevel,
+    risk_notes: (formData.get("risk_notes") as string | null)?.trim() || null,
+    mitigation_plan: (formData.get("mitigation_plan") as string | null)?.trim() || null,
+    risk_owner: (formData.get("risk_owner") as string | null)?.trim() || null,
+    execution_owner: (formData.get("execution_owner") as string | null)?.trim() || null,
+    documentation_notes: (formData.get("documentation_notes") as string | null)?.trim() || null,
+  };
+
+  if (checklist.opportunity_verified && !current.verified_at) {
+    update.verified_at = new Date().toISOString();
+  }
+  if (current.status === "submitted" && anyChecklistItem) {
+    update.status = "assuring";
+  }
+
+  const { error } = await supabase.from("opportunities").update(update).eq("id", opportunityId);
+  if (error) return { error: error.message };
+
+  revalidateOpportunity(opportunityId);
+  return {};
+}
+
+/** OP-003 header's Approve action. Re-verifies the same gate
+ *  getOpportunityDetail() computed for the button's enabled state --
+ *  never trusts that the client actually saw a disabled button. */
+export async function approveOpportunityAction(opportunityId: string): Promise<{ error?: string }> {
+  const auth = await getOperatorAuthState();
+  if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
+
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) return { error: "Supabase is not configured on this deployment." };
+
+  const { data: opp } = await supabase.from("opportunities").select("*").eq("id", opportunityId).maybeSingle();
+  if (!opp) return { error: "Opportunity not found." };
+
+  const checklist: ImpactAssuranceChecklist = {
+    opportunityVerified: opp.opportunity_verified as boolean,
+    partnerVerified: opp.partner_verified as boolean,
+    documentationComplete: opp.documentation_complete as boolean,
+    siteValidationComplete: opp.site_validation_complete as boolean,
+    executionFeasibilityConfirmed: opp.execution_feasibility_confirmed as boolean,
+    riskAssessmentComplete: opp.risk_assessment_complete as boolean,
+  };
+  if (!canApproveOpportunity(opp.status as OpportunityStatus, checklist, opp.risk_level as RiskLevel)) {
+    return {
+      error:
+        "This opportunity isn't ready to approve yet -- complete the Impact Assurance checklist and resolve any critical risk first.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("opportunities")
+    .update({ status: "approved", approved_at: new Date().toISOString() })
+    .eq("id", opportunityId);
+  if (error) return { error: error.message };
+
+  revalidateOpportunity(opportunityId);
+  return {};
+}
+
+/** OP-003 header's Reject action. Requires a reason -- matches the same
+ *  "explicit reason" discipline the locked OP-002/OP-004 specs apply to
+ *  overdue closures and allocation overrides. */
+export async function rejectOpportunityAction(opportunityId: string, reason: string): Promise<{ error?: string }> {
+  const auth = await getOperatorAuthState();
+  if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
+  if (!reason.trim()) return { error: "A rejection reason is required." };
+
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) return { error: "Supabase is not configured on this deployment." };
+
+  const { error } = await supabase
+    .from("opportunities")
+    .update({ status: "rejected", rejected_at: new Date().toISOString(), rejection_reason: reason.trim() })
+    .eq("id", opportunityId);
+  if (error) return { error: error.message };
+
+  revalidateOpportunity(opportunityId);
+  return {};
+}
+
+/** OP-003 header's Request Information action. Saves what's being asked
+ *  for; there's no partner/contributor-facing inbox to route it to yet,
+ *  so this is an operator-visible note, not a real notification. */
+export async function requestInformationAction(opportunityId: string, notes: string): Promise<{ error?: string }> {
+  const auth = await getOperatorAuthState();
+  if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
+  if (!notes.trim()) return { error: "Describe what information is needed." };
+
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) return { error: "Supabase is not configured on this deployment." };
+
+  const { error } = await supabase
+    .from("opportunities")
+    .update({ information_request_notes: notes.trim() })
+    .eq("id", opportunityId);
+  if (error) return { error: error.message };
+
+  revalidateOpportunity(opportunityId);
+  return {};
+}
+
+/** OP-003 header's Allocate action -- only ever shown for an approved
+ *  opportunity (locked rule), re-verified here independently of the UI.
+ *  Marks the opportunity allocated; OP-004's actual participation-
+ *  matching engine isn't built yet, so this is a real status transition
+ *  without a matched participation behind it yet. */
+export async function allocateOpportunityAction(opportunityId: string): Promise<{ error?: string }> {
+  const auth = await getOperatorAuthState();
+  if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
+
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) return { error: "Supabase is not configured on this deployment." };
+
+  const { data: opp } = await supabase.from("opportunities").select("status").eq("id", opportunityId).maybeSingle();
+  if (!opp) return { error: "Opportunity not found." };
+  if (opp.status !== "approved") {
+    return { error: "Only approved opportunities can be allocated." };
+  }
+
+  const { error } = await supabase
+    .from("opportunities")
+    .update({ status: "allocated", allocated_at: new Date().toISOString() })
+    .eq("id", opportunityId);
+  if (error) return { error: error.message };
+
+  revalidateOpportunity(opportunityId);
   return {};
 }
