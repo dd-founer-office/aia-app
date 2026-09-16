@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TraceCard } from "./TraceCard";
 import { GeoTagCard } from "./GeoTagCard";
 import { FullPhotoViewer } from "./FullPhotoViewer";
 import { FullMapView } from "./FullMapView";
 import { useHorizontalSwipe } from "./useHorizontalSwipe";
+import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
+import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 import type { EvidenceTraceItem } from "./types";
 
 const CARD_W = 248;
@@ -40,6 +42,25 @@ export function LivingTraceViewer({ items }: { items: EvidenceTraceItem[] }) {
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, photoOpen, mapOpen]);
+
+  // Ambient Language Layer: "வாழ்க" (May it flourish) when this Act's
+  // published evidence is actually being viewed -- guarded on items.length
+  // so the empty ("being prepared") state below never fires it. Same
+  // Strict-Mode-safe idempotency pattern as Home's homeReady/kuralSection
+  // triggers (see app/page.tsx): a ref guard, plus onLivingFieldEngineReady
+  // rather than a direct notifyEvent() call, since this component's mount
+  // can race the Living Field's own mount (siblings under the root layout).
+  const evidencePublishedFiredRef = useRef(false);
+  useEffect(() => {
+    if (items.length === 0 || evidencePublishedFiredRef.current) return;
+
+    const unsubscribe = onLivingFieldEngineReady(() => {
+      if (evidencePublishedFiredRef.current) return;
+      evidencePublishedFiredRef.current = true;
+      notifyEvent("evidencePublished");
+    });
+    return unsubscribe;
+  }, [items.length]);
 
   const swipeRef = useHorizontalSwipe<HTMLDivElement>({
     onSwipeLeft: () => goTo(activeIndex + 1),
