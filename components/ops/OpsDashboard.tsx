@@ -101,9 +101,14 @@ export function OpsDashboard({ data }: { data: OpsDashboardData }) {
       <section>
         <div className="flex items-baseline justify-between border-b border-[var(--color-border)] pb-2.5">
           <h2 className="text-base font-medium">Opportunity Overview</h2>
-          <Link href="/ops/opportunities" className="text-sm text-[var(--color-primary)]">
-            View Opportunities
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/ops/opportunities" className="text-sm text-[var(--color-primary)]">
+              View Opportunities
+            </Link>
+            <Link href="/ops/allocations" className="text-sm text-[var(--color-primary)]">
+              Allocation Engine
+            </Link>
+          </div>
         </div>
         <Card className="mt-3 flex flex-col gap-4">
           <div className="flex flex-wrap gap-x-6 gap-y-3">
