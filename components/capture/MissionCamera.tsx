@@ -18,6 +18,8 @@ import { useDeviceOrientation } from "@/hooks/useDeviceOrientation";
 import { analyzeFrame, estimateMotion, scoreCQI } from "@/lib/capture-quality";
 import { submitMissionEvidenceAction } from "@/lib/capture-actions";
 import { getSupabasePublicClient } from "@/lib/supabase/client";
+import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
+import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 import type { CQIReading, CapturedEvidence, EvidenceRequirement, MissionTemplate } from "@/types/mission-camera";
 
 interface MissionCameraProps {
@@ -27,6 +29,17 @@ interface MissionCameraProps {
 }
 
 const ANALYSIS_SAMPLE_SIZE = 64;
+
+/** Ambient Language Layer's fixed MVP vocabulary only covers three of this
+ *  app's four mission categories (see ambient-language.ts's EVENT_WORD_MAP
+ *  header comment on why "exactly these six fixed words" is deliberate) --
+ *  "family" (Medical Family Support) has no assigned word, so it's simply
+ *  absent here rather than guessing one. */
+const MISSION_CATEGORY_TO_AMBIENT_EVENT: Partial<Record<MissionTemplate["category"], "treeMission" | "education" | "food">> = {
+  tree: "treeMission",
+  student: "education",
+  annadhanam: "food",
+};
 
 export function MissionCamera({ missionId, missionName, template }: MissionCameraProps) {
   const router = useRouter();
@@ -81,6 +94,28 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
   useEffect(() => {
     geoRef.current = { available: geo.available, accuracyMeters: geo.accuracyMeters };
   }, [geo.available, geo.accuracyMeters]);
+
+  // Ambient Language Layer: "a mission type being selected" -- this screen
+  // mounting IS that moment (its template prop is already resolved from
+  // the chosen mission). Same Strict-Mode-safe idempotency pattern as
+  // Home's homeReady/kuralSection triggers (see app/page.tsx): a ref
+  // guard, plus onLivingFieldEngineReady rather than a direct notifyEvent()
+  // call, since this component's mount can race the Living Field's own
+  // mount (siblings under the root layout, not parent/child) the same way
+  // Home's could.
+  const missionTypeFiredRef = useRef(false);
+  useEffect(() => {
+    if (missionTypeFiredRef.current) return;
+    const event = MISSION_CATEGORY_TO_AMBIENT_EVENT[template.category];
+    if (!event) return;
+
+    const unsubscribe = onLivingFieldEngineReady(() => {
+      if (missionTypeFiredRef.current) return;
+      missionTypeFiredRef.current = true;
+      notifyEvent(event);
+    });
+    return unsubscribe;
+  }, [template.category]);
 
   const activeRequirement = requirements.find((r) => r.status === "active") ?? null;
   const completedCount = requirements.filter((r) => r.status === "complete").length;

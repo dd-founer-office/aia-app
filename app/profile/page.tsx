@@ -13,6 +13,7 @@ import {
   getFirstParticipationDate,
   mockParticipations,
 } from "@/lib/mock-data";
+import { signOutAction } from "@/lib/auth-actions";
 import { VidhaiSeedIcon } from "@/components/home/icons/VidhaiSeedIcon";
 import { ThulirSproutIcon } from "@/components/home/icons/ThulirSproutIcon";
 import { KandruSaplingIcon } from "@/components/home/icons/KandruSaplingIcon";
@@ -154,20 +155,28 @@ export default function ProfilePage() {
           </Card>
         </section>
 
-        {/* Section 5 -- Account Settings (Locked, minimal). Static rows --
-            Sprint 1 auth isn't built yet, so these have no real
-            destinations. Wire up once auth ships. */}
+        {/* Section 5 -- Account Settings (Locked, minimal). "Logout" now
+            wired to real Supabase Auth (see lib/auth-actions.ts) now that
+            Sprint 1 auth has shipped -- the other three rows still have no
+            real destination yet and stay static placeholders. */}
         <section>
           <SectionHeader title="Account Settings" />
           <Card className="mt-3 divide-y divide-[var(--color-border)] p-0">
-            {["Personal details", "Communication preferences", "Privacy settings", "Logout"].map(
-              (label) => (
-                <div key={label} className="flex items-center justify-between px-5 py-3.5 text-sm">
-                  {label}
-                  <ChevronRight size={16} className="text-[var(--color-muted-foreground)]" />
-                </div>
-              )
-            )}
+            {["Personal details", "Communication preferences", "Privacy settings"].map((label) => (
+              <div key={label} className="flex items-center justify-between px-5 py-3.5 text-sm">
+                {label}
+                <ChevronRight size={16} className="text-[var(--color-muted-foreground)]" />
+              </div>
+            ))}
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="flex w-full items-center justify-between px-5 py-3.5 text-left text-sm text-[var(--color-error)]"
+              >
+                Logout
+                <ChevronRight size={16} className="text-[var(--color-muted-foreground)]" />
+              </button>
+            </form>
           </Card>
         </section>
 
