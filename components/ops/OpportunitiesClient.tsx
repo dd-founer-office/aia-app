@@ -352,7 +352,11 @@ export function OpportunitiesClient({ data }: { data: OpportunitiesOverview }) {
               <tbody>
                 {filtered.map((o) => (
                   <tr key={o.id} className="border-b border-[var(--color-border)] last:border-0">
-                    <td className="px-4 py-3 font-medium text-[var(--color-foreground)]">{o.title}</td>
+                    <td className="px-4 py-3 font-medium text-[var(--color-foreground)]">
+                      <Link href={`/ops/opportunities/${o.id}`} className="hover:underline">
+                        {o.title}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-[var(--color-muted-foreground)]">{o.cause}</td>
                     <td className="px-4 py-3 text-[var(--color-muted-foreground)]">{o.district ?? "—"}</td>
                     <td className="px-4 py-3 text-[var(--color-muted-foreground)]">{o.partnerName ?? "—"}</td>
