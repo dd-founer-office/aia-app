@@ -29,6 +29,30 @@ export interface CauseDistributionEntry {
   participationCount: number;
 }
 
+/** Shared by CA-012 (this file) and CA-013 (lib/profile.ts): "Expressions
+ *  of Aram" is counted by participation, never contribution amount, in
+ *  both specs. Takes participations already filtered to status='completed'
+ *  with their participation_causes(causes(slug)) embed selected. */
+export function buildCauseDistribution(
+  completedParticipations: { participation_causes: { causes: unknown }[] | null }[]
+): CauseDistributionEntry[] {
+  const causeCounts = new Map<CauseId, number>();
+  for (const participation of completedParticipations) {
+    for (const row of participation.participation_causes ?? []) {
+      // Same through-unknown cast as app/participate/recorded/page.tsx --
+      // supabase-js can't tell this is a many-to-one embed without
+      // generated DB types.
+      const slug = (row.causes as { slug: CauseId } | null)?.slug;
+      if (slug) causeCounts.set(slug, (causeCounts.get(slug) ?? 0) + 1);
+    }
+  }
+  return CAUSES.map((cause) => ({
+    causeId: cause.id,
+    title: cause.title,
+    participationCount: causeCounts.get(cause.id) ?? 0,
+  })).sort((a, b) => b.participationCount - a.participationCount);
+}
+
 export interface JourneyDetail {
   displayName: string;
   currentStage: StageName;
@@ -88,21 +112,7 @@ export async function getJourneyDetail(): Promise<JourneyDetail | null> {
   const hasParticipated = lifetimeParticipationCount > 0;
   const firstParticipationDateIso = completed[0]?.created_at ?? null;
 
-  const causeCounts = new Map<CauseId, number>();
-  for (const participation of completed) {
-    for (const row of participation.participation_causes ?? []) {
-      // Same through-unknown cast as app/participate/recorded/page.tsx --
-      // supabase-js can't tell this is a many-to-one embed without
-      // generated DB types.
-      const slug = (row.causes as unknown as { slug: CauseId } | null)?.slug;
-      if (slug) causeCounts.set(slug, (causeCounts.get(slug) ?? 0) + 1);
-    }
-  }
-  const causeDistribution: CauseDistributionEntry[] = CAUSES.map((cause) => ({
-    causeId: cause.id,
-    title: cause.title,
-    participationCount: causeCounts.get(cause.id) ?? 0,
-  })).sort((a, b) => b.participationCount - a.participationCount);
+  const causeDistribution = buildCauseDistribution(completed);
 
   const currentStage = journey.current_stage as StageName;
   const currentIdx = STAGE_ORDER.indexOf(currentStage);
