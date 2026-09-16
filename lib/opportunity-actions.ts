@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSupabaseServerClient } from "@/lib/supabase/server-client";
 import { getOperatorAuthState } from "@/lib/operator";
 import { canApproveOpportunity, type ImpactAssuranceChecklist, type RiskLevel } from "@/lib/opportunity-detail";
+import { currentMonthKey } from "@/lib/contributor";
 import type { OpportunityStatus } from "@/lib/ops-dashboard";
 
 const VALID_RISK_LEVELS: RiskLevel[] = ["low", "medium", "high", "critical"];
@@ -237,9 +238,16 @@ export async function requestInformationAction(opportunityId: string, notes: str
 
 /** OP-003 header's Allocate action -- only ever shown for an approved
  *  opportunity (locked rule), re-verified here independently of the UI.
- *  Marks the opportunity allocated; OP-004's actual participation-
- *  matching engine isn't built yet, so this is a real status transition
- *  without a matched participation behind it yet. */
+ *  This is the quick single-click path for an operator already on the
+ *  Detail page; OP-004's Allocation Engine (lib/allocation-actions.ts) is
+ *  the real recommendation-driven path. Both write the same allocations
+ *  table so OP-004's monthly compliance/participation-pool math stays
+ *  correct regardless of which path was used. This path has no pool or
+ *  capacity context to check against, so it records the full beneficiary
+ *  estimate as a manual override; when there's no beneficiary estimate to
+ *  size it from, the status still moves to allocated but no allocations
+ *  row is written (the check constraint requires a positive amount, and
+ *  there's nothing real to record). */
 export async function allocateOpportunityAction(opportunityId: string): Promise<{ error?: string }> {
   const auth = await getOperatorAuthState();
   if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
@@ -247,10 +255,30 @@ export async function allocateOpportunityAction(opportunityId: string): Promise<
   const supabase = await getSupabaseServerClient();
   if (!supabase) return { error: "Supabase is not configured on this deployment." };
 
-  const { data: opp } = await supabase.from("opportunities").select("status").eq("id", opportunityId).maybeSingle();
+  const { data: opp } = await supabase
+    .from("opportunities")
+    .select("status, cause, beneficiary_estimate")
+    .eq("id", opportunityId)
+    .maybeSingle();
   if (!opp) return { error: "Opportunity not found." };
   if (opp.status !== "approved") {
     return { error: "Only approved opportunities can be allocated." };
+  }
+
+  const beneficiaryEstimate = opp.beneficiary_estimate as number | null;
+  if (beneficiaryEstimate && beneficiaryEstimate > 0) {
+    const { error: allocationError } = await supabase.from("allocations").insert({
+      opportunity_id: opportunityId,
+      cause: opp.cause,
+      participations_allocated: beneficiaryEstimate,
+      recommended_allocation: null,
+      confidence: null,
+      is_manual_override: true,
+      override_reason: "Allocated directly from Opportunity Detail (OP-003), outside the Allocation Engine.",
+      allocation_month: `${currentMonthKey()}-01`,
+      created_by: auth.operator.operatorId,
+    });
+    if (allocationError) return { error: allocationError.message };
   }
 
   const { error } = await supabase
@@ -260,5 +288,6 @@ export async function allocateOpportunityAction(opportunityId: string): Promise<
   if (error) return { error: error.message };
 
   revalidateOpportunity(opportunityId);
+  revalidatePath("/ops/allocations");
   return {};
 }
