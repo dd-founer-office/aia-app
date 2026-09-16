@@ -5,10 +5,12 @@ import { getSupabaseServerClient } from "@/lib/supabase/server-client";
 import { getOperatorAuthState } from "@/lib/operator";
 import { currentMonthKey } from "@/lib/contributor";
 import { getAllocationEngineData } from "@/lib/allocation";
+import { ensureExecutionForOpportunity } from "@/lib/execution";
 
 function revalidateAllocations() {
   revalidatePath("/ops/allocations");
   revalidatePath("/ops/opportunities");
+  revalidatePath("/ops/executions");
   revalidatePath("/ops");
 }
 
@@ -62,6 +64,11 @@ export async function runAllocationAction(): Promise<{ error?: string; allocated
       toAllocate.map((r) => r.opportunityId)
     );
   if (updateError) return { error: updateError.message };
+
+  for (const r of toAllocate) {
+    const { error: executionError } = await ensureExecutionForOpportunity(supabase, r.opportunityId);
+    if (executionError) return { error: executionError };
+  }
 
   revalidateAllocations();
   return { allocatedCount: toAllocate.length };
@@ -130,6 +137,9 @@ export async function createManualAllocationAction(
     .update({ status: "allocated", allocated_at: new Date().toISOString() })
     .eq("id", opportunityId);
   if (updateError) return { error: updateError.message };
+
+  const { error: executionError } = await ensureExecutionForOpportunity(supabase, opportunityId);
+  if (executionError) return { error: executionError };
 
   revalidateAllocations();
   return {};

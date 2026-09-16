@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server-client";
 import { getOperatorAuthState } from "@/lib/operator";
 import { canApproveOpportunity, type ImpactAssuranceChecklist, type RiskLevel } from "@/lib/opportunity-detail";
 import { currentMonthKey } from "@/lib/contributor";
+import { ensureExecutionForOpportunity } from "@/lib/execution";
 import type { OpportunityStatus } from "@/lib/ops-dashboard";
 
 const VALID_RISK_LEVELS: RiskLevel[] = ["low", "medium", "high", "critical"];
@@ -287,7 +288,11 @@ export async function allocateOpportunityAction(opportunityId: string): Promise<
     .eq("id", opportunityId);
   if (error) return { error: error.message };
 
+  const { error: executionError } = await ensureExecutionForOpportunity(supabase, opportunityId);
+  if (executionError) return { error: executionError };
+
   revalidateOpportunity(opportunityId);
   revalidatePath("/ops/allocations");
+  revalidatePath("/ops/executions");
   return {};
 }
