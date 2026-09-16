@@ -46,12 +46,19 @@ import type { ThemeId } from "./themes";
 import type { CtaTypeId } from "./cta";
 
 export interface CuratedEpisodeContent {
-  familyAngle: string;
-  childLesson: string;
-  todayAction: string;
-  aiaConnection: string;
+  /** Each field below is independently optional -- an episode can curate
+   *  just one (e.g. only aiaConnection, to lock in a specific line without
+   *  hand-authoring the rest) while every other field still composes from
+   *  the theme pools as normal. See content-engine.ts's per-field checks
+   *  (curated?.familyAngle, curated?.aiaConnection, etc.) -- never a single
+   *  blanket "is this episode curated at all" check, which would silently
+   *  turn every OTHER unset field into undefined. */
+  familyAngle?: string;
+  childLesson?: string;
+  todayAction?: string;
+  aiaConnection?: string;
   distantDevotionConnection?: string;
-  recommendedCta: CtaTypeId;
+  recommendedCta?: CtaTypeId;
   /** Optional hand-authored override for Slide 2 (UNDERSTAND). When
    *  omitted, understanding.ts composes it from the theme pools like every
    *  other field content-engine.ts doesn't have curated prose for. */
@@ -110,7 +117,19 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   // the system's own test case: proof the reusable engine produces
   // Episode-1-quality output, distinctly, without hand-authored prose.
   { episodeNumber: 2, tamilText: "ஆறுவது சினம்", simpleMeaning: "Anger is meant to cool down and pass.", transliteration: "Aaruvathu Sinam", primaryTheme: "self-control", verified: true },
-  { episodeNumber: 3, tamilText: "இயல்வது கரவேல்", simpleMeaning: "Do not withhold help that is within your ability to give.", transliteration: "Iyalvathu Karavel", primaryTheme: "generosity", verified: true },
+  { episodeNumber: 3, tamilText: "இயல்வது கரவேல்", simpleMeaning: "Do not withhold help that is within your ability to give.", transliteration: "Iyalvathu Karavel", primaryTheme: "generosity", verified: true,
+    // Founder explicitly asked to lock this episode's Slide 5 line to the
+    // series' primary anchor phrase (matches AIA_CONNECTIONS[0] in
+    // voice.ts) rather than let it rotate -- a deliberate editorial choice,
+    // not a repeat of the bug where Episode 1's curated text silently
+    // escaped anti-repetition tracking. Every other field on this episode
+    // (familyAngle/todayAction/childLesson/hook/etc.) still composes live
+    // from the theme pools as normal -- curated fields are independently
+    // optional, see CuratedEpisodeContent's doc comment.
+    curated: {
+      aiaConnection: "Wisdom becomes meaningful when it becomes action — that's the whole idea behind Aram in Action.",
+    },
+  },
   { episodeNumber: 4, tamilText: "ஈவது விலக்கேல்", simpleMeaning: "Never stop someone else from giving.", transliteration: "Eevathu Vilakkel", primaryTheme: "generosity", verified: true },
   { episodeNumber: 5, tamilText: "உடையது விளம்பேல்", simpleMeaning: "Do not boast about what you own.", transliteration: "Udaiyathu Vilambel", primaryTheme: "character", verified: true },
   { episodeNumber: 6, tamilText: "ஊக்கமது கைவிடேல்", simpleMeaning: "Never give up your enthusiasm.", transliteration: "Ookkamathu Kaividel", primaryTheme: "responsibility", verified: true },

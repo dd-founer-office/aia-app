@@ -127,16 +127,16 @@ export function composeEpisode(
   const tagline = selectTagline(theme, episodeNumber, history.recentTaglineIds);
   const hashtags = selectHashtags(theme, episodeNumber, history.recentReachHashtagIds);
 
-  const scenario = curated
+  const scenario = curated?.familyAngle
     ? { id: "curated", text: curated.familyAngle }
     : selectScenario(theme, episodeNumber, history.recentScenarioIds);
-  const action = curated
+  const action = curated?.todayAction
     ? { id: "curated", text: curated.todayAction }
     : selectAction(theme, episodeNumber, history.recentActionIds);
-  const childLesson = curated
+  const childLesson = curated?.childLesson
     ? { id: "curated", text: curated.childLesson }
     : selectChildLesson(theme, episodeNumber, history.recentChildLessonIds);
-  const aiaConnection = curated
+  const aiaConnection = curated?.aiaConnection
     ? { id: matchAiaConnectionId(curated.aiaConnection) ?? "curated", text: curated.aiaConnection }
     : selectAiaConnection(episodeNumber, history.recentAiaConnectionIds);
   const understanding = curated?.understanding
