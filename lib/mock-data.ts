@@ -31,7 +31,13 @@ export const mockJourney: AramJourney = {
   contributor_id: mockContributor.id,
   current_stage: "thulir",
   continuity_month_count: 3,
+  longest_continuity_month_count: 3,
+  longest_continuity_reached_at: "2026-05-30T00:00:00Z",
   last_participation_month: "2026-05",
+  thulir_reached_at: "2026-03-15T00:00:00Z",
+  kandru_reached_at: null,
+  maram_reached_at: null,
+  vanam_reached_at: null,
   created_at: "2025-11-02T00:00:00Z",
   updated_at: "2026-05-30T00:00:00Z",
 };
