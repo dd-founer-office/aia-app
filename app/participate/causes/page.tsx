@@ -9,7 +9,10 @@ import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useParticipationFlow } from "@/lib/participation-flow-context";
 import { CAUSES } from "@/types/participation";
 
-const VISIBLE_STEP_COUNT = 5;
+// CA-014 Locked v1.0: "Progress indicator always visible: Step X of 4" --
+// fixed at 4 (Cause Selection, Participation Summary, Confirmation,
+// Participation Recorded), not a theoretical/dynamic count.
+const VISIBLE_STEP_COUNT = 4;
 
 export default function ChooseCausesPage() {
   const router = useRouter();
@@ -23,7 +26,7 @@ export default function ChooseCausesPage() {
       setShowValidation(true);
       return;
     }
-    router.push("/participate/method-details");
+    router.push("/participate/summary");
   }
 
   return (

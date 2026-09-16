@@ -19,6 +19,10 @@ const DEFAULT_STATE: ParticipationFlowState = {
 interface ParticipationFlowContextValue {
   state: ParticipationFlowState;
   toggleCause: (id: CauseId) => void;
+  /** Called once participation is actually recorded (CA-014 Step 4 mount) --
+   *  clears this month's selection so a future visit to Step 1 starts from
+   *  nothing rather than carrying over an already-recorded month's causes. */
+  resetSelection: () => void;
 }
 
 const ParticipationFlowContext =
@@ -67,6 +71,7 @@ export function ParticipationFlowProvider({
             ? prev.selectedCauses.filter((c) => c !== id)
             : [...prev.selectedCauses, id],
         })),
+      resetSelection: () => setState(DEFAULT_STATE),
     }),
     [state],
   );

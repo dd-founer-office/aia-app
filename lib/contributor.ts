@@ -11,7 +11,10 @@ export interface CurrentContributor {
   hasParticipatedThisMonth: boolean;
 }
 
-function currentMonthKey(): string {
+/** "YYYY-MM" -- shared with lib/participation-actions.ts so both the read
+ *  side (this file) and the write side (recording a participation) agree on
+ *  what "this month" means. */
+export function currentMonthKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
