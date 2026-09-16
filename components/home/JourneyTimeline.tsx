@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 import { STAGE_LABELS, STAGE_ORDER, type StageName } from "@/types";
 import { Card } from "@/components/shared/Card";
+import { formatMonthYear } from "@/lib/format";
 import { VidhaiSeedIcon } from "./icons/VidhaiSeedIcon";
 import { ThulirSproutIcon } from "./icons/ThulirSproutIcon";
 import { KandruSaplingIcon } from "./icons/KandruSaplingIcon";
@@ -19,21 +20,22 @@ const STAGE_ICONS: Record<StageName, StageIconComponent> = {
 
 export interface JourneyTimelineProps {
   currentStage: StageName;
+  /** thulir/kandru/maram/vanam -> ISO reached-at timestamp, from
+   *  aram_journeys. Optional -- Home's usage doesn't fetch these (it only
+   *  needs currentStage), so completed stages there still fall back to the
+   *  plain "Completed" label. CA-012 Journey passes these to show the real
+   *  date, closing the gap this component used to flag as unavailable. */
+  reachedAtByStage?: Partial<Record<StageName, string | null>>;
 }
 
 /**
- * Journey Timeline -- replaces the old "Current Stage" summary card on Home.
+ * Journey Timeline -- replaces the old "Current Stage" summary card on Home,
+ * and doubles as CA-012 Section 2 (Journey Path) on the Aram Journey screen.
  * Per UX Constitution Journey Philosophy: a story, not a progress bar.
  * No percentages, XP, or gamification -- only Current Stage, adjacent
  * milestones, and stages already passed, shown as a continuous timeline.
- *
- * Note: completed stages show "Completed" rather than a reached-on date.
- * The locked six-table Sprint 1 schema (see types/index.ts) has no
- * stage-reached-date field, so a specific date is not yet available from
- * any approved data source -- flagged for a future schema decision rather
- * than invented here.
  */
-export function JourneyTimeline({ currentStage }: JourneyTimelineProps) {
+export function JourneyTimeline({ currentStage, reachedAtByStage }: JourneyTimelineProps) {
   const currentIndex = STAGE_ORDER.indexOf(currentStage);
 
   return (
@@ -46,9 +48,12 @@ export function JourneyTimeline({ currentStage }: JourneyTimelineProps) {
         const isNext = index === currentIndex + 1;
         const isLast = index === STAGE_ORDER.length - 1;
         const isReached = isCompleted || isCurrent;
+        const reachedAtIso = reachedAtByStage?.[stageName];
 
         const statusText = isCompleted
-          ? "Completed"
+          ? reachedAtIso
+            ? `Reached ${formatMonthYear(reachedAtIso)}`
+            : "Completed"
           : isCurrent
           ? "You are here"
           : isNext
