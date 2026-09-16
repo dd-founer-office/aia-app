@@ -9,6 +9,9 @@ export interface CurrentContributor {
   currentStage: StageName;
   continuityMonthCount: number;
   hasParticipatedThisMonth: boolean;
+  /** CA-009 Hero Card's "Lifetime Acts" -- count of completed
+   *  participations, same figure as CA-012/CA-013's lifetimeParticipationCount. */
+  lifetimeParticipationCount: number;
 }
 
 /** "YYYY-MM" -- shared with lib/participation-actions.ts so both the read
@@ -57,6 +60,12 @@ export async function getCurrentContributor(): Promise<CurrentContributor | null
     .eq("month", currentMonthKey())
     .maybeSingle();
 
+  const { count: lifetimeParticipationCount } = await supabase
+    .from("participations")
+    .select("id", { count: "exact", head: true })
+    .eq("contributor_id", contributor.id)
+    .eq("status", "completed");
+
   return {
     userId: user.id,
     email: user.email ?? "",
@@ -65,5 +74,6 @@ export async function getCurrentContributor(): Promise<CurrentContributor | null
     currentStage: journey.current_stage as StageName,
     continuityMonthCount: journey.continuity_month_count as number,
     hasParticipatedThisMonth: participation?.status === "completed",
+    lifetimeParticipationCount: lifetimeParticipationCount ?? 0,
   };
 }

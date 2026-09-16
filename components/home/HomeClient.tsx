@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { MapPin } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
 import { mockLatestAct, mockKuralOfTheDay } from "@/lib/mock-data";
@@ -174,6 +175,20 @@ export function HomeClient({ contributor }: { contributor: CurrentContributor })
             You&apos;ve shown up for {contributor.continuityMonthCount} months in a row.
             {nextStage ? ` Keep going to grow toward ${nextStage.en}.` : ""}
           </p>
+          {/* CA-009 Hero Card's own locked requirements (Lifetime Acts,
+              View Journey CTA) -- the JourneyTimeline above already covers
+              Current Stage/Continuity richer than the spec's minimal
+              version, so this only adds what's still missing rather than
+              duplicating it in a separate compact Journey Snapshot section
+              further down the page (founder direction, 2026-09-16). */}
+          <div className="mt-1 flex items-center justify-between">
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              Lifetime Acts: <span className="font-medium text-[var(--color-foreground)]">{contributor.lifetimeParticipationCount}</span>
+            </p>
+            <Link href="/practice">
+              <Button variant="text">View Journey →</Button>
+            </Link>
+          </div>
         </section>
 
         {/* Next Action */}
@@ -198,14 +213,17 @@ export function HomeClient({ contributor }: { contributor: CurrentContributor })
           </Button>
         </Card>
 
-        {/* Your Latest Act of Aram -- Evidence Card. mockLatestAct is
-            temporary presentation-only mock data (see lib/mock-data.ts);
-            Act of Aram is not a table in the locked Sprint 1 schema. Swap
-            the ternary's truthy branch for a live query when the real
-            entity ships -- the empty-state branch is left in place for
-            that day. */}
+        {/* Recent Impact (CA-009 Section 3) -- CA-009's own spec note: "the
+            section title is 'Recent Impact' for comprehension; the card
+            itself may still label 'Act of Aram'" -- title corrected to
+            match (was "Your Latest Act of Aram"), card content unchanged.
+            mockLatestAct is temporary presentation-only mock data (see
+            lib/mock-data.ts); Act of Aram is not a table in the locked
+            Sprint 1 schema. Swap the ternary's truthy branch for a live
+            query when the real entity ships -- the empty-state branch is
+            left in place for that day. */}
         <Card className="flex flex-col gap-4">
-          <SectionHeader title="Your Latest Act of Aram" />
+          <SectionHeader title="Recent Impact" />
           {mockLatestAct ? (
             <>
               <div className="relative">
@@ -262,12 +280,24 @@ export function HomeClient({ contributor }: { contributor: CurrentContributor })
           )}
         </Card>
 
-        {/* Shared Acts of Aram -- no backing entity in Sprint 1 schema; empty state */}
+        {/* Shared Act of Aram (CA-009 Section 4, conditional). Locked rule:
+            "Only shown if Shared Act exists" / "Hide section" otherwise --
+            no Shared Act entity exists in the Sprint 1 schema at all yet,
+            so this always hides for now (previously showed an explanatory
+            empty-state card, which the locked spec doesn't call for on
+            this section specifically -- unlike Opportunity for Aram below,
+            whose own spec explicitly wants an awareness-only empty state).
+            Re-add the render once a real Shared Act entity exists. */}
+
+        {/* Opportunity for Aram (CA-009 Section 6). Awareness only, not
+            fundraising (locked rule). No Opportunity entity exists yet
+            (Opportunity Management is Milestone 4, Operations Foundation,
+            not built) -- same status as Recent Impact above before its own
+            entity ships, so this renders the locked empty state. */}
         <Card className="flex flex-col gap-2">
-          <SectionHeader title="Shared Acts of Aram" />
+          <SectionHeader title="Opportunity for Aram" />
           <p className="text-sm text-[var(--color-muted-foreground)]">
-            When your participation joins others toward the same Act of Aram, it will be shown
-            here.
+            Verified opportunities will appear here.
           </p>
         </Card>
 
