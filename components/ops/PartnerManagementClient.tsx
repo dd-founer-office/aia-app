@@ -302,6 +302,9 @@ export function PartnerManagementClient({ data }: { data: PartnersData }) {
         <Link href="/ops/opportunities" className="text-sm text-[var(--color-muted-foreground)] underline">
           Opportunities
         </Link>
+        <Link href="/ops/contributors" className="text-sm text-[var(--color-muted-foreground)] underline">
+          Contributors
+        </Link>
       </div>
 
       {/* Header */}
