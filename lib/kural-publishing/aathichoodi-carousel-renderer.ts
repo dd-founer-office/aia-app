@@ -116,6 +116,14 @@ export interface Slide2Style {
   imageFadeStart: number;
   imageFadeEnd: number;
   textColumnRatio: number;
+  /** Opacity (0-1) of the field-color tint at imageFadeStart. Less than 1
+   *  on purpose: a FULLY opaque tint hides whatever of the photo falls
+   *  under it completely, not just dims it -- for a photo with a subject
+   *  on that side (not just background/negative space), that subject
+   *  disappears entirely rather than reading as "in shadow". A strong but
+   *  translucent tint keeps the whole photo visible while still giving
+   *  the text a legible field to sit on. */
+  imageOpaqueTint: number;
 }
 export interface Slide3Style {
   sectionHeadingText: string;
@@ -375,6 +383,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     imageFadeStart: 0.52,
     imageFadeEnd: 0.74,
     textColumnRatio: 0.5,
+    imageOpaqueTint: 0.82,
   },
   slide3: {
     sectionHeadingText: "TRY THIS TODAY",
@@ -1166,7 +1175,7 @@ function drawSlide2BackgroundPhoto(
   const fadeStart = width * style.slide2.imageFadeStart;
   const fadeEnd = width * style.slide2.imageFadeEnd;
   const gradient = ctx.createLinearGradient(fadeStart, 0, fadeEnd, 0);
-  gradient.addColorStop(0, style.colors.background);
+  gradient.addColorStop(0, hexToRgba(style.colors.background, style.slide2.imageOpaqueTint));
   gradient.addColorStop(1, hexToRgba(style.colors.background, 0));
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
