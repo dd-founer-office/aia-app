@@ -195,8 +195,11 @@ function ExecutionRowPanel({ execution, onDone }: { execution: ExecutionRow; onD
 /** OP-005 Execution Management (Locked v1.0). See lib/execution.ts's own
  *  header comment for the documented simplifications -- most notably that
  *  Completion/Documentation Readiness states here are proxied from
- *  opportunities.documentation_notes since OP-005A Evidence Upload and
- *  OP-006 Documentation Center don't exist yet. */
+ *  opportunities.documentation_notes since OP-006 Documentation Center
+ *  doesn't exist yet. Each row's "Open" link goes to OP-005A (Execution
+ *  Detail & Evidence Upload) for the real outcome-recording/evidence
+ *  flow; the inline "Manage" panel here stays for quick status-only
+ *  actions (Start/Complete/Delay/Block/Cancel) without leaving the list. */
 export function ExecutionManagementClient({ data }: { data: ExecutionManagementData }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -438,13 +441,18 @@ export function ExecutionManagementClient({ data }: { data: ExecutionManagementD
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <Badge {...STATUS_BADGE[e.status]} />
                     <p className="text-xs text-[var(--color-muted-foreground)]">{formatDate(e.scheduledDate)}</p>
-                    <button
-                      type="button"
-                      className="text-xs text-[var(--color-primary)] underline"
-                      onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}
-                    >
-                      {expandedId === e.id ? "Close" : "Manage"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/ops/executions/${e.id}`} className="text-xs text-[var(--color-primary)] underline">
+                        Open
+                      </Link>
+                      <button
+                        type="button"
+                        className="text-xs text-[var(--color-primary)] underline"
+                        onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}
+                      >
+                        {expandedId === e.id ? "Close" : "Manage"}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 {expandedId === e.id && <ExecutionRowPanel execution={e} onDone={() => setExpandedId(null)} />}
