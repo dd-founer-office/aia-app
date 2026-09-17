@@ -163,6 +163,9 @@ export function AllocationEngineClient({ data }: { data: AllocationEngineData })
         <Link href="/ops/executions" className="text-sm text-[var(--color-muted-foreground)] underline">
           Executions
         </Link>
+        <Link href="/ops/partners" className="text-sm text-[var(--color-muted-foreground)] underline">
+          Partners
+        </Link>
       </div>
 
       {/* Header */}

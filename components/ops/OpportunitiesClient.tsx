@@ -113,6 +113,9 @@ export function OpportunitiesClient({ data }: { data: OpportunitiesOverview }) {
             <Link href="/ops/executions" className="text-sm text-[var(--color-primary)]">
               Executions →
             </Link>
+            <Link href="/ops/partners" className="text-sm text-[var(--color-primary)]">
+              Partners →
+            </Link>
           </div>
         </div>
         <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "New Opportunity"}</Button>
