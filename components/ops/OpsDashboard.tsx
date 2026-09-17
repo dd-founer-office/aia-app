@@ -108,6 +108,9 @@ export function OpsDashboard({ data }: { data: OpsDashboardData }) {
             <Link href="/ops/allocations" className="text-sm text-[var(--color-primary)]">
               Allocation Engine
             </Link>
+            <Link href="/ops/executions" className="text-sm text-[var(--color-primary)]">
+              Executions
+            </Link>
           </div>
         </div>
         <Card className="mt-3 flex flex-col gap-4">

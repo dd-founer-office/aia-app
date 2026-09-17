@@ -106,9 +106,14 @@ export function OpportunitiesClient({ data }: { data: OpportunitiesOverview }) {
           <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
             Intake, verification, and tracking for opportunities entering AiA.
           </p>
-          <Link href="/ops/allocations" className="mt-1 inline-block text-sm text-[var(--color-primary)]">
-            Allocation Engine →
-          </Link>
+          <div className="mt-1 flex gap-3">
+            <Link href="/ops/allocations" className="text-sm text-[var(--color-primary)]">
+              Allocation Engine →
+            </Link>
+            <Link href="/ops/executions" className="text-sm text-[var(--color-primary)]">
+              Executions →
+            </Link>
+          </div>
         </div>
         <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "New Opportunity"}</Button>
       </div>

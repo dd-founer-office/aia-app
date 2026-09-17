@@ -112,7 +112,9 @@ export interface AllocationEngineData {
   };
 }
 
-function capacityStatusFor(capacity: number | null, allocated: number): CapacityStatus {
+/** Shared with lib/execution.ts's Partner Coordination row -- same
+ *  capacity-to-status mapping, one definition. */
+export function capacityStatusFor(capacity: number | null, allocated: number): CapacityStatus {
   if (capacity === null || capacity <= 0) return "unknown";
   const remaining = capacity - allocated;
   if (remaining <= 0) return "at_risk";
