@@ -2,8 +2,16 @@ import { getSupabaseServerClient } from "@/lib/supabase/server-client";
 import type { ExecutionStatus } from "@/lib/execution";
 import type { OpportunityPriority } from "@/lib/opportunities";
 
-export type DocumentationStoredStatus = "draft" | "submitted" | "approved" | "rejected";
-export type DocumentationReadiness = "draft" | "incomplete" | "ready_for_review" | "submitted" | "approved" | "rejected";
+export type DocumentationStoredStatus = "draft" | "submitted" | "under_review" | "approved" | "returned_for_changes" | "rejected";
+export type DocumentationReadiness =
+  | "draft"
+  | "incomplete"
+  | "ready_for_review"
+  | "submitted"
+  | "under_review"
+  | "approved"
+  | "returned_for_changes"
+  | "rejected";
 export type EvidenceCategory = "before_photo" | "after_photo" | "execution_photo" | "video" | "supporting_document";
 export type EvidenceFileStatus = "uploaded" | "replaced" | "deleted";
 
@@ -57,6 +65,7 @@ export interface ExecutionDetail {
   documentationReadiness: DocumentationReadiness;
   canSubmitForReview: boolean;
   submittedForReviewAtIso: string | null;
+  reviewNotes: string | null;
   timeline: ExecutionTimelineEntry[];
 }
 
@@ -105,8 +114,67 @@ export function computeDocumentationReadiness(
   return anyProgress ? "incomplete" : "draft";
 }
 
+/** Draft and returned-for-changes are both resubmittable -- OP-006's
+ *  "Returned for changes" is explicitly a "fix and resubmit" outcome, not
+ *  a dead end like Rejected. */
 export function canSubmitForReview(storedStatus: DocumentationStoredStatus, checklist: EvidenceQualityChecklist): boolean {
-  return storedStatus === "draft" && allChecklistComplete(checklist);
+  return (storedStatus === "draft" || storedStatus === "returned_for_changes") && allChecklistComplete(checklist);
+}
+
+/** Shared by getExecutionDetail() below and lib/documentation.ts's
+ *  documentation queue (OP-006), which needs the same evidence + signed
+ *  URLs for many executions at once rather than one -- a single batched
+ *  query plus one signed-URL call per file, instead of re-running this
+ *  per-execution query N times. */
+export async function getEvidenceByExecutionIds(
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseServerClient>>>,
+  executionIds: string[]
+): Promise<Map<string, EvidenceFile[]>> {
+  const result = new Map<string, EvidenceFile[]>();
+  if (executionIds.length === 0) return result;
+
+  const { data: evidenceRows } = await supabase
+    .from("execution_evidence")
+    .select("id, execution_id, file_name, file_type, category, storage_path, status, uploaded_at, uploaded_by")
+    .in("execution_id", executionIds)
+    .neq("status", "deleted")
+    .order("uploaded_at", { ascending: true });
+
+  const activeRows = evidenceRows ?? [];
+  const uploaderIds = Array.from(new Set(activeRows.map((e) => e.uploaded_by as string | null).filter((v): v is string => !!v)));
+  const uploaderNameById = new Map<string, string>();
+  if (uploaderIds.length > 0) {
+    const { data: uploaders } = await supabase.from("operators").select("id, display_name").in("id", uploaderIds);
+    for (const u of uploaders ?? []) uploaderNameById.set(u.id as string, u.display_name as string);
+  }
+
+  await Promise.all(
+    activeRows.map(async (e) => {
+      const { data: signed } = await supabase.storage.from("execution-evidence").createSignedUrl(e.storage_path as string, 3600);
+      const file: EvidenceFile = {
+        id: e.id as string,
+        fileName: e.file_name as string,
+        fileType: e.file_type as string,
+        category: e.category as EvidenceCategory,
+        status: e.status as EvidenceFileStatus,
+        uploadedAtIso: e.uploaded_at as string,
+        uploadedByName: e.uploaded_by ? (uploaderNameById.get(e.uploaded_by as string) ?? null) : null,
+        url: signed?.signedUrl ?? null,
+      };
+      const executionId = e.execution_id as string;
+      const existing = result.get(executionId);
+      if (existing) existing.push(file);
+      else result.set(executionId, [file]);
+    })
+  );
+
+  // Promise.all resolves in whatever order each signed-URL call finishes,
+  // not upload order -- resort each group so display order stays stable.
+  for (const files of result.values()) {
+    files.sort((a, b) => new Date(a.uploadedAtIso).getTime() - new Date(b.uploadedAtIso).getTime());
+  }
+
+  return result;
 }
 
 /** OP-005A Execution Detail & Evidence Upload's full data set for one
@@ -141,43 +209,14 @@ export async function getExecutionDetail(id: string): Promise<ExecutionDetail | 
     partnerName = (partner?.name as string | undefined) ?? null;
   }
 
-  const { data: evidenceRows } = await supabase
-    .from("execution_evidence")
-    .select("id, file_name, file_type, category, storage_path, status, uploaded_at, uploaded_by")
-    .eq("execution_id", id)
-    .order("uploaded_at", { ascending: true });
-
-  const uploaderIds = Array.from(new Set((evidenceRows ?? []).map((e) => e.uploaded_by as string | null).filter((v): v is string => !!v)));
-  const uploaderNameById = new Map<string, string>();
-  if (uploaderIds.length > 0) {
-    const { data: uploaders } = await supabase.from("operators").select("id, display_name").in("id", uploaderIds);
-    for (const u of uploaders ?? []) uploaderNameById.set(u.id as string, u.display_name as string);
-  }
-
-  const activeEvidenceRows = (evidenceRows ?? []).filter((e) => e.status !== "deleted");
-  const evidence: EvidenceFile[] = await Promise.all(
-    activeEvidenceRows.map(async (e) => {
-      const { data: signed } = await supabase.storage
-        .from("execution-evidence")
-        .createSignedUrl(e.storage_path as string, 3600);
-      return {
-        id: e.id as string,
-        fileName: e.file_name as string,
-        fileType: e.file_type as string,
-        category: e.category as EvidenceCategory,
-        status: e.status as EvidenceFileStatus,
-        uploadedAtIso: e.uploaded_at as string,
-        uploadedByName: e.uploaded_by ? (uploaderNameById.get(e.uploaded_by as string) ?? null) : null,
-        url: signed?.signedUrl ?? null,
-      };
-    })
-  );
+  const evidenceByExecution = await getEvidenceByExecutionIds(supabase, [id]);
+  const evidence = evidenceByExecution.get(id) ?? [];
 
   const checklist = buildChecklist(
     execution.outcome_summary as string | null,
     execution.actual_beneficiaries as number | null,
     execution.completion_notes as string | null,
-    activeEvidenceRows.map((e) => e.category as EvidenceCategory)
+    evidence.map((e) => e.category)
   );
   const missingItems = (Object.keys(checklist) as (keyof EvidenceQualityChecklist)[])
     .filter((key) => !checklist[key])
@@ -195,6 +234,18 @@ export async function getExecutionDetail(id: string): Promise<ExecutionDetail | 
   if (execution.completed_at) timeline.push({ label: "Completed", dateIso: execution.completed_at as string });
   if (execution.evidence_uploaded_at) timeline.push({ label: "Evidence uploaded", dateIso: execution.evidence_uploaded_at as string });
   if (execution.submitted_for_review_at) timeline.push({ label: "Submitted for review", dateIso: execution.submitted_for_review_at as string });
+  if (execution.review_started_at) timeline.push({ label: "Review started", dateIso: execution.review_started_at as string });
+  if (execution.review_decision_at) {
+    const decisionLabel: Record<string, string> = {
+      approved: "Approved",
+      returned_for_changes: "Returned for changes",
+      rejected: "Rejected",
+    };
+    timeline.push({
+      label: decisionLabel[execution.documentation_status as string] ?? "Review decided",
+      dateIso: execution.review_decision_at as string,
+    });
+  }
   timeline.sort((a, b) => new Date(a.dateIso).getTime() - new Date(b.dateIso).getTime());
 
   return {
@@ -223,6 +274,7 @@ export async function getExecutionDetail(id: string): Promise<ExecutionDetail | 
     documentationReadiness: computeDocumentationReadiness(documentationStoredStatus, checklist),
     canSubmitForReview: canSubmitForReview(documentationStoredStatus, checklist),
     submittedForReviewAtIso: execution.submitted_for_review_at as string | null,
+    reviewNotes: execution.review_notes as string | null,
     timeline,
   };
 }

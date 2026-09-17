@@ -111,6 +111,9 @@ export function OpsDashboard({ data }: { data: OpsDashboardData }) {
             <Link href="/ops/executions" className="text-sm text-[var(--color-primary)]">
               Executions
             </Link>
+            <Link href="/ops/documentation" className="text-sm text-[var(--color-primary)]">
+              Documentation
+            </Link>
           </div>
         </div>
         <Card className="mt-3 flex flex-col gap-4">

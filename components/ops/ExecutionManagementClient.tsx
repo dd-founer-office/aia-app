@@ -284,6 +284,9 @@ export function ExecutionManagementClient({ data }: { data: ExecutionManagementD
         <Link href="/ops/allocations" className="text-sm text-[var(--color-muted-foreground)] underline">
           Allocation Engine
         </Link>
+        <Link href="/ops/documentation" className="text-sm text-[var(--color-muted-foreground)] underline">
+          Documentation
+        </Link>
       </div>
 
       {/* Header */}
