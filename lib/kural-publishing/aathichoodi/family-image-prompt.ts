@@ -14,6 +14,20 @@
  * across the whole series, per explicit founder direction, so photos feel
  * consistent episode to episode rather than each looking like a different
  * generator/style.
+ *
+ * The renderer (drawSlide2BackgroundPhoto in aathichoodi-carousel-
+ * renderer.ts) draws this photo full-bleed behind the WHOLE slide, with a
+ * tint over roughly the left half (where the text sits) fading to fully
+ * clear on the right -- so the composition asked for here matters, not
+ * just the subject matter: a photo with its subjects spread across the
+ * full width, or weighted left, puts someone under the heaviest part of
+ * the tint (confirmed live: a founder-uploaded two-child photo left one
+ * child almost unreadable at the left edge). Subjects need to sit inside
+ * roughly the right two-thirds of the frame, with the left third kept as
+ * calmer, simpler background -- that's what the composition line below
+ * is asking for, and it's the one thing worth double-checking before
+ * generating: is EVERYONE who matters in the scene inside that right
+ * two-thirds already?
  */
 
 /** Best-effort rewrite of the second-person scenario copy ("Your child
@@ -40,7 +54,7 @@ export function buildFamilyImagePrompt(familyAngleText: string): string {
   return [
     `Warm, realistic documentary-style family photograph. Scene: ${scene}`,
     "Natural window light, candid and unposed, soft warm tones, genuine expressions, real everyday home setting.",
-    "Vertical portrait composition (roughly 4:5 aspect ratio), main subject placed slightly off-center with breathing room in the frame.",
+    "Vertical portrait composition (roughly 4:5 aspect ratio). IMPORTANT: keep everyone in the scene within the RIGHT two-thirds of the frame -- the left third should be simple, uncluttered background (a wall, soft shadow, blurred negative space), since that side of the final image will carry overlaid text. Do not spread people or the main action across the full width or toward the left edge.",
     "Photorealistic only -- no text, no logos, no watermarks, no illustration or cartoon style.",
   ].join(" ");
 }
