@@ -119,8 +119,11 @@ import {
   saveEmphases,
   loadInvertColors,
   saveInvertColors,
+  loadFamilyImage,
+  saveFamilyImage,
   buildDesignOverrides,
 } from "@/lib/kural-publishing/aathichoodi-carousel-design-store";
+import { buildFamilyImagePrompt } from "@/lib/kural-publishing/aathichoodi/family-image-prompt";
 
 type ContentField = keyof KuralPublishingContent;
 
@@ -452,6 +455,13 @@ export default function PublishingWorkspace() {
   // not shared like style/positions/emphases -- reloaded in
   // handleLoadEpisode alongside textOverrides.
   const [invertColors, setInvertColors] = useState(() => loadInvertColors(1));
+  // Slide 3's optional founder-supplied photo (see family-image-prompt.ts
+  // for the AI-generator prompt this pairs with). Per episode, like text/
+  // invertColors -- reloaded in handleLoadEpisode. Stored as a data URL
+  // (familyImageDataUrl); familyImageElement is that data URL loaded into
+  // an actual <img> so the canvas can drawImage() it -- see the loader
+  // effect below, same pattern as the logo image effects.
+  const [familyImageDataUrl, setFamilyImageDataUrl] = useState<string | null>(() => loadFamilyImage(1));
 
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
@@ -592,6 +602,32 @@ export default function PublishingWorkspace() {
   useEffect(() => {
     if (composedEpisode) saveInvertColors(composedEpisode.episodeNumber, invertColors);
   }, [invertColors, composedEpisode]);
+  useEffect(() => {
+    if (composedEpisode) saveFamilyImage(composedEpisode.episodeNumber, familyImageDataUrl);
+  }, [familyImageDataUrl, composedEpisode]);
+
+  // Loads familyImageDataUrl into an actual <img> so the canvas can
+  // drawImage() it -- same "new Image(); img.onload = ..." pattern as the
+  // KKA/AiA logo images above. loadedFamilyImage remembers which src it
+  // was loaded from, so familyImageElement (derived below, not set here)
+  // is simply null whenever familyImageDataUrl is unset or doesn't match
+  // the most recently loaded image yet -- no setState call in the effect
+  // body itself, only inside the async onload callback.
+  const [loadedFamilyImage, setLoadedFamilyImage] = useState<{ src: string; img: HTMLImageElement } | null>(null);
+  useEffect(() => {
+    if (!familyImageDataUrl) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) setLoadedFamilyImage({ src: familyImageDataUrl, img });
+    };
+    img.src = familyImageDataUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [familyImageDataUrl]);
+  const familyImageElement =
+    familyImageDataUrl && loadedFamilyImage?.src === familyImageDataUrl ? loadedFamilyImage.img : null;
 
   const carouselDesign = useMemo(
     () => buildDesignOverrides(styleOverrides, textOverrides, positionOverrides, emphasisOverrides, invertColors),
@@ -663,6 +699,8 @@ export default function PublishingWorkspace() {
     saveEmphases({});
     setInvertColors(false);
     if (composedEpisode) saveInvertColors(composedEpisode.episodeNumber, false);
+    setFamilyImageDataUrl(null);
+    if (composedEpisode) saveFamilyImage(composedEpisode.episodeNumber, null);
   }, [composedEpisode]);
 
   const handleCopyDesignJSON = useCallback(() => {
@@ -1191,7 +1229,8 @@ export default function PublishingWorkspace() {
               slide,
               aiaLogoImage,
               format,
-              carouselDesign
+              carouselDesign,
+              familyImageElement
             );
             if (!blob) continue;
             results.push({
@@ -1246,6 +1285,7 @@ export default function PublishingWorkspace() {
     content,
     logoImage,
     aiaLogoImage,
+    familyImageElement,
     contentTypeId,
     kuralContent,
     aathichoodiContent,
@@ -1267,6 +1307,7 @@ export default function PublishingWorkspace() {
       setGeneration((g) => g + 1);
       setTextOverrides(loadTextOverrides(clamped));
       setInvertColors(loadInvertColors(clamped));
+      setFamilyImageDataUrl(loadFamilyImage(clamped));
     },
     [seriesHistory]
   );
@@ -1284,6 +1325,36 @@ export default function PublishingWorkspace() {
       });
     }
   }, [composedEpisode]);
+
+  const handleFamilyImageUpload = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setFamilyImageDataUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleRemoveFamilyImage = useCallback(() => {
+    setFamilyImageDataUrl(null);
+  }, []);
+
+  // The prompt reflects whatever's CURRENTLY on Slide 3 -- the founder's
+  // own paragraph text overrides where set, the generated scenario
+  // otherwise -- so the photo always matches what the slide actually says,
+  // not necessarily the original generated copy.
+  const handleCopyFamilyImagePrompt = useCallback(() => {
+    if (!displayEpisode) return;
+    const generatedParagraphs = splitEditorialParagraphs(displayEpisode.familyAngle);
+    const effectiveText = generatedParagraphs
+      .map((generated, i) => textOverrides.slide2?.paragraphs?.[i] || generated)
+      .join(" ");
+    const prompt = buildFamilyImagePrompt(effectiveText);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(prompt).catch(() => {
+        /* clipboard permission unavailable -- prompt can still be selected from an alert/log if needed */
+      });
+    }
+  }, [displayEpisode, textOverrides]);
 
   const handleDownloadAsset = useCallback((asset: GeneratedAsset) => {
     triggerDownload(asset.url, asset.filename);
@@ -1548,6 +1619,56 @@ export default function PublishingWorkspace() {
                           onChange={(v) => patchText2Paragraph(i, v)}
                         />
                       ))}
+
+                      <div className="mt-1 flex flex-col gap-1.5 border-t border-[var(--color-border)] pt-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-[var(--color-muted-foreground)]">
+                            Background photo (optional, right side)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleCopyFamilyImagePrompt}
+                            className="text-[11px] font-medium text-[var(--color-primary)]"
+                          >
+                            Copy image prompt
+                          </button>
+                        </div>
+                        {familyImageDataUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element -- a data URL preview thumbnail, not an optimizable remote asset
+                          <img
+                            src={familyImageDataUrl}
+                            alt="Slide 3 background preview"
+                            className="h-20 w-full rounded border border-[var(--color-border)] object-cover"
+                          />
+                        )}
+                        <div className="flex items-center gap-2">
+                          <label className="cursor-pointer rounded border border-[var(--color-border)] px-2 py-1 text-[11px] text-[var(--color-foreground)]">
+                            {familyImageDataUrl ? "Replace photo" : "Upload photo"}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFamilyImageUpload(file);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                          {familyImageDataUrl && (
+                            <button
+                              type="button"
+                              onClick={handleRemoveFamilyImage}
+                              className="text-[11px] font-medium text-[var(--color-muted-foreground)]"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-[var(--color-muted-foreground)]">
+                          Paste the prompt into your AI image generator, then upload the result here. It fills the right side of this slide, text on the left.
+                        </p>
+                      </div>
                     </div>
                   </details>
 
@@ -1822,6 +1943,7 @@ export default function PublishingWorkspace() {
             content={content}
             generation={generation}
             logoImage={activeLogoImage}
+            familyImage={effectiveTemplate === "aathichoodi-carousel" ? familyImageElement : undefined}
             format={previewFormat}
             slideIndex={activeSlideIndex}
             carouselDesign={effectiveTemplate === "aathichoodi-carousel" ? carouselDesign : undefined}

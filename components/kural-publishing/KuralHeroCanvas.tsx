@@ -158,6 +158,11 @@ interface KuralHeroCanvasProps {
   generation: number;
   /** Optional canonical KKA logo, once available. */
   logoImage?: HTMLImageElement | null;
+  /** aathichoodi-carousel template only, Slide 3 (Family Situation) only:
+   *  an optional founder-supplied photo, loaded from the per-episode
+   *  upload in the workspace sidebar. Ignored by every other template
+   *  and slide. */
+  familyImage?: HTMLImageElement | null;
   /** INTERNAL, development-only. Live-preview only, KKA template only.
    *  Defaults to false. */
   debugFormationLogic?: boolean;
@@ -181,6 +186,7 @@ export default function KuralHeroCanvas({
   content,
   generation,
   logoImage,
+  familyImage,
   debugFormationLogic = false,
   format,
   slideIndex = 0,
@@ -221,6 +227,7 @@ export default function KuralHeroCanvas({
           sansFont: fonts.sansFont,
           displayFont: fonts.displayFont,
           logoImage: logoImage ?? null,
+          familyImage: familyImage ?? null,
           brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
           brandingHandle: branding ? BRANDING_HANDLE : undefined,
           design: carouselDesign,
@@ -258,7 +265,7 @@ export default function KuralHeroCanvas({
     return () => {
       cancelled = true;
     };
-  }, [template, content, generation, logoImage, debugFormationLogic, width, height, branding, slideIndex, carouselDesign, onCarouselHotspots]);
+  }, [template, content, generation, logoImage, familyImage, debugFormationLogic, width, height, branding, slideIndex, carouselDesign, onCarouselHotspots]);
 
   return (
     <canvas
@@ -354,7 +361,8 @@ export async function renderAathichoodiCarouselAssetForExport(
   slideIndex: number,
   logoImage: HTMLImageElement | null,
   format: AssetFormat,
-  carouselDesign?: CarouselDesignOverrides
+  carouselDesign?: CarouselDesignOverrides,
+  familyImage?: HTMLImageElement | null
 ): Promise<Blob | null> {
   return renderAathichoodiCarouselSlideForExport(
     episode,
@@ -364,6 +372,7 @@ export async function renderAathichoodiCarouselAssetForExport(
     resolveAllFonts(),
     format.branding ? BRANDING_WORDMARK : undefined,
     format.branding ? BRANDING_HANDLE : undefined,
-    carouselDesign
+    carouselDesign,
+    familyImage
   );
 }
