@@ -211,6 +211,7 @@ function CategoryUpload({
  *  documents" having no per-opportunity list to check against). */
 export function ExecutionDetailClient({ execution }: { execution: ExecutionDetail }) {
   const router = useRouter();
+  const outcomeFormRef = useRef<HTMLFormElement>(null);
   const [savePending, setSavePending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -288,7 +289,11 @@ export function ExecutionDetailClient({ execution }: { execution: ExecutionDetai
           Scheduled {formatDate(execution.scheduledDate)} · Completed {formatDate(execution.completedAtIso)}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="submit" form="outcome-form" disabled={savePending}>
+          <Button
+            type="button"
+            disabled={savePending}
+            onClick={() => outcomeFormRef.current?.requestSubmit()}
+          >
             {savePending ? "Saving…" : "Save draft"}
           </Button>
           <Button variant="secondary" disabled={completePending} onClick={handleMarkComplete}>
@@ -335,7 +340,7 @@ export function ExecutionDetailClient({ execution }: { execution: ExecutionDetai
       <section>
         <SectionHeader title="Outcome Recording" />
         <Card className="mt-3">
-          <form id="outcome-form" onSubmit={handleSaveOutcome} className="flex flex-col gap-3">
+          <form ref={outcomeFormRef} onSubmit={handleSaveOutcome} className="flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-sm">
               Actual beneficiaries
               <input
@@ -362,6 +367,9 @@ export function ExecutionDetailClient({ execution }: { execution: ExecutionDetai
               Lessons learned
               <textarea name="lessons_learned" defaultValue={execution.lessonsLearned ?? ""} rows={2} className={inputClass()} />
             </label>
+            <Button type="submit" disabled={savePending} className="self-start">
+              {savePending ? "Saving…" : "Save draft"}
+            </Button>
           </form>
         </Card>
       </section>
