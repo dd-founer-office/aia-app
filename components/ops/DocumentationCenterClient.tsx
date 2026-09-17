@@ -382,6 +382,9 @@ export function DocumentationCenterClient({ data }: { data: DocumentationCenterD
         <Link href="/ops/executions" className="text-sm text-[var(--color-muted-foreground)] underline">
           Executions
         </Link>
+        <Link href="/ops/publishing" className="text-sm text-[var(--color-muted-foreground)] underline">
+          Publishing
+        </Link>
       </div>
 
       {/* Header */}
