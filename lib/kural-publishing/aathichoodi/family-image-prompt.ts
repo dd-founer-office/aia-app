@@ -28,6 +28,12 @@
  * is asking for, and it's the one thing worth double-checking before
  * generating: is EVERYONE who matters in the scene inside that right
  * two-thirds already?
+ *
+ * AUDIENCE, applied to every prompt (not per-episode): the series' actual
+ * readership is Tamil families living abroad, not in Tamil Nadu itself --
+ * per explicit founder direction, so the ethnicity/appearance line below
+ * is fixed the same way the "warm realistic photography" style is, not
+ * something to vary per scenario.
  */
 
 /** Best-effort rewrite of the second-person scenario copy ("Your child
@@ -53,6 +59,7 @@ export function buildFamilyImagePrompt(familyAngleText: string): string {
   const scene = toSceneDescription(familyAngleText.trim());
   return [
     `Warm, realistic documentary-style family photograph. Scene: ${scene}`,
+    "The family is Tamil / South Indian in heritage and appearance, living abroad in a Western diaspora country (for example a modern home in the US, UK, Canada, Australia, or Singapore) -- an authentic contemporary diaspora household, not a rural or 'exoticized' village-India setting. Natural, lived-in cultural touches are welcome where they'd realistically appear in such a home (a small home altar or Tamil calendar in the background, a South Indian coffee tumbler, a saree or traditional jewelry worn naturally by an older family member) but should feel everyday, never costumed or staged for the camera.",
     "Natural window light, candid and unposed, soft warm tones, genuine expressions, real everyday home setting.",
     "Vertical portrait composition (roughly 4:5 aspect ratio). IMPORTANT: keep everyone in the scene within the RIGHT two-thirds of the frame -- the left third should be simple, uncluttered background (a wall, soft shadow, blurred negative space), since that side of the final image will carry overlaid text. Do not spread people or the main action across the full width or toward the left edge.",
     "Photorealistic only -- no text, no logos, no watermarks, no illustration or cartoon style.",
