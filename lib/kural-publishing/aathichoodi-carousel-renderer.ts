@@ -359,7 +359,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     verticalBalanceBias: 0.12,
     eyebrowSize: 22,
     dividerLength: 0.07,
-    bodyLineHeight: 1.35,
+    bodyLineHeight: 1.5,
   },
   slide0: {
     heroSize: 86,
