@@ -41,7 +41,9 @@ const READINESS_BADGE: Record<DocumentationReadiness, { status: BadgeStatus; lab
   incomplete: { status: "pending", label: "Incomplete" },
   ready_for_review: { status: "pending", label: "Ready for review" },
   submitted: { status: "verified", label: "Submitted" },
+  under_review: { status: "pending", label: "Under review" },
   approved: { status: "verified", label: "Approved" },
+  returned_for_changes: { status: "error", label: "Returned for changes" },
   rejected: { status: "error", label: "Rejected" },
 };
 
@@ -264,9 +266,14 @@ export function ExecutionDetailClient({ execution }: { execution: ExecutionDetai
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 pb-16 pt-8">
-      <Link href="/ops/executions" className="text-sm text-[var(--color-muted-foreground)] underline">
-        ← Executions
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link href="/ops/executions" className="text-sm text-[var(--color-muted-foreground)] underline">
+          ← Executions
+        </Link>
+        <Link href="/ops/documentation" className="text-sm text-[var(--color-muted-foreground)] underline">
+          Documentation
+        </Link>
+      </div>
 
       {/* Header */}
       <div>
@@ -410,9 +417,14 @@ export function ExecutionDetailClient({ execution }: { execution: ExecutionDetai
         <Card className="mt-3 flex flex-col gap-3">
           <p className="text-sm text-[var(--color-muted-foreground)]">
             {execution.canSubmitForReview
-              ? "The checklist is complete -- this execution is ready for documentation review."
+              ? execution.documentationStoredStatus === "returned_for_changes"
+                ? "The checklist is complete -- resubmit whenever the reviewer's notes below have been addressed."
+                : "The checklist is complete -- this execution is ready for documentation review."
               : "Complete the Evidence Quality Checklist above before submitting for review."}
           </p>
+          {execution.reviewNotes && (
+            <p className="text-sm text-[var(--color-error)]">Reviewer notes: {execution.reviewNotes}</p>
+          )}
           {execution.submittedForReviewAtIso && (
             <p className="text-xs text-[var(--color-muted-foreground)]">
               Submitted {formatDateTime(execution.submittedForReviewAtIso)}
