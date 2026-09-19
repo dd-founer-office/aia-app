@@ -6,10 +6,11 @@
  * the user, never used to silently reject a composed poem.
  *
  * The `verified` and NEEDS_SOURCING checks below are the load-bearing ones
- * for this Phase-1 dataset: see canon.ts's own header for why every entry
- * currently ships as verified: false, and why poem 139's tamilText is a
- * placeholder rather than invented verse. Do not relax either check just to
- * make the initial 3-poem set warning-free — the warnings are correct.
+ * for this dataset: see canon.ts's own header for why every entry still
+ * ships as verified: false even after Phase 2's much deeper source
+ * verification, and why poem 139's tamilText is still partly a placeholder
+ * rather than invented verse. Do not relax either check just to make the
+ * initial 3-poem set warning-free — the warnings are correct.
  */
 
 import { getCanonEntry } from "./canon";

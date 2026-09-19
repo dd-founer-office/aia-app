@@ -74,6 +74,20 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines;
 }
 
+/** Truncates a single line (with an ellipsis) to fit maxWidth under the
+ *  context's currently-set font -- for header-style lines that are drawn
+ *  as one fillText call and were never designed to wrap, so a long poet
+ *  name (e.g. with a parenthetical Tamil spelling) doesn't run off the
+ *  card edge the way it did before this fix. */
+function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let end = text.length;
+  while (end > 0 && ctx.measureText(`${text.slice(0, end)}…`).width > maxWidth) {
+    end--;
+  }
+  return `${text.slice(0, end).trimEnd()}…`;
+}
+
 function drawCardSurface(ctx: CanvasRenderingContext2D, width: number, height: number) {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = BG;
@@ -166,8 +180,12 @@ function drawHookSlide(ctx: CanvasRenderingContext2D, opts: RenderPurananuruCaro
   ctx.fillText(`PURANANURU · ${poem.themeLabel.toUpperCase()}`, contentX, cursorY);
   cursorY += cardH * 0.09;
 
+  // Phase 2: hooks are written as Tamil editorial questions (per explicit
+  // brief direction, e.g. "செல்வம் சேர்ப்பதற்கா? பகிர்வதற்கா?"), not English
+  // -- rendered in tamilFont, not sansFont, so the glyphs actually draw
+  // instead of falling back to tofu/boxes on a Latin-only font stack.
   ctx.fillStyle = FOREGROUND;
-  ctx.font = `600 ${Math.round(cardH * 0.062)}px ${sansFont}`;
+  ctx.font = `600 ${Math.round(cardH * 0.062)}px ${tamilFont}`;
   for (const line of wrapText(ctx, poem.hook, contentW)) {
     cursorY += cardH * 0.08;
     ctx.fillText(line, contentX, cursorY);
@@ -211,7 +229,11 @@ function drawPoemSlide(ctx: CanvasRenderingContext2D, opts: RenderPurananuruCaro
 
   ctx.fillStyle = MUTED;
   ctx.font = `500 ${Math.round(cardH * 0.026)}px ${sansFont}`;
-  ctx.fillText(`PURANANURU ${poem.poemNumber} · ${poem.poet.toUpperCase()}`, contentX, cursorY);
+  ctx.fillText(
+    truncateToWidth(ctx, `PURANANURU ${poem.poemNumber} · ${poem.poet.toUpperCase()}`, contentW),
+    contentX,
+    cursorY
+  );
   cursorY += cardH * 0.07;
 
   // Reserve the brand footer's own zone (see drawBrandFooter's brandY) plus
@@ -229,6 +251,22 @@ function drawPoemSlide(ctx: CanvasRenderingContext2D, opts: RenderPurananuruCaro
     if (cursorY + tamilLineStep > maxY) break;
     cursorY += tamilLineStep;
     ctx.fillText(line, contentX, cursorY);
+  }
+
+  // Optional -- omitted (not blank-rendered) when the canon entry itself
+  // has no transliteration, e.g. an unverified/fragmentary tamilText. See
+  // canon.ts's own field doc for why this is a mechanical, unsourced
+  // best-effort aid rather than a verified romanization.
+  if (poem.transliteration) {
+    cursorY += cardH * 0.025;
+    ctx.fillStyle = MUTED;
+    ctx.font = `italic 400 ${Math.round(cardH * 0.026)}px ${sansFont}`;
+    const translitLineStep = cardH * 0.036;
+    for (const line of wrapText(ctx, poem.transliteration, contentW)) {
+      if (cursorY + translitLineStep > maxY) break;
+      cursorY += translitLineStep;
+      ctx.fillText(line, contentX, cursorY);
+    }
   }
 
   cursorY += cardH * 0.05;

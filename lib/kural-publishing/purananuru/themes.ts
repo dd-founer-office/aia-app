@@ -10,15 +10,24 @@
  * than folded into ThemeId so neither taxonomy has to carry the other's
  * irrelevant members.
  *
- * Deliberately small for the initial 3-poem dataset (only "generosity" and
- * "universal-humanity" are used today) but covers the other themes the
- * Master Content Index is expected to need, so adding poem 4..50 later is
- * just new canon.ts entries, not a themes.ts edit.
+ * Deliberately small for the initial 3-poem dataset (generosity,
+ * universal-humanity, and honesty are used today) but covers the other
+ * themes the Master Content Index is expected to need, so adding poem 4..50
+ * later is just new canon.ts entries, not a themes.ts edit.
+ *
+ * PHASE 2 ADDITION: "honesty" was added after source verification showed
+ * Purananuru 139 is not the Kapilar/Pegan generosity poem Phase 1 assumed
+ * it was (see canon.ts's own header) — the real poem 139's own quoted line
+ * ("I will not lie for my living; I speak only the truth") is explicitly
+ * about integrity of speech, which none of the other five themes cover.
+ * Added because it was the poem's own content that required it, not
+ * speculatively.
  */
 
 export type PurananuruThemeId =
   | "generosity"
   | "universal-humanity"
+  | "honesty"
   | "kingship"
   | "heroism"
   | "war-ethics"
@@ -32,6 +41,7 @@ export interface PurananuruThemeConfig {
 export const PURANANURU_THEMES: readonly PurananuruThemeConfig[] = [
   { id: "generosity", label: "Generosity" },
   { id: "universal-humanity", label: "Universal Humanity" },
+  { id: "honesty", label: "Honesty" },
   { id: "kingship", label: "Kingship" },
   { id: "heroism", label: "Heroism" },
   { id: "war-ethics", label: "War Ethics" },

@@ -38,6 +38,10 @@ export interface ComposedPoem {
   totalPoems: number;
   poet: string;
   tamilText: string;
+  /** See canon.ts's own field doc — a best-effort, unsourced romanization,
+   *  omitted (not fabricated) when the underlying tamilText itself is
+   *  unverified/fragmentary. */
+  transliteration?: string;
   simpleMeaning: string;
   coreAramTheme: PurananuruThemeId;
   themeLabel: string;
@@ -74,6 +78,7 @@ function buildComposedPoem(entry: PurananuruCanonEntry): ComposedPoem {
     totalPoems: PURANANURU_CANON.length,
     poet: entry.poet,
     tamilText: entry.tamilText,
+    transliteration: entry.transliteration,
     simpleMeaning: entry.simpleMeaning,
     coreAramTheme: entry.coreAramTheme,
     themeLabel: purananuruThemeLabel(entry.coreAramTheme),
