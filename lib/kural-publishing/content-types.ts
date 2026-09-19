@@ -36,9 +36,27 @@
  * content types above beyond this registry pattern and the generic,
  * content-agnostic pickFresh() selection helper -- no Aathichoodi file is
  * imported, read from, or modified to support it.
+ *
+ * "purananuru-reel-storyboard" is a SECOND template for the SAME
+ * "purananuru" content type above -- a 7-frame, 9:16 static storyboard
+ * (purananuru-reel-storyboard-renderer.ts) alongside, never replacing, the
+ * 2-slide "purananuru-carousel". This mirrors the existing
+ * "aathichoodi-series" precedent exactly: one ContentTypeConfig row still
+ * names one nominal template ("purananuru-carousel" below, unchanged), and
+ * PublishingWorkspace.tsx's own effective-template derivation switches to
+ * the Reel Storyboard template at runtime via a local format toggle -- the
+ * same pattern that already lets aathichoodi-series render as either
+ * Carousel or Static without a second registry row. Both Purananuru
+ * templates read from the same composed poem (content-engine.ts, untouched
+ * by either).
  */
 
-export type TemplateId = "kka" | "aathichoodi" | "aathichoodi-carousel" | "purananuru-carousel";
+export type TemplateId =
+  | "kka"
+  | "aathichoodi"
+  | "aathichoodi-carousel"
+  | "purananuru-carousel"
+  | "purananuru-reel-storyboard";
 
 export type ContentTypeId =
   | "aathichoodi"

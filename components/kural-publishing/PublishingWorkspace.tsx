@@ -57,6 +57,7 @@ import KuralHeroCanvas, {
   renderAssetForExport,
   renderAathichoodiCarouselAssetForExport,
   renderPurananuruCarouselAssetForExport,
+  renderPurananuruReelAssetForExport,
   type AssetFormat,
   type AssetContent,
 } from "./KuralHeroCanvas";
@@ -106,6 +107,11 @@ import {
   PURANANURU_SLIDE_COUNT,
   PURANANURU_SLIDE_LABELS,
 } from "@/lib/kural-publishing/purananuru-carousel-renderer";
+import {
+  PURANANURU_REEL_FRAME_COUNT,
+  PURANANURU_REEL_FRAME_LABELS,
+  PURANANURU_REEL_FRAME_SLUGS,
+} from "@/lib/kural-publishing/purananuru-reel-storyboard-renderer";
 import {
   CAROUSEL_SLIDE_COUNT,
   SLIDE_LABELS,
@@ -259,6 +265,19 @@ function buildPurananuruFilename(
   format: AssetFormat
 ): string {
   return `purananuru-${String(poem.poemNumber).padStart(3, "0")}-slide${slideIndex + 1}-${format.id}.png`;
+}
+
+/** Follows the brief's own suggested pattern
+ *  ("purananuru-091-reel-01-hook.png") with the format id appended, same
+ *  convention every other filename builder here already uses to keep
+ *  multiple selected formats from overwriting each other on export. */
+function buildPurananuruReelFilename(
+  poem: ComposedPoem,
+  frameIndex: number,
+  format: AssetFormat
+): string {
+  const slug = PURANANURU_REEL_FRAME_SLUGS[frameIndex] ?? String(frameIndex);
+  return `purananuru-${String(poem.poemNumber).padStart(3, "0")}-reel-${String(frameIndex + 1).padStart(2, "0")}-${slug}-${format.id}.png`;
 }
 
 /** Maps a composed series episode into the existing AathichoodiContent
@@ -480,6 +499,13 @@ export default function PublishingWorkspace() {
   const [purananuruQualityWarnings, setPurananuruQualityWarnings] = useState<string[]>([]);
   const [purananuruSlideIndex, setPurananuruSlideIndex] = useState(0);
   const [purananuruHistory, setPurananuruHistory] = useState<PurananuruHistory>(() => loadPurananuruHistory());
+  // Which of the two Purananuru templates to render -- same "one content
+  // type, two templates switched by a local format toggle" pattern as
+  // seriesFormat above for Aathichoodi's own Carousel/Static switch. Both
+  // formats share this same composedPoem/purananuruHistory state; only the
+  // rendering differs.
+  const [purananuruFormat, setPurananuruFormat] = useState<"carousel" | "reel-storyboard">("carousel");
+  const [purananuruReelFrameIndex, setPurananuruReelFrameIndex] = useState(0);
 
   // Live-editable carousel design system (colours/sizes/layout, shared
   // across every episode) and per-episode text overrides -- see the
@@ -514,10 +540,16 @@ export default function PublishingWorkspace() {
     ? seriesFormat === "static"
       ? "aathichoodi"
       : "aathichoodi-carousel"
-    : template;
+    : isPurananuruType
+      ? purananuruFormat === "reel-storyboard"
+        ? "purananuru-reel-storyboard"
+        : "purananuru-carousel"
+      : template;
   const availableFormats = formatsForTemplate(effectiveTemplate);
   const activeLogoImage =
-    effectiveTemplate === "aathichoodi-carousel" || effectiveTemplate === "purananuru-carousel"
+    effectiveTemplate === "aathichoodi-carousel" ||
+    effectiveTemplate === "purananuru-carousel" ||
+    effectiveTemplate === "purananuru-reel-storyboard"
       ? aiaLogoImage
       : logoImage;
 
@@ -582,6 +614,7 @@ export default function PublishingWorkspace() {
         setPurananuruHistory(result.nextHistory);
         savePurananuruHistory(result.nextHistory);
         setPurananuruSlideIndex(0);
+        setPurananuruReelFrameIndex(0);
       }
     }
   }
@@ -1330,6 +1363,26 @@ export default function PublishingWorkspace() {
             });
           }
         }
+      } else if (isPurananuruType && effectiveTemplate === "purananuru-reel-storyboard" && composedPoem) {
+        for (const format of formats) {
+          for (let frame = 0; frame < PURANANURU_REEL_FRAME_COUNT; frame++) {
+            const blob = await renderPurananuruReelAssetForExport(
+              composedPoem,
+              frame,
+              aiaLogoImage,
+              format
+            );
+            if (!blob) continue;
+            results.push({
+              formatId: `${format.id}-frame${frame + 1}`,
+              label: `${format.label} · ${PURANANURU_REEL_FRAME_LABELS[frame]}`,
+              width: format.width,
+              height: format.height,
+              url: URL.createObjectURL(blob),
+              filename: buildPurananuruReelFilename(composedPoem, frame, format),
+            });
+          }
+        }
       } else {
         for (const format of formats) {
           const blob = await renderAssetForExport(
@@ -1426,6 +1479,7 @@ export default function PublishingWorkspace() {
       savePurananuruHistory(result.nextHistory);
       setPoemNumberInput(targetPoem);
       setPurananuruSlideIndex(0);
+      setPurananuruReelFrameIndex(0);
       setGeneratedAssets([]);
       setGeneration((g) => g + 1);
     },
@@ -1443,6 +1497,7 @@ export default function PublishingWorkspace() {
     savePurananuruHistory(result.nextHistory);
     setPoemNumberInput(result.poem.poemNumber);
     setPurananuruSlideIndex(0);
+    setPurananuruReelFrameIndex(0);
     setGeneratedAssets([]);
     setGeneration((g) => g + 1);
   }, [purananuruHistory]);
@@ -1926,6 +1981,39 @@ export default function PublishingWorkspace() {
               </p>
             </div>
 
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+                Format
+              </span>
+              <div className="flex gap-2">
+                {(
+                  [
+                    { id: "carousel" as const, label: "Carousel" },
+                    { id: "reel-storyboard" as const, label: "Reel Storyboard" },
+                  ]
+                ).map((fmt) => (
+                  <button
+                    key={fmt.id}
+                    type="button"
+                    onClick={() => setPurananuruFormat(fmt.id)}
+                    className={`flex-1 rounded-[var(--radius-button)] border px-3 py-2 text-xs font-medium transition-colors ${
+                      purananuruFormat === fmt.id
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                        : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)]"
+                    }`}
+                  >
+                    {fmt.label}
+                  </button>
+                ))}
+              </div>
+              {purananuruFormat === "reel-storyboard" && (
+                <p className="mt-1 text-[10px] text-[var(--color-muted-foreground)]">
+                  7 static frames (Hook → Human Moment → Purananuru → Meaning → Today → Reflection → Signature). Still a
+                  static image set, not a video.
+                </p>
+              )}
+            </div>
+
             {purananuruQualityWarnings.length > 0 && (
               <div className="rounded-[var(--radius-photo)] border border-amber-300 bg-amber-50 p-3">
                 <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-amber-700">
@@ -2146,6 +2234,27 @@ export default function PublishingWorkspace() {
             })}
           </div>
         )}
+        {isPurananuruType && effectiveTemplate === "purananuru-reel-storyboard" && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {PURANANURU_REEL_FRAME_LABELS.map((label, index) => {
+              const active = index === purananuruReelFrameIndex;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setPurananuruReelFrameIndex(index)}
+                  className={`rounded-[var(--radius-button)] border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                      : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)]"
+                  }`}
+                >
+                  {String(index + 1).padStart(2, "0")}. {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <p className="mb-2 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
           Preview — {previewFormat.label}, exports at exactly{" "}
           {previewFormat.width}×{previewFormat.height}px
@@ -2171,7 +2280,13 @@ export default function PublishingWorkspace() {
             logoImage={activeLogoImage}
             familyImage={effectiveTemplate === "aathichoodi-carousel" ? familyImageElement : undefined}
             format={previewFormat}
-            slideIndex={effectiveTemplate === "purananuru-carousel" ? purananuruSlideIndex : activeSlideIndex}
+            slideIndex={
+              effectiveTemplate === "purananuru-carousel"
+                ? purananuruSlideIndex
+                : effectiveTemplate === "purananuru-reel-storyboard"
+                  ? purananuruReelFrameIndex
+                  : activeSlideIndex
+            }
             carouselDesign={effectiveTemplate === "aathichoodi-carousel" ? carouselDesign : undefined}
             onCarouselHotspots={effectiveTemplate === "aathichoodi-carousel" ? setHotspots : undefined}
           />

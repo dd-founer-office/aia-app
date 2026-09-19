@@ -48,6 +48,10 @@ import {
   renderPurananuruCarouselSlide,
   renderPurananuruCarouselSlideForExport,
 } from "@/lib/kural-publishing/purananuru-carousel-renderer";
+import {
+  renderPurananuruReelFrame,
+  renderPurananuruReelFrameForExport,
+} from "@/lib/kural-publishing/purananuru-reel-storyboard-renderer";
 import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
 import type { ComposedEpisode } from "@/lib/kural-publishing/aathichoodi/content-engine";
 import type { ComposedPoem } from "@/lib/kural-publishing/purananuru/content-engine";
@@ -86,9 +90,14 @@ export const ASSET_FORMATS: readonly AssetFormat[] = [
   // Aathichoodi's, listed first among "purananuru-carousel"'s templates so
   // formatsForTemplate defaults to it (never the 1:1 square below).
   { id: "purananuru-carousel-4x5", label: "Purananuru Carousel (4:5)", width: 1080, height: 1350, branding: true, templates: ["purananuru-carousel"] },
+  // Purananuru Reel Storyboard's own master format -- true 9:16, the
+  // format this template is actually designed for (unlike the carousel's
+  // 4:5), listed first among "purananuru-reel-storyboard"'s templates so
+  // formatsForTemplate defaults to it.
+  { id: "purananuru-reel-9x16", label: "Purananuru Reel (9:16)", width: 1080, height: 1920, branding: true, templates: ["purananuru-reel-storyboard"] },
   { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
-  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
-  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
+  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel", "purananuru-reel-storyboard"] },
+  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel", "purananuru-reel-storyboard"] },
   { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
   { id: "aathichoodi-post", label: "Aathichoodi Post", width: 1080, height: 1080, branding: false, templates: ["aathichoodi"] },
 ];
@@ -254,6 +263,22 @@ export default function KuralHeroCanvas({
           brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
           brandingHandle: branding ? BRANDING_HANDLE : undefined,
         });
+      } else if (template === "purananuru-reel-storyboard") {
+        // Same ComposedPoem as the carousel branch above -- this template
+        // derives its own 7-frame view from it internally (see
+        // purananuru-reel-storyboard-renderer.ts's own buildComposedReelStoryboard
+        // call), so PublishingWorkspace never needs a second content shape.
+        renderPurananuruReelFrame(ctx, {
+          width,
+          height,
+          poem: content as ComposedPoem,
+          frameIndex: slideIndex,
+          tamilFont: fonts.tamilFont,
+          sansFont: fonts.sansFont,
+          logoImage: logoImage ?? null,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+        });
       } else {
         renderAathichoodi(ctx, {
           width,
@@ -411,6 +436,27 @@ export async function renderPurananuruCarouselAssetForExport(
   return renderPurananuruCarouselSlideForExport(
     poem,
     slideIndex,
+    logoImage,
+    format,
+    { tamilFont: fonts.tamilFont, sansFont: fonts.sansFont },
+    format.branding ? BRANDING_WORDMARK : undefined,
+    format.branding ? BRANDING_HANDLE : undefined
+  );
+}
+
+/** Reel Storyboard counterpart to renderPurananuruCarouselAssetForExport
+ *  above -- same pattern, own dedicated export helper, never routed
+ *  through renderAssetForExport. */
+export async function renderPurananuruReelAssetForExport(
+  poem: ComposedPoem,
+  frameIndex: number,
+  logoImage: HTMLImageElement | null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  const fonts = resolveAllFonts();
+  return renderPurananuruReelFrameForExport(
+    poem,
+    frameIndex,
     logoImage,
     format,
     { tamilFont: fonts.tamilFont, sansFont: fonts.sansFont },
