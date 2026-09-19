@@ -103,6 +103,7 @@ import {
   type PurananuruHistory,
 } from "@/lib/kural-publishing/purananuru/history-store";
 import { runQualityChecks as runPurananuruQualityChecks } from "@/lib/kural-publishing/purananuru/quality-check";
+import { buildComposedReelStoryboard } from "@/lib/kural-publishing/purananuru/reel-storyboard-content";
 import {
   PURANANURU_SLIDE_COUNT,
   PURANANURU_SLIDE_LABELS,
@@ -566,6 +567,23 @@ export default function PublishingWorkspace() {
     (isPurananuruType
       ? loadPoem(PURANANURU_CANON_FIRST, EMPTY_PURANANURU_HISTORY)?.poem ?? null
       : null);
+
+  // The Reel Storyboard's own "Visual Story Direction" scene for whichever
+  // frame is currently active -- Frame 2 (index 1) and Frame 5 (index 4)
+  // only, since those are the only two frames with a visual-scene
+  // composition. Derived from the same displayPurananuruPoem the Carousel's
+  // own "Visual / Story Direction" panel above already reads, via the Reel
+  // Storyboard's own compose function -- never a second copy of scene data.
+  const activeReelVisualScene =
+    isPurananuruType && displayPurananuruPoem
+      ? (() => {
+          const storyboard = buildComposedReelStoryboard(displayPurananuruPoem);
+          if (!storyboard) return null;
+          if (purananuruReelFrameIndex === 1) return storyboard.frame2Scene;
+          if (purananuruReelFrameIndex === 4) return storyboard.frame5Scene;
+          return null;
+        })()
+      : null;
 
   const content: AssetContent = isSeriesType
     ? seriesFormat === "static"
@@ -2043,6 +2061,25 @@ export default function PublishingWorkspace() {
                 Guidance only — Phase 1 renders this as a caption, it does not generate imagery automatically.
               </p>
             </div>
+
+            {purananuruFormat === "reel-storyboard" && activeReelVisualScene && (
+              <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Visual Story Direction — {activeReelVisualScene.title}
+                </p>
+                <p className="mt-1 text-xs text-[var(--color-foreground)]">{activeReelVisualScene.description}</p>
+                <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
+                  Motif: {activeReelVisualScene.visualMotif}
+                </p>
+                <p className="mt-1 text-[10px] text-[var(--color-muted-foreground)]">
+                  Composition: {activeReelVisualScene.composition}
+                </p>
+                <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
+                  Internal art direction only — the exported frame draws this composition abstractly, this text never
+                  appears on the PNG.
+                </p>
+              </div>
+            )}
 
             <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
               <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">

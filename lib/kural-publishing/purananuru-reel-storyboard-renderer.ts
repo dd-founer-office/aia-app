@@ -41,6 +41,7 @@ import type { ComposedPoem } from "./purananuru/content-engine";
 import {
   buildComposedReelStoryboard,
   type ComposedReelStoryboard,
+  type ReelVisualScene,
 } from "./purananuru/reel-storyboard-content";
 
 const BG = "#F4F3F8";
@@ -160,6 +161,239 @@ interface FrameGeometry {
   contentBottom: number;
 }
 
+/** Traces a rounded-rectangle path via arcTo, matching the corner-rounding
+ *  convention already used elsewhere in this codebase's Canvas renderers
+ *  (e.g. drawCardSurface in purananuru-carousel-renderer.ts) rather than
+ *  ctx.roundRect. Caller fills/strokes after calling this. */
+function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+/** One abstract human silhouette -- a circle head plus a rounded-body
+ *  block, drawn either FILLED (present, included, "has") or OUTLINED ONLY
+ *  (dimmed, separated, "does not have / not yet part of the group"). This
+ *  filled/outlined distinction is the entire visual vocabulary the six
+ *  scenes below use to show possession, need, isolation, and belonging --
+ *  never a face, a costume, or any culturally-specific detail. `topY` is
+ *  the y-coordinate of the top of the head; `scale` sets the figure's
+ *  overall size. */
+function drawFigure(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  topY: number,
+  scale: number,
+  color: string,
+  filled: boolean
+) {
+  const headR = scale * 0.34;
+  const bodyW = scale * 0.9;
+  const bodyH = scale * 1.05;
+  const headCenterY = topY + headR;
+  const bodyTop = headCenterY + headR * 0.75;
+
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(2, scale * 0.055);
+
+  ctx.beginPath();
+  ctx.arc(centerX, headCenterY, headR, 0, Math.PI * 2);
+  if (filled) ctx.fill();
+  else ctx.stroke();
+
+  roundedRectPath(ctx, centerX - bodyW / 2, bodyTop, bodyW, bodyH, bodyW * 0.32);
+  if (filled) ctx.fill();
+  else ctx.stroke();
+}
+
+/** A small filled dot with a faint halo ring -- the one recurring "object
+ *  of value" accent used by the rare-gift/choice/sharing scenes. Never a
+ *  literal icon (no gift box, no ticket, no coin) -- just weight and
+ *  glow standing in for "something notable". */
+function drawObjectAccent(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1, r * 0.4);
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** A quiet curved connector between two points -- the visual language for
+ *  "something is moving from here to there" (the choice, the sharing).
+ *  Dashed and low-weight so it reads as a path, not a hard line/border. */
+function drawConnectorArc(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1, Math.abs(x2 - x1) * 0.008);
+  ctx.setLineDash([Math.abs(x2 - x1) * 0.02, Math.abs(x2 - x1) * 0.025]);
+  const midX = (x1 + x2) / 2;
+  const midY = Math.min(y1, y2) - Math.abs(x2 - x1) * 0.16;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(midX, midY, x2, y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A column of stacked, evenly-gapped rounded units resting on a shared
+ *  baseline -- the abundance/sharing scenes' entire vocabulary for
+ *  "quantity". Deliberately identical unit shape/color across both
+ *  columns in every scene: it is a QUANTITY contrast (count only), never
+ *  a quality, class, or wealth-style contrast. Returns the drawn stack's
+ *  total height. */
+function drawColumn(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  width: number,
+  baselineY: number,
+  unitHeight: number,
+  unitGap: number,
+  unitCount: number,
+  color: string
+): number {
+  ctx.fillStyle = color;
+  for (let i = 0; i < unitCount; i++) {
+    const y = baselineY - (i + 1) * (unitHeight + unitGap) + unitGap;
+    roundedRectPath(ctx, x, y, width, unitHeight, unitHeight * 0.32);
+    ctx.fill();
+  }
+  return unitCount * (unitHeight + unitGap);
+}
+
+interface SceneStage {
+  x0: number;
+  x1: number;
+  top: number;
+  bottom: number;
+}
+
+/** Dispatches one of the six abstract, editorial visual-scene compositions
+ *  (Frame 2 / Frame 5) by sceneType. Every scene is built ONLY from the
+ *  shapes above -- silhouettes, one accent dot, connector arcs, unit
+ *  columns -- using the existing indigo/border/foreground palette already
+ *  defined at the top of this file. No new colors, no photographic
+ *  imagery, no clip-art, no culturally-specific detail: this is the
+ *  "abstract/editorial geometric composition" the brief asks for, and the
+ *  ONLY thing that changes between poems is which of these six cases
+ *  runs and with what proportions -- never a reused generic placeholder. */
+function drawVisualScene(ctx: CanvasRenderingContext2D, stage: SceneStage, scene: ReelVisualScene) {
+  const { x0, x1, top, bottom } = stage;
+  const stageW = x1 - x0;
+  const stageH = Math.max(0, bottom - top);
+  const baselineY = top + stageH * 0.86;
+  const figureScale = Math.min(stageW * 0.22, stageH * 0.5);
+
+  switch (scene.sceneType) {
+    case "rare-gift": {
+      const ax = x0 + stageW * 0.28;
+      const bx = x0 + stageW * 0.72;
+      const figTop = baselineY - figureScale * 2.1;
+      drawFigure(ctx, ax, figTop, figureScale, PRIMARY, true);
+      drawFigure(ctx, bx, figTop, figureScale, BORDER, false);
+      drawObjectAccent(ctx, ax + figureScale * 0.05, figTop - figureScale * 0.28, figureScale * 0.16, PRIMARY);
+      break;
+    }
+    case "choice": {
+      const ax = x0 + stageW * 0.28;
+      const bx = x0 + stageW * 0.72;
+      const figTop = baselineY - figureScale * 2.1;
+      const objY = figTop - figureScale * 0.28;
+      const objX = x0 + stageW * 0.58;
+      drawFigure(ctx, ax, figTop, figureScale, BORDER, false);
+      drawFigure(ctx, bx, figTop, figureScale, PRIMARY, true);
+      drawConnectorArc(ctx, ax + figureScale * 0.3, objY, bx - figureScale * 0.3, objY, BORDER);
+      drawObjectAccent(ctx, objX, objY - stageH * 0.04, figureScale * 0.16, PRIMARY);
+      break;
+    }
+    case "abundance": {
+      const colW = stageW * 0.15;
+      const unitH = stageH * 0.075;
+      const gap = unitH * 0.4;
+      drawColumn(ctx, x0 + stageW * 0.28 - colW / 2, colW, baselineY, unitH, gap, 6, PRIMARY);
+      drawColumn(ctx, x0 + stageW * 0.72 - colW / 2, colW, baselineY, unitH, gap, 2, BORDER);
+      break;
+    }
+    case "sharing": {
+      const colW = stageW * 0.15;
+      const unitH = stageH * 0.075;
+      const gap = unitH * 0.4;
+      const leftX = x0 + stageW * 0.28 - colW / 2;
+      const rightX = x0 + stageW * 0.72 - colW / 2;
+      const leftH = drawColumn(ctx, leftX, colW, baselineY, unitH, gap, 4, PRIMARY);
+      drawColumn(ctx, rightX, colW, baselineY, unitH, gap, 4, PRIMARY);
+      const arcY = baselineY - leftH - stageH * 0.06;
+      drawConnectorArc(ctx, leftX + colW, arcY, rightX, arcY, BORDER);
+      drawObjectAccent(ctx, (leftX + colW + rightX) / 2, arcY - stageH * 0.05, unitH * 0.45, PRIMARY);
+      break;
+    }
+    case "stranger": {
+      const figTop = baselineY - figureScale * 2.0;
+      drawFigure(ctx, x0 + stageW * 0.18, figTop, figureScale * 0.95, BORDER, false);
+      for (const f of [0.58, 0.72, 0.86]) {
+        drawFigure(ctx, x0 + stageW * f, figTop + figureScale * 0.1, figureScale * 0.85, PRIMARY, true);
+      }
+      break;
+    }
+    case "belonging": {
+      const figTop = baselineY - figureScale * 2.0;
+      for (const f of [0.42, 0.58, 0.72, 0.86]) {
+        drawFigure(ctx, x0 + stageW * f, figTop + figureScale * 0.1, figureScale * 0.85, PRIMARY, true);
+      }
+      break;
+    }
+  }
+}
+
+/** Shared Frame 2 / Frame 5 layout: the abstract visual-scene composition
+ *  above, one short Tamil caption below -- the caption is measured FIRST
+ *  so the composition's stage area fills exactly the remaining space
+ *  (same "measure, then lay out" discipline as every other frame in this
+ *  file), and it is the only text drawn: the scene's title/description
+ *  stay internal editorial data, never rendered onto the exported PNG. */
+function drawSceneFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, geo: FrameGeometry, scene: ReelVisualScene) {
+  const { width, height, tamilFont } = opts;
+
+  ctx.font = `600 ${Math.round(width * 0.042)}px ${tamilFont}`;
+  const captionStep = width * 0.058;
+  const captionLines = wrapText(ctx, scene.captionLine, geo.contentWidth);
+  const captionHeight = captionLines.length * captionStep;
+  const captionGap = height * 0.035;
+
+  // The composition gets a fixed, generous height (rather than stretching
+  // across the entire remaining frame) so drawVisualScene's own internal
+  // proportions stay predictable -- then the WHOLE composition+caption
+  // block is measured and vertically centered in the available content
+  // area, the same "measure first, then center" discipline every other
+  // frame in this file already uses. Without this, a composition sized to
+  // a fraction of an oversized stage ends up stranded near the bottom of
+  // the frame with a large dead zone above it.
+  const compositionHeight = height * 0.4;
+  const totalBlockHeight = compositionHeight + captionGap + captionHeight;
+  const available = Math.max(0, geo.contentBottom - geo.contentTop);
+  const blockTop = geo.contentTop + Math.max(0, (available - totalBlockHeight) / 2);
+  const stageBottom = blockTop + compositionHeight;
+
+  drawVisualScene(ctx, { x0: geo.contentX, x1: geo.contentX + geo.contentWidth, top: blockTop, bottom: stageBottom }, scene);
+
+  ctx.fillStyle = FOREGROUND;
+  ctx.font = `600 ${Math.round(width * 0.042)}px ${tamilFont}`;
+  drawCappedLines(ctx, captionLines, geo.contentX, stageBottom + captionGap, captionStep, geo.contentBottom);
+}
+
 /** Shared chrome every frame draws first: full-bleed background, a small
  *  "PURANANURU" kicker top-left, and a page indicator ("03 / 07 · MEANING")
  *  top-right -- the one repeated element that makes seven separate PNGs
@@ -223,54 +457,9 @@ function drawHookFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReel
 }
 
 function drawHumanMomentFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
-  const { width, height, tamilFont, sansFont } = opts;
+  const { width, height, sansFont } = opts;
   const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, false);
-
-  // Restrained abstract motif standing in for imagery we don't generate:
-  // two simple bars of unequal fill weight, side by side -- "one holds
-  // more than the other" -- never a literal scene, per the brief's own
-  // "restrained editorial graphics / typography / abstract composition"
-  // instruction for this frame.
-  const motifY = geo.contentTop;
-  const motifH = height * 0.012;
-  const barW = geo.contentWidth * 0.42;
-  ctx.fillStyle = PRIMARY;
-  ctx.fillRect(geo.contentX, motifY, barW, motifH);
-  ctx.strokeStyle = BORDER;
-  ctx.lineWidth = Math.max(1, motifH * 0.6);
-  ctx.strokeRect(geo.contentX + geo.contentWidth - barW, motifY, barW, motifH);
-
-  // Vertically center the text block in the space below the motif, same
-  // "measure first, then center" approach as Frame 3 -- so a one-sentence
-  // situation line doesn't strand itself under the motif with the rest of
-  // a 1920px-tall frame left empty.
-  ctx.font = `600 ${Math.round(width * 0.05)}px ${tamilFont}`;
-  const lineStep = width * 0.068;
-  const lines = wrapText(ctx, storyboard.humanMomentLine, geo.contentWidth);
-  const lineBlockHeight = lines.length * lineStep;
-
-  ctx.font = `italic 400 ${Math.round(width * 0.027)}px ${sansFont}`;
-  const noteLines = storyboard.humanMomentNote ? wrapText(ctx, storyboard.humanMomentNote, geo.contentWidth) : [];
-  const noteStep = width * 0.038;
-  const noteGap = noteLines.length ? height * 0.035 : 0;
-  const noteBlockHeight = noteLines.length * noteStep;
-
-  const totalBlockHeight = lineBlockHeight + noteGap + noteBlockHeight;
-  const blockTop = motifY + height * 0.09;
-  const blockBottom = geo.contentBottom;
-  const available = Math.max(0, blockBottom - blockTop);
-  let cursorY = blockTop + Math.max(0, (available - totalBlockHeight) / 2);
-
-  ctx.fillStyle = FOREGROUND;
-  ctx.font = `600 ${Math.round(width * 0.05)}px ${tamilFont}`;
-  cursorY = drawCappedLines(ctx, lines, geo.contentX, cursorY, lineStep, blockBottom);
-
-  if (noteLines.length) {
-    cursorY += noteGap;
-    ctx.fillStyle = MUTED;
-    ctx.font = `italic 400 ${Math.round(width * 0.027)}px ${sansFont}`;
-    drawCappedLines(ctx, noteLines, geo.contentX, cursorY, noteStep, blockBottom);
-  }
+  drawSceneFrame(ctx, opts, geo, storyboard.frame2Scene);
 }
 
 function drawPurananuruFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
@@ -369,7 +558,9 @@ function drawMeaningFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruR
 }
 
 function drawTodayFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
-  drawStatementFrame(ctx, opts, "இன்று", "Today", storyboard.todayLine);
+  const { width, height, sansFont } = opts;
+  const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, false);
+  drawSceneFrame(ctx, opts, geo, storyboard.frame5Scene);
 }
 
 function drawReflectionFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
