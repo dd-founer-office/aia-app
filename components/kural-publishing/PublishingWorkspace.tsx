@@ -112,6 +112,7 @@ import { runQualityChecks as runPurananuruQualityChecks } from "@/lib/kural-publ
 import { buildComposedReelStoryboard } from "@/lib/kural-publishing/purananuru/reel-storyboard-content";
 import { runReelVisualStoryQA } from "@/lib/kural-publishing/purananuru/reel-visual-story-qa";
 import { runReelMotionDirectionQA } from "@/lib/kural-publishing/purananuru/reel-motion-direction-qa";
+import { runReelTeachingDirectionQA } from "@/lib/kural-publishing/purananuru/reel-teaching-direction-qa";
 import { buildComposedReelAIVisualDirection } from "@/lib/kural-publishing/purananuru/reel-ai-visual-direction";
 import { runReelAIVisualDirectionQA } from "@/lib/kural-publishing/purananuru/reel-ai-visual-direction-qa";
 import {
@@ -630,6 +631,16 @@ export default function PublishingWorkspace() {
   const reelStoryArcEmotionalMovement = activeReelVisualStoryQA?.storyArc?.emotionalMovement ?? "";
   const reelStoryArcVisualRelationship = activeReelVisualStoryQA?.storyArc
     ? formatStoryArcTerm(activeReelVisualStoryQA.storyArc.visualRelationship)
+    : "";
+
+  // Teaching-First Content Revision: the parent-to-child bridge (core
+  // value / teaching moment / child relevance / conversation hook) + its
+  // own deterministic QA for the current poem. Same "no useState/useEffect
+  // needed" pure-derivation pattern as the story-arc block above.
+  const activeReelTeachingDirection = activeReelStoryboard?.teachingDirection ?? null;
+  const activeReelTeachingDirectionQA = activeReelStoryboard ? runReelTeachingDirectionQA(activeReelStoryboard) : null;
+  const reelTeachingDirectionQAMessageText = activeReelTeachingDirectionQA
+    ? activeReelTeachingDirectionQA.messages.join("\n")
     : "";
 
   // Phase 9A: motion-direction spec + its own deterministic QA for the
@@ -2171,6 +2182,54 @@ export default function PublishingWorkspace() {
                 Guidance only — Phase 1 renders this as a caption, it does not generate imagery automatically.
               </p>
             </div>
+
+            {activeReelTeachingDirection && activeReelTeachingDirectionQA && (
+              <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Teaching Direction
+                </p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Core Value
+                </p>
+                <p className="mt-0.5 text-xs font-medium text-[var(--color-foreground)]">{activeReelTeachingDirection.coreValue}</p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Teaching Moment
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{activeReelTeachingDirection.teachingMoment}</p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Child Relevance
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{activeReelTeachingDirection.childRelevance}</p>
+
+                {activeReelTeachingDirection.conversationHook && (
+                  <>
+                    <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                      Conversation Hook
+                    </p>
+                    <p className="mt-0.5 text-xs italic text-[var(--color-foreground)]">
+                      “{activeReelTeachingDirection.conversationHook}”
+                    </p>
+                  </>
+                )}
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  QA
+                </p>
+                {activeReelTeachingDirectionQA.passed ? (
+                  <p className="mt-0.5 text-xs text-[var(--color-primary)]">✓ Teaching direction valid</p>
+                ) : (
+                  <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">{reelTeachingDirectionQAMessageText}</p>
+                )}
+
+                <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
+                  The parent-to-child bridge this Reel exists to build — the poem stays the source of truth; this is
+                  where a Tamil parent abroad could actually use it with their child.
+                </p>
+              </div>
+            )}
 
             {purananuruFormat === "reel-storyboard" && activeReelVisualScene && (
               <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">

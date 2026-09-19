@@ -238,6 +238,52 @@ export interface ReelMotionDirection {
   reducedMotion: ReelReducedMotion;
 }
 
+/** Teaching-First Content Revision -- the bridge this whole Reel exists to
+ *  build: Ancient Tamil Wisdom -> Human Value -> Teaching Moment -> Child's
+ *  Modern Life -> Visual Story. Lives once per poem (like motionDirection
+ *  above), not once per frame -- it describes the shared purpose of the
+ *  whole Frame 2 -> Frame 5 pair, not either frame's own content.
+ *
+ *  STORY CHARACTERS != TEACHING AUDIENCE: the audience for this whole Reel
+ *  is a child (via their parent), but that does NOT mean the visual
+ *  story's own characters (frame2Scene/frame5Scene) need to be children --
+ *  an adult-to-elder story (poem 91) or a two-neighbor story (poem 189)
+ *  teaches the child just as well by being watched, not necessarily
+ *  starred in. Nothing here changes frame2Scene/frame5Scene's own
+ *  characters for that reason.
+ *
+ *  SOURCE OF TRUTH: every field here is derived FROM the existing canon.ts
+ *  entry's own simpleMeaning/curated.understanding/curated.modernReflection
+ *  (see PURANANURU_REEL_STORYBOARD_CONTENT's own per-poem comments below for
+ *  exactly which canon language each field traces back to) -- never a new
+ *  interpretation invented to make a poem fit a lesson. The poem's existing
+ *  meaning always comes first; the teaching moment is read out of it, not
+ *  imposed on it. */
+export interface ReelTeachingDirection {
+  /** The human value this poem can teach -- short, e.g. "Generosity",
+   *  "Belonging". Must be one already supported by the poem's own
+   *  coreAramTheme/simpleMeaning in canon.ts, never invented independently
+   *  of them. */
+  coreValue: string;
+  /** What a parent could actually say to a child -- practical, human,
+   *  faithful to the poem's own meaning, never a textbook definition of the
+   *  coreValue (see this file's own module header: "Sharing is good" is
+   *  explicitly the wrong register; the poem's own moral weight should
+   *  survive the translation into parent-to-child language). */
+  teachingMoment: string;
+  /** Where this value shows up in a child's own modern life -- the bridge
+   *  from the ancient poem to today, not a forced retelling of the poem's
+   *  own scene with a child standing in for its original figures. */
+  childRelevance: string;
+  /** Optional short question or statement a parent could use right after
+   *  showing the reel, to start a conversation rather than deliver a
+   *  lecture -- kept genuinely short (reel-teaching-direction-qa.ts flags
+   *  an overlong one), and not authored formulaically for poems where it
+   *  doesn't add anything beyond teachingMoment/childRelevance already
+   *  captured. */
+  conversationHook?: string;
+}
+
 export interface ReelStoryboardEditorial {
   poemNumber: number;
   /** Frame 1 (Hook). Exact lines as authored for the Reel -- deliberately
@@ -278,6 +324,9 @@ export interface ReelStoryboardEditorial {
    *  5 transition -- see ReelMotionDirection's own doc comment. Direction
    *  only, not implemented: the static renderer never reads this field. */
   motionDirection: ReelMotionDirection;
+  /** Teaching-First Content Revision. The parent-to-child bridge for this
+   *  whole poem -- see ReelTeachingDirection's own doc comment. */
+  teachingDirection: ReelTeachingDirection;
 }
 
 export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditorial[] = [
@@ -340,6 +389,20 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       easing: "easeInOut",
       reducedMotion: { mode: "final-state", description: "Show the final choice state" },
     },
+    // Source: canon.ts poemNumber 91's own simpleMeaning ("Without
+    // hesitation, Athiyaman kept none of it for himself and gave the fruit
+    // to her") and curated.understanding ("a king who had every reason to
+    // keep a death-defying fruit for himself, and didn't") -- coreAramTheme
+    // is already "generosity"; the teaching moment below is that same idea
+    // read for a parent-to-child audience, not a new interpretation of it.
+    teachingDirection: {
+      coreValue: "Generosity",
+      teachingMoment:
+        "Real generosity isn't giving away what you don't need -- it's noticing when someone else needs the very thing you were counting on for yourself, and choosing to let them have it anyway.",
+      childRelevance:
+        "This is the moment a child has to choose between keeping something they really want -- a favorite toy, the last piece of a snack, a turn they earned -- and giving it to someone who needs it more. It isn't really about the object; it's about noticing someone else's need and choosing to act on it.",
+      conversationHook: "Have you ever had something you really wanted to keep, but someone else needed it more?",
+    },
   },
   {
     poemNumber: 189,
@@ -398,6 +461,23 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       timing: { durationIntent: "moderate", sequence: ["hold", "transition", "settle"] },
       easing: "easeInOut",
       reducedMotion: { mode: "final-state", description: "Show the final leveled columns" },
+    },
+    // Source: canon.ts poemNumber 189's own simpleMeaning ("you both eat a
+    // measure of rice and wear two clothes -- everything else is the same
+    // for both... the true purpose of wealth is to give it away") and
+    // curated.understanding ("wealth's only real function... is what it
+    // lets you give beyond that"). Same coreAramTheme ("generosity") as
+    // poem 91, but a distinct facet of it -- an ongoing responsibility over
+    // surplus, not a single rare gift -- so coreValue is phrased as
+    // "Sharing what you have" rather than duplicating poem 91's "Generosity"
+    // label outright.
+    teachingDirection: {
+      coreValue: "Sharing what you have",
+      teachingMoment:
+        "However much more you have than someone else, your own needs are still just as simple as theirs -- food, clothes, rest. What makes what you have worth anything is what you choose to do with what's left over, not how much of it you pile up.",
+      childRelevance:
+        "This is the idea behind sharing school supplies, food, or a turn at something with a classmate who has less -- not because everyone should end up with the exact same amount, but because what you don't need yourself is exactly the part worth sharing.",
+      conversationHook: "If you had more of something than you actually needed, what would you do with the extra?",
     },
   },
   {
@@ -459,6 +539,20 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       easing: "easeOut",
       reducedMotion: { mode: "final-state", description: "Show the final belonging state" },
     },
+    // Source: canon.ts poemNumber 192's own simpleMeaning ("Every town is
+    // our town, everyone is our kin... suffering and its relief are the
+    // same for everyone") and curated.understanding ("no one is really a
+    // stranger"). coreAramTheme is "universal-humanity"; coreValue below is
+    // that same idea in the short, human-value register this field calls
+    // for.
+    teachingDirection: {
+      coreValue: "Belonging",
+      teachingMoment:
+        "No one is really a stranger for long -- everyone goes through the same joys, the same hard days, and the same ordinary life underneath whatever makes them look different from you at first, so there's no one worth treating as more or less than yourself.",
+      childRelevance:
+        "This is what it feels like when a new student joins the class, when someone is sitting alone at lunch, or when a new family moves in next door -- the moment you notice they're not really so different from you, and you make room for them.",
+      conversationHook: "What could we do when we see someone standing alone?",
+    },
   },
 ];
 
@@ -487,6 +581,7 @@ export interface ComposedReelStoryboard {
   frame5Scene: ReelVisualScene;
   reflectionLines: readonly string[];
   motionDirection: ReelMotionDirection;
+  teachingDirection: ReelTeachingDirection;
 }
 
 /** Derives the Reel Storyboard's own content view from an already-composed
@@ -533,5 +628,6 @@ export function buildComposedReelStoryboard(poem: ComposedPoem): ComposedReelSto
     frame5Scene: editorial.frame5Scene,
     reflectionLines: editorial.reflectionLines,
     motionDirection: editorial.motionDirection,
+    teachingDirection: editorial.teachingDirection,
   };
 }
