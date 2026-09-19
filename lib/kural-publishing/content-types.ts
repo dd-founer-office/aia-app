@@ -27,13 +27,23 @@
  * Carousel (its nominal template below) or Static (reusing the "aathichoodi"
  * template/renderer via a content mapping) -- see PublishingWorkspace.tsx's
  * own effective-template derivation for that runtime switch.
+ *
+ * "purananuru" is a fourth, fully independent content type added on top of
+ * this same registry -- its own template ("purananuru-carousel", in
+ * purananuru-carousel-renderer.ts), its own preloaded dataset + content
+ * engine (lib/kural-publishing/purananuru/), and its own generation history
+ * (purananuru/history-store.ts). It shares nothing with the Aathichoodi
+ * content types above beyond this registry pattern and the generic,
+ * content-agnostic pickFresh() selection helper -- no Aathichoodi file is
+ * imported, read from, or modified to support it.
  */
 
-export type TemplateId = "kka" | "aathichoodi" | "aathichoodi-carousel";
+export type TemplateId = "kka" | "aathichoodi" | "aathichoodi-carousel" | "purananuru-carousel";
 
 export type ContentTypeId =
   | "aathichoodi"
   | "aathichoodi-series"
+  | "purananuru"
   | "thirukkural"
   | "kka"
   | "tamil-learning"
@@ -54,6 +64,7 @@ export interface ContentTypeConfig {
 export const CONTENT_TYPES: readonly ContentTypeConfig[] = [
   { id: "aathichoodi-series", label: "Aathichoodi (Daily Series)", template: "aathichoodi-carousel" },
   { id: "aathichoodi", label: "Aathichoodi (Single Card)", template: "aathichoodi" },
+  { id: "purananuru", label: "Purananuru (Daily Series)", template: "purananuru-carousel" },
   { id: "thirukkural", label: "Thirukkural", template: "kka" },
   { id: "kka", label: "Kural Koorum Aram", template: "kka" },
   { id: "tamil-learning", label: "Tamil Learning", template: "aathichoodi" },

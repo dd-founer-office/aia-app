@@ -56,6 +56,7 @@ import KuralHeroCanvas, {
   formatsForTemplate,
   renderAssetForExport,
   renderAathichoodiCarouselAssetForExport,
+  renderPurananuruCarouselAssetForExport,
   type AssetFormat,
   type AssetContent,
 } from "./KuralHeroCanvas";
@@ -88,6 +89,23 @@ import {
 } from "@/lib/kural-publishing/aathichoodi/history-store";
 import { runQualityChecks } from "@/lib/kural-publishing/aathichoodi/quality-check";
 import { generateCaption } from "@/lib/kural-publishing/aathichoodi/caption";
+import { TOTAL_POEMS, PURANANURU_CANON } from "@/lib/kural-publishing/purananuru/canon";
+import {
+  loadPoem,
+  generateNextPoem,
+  type ComposedPoem,
+} from "@/lib/kural-publishing/purananuru/content-engine";
+import {
+  loadHistory as loadPurananuruHistory,
+  saveHistory as savePurananuruHistory,
+  EMPTY_HISTORY as EMPTY_PURANANURU_HISTORY,
+  type PurananuruHistory,
+} from "@/lib/kural-publishing/purananuru/history-store";
+import { runQualityChecks as runPurananuruQualityChecks } from "@/lib/kural-publishing/purananuru/quality-check";
+import {
+  PURANANURU_SLIDE_COUNT,
+  PURANANURU_SLIDE_LABELS,
+} from "@/lib/kural-publishing/purananuru-carousel-renderer";
 import {
   CAROUSEL_SLIDE_COUNT,
   SLIDE_LABELS,
@@ -226,6 +244,21 @@ function buildSeriesCarouselFilename(
   format: AssetFormat
 ): string {
   return `aathichoodi-ep${String(episode.episodeNumber).padStart(3, "0")}-slide${slideIndex + 1}-${format.id}.png`;
+}
+
+// First preloaded poem number -- used as the initial "Poem number" input
+// value and the pure fallback compose target (mirrors displayEpisode's own
+// composeEpisode(1, EMPTY_HISTORY) fallback, using this dataset's actual
+// first entry rather than assuming poem "1" exists, since Purananuru's
+// preloaded set is sparse (139/189/192), not contiguous from 1.
+const PURANANURU_CANON_FIRST = PURANANURU_CANON[0]?.poemNumber ?? 1;
+
+function buildPurananuruFilename(
+  poem: ComposedPoem,
+  slideIndex: number,
+  format: AssetFormat
+): string {
+  return `purananuru-${String(poem.poemNumber).padStart(3, "0")}-slide${slideIndex + 1}-${format.id}.png`;
 }
 
 /** Maps a composed series episode into the existing AathichoodiContent
@@ -438,6 +471,16 @@ export default function PublishingWorkspace() {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [seriesHistory, setSeriesHistory] = useState<SeriesHistory>(() => loadHistory());
 
+  // Purananuru state, isolated to its own block exactly like the Daily
+  // Aathichoodi Series block above -- its own history (purananuruHistory,
+  // backed by purananuru/history-store.ts's own localStorage key), its own
+  // quality warnings, never touching seriesHistory/qualityWarnings above.
+  const [poemNumberInput, setPoemNumberInput] = useState(PURANANURU_CANON_FIRST);
+  const [composedPoem, setComposedPoem] = useState<ComposedPoem | null>(null);
+  const [purananuruQualityWarnings, setPurananuruQualityWarnings] = useState<string[]>([]);
+  const [purananuruSlideIndex, setPurananuruSlideIndex] = useState(0);
+  const [purananuruHistory, setPurananuruHistory] = useState<PurananuruHistory>(() => loadPurananuruHistory());
+
   // Live-editable carousel design system (colours/sizes/layout, shared
   // across every episode) and per-episode text overrides -- see the
   // Design Controls panel below. Persisted to localStorage so edits
@@ -466,6 +509,7 @@ export default function PublishingWorkspace() {
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
   const isSeriesType = contentTypeId === "aathichoodi-series";
+  const isPurananuruType = contentTypeId === "purananuru";
   const effectiveTemplate: TemplateId = isSeriesType
     ? seriesFormat === "static"
       ? "aathichoodi"
@@ -473,7 +517,9 @@ export default function PublishingWorkspace() {
     : template;
   const availableFormats = formatsForTemplate(effectiveTemplate);
   const activeLogoImage =
-    effectiveTemplate === "aathichoodi-carousel" ? aiaLogoImage : logoImage;
+    effectiveTemplate === "aathichoodi-carousel" || effectiveTemplate === "purananuru-carousel"
+      ? aiaLogoImage
+      : logoImage;
 
   // A pure, cheap fallback so the preview always has a valid episode to
   // render during the brief one-render gap between switching to this
@@ -481,15 +527,25 @@ export default function PublishingWorkspace() {
   const displayEpisode: ComposedEpisode | null =
     composedEpisode ?? (isSeriesType ? composeEpisode(1, EMPTY_HISTORY)?.episode ?? null : null);
 
+  // Same fallback pattern as displayEpisode above, scoped to Purananuru's
+  // own state -- never reads or writes seriesHistory/composedEpisode.
+  const displayPurananuruPoem: ComposedPoem | null =
+    composedPoem ??
+    (isPurananuruType
+      ? loadPoem(PURANANURU_CANON_FIRST, EMPTY_PURANANURU_HISTORY)?.poem ?? null
+      : null);
+
   const content: AssetContent = isSeriesType
     ? seriesFormat === "static"
       ? displayEpisode
         ? seriesEpisodeToStaticContent(displayEpisode)
         : defaultAathichoodiContentFor("aathichoodi")
       : displayEpisode ?? (composeEpisode(1, EMPTY_HISTORY)?.episode as ComposedEpisode)
-    : template === "kka"
-      ? kuralContent
-      : aathichoodiContent;
+    : isPurananuruType
+      ? (displayPurananuruPoem as ComposedPoem)
+      : template === "kka"
+        ? kuralContent
+        : aathichoodiContent;
 
   // Derived-state resets, computed during render rather than in an effect --
   // see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
@@ -516,6 +572,16 @@ export default function PublishingWorkspace() {
         setSeriesFormat(result.episode.recommendedFormat);
         setSeriesHistory(result.nextHistory);
         saveHistory(result.nextHistory);
+      }
+    }
+    if (isPurananuruType && !composedPoem) {
+      const result = loadPoem(poemNumberInput, purananuruHistory);
+      if (result) {
+        setComposedPoem(result.poem);
+        setPurananuruQualityWarnings(runPurananuruQualityChecks(result.poem).warnings);
+        setPurananuruHistory(result.nextHistory);
+        savePurananuruHistory(result.nextHistory);
+        setPurananuruSlideIndex(0);
       }
     }
   }
@@ -1215,6 +1281,7 @@ export default function PublishingWorkspace() {
     );
     if (formats.length === 0) return;
     if (isSeriesType && !composedEpisode) return;
+    if (isPurananuruType && !composedPoem) return;
 
     setGeneration((g) => g + 1);
     setIsGenerating(true);
@@ -1240,6 +1307,26 @@ export default function PublishingWorkspace() {
               height: format.height,
               url: URL.createObjectURL(blob),
               filename: buildSeriesCarouselFilename(composedEpisode, slide, format),
+            });
+          }
+        }
+      } else if (isPurananuruType && effectiveTemplate === "purananuru-carousel" && composedPoem) {
+        for (const format of formats) {
+          for (let slide = 0; slide < PURANANURU_SLIDE_COUNT; slide++) {
+            const blob = await renderPurananuruCarouselAssetForExport(
+              composedPoem,
+              slide,
+              aiaLogoImage,
+              format
+            );
+            if (!blob) continue;
+            results.push({
+              formatId: `${format.id}-slide${slide + 1}`,
+              label: `${format.label} · ${PURANANURU_SLIDE_LABELS[slide]}`,
+              width: format.width,
+              height: format.height,
+              url: URL.createObjectURL(blob),
+              filename: buildPurananuruFilename(composedPoem, slide, format),
             });
           }
         }
@@ -1280,6 +1367,8 @@ export default function PublishingWorkspace() {
     selectedFormatIds,
     isSeriesType,
     composedEpisode,
+    isPurananuruType,
+    composedPoem,
     effectiveTemplate,
     template,
     content,
@@ -1315,6 +1404,48 @@ export default function PublishingWorkspace() {
   const handleGenerateNextEpisode = useCallback(() => {
     handleLoadEpisode(nextEpisodeNumber(seriesHistory.lastEpisodeNumber));
   }, [handleLoadEpisode, seriesHistory.lastEpisodeNumber]);
+
+  // "Load Poem #N" -- direct lookup by canonical anthology number, same
+  // convention as handleLoadEpisode above. Unlike episodes, Purananuru's
+  // preloaded poem numbers are sparse (139/189/192, not contiguous from 1),
+  // so there is no valid numeric range to clamp to -- an out-of-canon
+  // number simply surfaces a warning instead of silently substituting
+  // something else.
+  const handleLoadPurananuruPoem = useCallback(
+    (targetPoem: number) => {
+      const result = loadPoem(targetPoem, purananuruHistory);
+      if (!result) {
+        setPurananuruQualityWarnings([
+          `Poem ${targetPoem} is not in the preloaded Purananuru canon (available: ${PURANANURU_CANON.map((e) => e.poemNumber).join(", ")}).`,
+        ]);
+        return;
+      }
+      setComposedPoem(result.poem);
+      setPurananuruQualityWarnings(runPurananuruQualityChecks(result.poem).warnings);
+      setPurananuruHistory(result.nextHistory);
+      savePurananuruHistory(result.nextHistory);
+      setPoemNumberInput(targetPoem);
+      setPurananuruSlideIndex(0);
+      setGeneratedAssets([]);
+      setGeneration((g) => g + 1);
+    },
+    [purananuruHistory]
+  );
+
+  // "Generate Next Poem" -- picks a fresh preloaded poem via
+  // content-engine.ts's generateNextPoem (pickFresh() under the hood),
+  // never asking the user to type anything.
+  const handleGenerateNextPurananuruPoem = useCallback(() => {
+    const result = generateNextPoem(purananuruHistory);
+    setComposedPoem(result.poem);
+    setPurananuruQualityWarnings(runPurananuruQualityChecks(result.poem).warnings);
+    setPurananuruHistory(result.nextHistory);
+    savePurananuruHistory(result.nextHistory);
+    setPoemNumberInput(result.poem.poemNumber);
+    setPurananuruSlideIndex(0);
+    setGeneratedAssets([]);
+    setGeneration((g) => g + 1);
+  }, [purananuruHistory]);
 
   const handleCopyCaption = useCallback(() => {
     if (!composedEpisode) return;
@@ -1758,6 +1889,80 @@ export default function PublishingWorkspace() {
               </details>
             )}
           </div>
+        ) : isPurananuruType && displayPurananuruPoem ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+                Poem number ({TOTAL_POEMS} preloaded)
+              </span>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={poemNumberInput}
+                  onChange={(e) => setPoemNumberInput(Number(e.target.value) || PURANANURU_CANON_FIRST)}
+                  className="w-20 rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleLoadPurananuruPoem(poemNumberInput)}
+                  className="flex-1 rounded-[var(--radius-button)] border border-[var(--color-primary)] px-3 py-2 text-xs font-medium text-[var(--color-primary)]"
+                >
+                  Load Poem
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateNextPurananuruPoem}
+                className="mt-1 rounded-[var(--radius-button)] bg-[var(--color-primary)] px-3 py-2 text-xs font-medium text-[var(--color-primary-foreground)]"
+              >
+                Generate Next Poem →
+              </button>
+              <p className="mt-1 text-[10px] text-[var(--color-muted-foreground)]">
+                Purananuru {displayPurananuruPoem.poemNumber} · Poet: {displayPurananuruPoem.poet} · Theme: {displayPurananuruPoem.themeLabel}
+                {!displayPurananuruPoem.verified ? " · ⚠ unverified, check source" : ""}
+              </p>
+              <p className="text-[10px] text-[var(--color-muted-foreground)]">
+                Preloaded poems: {PURANANURU_CANON.map((e) => e.poemNumber).join(", ")}
+              </p>
+            </div>
+
+            {purananuruQualityWarnings.length > 0 && (
+              <div className="rounded-[var(--radius-photo)] border border-amber-300 bg-amber-50 p-3">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-amber-700">
+                  Quality Check Warnings
+                </p>
+                <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-amber-800">
+                  {purananuruQualityWarnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                Core Aram Theme · {displayPurananuruPoem.themeLabel}
+              </p>
+              <p className="mt-1 text-xs text-[var(--color-foreground)]">{displayPurananuruPoem.simpleMeaning}</p>
+            </div>
+
+            <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                Visual / Story Direction
+              </p>
+              <p className="mt-1 text-xs text-[var(--color-foreground)]">{displayPurananuruPoem.visualStoryDirection}</p>
+              <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
+                Guidance only — Phase 1 renders this as a caption, it does not generate imagery automatically.
+              </p>
+            </div>
+
+            <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                Source
+              </p>
+              <p className="mt-1 break-all text-xs text-[var(--color-primary)]">{displayPurananuruPoem.sourceUrl}</p>
+            </div>
+          </div>
         ) : (
         <div className="flex flex-col gap-4">
           {template === "kka"
@@ -1920,6 +2125,27 @@ export default function PublishingWorkspace() {
             })}
           </div>
         )}
+        {isPurananuruType && effectiveTemplate === "purananuru-carousel" && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {PURANANURU_SLIDE_LABELS.map((label, index) => {
+              const active = index === purananuruSlideIndex;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setPurananuruSlideIndex(index)}
+                  className={`rounded-[var(--radius-button)] border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                      : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)]"
+                  }`}
+                >
+                  {index + 1}. {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <p className="mb-2 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
           Preview — {previewFormat.label}, exports at exactly{" "}
           {previewFormat.width}×{previewFormat.height}px
@@ -1945,7 +2171,7 @@ export default function PublishingWorkspace() {
             logoImage={activeLogoImage}
             familyImage={effectiveTemplate === "aathichoodi-carousel" ? familyImageElement : undefined}
             format={previewFormat}
-            slideIndex={activeSlideIndex}
+            slideIndex={effectiveTemplate === "purananuru-carousel" ? purananuruSlideIndex : activeSlideIndex}
             carouselDesign={effectiveTemplate === "aathichoodi-carousel" ? carouselDesign : undefined}
             onCarouselHotspots={effectiveTemplate === "aathichoodi-carousel" ? setHotspots : undefined}
           />

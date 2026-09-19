@@ -44,13 +44,18 @@ import {
   type CarouselDesignOverrides,
   type CarouselHotspot,
 } from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
+import {
+  renderPurananuruCarouselSlide,
+  renderPurananuruCarouselSlideForExport,
+} from "@/lib/kural-publishing/purananuru-carousel-renderer";
 import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
 import type { ComposedEpisode } from "@/lib/kural-publishing/aathichoodi/content-engine";
+import type { ComposedPoem } from "@/lib/kural-publishing/purananuru/content-engine";
 
 export const CANVAS_WIDTH = 1648;
 export const CANVAS_HEIGHT = 928;
 
-export type AssetContent = KuralPublishingContent | AathichoodiContent | ComposedEpisode;
+export type AssetContent = KuralPublishingContent | AathichoodiContent | ComposedEpisode | ComposedPoem;
 
 /** GOLD MASTER asset-format registry. Real, standard dimensions for each
  *  platform, not guessed. `templates` says which template(s) each format is
@@ -77,10 +82,14 @@ export const ASSET_FORMATS: readonly AssetFormat[] = [
   // first among aathichoodi-carousel's templates so formatsForTemplate
   // picks it as the default (never the 1:1 square below).
   { id: "aathichoodi-carousel-4x5", label: "Aathichoodi Carousel (4:5)", width: 1080, height: 1350, branding: true, templates: ["aathichoodi-carousel"] },
-  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
-  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
-  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
-  { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
+  // Purananuru's own master format, same Instagram 4:5 portrait size as
+  // Aathichoodi's, listed first among "purananuru-carousel"'s templates so
+  // formatsForTemplate defaults to it (never the 1:1 square below).
+  { id: "purananuru-carousel-4x5", label: "Purananuru Carousel (4:5)", width: 1080, height: 1350, branding: true, templates: ["purananuru-carousel"] },
+  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
+  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
+  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
+  { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
   { id: "aathichoodi-post", label: "Aathichoodi Post", width: 1080, height: 1080, branding: false, templates: ["aathichoodi"] },
 ];
 
@@ -233,6 +242,18 @@ export default function KuralHeroCanvas({
           design: carouselDesign,
         });
         onCarouselHotspots?.(hotspots);
+      } else if (template === "purananuru-carousel") {
+        renderPurananuruCarouselSlide(ctx, {
+          width,
+          height,
+          poem: content as ComposedPoem,
+          slideIndex,
+          tamilFont: fonts.tamilFont,
+          sansFont: fonts.sansFont,
+          logoImage: logoImage ?? null,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+        });
       } else {
         renderAathichoodi(ctx, {
           width,
@@ -374,5 +395,26 @@ export async function renderAathichoodiCarouselAssetForExport(
     format.branding ? BRANDING_HANDLE : undefined,
     carouselDesign,
     familyImage
+  );
+}
+
+/** Purananuru counterpart to renderAathichoodiCarouselAssetForExport above
+ *  -- same "own dedicated export helper per carousel-shaped template"
+ *  pattern, never routed through renderAssetForExport. */
+export async function renderPurananuruCarouselAssetForExport(
+  poem: ComposedPoem,
+  slideIndex: number,
+  logoImage: HTMLImageElement | null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  const fonts = resolveAllFonts();
+  return renderPurananuruCarouselSlideForExport(
+    poem,
+    slideIndex,
+    logoImage,
+    format,
+    { tamilFont: fonts.tamilFont, sansFont: fonts.sansFont },
+    format.branding ? BRANDING_WORDMARK : undefined,
+    format.branding ? BRANDING_HANDLE : undefined
   );
 }
