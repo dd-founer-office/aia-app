@@ -152,7 +152,10 @@ function resolveFont(cssVarName: string, fallback: string): string {
   return value.length > 0 ? `${value}, ${fallback}` : fallback;
 }
 
-function resolveAllFonts() {
+// Exported (Phase 9B) so the Motion Preview canvas (a second, separate
+// <canvas> in PublishingWorkspace.tsx) can resolve the SAME real font
+// strings this component already uses -- logic itself untouched.
+export function resolveAllFonts() {
   return {
     tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
     sansFont: resolveFont("--font-sans", SANS_FALLBACK),

@@ -44,11 +44,13 @@ import {
   type ReelVisualScene,
 } from "./purananuru/reel-storyboard-content";
 
-const BG = "#F4F3F8";
-const FOREGROUND = "#1E1B2E";
-const MUTED = "#6B6B85";
-const PRIMARY = "#3B3F8C";
-const BORDER = "#DADCE8";
+// Exported (Phase 9B) so purananuru-reel-motion-preview-renderer.ts can draw
+// with the exact same palette -- values themselves untouched.
+export const BG = "#F4F3F8";
+export const FOREGROUND = "#1E1B2E";
+export const MUTED = "#6B6B85";
+export const PRIMARY = "#3B3F8C";
+export const BORDER = "#DADCE8";
 const ON_PRIMARY = "#FFFFFF";
 const ON_PRIMARY_MUTED = "#C7C9EE";
 const WARNING = "#8A5A00";
@@ -98,7 +100,9 @@ export interface RenderPurananuruReelOptions {
   brandingHandle?: string;
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+// Exported (Phase 9B) so the motion preview renderer can wrap the SAME
+// crossfading caption text with identical metrics -- logic untouched.
+export function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const lines: string[] = [];
   for (const rawLine of text.split("\n")) {
     const words = rawLine.split(/\s+/).filter(Boolean);
@@ -132,7 +136,9 @@ function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: 
  *  purananuru-carousel-renderer.ts uses, reapplied here so long poem
  *  content can never clip against this template's own footer/margin.
  *  Returns the Y position after the last line actually drawn. */
-function drawCappedLines(
+// Exported (Phase 9B) -- same overflow-safety line drawer, reused as-is by
+// the motion preview renderer's crossfading caption text.
+export function drawCappedLines(
   ctx: CanvasRenderingContext2D,
   lines: readonly string[],
   x: number,
@@ -153,7 +159,9 @@ function drawCappedLines(
   return y;
 }
 
-interface FrameGeometry {
+// Exported (Phase 9B) so the motion preview renderer's own drawFrameChrome
+// calls resolve to the same content bounds the static frames use.
+export interface FrameGeometry {
   marginX: number;
   contentX: number;
   contentWidth: number;
@@ -164,8 +172,10 @@ interface FrameGeometry {
 /** Traces a rounded-rectangle path via arcTo, matching the corner-rounding
  *  convention already used elsewhere in this codebase's Canvas renderers
  *  (e.g. drawCardSurface in purananuru-carousel-renderer.ts) rather than
- *  ctx.roundRect. Caller fills/strokes after calling this. */
-function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+ *  ctx.roundRect. Caller fills/strokes after calling this.
+ *  Exported (Phase 9B) -- the motion preview renderer's own interpolated
+ *  column bars reuse this exact path helper rather than a second copy. */
+export function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rr = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath();
   ctx.moveTo(x + rr, y);
@@ -183,8 +193,10 @@ function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w:
  *  scenes below use to show possession, need, isolation, and belonging --
  *  never a face, a costume, or any culturally-specific detail. `topY` is
  *  the y-coordinate of the top of the head; `scale` sets the figure's
- *  overall size. */
-function drawFigure(
+ *  overall size. Exported (Phase 9B) -- the motion preview renderer draws
+ *  the SAME figure shape at interpolated positions/colors, never a second
+ *  silhouette implementation. */
+export function drawFigure(
   ctx: CanvasRenderingContext2D,
   centerX: number,
   topY: number,
@@ -215,8 +227,9 @@ function drawFigure(
 /** A small filled dot with a faint halo ring -- the one recurring "object
  *  of value" accent used by the rare-gift/choice/sharing scenes. Never a
  *  literal icon (no gift box, no ticket, no coin) -- just weight and
- *  glow standing in for "something notable". */
-function drawObjectAccent(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+ *  glow standing in for "something notable". Exported (Phase 9B) for the
+ *  motion preview renderer's interpolated object position. */
+export function drawObjectAccent(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
   ctx.save();
   ctx.globalAlpha = 0.28;
   ctx.strokeStyle = color;
@@ -234,8 +247,11 @@ function drawObjectAccent(ctx: CanvasRenderingContext2D, cx: number, cy: number,
 
 /** A quiet curved connector between two points -- the visual language for
  *  "something is moving from here to there" (the choice, the sharing).
- *  Dashed and low-weight so it reads as a path, not a hard line/border. */
-function drawConnectorArc(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string) {
+ *  Dashed and low-weight so it reads as a path, not a hard line/border.
+ *  Exported (Phase 9B) -- the motion preview renderer fades this arc in
+ *  via ctx.globalAlpha around the SAME call, never a second connector
+ *  implementation. */
+export function drawConnectorArc(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string) {
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = Math.max(1, Math.abs(x2 - x1) * 0.008);
@@ -254,8 +270,11 @@ function drawConnectorArc(ctx: CanvasRenderingContext2D, x1: number, y1: number,
  *  "quantity". Deliberately identical unit shape/color across both
  *  columns in every scene: it is a QUANTITY contrast (count only), never
  *  a quality, class, or wealth-style contrast. Returns the drawn stack's
- *  total height. */
-function drawColumn(
+ *  total height. Exported (Phase 9B) so the motion preview renderer can
+ *  draw the same discrete-unit look at its exact Frame 2 / Frame 5
+ *  endpoints (its own interior/animating frames use a continuous bar
+ *  instead -- see that file's own header for why). */
+export function drawColumn(
   ctx: CanvasRenderingContext2D,
   x: number,
   width: number,
@@ -274,7 +293,9 @@ function drawColumn(
   return unitCount * (unitHeight + unitGap);
 }
 
-interface SceneStage {
+// Exported (Phase 9B) so the motion preview renderer's interior
+// interpolators share the exact same stage-rectangle shape.
+export interface SceneStage {
   x0: number;
   x1: number;
   top: number;
@@ -289,8 +310,12 @@ interface SceneStage {
  *  imagery, no clip-art, no culturally-specific detail: this is the
  *  "abstract/editorial geometric composition" the brief asks for, and the
  *  ONLY thing that changes between poems is which of these six cases
- *  runs and with what proportions -- never a reused generic placeholder. */
-function drawVisualScene(ctx: CanvasRenderingContext2D, stage: SceneStage, scene: ReelVisualScene) {
+ *  runs and with what proportions -- never a reused generic placeholder.
+ *  Exported (Phase 9B) -- the motion preview renderer calls this directly
+ *  for its exact Frame 2 (progress=0) and Frame 5 (progress=1) endpoints,
+ *  which is what guarantees those two states are pixel-identical to the
+ *  static PNG export rather than a re-implemented approximation. */
+export function drawVisualScene(ctx: CanvasRenderingContext2D, stage: SceneStage, scene: ReelVisualScene) {
   const { x0, x1, top, bottom } = stage;
   const stageW = x1 - x0;
   const stageH = Math.max(0, bottom - top);
@@ -358,13 +383,39 @@ function drawVisualScene(ctx: CanvasRenderingContext2D, stage: SceneStage, scene
   }
 }
 
-/** Shared Frame 2 / Frame 5 layout: the abstract visual-scene composition
- *  above, one short Tamil caption below -- the caption is measured FIRST
- *  so the composition's stage area fills exactly the remaining space
- *  (same "measure, then lay out" discipline as every other frame in this
- *  file), and it is the only text drawn: the scene's title/description
- *  stay internal editorial data, never rendered onto the exported PNG. */
-function drawSceneFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, geo: FrameGeometry, scene: ReelVisualScene) {
+/** The subset of RenderPurananuruReelOptions that a Frame 2 / Frame 5 scene
+ *  layout actually reads -- neither computeSceneFrameLayout nor
+ *  drawSceneFrame has ever touched `poem`, `frameIndex`, or the branding
+ *  fields, so narrowing to exactly the fields used (rather than the full
+ *  options type) lets the motion preview renderer (Phase 9B) call both
+ *  without needing to fabricate a fake ComposedPoem. Purely a type-level
+ *  change -- every existing call site already passes a full
+ *  RenderPurananuruReelOptions, which still satisfies this narrower shape
+ *  structurally, so no caller changes and no behavior changes. */
+export type SceneFrameLayoutOptions = Pick<RenderPurananuruReelOptions, "width" | "height" | "tamilFont">;
+
+export interface SceneFrameLayout {
+  stage: SceneStage;
+  captionLines: string[];
+  captionStep: number;
+  captionGap: number;
+  stageBottom: number;
+}
+
+/** Computes the Frame 2 / Frame 5 stage rectangle + caption layout for one
+ *  scene -- extracted out of drawSceneFrame (Phase 9B) so the motion
+ *  preview renderer can compute the SAME geometry a static frame would use
+ *  without duplicating this "measure caption, then center the whole
+ *  composition+caption block" math a second time. Formulas are byte-for-
+ *  byte the same as before this extraction; drawSceneFrame below now just
+ *  calls this and draws using the returned numbers, so static output is
+ *  unchanged (verified via the Phase 9B pixel-regression test). */
+export function computeSceneFrameLayout(
+  ctx: CanvasRenderingContext2D,
+  opts: SceneFrameLayoutOptions,
+  geo: FrameGeometry,
+  scene: ReelVisualScene
+): SceneFrameLayout {
   const { width, height, tamilFont } = opts;
 
   ctx.font = `600 ${Math.round(width * 0.042)}px ${tamilFont}`;
@@ -387,11 +438,32 @@ function drawSceneFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruRee
   const blockTop = geo.contentTop + Math.max(0, (available - totalBlockHeight) / 2);
   const stageBottom = blockTop + compositionHeight;
 
-  drawVisualScene(ctx, { x0: geo.contentX, x1: geo.contentX + geo.contentWidth, top: blockTop, bottom: stageBottom }, scene);
+  return {
+    stage: { x0: geo.contentX, x1: geo.contentX + geo.contentWidth, top: blockTop, bottom: stageBottom },
+    captionLines,
+    captionStep,
+    captionGap,
+    stageBottom,
+  };
+}
+
+/** Shared Frame 2 / Frame 5 layout: the abstract visual-scene composition
+ *  above, one short Tamil caption below -- the caption is measured FIRST
+ *  so the composition's stage area fills exactly the remaining space
+ *  (same "measure, then lay out" discipline as every other frame in this
+ *  file), and it is the only text drawn: the scene's title/description
+ *  stay internal editorial data, never rendered onto the exported PNG.
+ *  Exported (Phase 9B) -- the motion preview renderer calls this directly
+ *  for its exact Frame 2 (progress=0) / Frame 5 (progress=1) endpoints. */
+export function drawSceneFrame(ctx: CanvasRenderingContext2D, opts: SceneFrameLayoutOptions, geo: FrameGeometry, scene: ReelVisualScene) {
+  const { width, tamilFont } = opts;
+  const layout = computeSceneFrameLayout(ctx, opts, geo, scene);
+
+  drawVisualScene(ctx, layout.stage, scene);
 
   ctx.fillStyle = FOREGROUND;
   ctx.font = `600 ${Math.round(width * 0.042)}px ${tamilFont}`;
-  drawCappedLines(ctx, captionLines, geo.contentX, stageBottom + captionGap, captionStep, geo.contentBottom);
+  drawCappedLines(ctx, layout.captionLines, geo.contentX, layout.stageBottom + layout.captionGap, layout.captionStep, geo.contentBottom);
 }
 
 /** Shared chrome every frame draws first: full-bleed background, a small
@@ -399,8 +471,11 @@ function drawSceneFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruRee
  *  top-right -- the one repeated element that makes seven separate PNGs
  *  read as a single designed sequence rather than seven unrelated cards.
  *  `invert` flips both the background and the chrome text color for Frame
- *  6's full-indigo panel. */
-function drawFrameChrome(
+ *  6's full-indigo panel. Exported (Phase 9B) -- the motion preview
+ *  renderer calls this with the SAME frameIndex a static Frame 2 / Frame 5
+ *  call would use, so the chrome (background, kicker, page label) is
+ *  identical at the preview's exact endpoints, never a re-implementation. */
+export function drawFrameChrome(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,

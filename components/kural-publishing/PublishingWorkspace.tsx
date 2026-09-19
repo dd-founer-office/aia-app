@@ -58,9 +58,15 @@ import KuralHeroCanvas, {
   renderAathichoodiCarouselAssetForExport,
   renderPurananuruCarouselAssetForExport,
   renderPurananuruReelAssetForExport,
+  resolveAllFonts,
   type AssetFormat,
   type AssetContent,
 } from "./KuralHeroCanvas";
+import {
+  useReelMotionPreview,
+  REEL_MOTION_PREVIEW_WIDTH,
+  REEL_MOTION_PREVIEW_HEIGHT,
+} from "./useReelMotionPreview";
 import {
   DEFAULT_KURAL_200_CONTENT,
   deriveIssueNumber,
@@ -642,6 +648,19 @@ export default function PublishingWorkspace() {
     : "";
   const reelMotionSequenceLabel = activeReelMotionDirection?.sequenceLabel ?? "";
   const reelMotionReducedMotionLabel = activeReelMotionDirection?.reducedMotion.description ?? "";
+
+  // Phase 9B: the actual animated preview -- direction only, still no
+  // video/MP4/WebM export. Called unconditionally (Rules of Hooks); the
+  // hook itself is inert whenever activeReelStoryboard is null (wrong
+  // content type, or no Reel content authored yet for this poem).
+  const { tamilFont: reelPreviewTamilFont, sansFont: reelPreviewSansFont } = resolveAllFonts();
+  const {
+    canvasRef: reelMotionCanvasRef,
+    progressBarRef: reelMotionProgressBarRef,
+    isPlaying: reelMotionIsPlaying,
+    play: playReelMotionPreview,
+    replay: replayReelMotionPreview,
+  } = useReelMotionPreview(activeReelStoryboard, reelPreviewTamilFont, reelPreviewSansFont);
 
   const content: AssetContent = isSeriesType
     ? seriesFormat === "static"
@@ -2205,9 +2224,58 @@ export default function PublishingWorkspace() {
                   <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">{reelMotionDirectionQAMessageText}</p>
                 )}
 
+                <div className="mt-3 border-t border-[var(--color-border)] pt-3">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                    Motion Preview
+                  </p>
+                  <div className="mt-2 flex gap-3">
+                    <div
+                      className="w-28 shrink-0 overflow-hidden rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)]"
+                      style={{ aspectRatio: `${REEL_MOTION_PREVIEW_WIDTH} / ${REEL_MOTION_PREVIEW_HEIGHT}` }}
+                    >
+                      <canvas
+                        ref={reelMotionCanvasRef}
+                        width={REEL_MOTION_PREVIEW_WIDTH}
+                        height={REEL_MOTION_PREVIEW_HEIGHT}
+                        className="block h-full w-full"
+                        data-testid="reel-motion-preview-canvas"
+                      />
+                    </div>
+                    <div className="flex flex-1 flex-col justify-center gap-2">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={playReelMotionPreview}
+                          disabled={reelMotionIsPlaying}
+                          className="rounded-[var(--radius-button)] border border-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] disabled:opacity-50"
+                        >
+                          {reelMotionIsPlaying ? "Playing…" : "▶ Play"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={replayReelMotionPreview}
+                          className="rounded-[var(--radius-button)] border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)]"
+                        >
+                          ↻ Replay
+                        </button>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[var(--color-muted-foreground)]">Progress</p>
+                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-border)]">
+                          <div
+                            ref={reelMotionProgressBarRef}
+                            className="h-full bg-[var(--color-primary)]"
+                            style={{ width: "0%" }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
-                  Direction only — this describes an intended future transition, it is not animated and never appears
-                  on the exported PNG.
+                  In-browser preview only — this is still no video/MP4/WebM export; the exported PNG never includes
+                  motion.
                 </p>
               </div>
             )}
