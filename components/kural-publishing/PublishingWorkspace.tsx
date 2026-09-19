@@ -58,15 +58,9 @@ import KuralHeroCanvas, {
   renderAathichoodiCarouselAssetForExport,
   renderPurananuruCarouselAssetForExport,
   renderPurananuruReelAssetForExport,
-  resolveAllFonts,
   type AssetFormat,
   type AssetContent,
 } from "./KuralHeroCanvas";
-import {
-  useReelMotionPreview,
-  REEL_MOTION_PREVIEW_WIDTH,
-  REEL_MOTION_PREVIEW_HEIGHT,
-} from "./useReelMotionPreview";
 import {
   DEFAULT_KURAL_200_CONTENT,
   deriveIssueNumber,
@@ -110,9 +104,7 @@ import {
 } from "@/lib/kural-publishing/purananuru/history-store";
 import { runQualityChecks as runPurananuruQualityChecks } from "@/lib/kural-publishing/purananuru/quality-check";
 import { buildComposedReelStoryboard } from "@/lib/kural-publishing/purananuru/reel-storyboard-content";
-import { runReelVisualStoryQA } from "@/lib/kural-publishing/purananuru/reel-visual-story-qa";
-import { runReelMotionDirectionQA } from "@/lib/kural-publishing/purananuru/reel-motion-direction-qa";
-import { runReelTeachingDirectionQA } from "@/lib/kural-publishing/purananuru/reel-teaching-direction-qa";
+import { runReelContentQA } from "@/lib/kural-publishing/purananuru/reel-content-qa";
 import { buildComposedReelAIVisualDirection } from "@/lib/kural-publishing/purananuru/reel-ai-visual-direction";
 import { runReelAIVisualDirectionQA } from "@/lib/kural-publishing/purananuru/reel-ai-visual-direction-qa";
 import {
@@ -217,27 +209,6 @@ function slugify(text: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
   return slug || "untitled";
-}
-
-/** Renders a ReelVisualScene's hyphenated storyRole/visualRelationship
- *  values (e.g. "individual-community") as the sidebar's own compact
- *  editorial label ("Individual ↔ Community") -- purely a display
- *  transform, the underlying typed value never changes. */
-function formatStoryArcTerm(value: string): string {
-  return value
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ↔ ");
-}
-
-/** Renders a Phase 9A ReelMotionDirection identifier -- a motionType
- *  ("connect") or a camelCase ReelMotionTarget ("isolatedFigure") -- as
- *  the sidebar's own compact editorial label ("Connect" / "Isolated
- *  Figure"). Purely a display transform, the underlying typed value never
- *  changes and nothing here is drawn on the exported PNG. */
-function formatMotionTerm(value: string): string {
-  const spaced = value.replace(/([a-z])([A-Z])/g, "$1 $2");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 /** Mirrors drawSlide4Carry's own split exactly -- the trailing "—" is
@@ -601,85 +572,26 @@ export default function PublishingWorkspace() {
       : null);
 
   // The Reel Storyboard's own composed view of the current poem -- computed
-  // once here (rather than separately per consumer) so the "Visual Story
-  // Direction" scene panel and the Phase 8A story-arc/QA panel below both
-  // read the SAME composed object, never two independently-derived copies.
+  // once here (rather than separately per consumer) so every sidebar card
+  // below reads the SAME composed object, never independently-derived
+  // copies.
   const activeReelStoryboard =
     isPurananuruType && displayPurananuruPoem ? buildComposedReelStoryboard(displayPurananuruPoem) : null;
 
-  // Frame 2 (index 1) and Frame 5 (index 4) only, since those are the only
-  // two frames with a visual-scene composition.
-  const activeReelVisualScene = (() => {
-    if (!activeReelStoryboard) return null;
-    if (purananuruReelFrameIndex === 1) return activeReelStoryboard.frame2Scene;
-    if (purananuruReelFrameIndex === 4) return activeReelStoryboard.frame5Scene;
-    return null;
-  })();
+  // LOCKED BUILD: one consolidated Content QA pass for the whole seven-frame
+  // storyboard (hook / modern situation / human action / Tamil discovery /
+  // Aram / teaching question / heritage+CTA), replacing the old three
+  // separate QA passes (Visual Story, Motion Direction, Teaching Direction)
+  // that each validated a now-removed sub-object. Pure/derived, same "no
+  // useState/useEffect needed" pattern already used throughout this file.
+  const activeReelContentQA = activeReelStoryboard ? runReelContentQA(activeReelStoryboard) : null;
+  const reelContentQAMessageText = activeReelContentQA ? activeReelContentQA.messages.join("\n") : "";
 
-  // Phase 8A: deterministic Frame2 -> Frame5 story-arc QA for the current
-  // poem's whole visual-story pair (not just whichever frame is active) --
-  // pure/derived, same "no useState/useEffect needed" pattern as the two
-  // values above.
-  const activeReelVisualStoryQA = activeReelStoryboard ? runReelVisualStoryQA(activeReelStoryboard) : null;
-  // Hoisted out of the JSX below (rather than called inline as
-  // `activeReelVisualStoryQA.messages.join(...)`) -- the React Compiler's
-  // manual-memoization-preservation pass for an unrelated useCallback
-  // elsewhere in this component could not be preserved when that array
-  // method call sat inside the sidebar's JSX tree; a plain string computed
-  // here has no such effect while rendering identically.
-  const reelVisualStoryQAMessageText = activeReelVisualStoryQA ? activeReelVisualStoryQA.messages.join("\n") : "";
-  const reelStoryArcEmotionalMovement = activeReelVisualStoryQA?.storyArc?.emotionalMovement ?? "";
-  const reelStoryArcVisualRelationship = activeReelVisualStoryQA?.storyArc
-    ? formatStoryArcTerm(activeReelVisualStoryQA.storyArc.visualRelationship)
-    : "";
-
-  // Teaching-First Content Revision: the parent-to-child bridge (core
-  // value / teaching moment / child relevance / conversation hook) + its
-  // own deterministic QA for the current poem. Same "no useState/useEffect
-  // needed" pure-derivation pattern as the story-arc block above.
-  const activeReelTeachingDirection = activeReelStoryboard?.teachingDirection ?? null;
-  const activeReelTeachingDirectionQA = activeReelStoryboard ? runReelTeachingDirectionQA(activeReelStoryboard) : null;
-  const reelTeachingDirectionQAMessageText = activeReelTeachingDirectionQA
-    ? activeReelTeachingDirectionQA.messages.join("\n")
-    : "";
-
-  // Phase 9A: motion-direction spec + its own deterministic QA for the
-  // current poem's Frame 2 -> Frame 5 transition -- direction only, never
-  // animated; the static renderer never reads storyboard.motionDirection.
-  // Same "no useState/useEffect needed" pure-derivation pattern as above,
-  // and the same flat-const hoisting Phase 8A needed to keep the React
-  // Compiler's memoization-preservation pass happy for an unrelated
-  // useCallback elsewhere in this component.
-  const activeReelMotionDirection = activeReelStoryboard?.motionDirection ?? null;
-  const activeReelMotionDirectionQA = activeReelStoryboard ? runReelMotionDirectionQA(activeReelStoryboard) : null;
-  const reelMotionDirectionQAMessageText = activeReelMotionDirectionQA
-    ? activeReelMotionDirectionQA.messages.join("\n")
-    : "";
-  const reelMotionTypeLabel = activeReelMotionDirection ? formatMotionTerm(activeReelMotionDirection.motionType) : "";
-  const reelMotionActorLabel = activeReelMotionDirection
-    ? formatMotionTerm(activeReelMotionDirection.relationship.actor)
-    : "";
-  const reelMotionSequenceLabel = activeReelMotionDirection?.sequenceLabel ?? "";
-  const reelMotionReducedMotionLabel = activeReelMotionDirection?.reducedMotion.description ?? "";
-
-  // Phase 9B: the actual animated preview -- direction only, still no
-  // video/MP4/WebM export. Called unconditionally (Rules of Hooks); the
-  // hook itself is inert whenever activeReelStoryboard is null (wrong
-  // content type, or no Reel content authored yet for this poem).
-  const { tamilFont: reelPreviewTamilFont, sansFont: reelPreviewSansFont } = resolveAllFonts();
-  const {
-    canvasRef: reelMotionCanvasRef,
-    progressBarRef: reelMotionProgressBarRef,
-    isPlaying: reelMotionIsPlaying,
-    play: playReelMotionPreview,
-    replay: replayReelMotionPreview,
-  } = useReelMotionPreview(activeReelStoryboard, reelPreviewTamilFont, reelPreviewSansFont);
-
-  // Phase 9C: the AI Visual Direction layer -- deterministic copyable text
-  // prompts for an external AI image-generation tool, derived from the same
-  // activeReelStoryboard the Motion Direction card above already reads.
-  // Still no image generation, no AI API call; just structured text. Same
-  // "no useState/useEffect needed" pure-derivation pattern as Phase 8A/9A.
+  // The AI Visual Direction layer -- deterministic copyable text prompts
+  // for an external AI image-generation tool, derived from the same
+  // activeReelStoryboard the Content QA card above already reads. Still no
+  // image generation, no AI API call; just structured text. Same "no
+  // useState/useEffect needed" pure-derivation pattern as above.
   const activeReelAIVisualDirection = buildComposedReelAIVisualDirection(activeReelStoryboard);
   const activeReelAIVisualDirectionQA = activeReelStoryboard
     ? runReelAIVisualDirectionQA(activeReelAIVisualDirection, activeReelStoryboard)
@@ -1663,19 +1575,19 @@ export default function PublishingWorkspace() {
     }
   }, [displayEpisode, textOverrides]);
 
-  const handleCopyReelAIFrame2Prompt = useCallback(() => {
+  const handleCopyReelAIImage1Prompt = useCallback(() => {
     if (!activeReelAIVisualDirection) return;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(activeReelAIVisualDirection.frame2.prompt).catch(() => {
+      navigator.clipboard.writeText(activeReelAIVisualDirection.image1.prompt).catch(() => {
         /* clipboard permission unavailable -- prompt is still shown in the textarea for manual copy */
       });
     }
   }, [activeReelAIVisualDirection]);
 
-  const handleCopyReelAIFrame5Prompt = useCallback(() => {
+  const handleCopyReelAIImage2Prompt = useCallback(() => {
     if (!activeReelAIVisualDirection) return;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(activeReelAIVisualDirection.frame5.prompt).catch(() => {
+      navigator.clipboard.writeText(activeReelAIVisualDirection.image2.prompt).catch(() => {
         /* clipboard permission unavailable -- prompt is still shown in the textarea for manual copy */
       });
     }
@@ -2183,208 +2095,92 @@ export default function PublishingWorkspace() {
               </p>
             </div>
 
-            {activeReelTeachingDirection && activeReelTeachingDirectionQA && (
+            {purananuruFormat === "reel-storyboard" && activeReelStoryboard && activeReelContentQA && (
               <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Teaching Direction
+                  Reel Storyboard Content
                 </p>
 
                 <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Core Value
+                  Frame 1 — Parent Hook ({activeReelStoryboard.hookType})
                 </p>
-                <p className="mt-0.5 text-xs font-medium text-[var(--color-foreground)]">{activeReelTeachingDirection.coreValue}</p>
+                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{activeReelStoryboard.hook}</p>
 
                 <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Teaching Moment
+                  Frame 2 — Modern Child Situation
                 </p>
-                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{activeReelTeachingDirection.teachingMoment}</p>
+                <p className="mt-0.5 whitespace-pre-line text-xs text-[var(--color-foreground)]">
+                  {activeReelStoryboard.modernSituation}
+                </p>
 
                 <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Child Relevance
+                  Frame 3 — Human Action
                 </p>
-                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{activeReelTeachingDirection.childRelevance}</p>
-
-                {activeReelTeachingDirection.conversationHook && (
-                  <>
-                    <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                      Conversation Hook
+                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{activeReelStoryboard.modernAction}</p>
+                {activeReelStoryboard.livingTamilMoment && (
+                  <div className="mt-1.5 rounded-[var(--radius-button)] border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1.5">
+                    <p className="font-tamil-sans text-sm font-semibold text-[var(--color-primary)]">
+                      {activeReelStoryboard.livingTamilMoment.tamil}
                     </p>
-                    <p className="mt-0.5 text-xs italic text-[var(--color-foreground)]">
-                      “{activeReelTeachingDirection.conversationHook}”
+                    {activeReelStoryboard.livingTamilMoment.transliteration && (
+                      <p className="mt-0.5 text-[11px] italic text-[var(--color-muted-foreground)]">
+                        {activeReelStoryboard.livingTamilMoment.transliteration}
+                      </p>
+                    )}
+                    <p className="mt-0.5 text-[11px] text-[var(--color-foreground)]">
+                      “{activeReelStoryboard.livingTamilMoment.english}”
                     </p>
-                  </>
-                )}
-
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  QA
-                </p>
-                {activeReelTeachingDirectionQA.passed ? (
-                  <p className="mt-0.5 text-xs text-[var(--color-primary)]">✓ Teaching direction valid</p>
-                ) : (
-                  <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">{reelTeachingDirectionQAMessageText}</p>
-                )}
-
-                <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
-                  The parent-to-child bridge this Reel exists to build — the poem stays the source of truth; this is
-                  where a Tamil parent abroad could actually use it with their child.
-                </p>
-              </div>
-            )}
-
-            {purananuruFormat === "reel-storyboard" && activeReelVisualScene && (
-              <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Visual Story Direction — {activeReelVisualScene.title}
-                </p>
-                <p className="mt-1 text-xs text-[var(--color-foreground)]">{activeReelVisualScene.description}</p>
-                <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
-                  Motif: {activeReelVisualScene.visualMotif}
-                </p>
-                <p className="mt-1 text-[10px] text-[var(--color-muted-foreground)]">
-                  Composition: {activeReelVisualScene.composition}
-                </p>
-                <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
-                  Internal art direction only — the exported frame draws this composition abstractly, this text never
-                  appears on the PNG.
-                </p>
-              </div>
-            )}
-
-            {purananuruFormat === "reel-storyboard" && activeReelVisualStoryQA && (
-              <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Visual Story
-                </p>
-
-                {reelStoryArcEmotionalMovement && (
-                  <>
-                    <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                      Story Arc
-                    </p>
-                    <p className="mt-0.5 text-xs font-medium text-[var(--color-foreground)]">{reelStoryArcEmotionalMovement}</p>
-
-                    <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                      Visual Relationship
-                    </p>
-                    <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{reelStoryArcVisualRelationship}</p>
-                  </>
-                )}
-
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  QA
-                </p>
-                {activeReelVisualStoryQA.passed ? (
-                  <p className="mt-0.5 text-xs text-[var(--color-primary)]">✓ Story structure valid</p>
-                ) : (
-                  <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">{reelVisualStoryQAMessageText}</p>
-                )}
-              </div>
-            )}
-
-            {purananuruFormat === "reel-storyboard" && activeReelMotionDirectionQA && (
-              <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Motion Direction
-                </p>
-
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Motion
-                </p>
-                <p className="mt-0.5 text-xs font-medium text-[var(--color-foreground)]">{reelMotionTypeLabel}</p>
-
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Target
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{reelMotionActorLabel}</p>
-
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Sequence
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{reelMotionSequenceLabel}</p>
-
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  Reduced Motion
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{reelMotionReducedMotionLabel}</p>
-
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  QA
-                </p>
-                {activeReelMotionDirectionQA.passed ? (
-                  <p className="mt-0.5 text-xs text-[var(--color-primary)]">✓ Motion direction valid</p>
-                ) : (
-                  <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">{reelMotionDirectionQAMessageText}</p>
-                )}
-
-                <div className="mt-3 border-t border-[var(--color-border)] pt-3">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                    Motion Preview
-                  </p>
-                  <div className="mt-2 flex gap-3">
-                    <div
-                      className="w-28 shrink-0 overflow-hidden rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)]"
-                      style={{ aspectRatio: `${REEL_MOTION_PREVIEW_WIDTH} / ${REEL_MOTION_PREVIEW_HEIGHT}` }}
-                    >
-                      <canvas
-                        ref={reelMotionCanvasRef}
-                        width={REEL_MOTION_PREVIEW_WIDTH}
-                        height={REEL_MOTION_PREVIEW_HEIGHT}
-                        className="block h-full w-full"
-                        data-testid="reel-motion-preview-canvas"
-                      />
-                    </div>
-                    <div className="flex flex-1 flex-col justify-center gap-2">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={playReelMotionPreview}
-                          disabled={reelMotionIsPlaying}
-                          className="rounded-[var(--radius-button)] border border-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] disabled:opacity-50"
-                        >
-                          {reelMotionIsPlaying ? "Playing…" : "▶ Play"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={replayReelMotionPreview}
-                          className="rounded-[var(--radius-button)] border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)]"
-                        >
-                          ↻ Replay
-                        </button>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-[var(--color-muted-foreground)]">Progress</p>
-                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-border)]">
-                          <div
-                            ref={reelMotionProgressBarRef}
-                            className="h-full bg-[var(--color-primary)]"
-                            style={{ width: "0%" }}
-                          />
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                </div>
+                )}
 
-                <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
-                  In-browser preview only — this is still no video/MP4/WebM export; the exported PNG never includes
-                  motion.
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Frame 4 — Tamil Discovery
                 </p>
+                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{activeReelStoryboard.discoveryIntro}</p>
+                <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">{activeReelStoryboard.discoveryMeaning}</p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Frame 5 — Aram
+                </p>
+                <p className="mt-0.5 text-xs font-medium text-[var(--color-foreground)]">{activeReelStoryboard.aram.value}</p>
+                <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">{activeReelStoryboard.aram.explanation}</p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Frame 6 — How To Teach
+                </p>
+                <p className="mt-0.5 whitespace-pre-line text-xs text-[var(--color-foreground)]">
+                  {activeReelStoryboard.teachingQuestion}
+                </p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Frame 7 — Practise / Pass It On
+                </p>
+                <p className="mt-0.5 whitespace-pre-line text-xs text-[var(--color-foreground)]">
+                  {activeReelStoryboard.heritageStatement}
+                </p>
+                <p className="mt-1 text-xs font-medium text-[var(--color-primary)]">{activeReelStoryboard.cta.label}</p>
+
+                <p className="mt-3 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  QA
+                </p>
+                {activeReelContentQA.passed ? (
+                  <p className="mt-0.5 text-xs text-[var(--color-primary)]">✓ Reel content valid</p>
+                ) : (
+                  <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">{reelContentQAMessageText}</p>
+                )}
               </div>
             )}
 
             {purananuruFormat === "reel-storyboard" && activeReelAIVisualDirection && activeReelAIVisualDirectionQA && (
               <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                  AI Visual Direction
+                  AI Visual Direction — 2 Images
                 </p>
 
-                {activeReelTeachingDirection && (
+                {activeReelStoryboard && (
                   <div className="mt-1.5 rounded-[var(--radius-button)] border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1.5">
                     <p className="text-[10px] text-[var(--color-muted-foreground)]">
-                      Based on: <span className="font-medium text-[var(--color-foreground)]">{activeReelTeachingDirection.coreValue}</span>
-                    </p>
-                    <p className="mt-0.5 text-[10px] italic text-[var(--color-muted-foreground)]">
-                      {activeReelTeachingDirection.teachingMoment}
+                      Based on: <span className="font-medium text-[var(--color-foreground)]">{activeReelStoryboard.aram.value}</span>
                     </p>
                   </div>
                 )}
@@ -2408,11 +2204,11 @@ export default function PublishingWorkspace() {
                 <div className="mt-3 flex flex-col gap-1">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                      Frame 2 Prompt
+                      Image 1 — {activeReelAIVisualDirection.image1.purpose}
                     </span>
                     <button
                       type="button"
-                      onClick={handleCopyReelAIFrame2Prompt}
+                      onClick={handleCopyReelAIImage1Prompt}
                       className="text-[11px] font-medium text-[var(--color-primary)]"
                     >
                       Copy Prompt
@@ -2420,7 +2216,7 @@ export default function PublishingWorkspace() {
                   </div>
                   <textarea
                     readOnly
-                    value={activeReelAIVisualDirection.frame2.prompt}
+                    value={activeReelAIVisualDirection.image1.prompt}
                     rows={8}
                     className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-[11px] text-[var(--color-foreground)] outline-none"
                   />
@@ -2429,11 +2225,11 @@ export default function PublishingWorkspace() {
                 <div className="mt-3 flex flex-col gap-1">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                      Frame 5 Prompt
+                      Image 2 — {activeReelAIVisualDirection.image2.purpose}
                     </span>
                     <button
                       type="button"
-                      onClick={handleCopyReelAIFrame5Prompt}
+                      onClick={handleCopyReelAIImage2Prompt}
                       className="text-[11px] font-medium text-[var(--color-primary)]"
                     >
                       Copy Prompt
@@ -2441,7 +2237,7 @@ export default function PublishingWorkspace() {
                   </div>
                   <textarea
                     readOnly
-                    value={activeReelAIVisualDirection.frame5.prompt}
+                    value={activeReelAIVisualDirection.image2.prompt}
                     rows={8}
                     className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-[11px] text-[var(--color-foreground)] outline-none"
                   />
@@ -2465,8 +2261,10 @@ export default function PublishingWorkspace() {
                 )}
 
                 <p className="mt-3 text-[10px] text-[var(--color-muted-foreground)]">
-                  For an external AI image-generation tool only — copy a prompt above and paste it there. This app
-                  never calls an image-generation API and never uploads, stores, or renders the resulting image.
+                  Exactly 2 cinematic AI images per reel — Image 1 serves Frames 1-2 (reused via crop/reframe), Image
+                  2 serves Frame 3. Frames 4-7 are pure editorial typography, no AI image needed. For an external AI
+                  image-generation tool only — copy a prompt above and paste it there. This app never calls an
+                  image-generation API and never uploads, stores, or renders the resulting image.
                 </p>
               </div>
             )}

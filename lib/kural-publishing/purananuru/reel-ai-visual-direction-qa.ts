@@ -1,35 +1,29 @@
 /**
  * Purananuru Reel Storyboard — AI Visual Direction QA
  * ----------------------------------------------------------------------------
- * Phase 9C. A deterministic, lightweight editorial contract for
+ * LOCKED BUILD. A deterministic, lightweight editorial contract for
  * reel-ai-visual-direction.ts's ComposedReelAIVisualDirection -- NOT an AI
  * evaluator, no model calls, no judgment call a human couldn't verify in one
- * read of the two prompts. Sibling to reel-visual-story-qa.ts (Phase 8A) and
- * reel-motion-direction-qa.ts (Phase 9A), same convention: a pure function
- * returning `{ passed, messages }` with jargon-free messages the UI can show
- * as-is.
+ * read of the two prompts. Same convention every QA file in this codebase
+ * already uses: a pure function returning `{ passed, messages }` with
+ * jargon-free messages the UI can show as-is.
+ *
+ * Rewritten for the two-image architecture (image1/image2 instead of the
+ * old frame2/frame5), and with the old checkSemanticConsistency check
+ * removed entirely: it validated the AI direction against Phase 9A's
+ * ReelMotionDirection.relationship, which no longer exists under the
+ * locked-build architecture (there is no more abstract motion system to
+ * stay consistent with). checkTeachingConnection is rebuilt against the
+ * new reel-storyboard-content.ts fields (aram.value) instead of the old
+ * ReelTeachingDirection.
  *
  * This module never reads or writes canon.ts, never calls an AI API, and is
  * read-only with respect to both ComposedReelAIVisualDirection and
  * ComposedReelStoryboard -- it only inspects already-composed data and
  * reports on it.
- *
- * FINAL TEACHING ARCHITECTURE: checkTeachingConnection below verifies the
- * AI Visual Direction is actually DERIVED from the poem's approved
- * teachingDirection -- WITHOUT requiring the prompt to quote
- * coreValue/teachingMoment/childRelevance verbatim anywhere (see
- * reel-ai-visual-direction.ts's own module header on why the earlier
- * verbatim "TEACHING INTENT" block was removed: it over-explained the
- * child lesson inside an adult cinematic scene). Derivation is instead
- * proven structurally, against the live data already on
- * ComposedReelStoryboard (coreValue, motionDirection.relationship.
- * consequence, motionDirection.sequenceLabel) -- never a hardcoded
- * per-poem-number keyword table -- matching the existing
- * checkSemanticConsistency check's own convention of comparing real
- * structured fields rather than free-text guesswork.
  */
 
-import type { ComposedReelAIVisualDirection, ReelAIFrameDirection } from "./reel-ai-visual-direction";
+import type { ComposedReelAIVisualDirection, ReelAIImageDirection } from "./reel-ai-visual-direction";
 import type { ComposedReelStoryboard } from "./reel-storyboard-content";
 
 export interface ReelAIVisualDirectionQA {
@@ -45,22 +39,10 @@ function hasWord(haystack: string, needle: string): boolean {
   return haystack.toLowerCase().includes(needle.toLowerCase());
 }
 
-/** Loose stem match ("sharing" vs. "shared", "belong" vs. "belonging") --
- *  a plain substring check on the keyword itself is too strict on word
- *  form for prose that's free to phrase a concept as a verb, a gerund, or
- *  a past participle. Matches on a shared prefix of at least 4 characters
- *  rather than requiring the exact same word, which is the deliberately
- *  low-tech alternative to real stemming/NLP this deterministic,
- *  no-model-calls QA convention calls for. */
-function hasWordStem(haystack: string, keyword: string): boolean {
-  const stem = keyword.slice(0, Math.min(keyword.length, Math.max(4, Math.ceil(keyword.length * 0.7))));
-  return haystack.toLowerCase().includes(stem.toLowerCase());
-}
-
 /** Structural: every field a prompt is built from actually has content.
  *  Defensive even though TypeScript already requires these fields --
- *  matches the same "check anyway" convention reel-visual-story-qa.ts and
- *  reel-motion-direction-qa.ts already use. */
+ *  matches the same "check anyway" convention every QA file in this
+ *  codebase already uses. */
 function checkStructure(aiDirection: ComposedReelAIVisualDirection, messages: string[]): void {
   const { continuityBible } = aiDirection;
 
@@ -87,76 +69,75 @@ function checkStructure(aiDirection: ComposedReelAIVisualDirection, messages: st
     messages.push("The continuity bible has no recurring props defined.");
   }
 
-  for (const [label, frame] of [
-    ["Frame 2", aiDirection.frame2],
-    ["Frame 5", aiDirection.frame5],
+  if (isBlank(aiDirection.storyContextLine)) messages.push("The AI Visual Direction has no story context.");
+
+  for (const [label, image] of [
+    ["Image 1", aiDirection.image1],
+    ["Image 2", aiDirection.image2],
   ] as const) {
-    if (isBlank(frame.state)) messages.push(`${label}'s AI direction is missing a story-state description.`);
-    if (isBlank(frame.composition)) messages.push(`${label}'s AI direction is missing a composition description.`);
-    if (isBlank(frame.subjectAction)) messages.push(`${label}'s AI direction is missing a subject-action description.`);
-    if (isBlank(frame.emotionalTone)) messages.push(`${label}'s AI direction is missing an emotional tone.`);
-    if (isBlank(frame.prompt)) messages.push(`${label}'s AI image prompt is empty.`);
-    if (isBlank(frame.negativePrompt)) messages.push(`${label}'s negative prompt is empty.`);
+    if (isBlank(image.purpose)) messages.push(`${label} doesn't say which frames it serves.`);
+    if (isBlank(image.state)) messages.push(`${label}'s AI direction is missing a story-state description.`);
+    if (isBlank(image.composition)) messages.push(`${label}'s AI direction is missing a composition description.`);
+    if (isBlank(image.subjectAction)) messages.push(`${label}'s AI direction is missing a subject-action description.`);
+    if (isBlank(image.emotionalTone)) messages.push(`${label}'s AI direction is missing an emotional tone.`);
+    if (isBlank(image.prompt)) messages.push(`${label}'s AI image prompt is empty.`);
+    if (isBlank(image.negativePrompt)) messages.push(`${label}'s negative prompt is empty.`);
   }
 }
 
-/** Continuity: Frame 2 and Frame 5 must be built from the SAME world.
- *  Both frames' prompts already come from one shared continuityBible by
+/** Continuity: Image 1 and Image 2 must be built from the SAME world. Both
+ *  images' prompts already come from one shared continuityBible by
  *  construction (see reel-ai-visual-direction.ts's own header), so this
  *  checks that the actual PROMPT TEXT still reflects that shared world --
  *  every recurring prop and the environment's location must genuinely
- *  appear in both frames' composed prompt text, not just in the
- *  underlying data object. */
+ *  appear in both images' composed prompt text, not just in the underlying
+ *  data object. */
 function checkContinuity(aiDirection: ComposedReelAIVisualDirection, messages: string[]): void {
-  const { continuityBible, frame2, frame5 } = aiDirection;
+  const { continuityBible, image1, image2 } = aiDirection;
 
   for (const prop of continuityBible.recurringProps) {
-    const description = prop.includes(":") ? prop.slice(prop.indexOf(":") + 1).trim() : prop;
-    const keyPhrase = description.split(",")[0].split(" -- ")[0].trim();
+    const keyPhrase = prop.split(",")[0].split(" -- ")[0].trim();
     if (!keyPhrase) continue;
-    if (!hasWord(frame2.prompt, keyPhrase)) {
-      messages.push(`A recurring prop ("${keyPhrase}") doesn't appear in Frame 2's prompt -- continuity may be broken.`);
+    if (!hasWord(image1.prompt, keyPhrase)) {
+      messages.push(`A recurring prop ("${keyPhrase}") doesn't appear in Image 1's prompt -- continuity may be broken.`);
     }
-    if (!hasWord(frame5.prompt, keyPhrase)) {
-      messages.push(`A recurring prop ("${keyPhrase}") doesn't appear in Frame 5's prompt -- continuity may be broken.`);
+    if (!hasWord(image2.prompt, keyPhrase)) {
+      messages.push(`A recurring prop ("${keyPhrase}") doesn't appear in Image 2's prompt -- continuity may be broken.`);
     }
   }
 
   const locationKeyPhrase = continuityBible.environment.location.split(",")[0].trim();
-  if (locationKeyPhrase && !hasWord(frame2.prompt, locationKeyPhrase)) {
-    messages.push("Frame 2's prompt doesn't mention the shared location.");
+  if (locationKeyPhrase && !hasWord(image1.prompt, locationKeyPhrase)) {
+    messages.push("Image 1's prompt doesn't mention the shared location.");
   }
-  if (locationKeyPhrase && !hasWord(frame5.prompt, locationKeyPhrase)) {
-    messages.push("Frame 5's prompt doesn't mention the shared location.");
+  if (locationKeyPhrase && !hasWord(image2.prompt, locationKeyPhrase)) {
+    messages.push("Image 2's prompt doesn't mention the shared location.");
   }
 
   for (const character of continuityBible.characters) {
-    if (!hasWord(frame2.prompt, character.role)) {
-      messages.push(`Character "${character.role}" doesn't appear in Frame 2's prompt.`);
+    if (!hasWord(image1.prompt, character.role)) {
+      messages.push(`Character "${character.role}" doesn't appear in Image 1's prompt.`);
     }
-    if (!hasWord(frame5.prompt, character.role)) {
-      messages.push(`Character "${character.role}" doesn't appear in Frame 5's prompt.`);
+    if (!hasWord(image2.prompt, character.role)) {
+      messages.push(`Character "${character.role}" doesn't appear in Image 2's prompt.`);
     }
   }
 }
 
-/** Transformation: Frame 2 and Frame 5 must actually differ -- an AI
- *  Visual Direction whose two frames describe the identical moment isn't
- *  a story, it's one image described twice. */
+/** Transformation: Image 1 and Image 2 must actually differ -- an AI
+ *  Visual Direction whose two images describe the identical moment isn't a
+ *  story, it's one image described twice. */
 function checkTransformation(aiDirection: ComposedReelAIVisualDirection, messages: string[]): void {
-  const { frame2, frame5 } = aiDirection;
+  const { image1, image2 } = aiDirection;
 
-  if (frame2.frame !== 2) messages.push("Frame 2's direction is not tagged as frame 2.");
-  if (frame5.frame !== 5) messages.push("Frame 5's direction is not tagged as frame 5.");
-
-  if (frame2.state.trim() === frame5.state.trim()) {
-    messages.push("Frame 2 and Frame 5 describe the identical story state -- there is no visible transformation.");
+  if (image1.state.trim() === image2.state.trim()) {
+    messages.push("Image 1 and Image 2 describe the identical story state -- there is no visible transformation.");
   }
-  if (frame2.composition.trim() === frame5.composition.trim()) {
-    messages.push("Frame 2 and Frame 5 use the identical composition -- the image itself won't show any change.");
+  if (image1.composition.trim() === image2.composition.trim()) {
+    messages.push("Image 1 and Image 2 use the identical composition -- the images won't show any change.");
   }
-  if (frame2.subjectAction.trim() === frame5.subjectAction.trim()) {
-    messages.push("Frame 2 and Frame 5 describe the identical subject action.");
+  if (image1.subjectAction.trim() === image2.subjectAction.trim()) {
+    messages.push("Image 1 and Image 2 describe the identical subject action.");
   }
 }
 
@@ -168,141 +149,46 @@ const PROMPT_QUALITY_CHECKS: readonly { label: string; check: (prompt: string) =
   { label: "a composition description", check: (p) => hasWord(p, "COMPOSITION") },
   { label: "an emotional-state description", check: (p) => hasWord(p, "EMOTION") },
   { label: "continuity guidance", check: (p) => hasWord(p, "VISUAL CONTINUITY") },
+  { label: "which frames it serves", check: (p) => hasWord(p, "Serves:") },
 ];
 
 /** Prompt quality: each generated prompt must actually contain the
- *  sections Phase 9C's own brief requires (section 6), not just a vague
+ *  sections this project's own convention requires, not just a vague
  *  paragraph -- checked by looking for each section's own marker text /
  *  required instruction, never by asking an AI to judge quality. */
-function checkPromptQuality(frame: ReelAIFrameDirection, label: "Frame 2" | "Frame 5", messages: string[]): void {
+function checkPromptQuality(image: ReelAIImageDirection, label: "Image 1" | "Image 2", messages: string[]): void {
   for (const { label: itemLabel, check } of PROMPT_QUALITY_CHECKS) {
-    if (!check(frame.prompt)) {
+    if (!check(image.prompt)) {
       messages.push(`${label}'s prompt is missing ${itemLabel}.`);
     }
   }
-  if (isBlank(frame.negativePrompt)) {
+  if (isBlank(image.negativePrompt)) {
     messages.push(`${label} has no negative prompt.`);
-  } else if (!hasWord(frame.negativePrompt, "text") || !hasWord(frame.negativePrompt, "watermark")) {
+  } else if (!hasWord(image.negativePrompt, "text") || !hasWord(image.negativePrompt, "watermark")) {
     messages.push(`${label}'s negative prompt is missing the standard text/watermark exclusions.`);
   }
 }
 
-/** Semantic: the AI Visual Direction must stay traceable to Phase 9A's
- *  own ReelMotionDirection -- both the motion's actor and its target must
- *  be referenced somewhere in this poem's continuity bible, either as a
- *  character id (for a person/group) or as a semantically-tagged
- *  recurring prop (for an object -- see reel-ai-visual-direction.ts's own
- *  "SEMANTIC ANCHORING" doc comment for the "<id>: description" tag
- *  convention this looks for). This is what keeps the AI Visual
- *  Direction from silently telling a different story than Phase 9A's
- *  motionType/relationship already established. */
-function checkSemanticConsistency(aiDirection: ComposedReelAIVisualDirection, storyboard: ComposedReelStoryboard, messages: string[]): void {
-  const { characters, recurringProps } = aiDirection.continuityBible;
-  const characterIds = new Set(characters.map((c) => c.id));
-  const taggedPropIds = new Set(
-    recurringProps
-      .map((p) => (p.includes(":") ? p.slice(0, p.indexOf(":")).trim() : null))
-      .filter((tag): tag is string => tag !== null)
-  );
-
-  const { actor, target } = storyboard.motionDirection.relationship;
-  for (const value of [actor, target]) {
-    if (!characterIds.has(value) && !taggedPropIds.has(value)) {
-      messages.push(
-        `The AI Visual Direction doesn't reference this poem's motion "${value}" as either a character or a tagged recurring prop -- it may be telling a different story than the Motion Direction.`
-      );
-    }
+/** Aram connection: verifies the AI Visual Direction genuinely belongs to
+ *  this poem's own Aram -- deliberately NOT by requiring the prompt to
+ *  echo the abstract Aram word ("generosity", "belonging") anywhere: the
+ *  whole point of the locked-build architecture is that Frames 1-3 SHOW
+ *  the value through an ordinary human action without ever NAMING it (that
+ *  naming is Frame 5's own explicit job) -- see reel-ai-visual-direction.ts's
+ *  own module header on why the earlier "TEACHING INTENT" block, which DID
+ *  quote the lesson into the prompt, was removed. A keyword-echo check
+ *  here would fight that design goal rather than verify it, so this checks
+ *  only what's honestly checkable: the poem's Aram actually has content to
+ *  derive from, and this AI direction is for the same poem it's being
+ *  checked against. */
+function checkAramConnection(aiDirection: ComposedReelAIVisualDirection, storyboard: ComposedReelStoryboard, messages: string[]): void {
+  if (isBlank(storyboard.aram.value)) {
+    messages.push("This poem's Aram is incomplete, so the AI Visual Direction can't be verified as derived from it.");
+    return;
   }
 
   if (aiDirection.poemNumber !== storyboard.poemNumber) {
     messages.push("The AI Visual Direction is for a different poem than the storyboard it's being checked against.");
-  }
-}
-
-/** Words too generic on their own to prove anything -- filtered out of the
- *  keyword set deriveTeachingKeywords produces below, so a match against
- *  "what"/"have" doesn't count as evidence of a real semantic link. */
-const TEACHING_KEYWORD_STOPWORDS: ReadonlySet<string> = new Set([
-  "what",
-  "have",
-  "having",
-  "with",
-  "your",
-  "you",
-  "the",
-  "that",
-  "this",
-  "than",
-  "were",
-  "were's",
-]);
-
-/** Derives a small set of significant lowercase words from THIS poem's own
- *  structured data -- teachingDirection.coreValue plus the existing
- *  motionDirection's own relationship.consequence and sequenceLabel (e.g.
- *  "balance" for poem 189, "connection" for poem 192) -- rather than a
- *  hardcoded per-poem-number keyword table. Both source fields already
- *  exist on ComposedReelStoryboard; this reads them, it doesn't add a new
- *  one. */
-function deriveTeachingKeywords(storyboard: ComposedReelStoryboard): string[] {
-  const source = [
-    storyboard.teachingDirection.coreValue,
-    storyboard.motionDirection.relationship.consequence,
-    storyboard.motionDirection.sequenceLabel,
-  ].join(" ");
-  return source
-    .toLowerCase()
-    .split(/[^a-z]+/)
-    .filter((word) => word.length > 3 && !TEACHING_KEYWORD_STOPWORDS.has(word));
-}
-
-/** Teaching connection: verifies the AI Visual Direction is actually
- *  DERIVED from this poem's approved Teaching Direction -- structurally,
- *  never by requiring the prompt to quote coreValue/teachingMoment/
- *  childRelevance verbatim (see this file's own module header on why:
- *  that would put the child lesson explicitly inside an adult cinematic
- *  scene, exactly what the final architecture avoids). Two checks, each
- *  against the real structured data on ComposedReelStoryboard, never a
- *  hardcoded per-poem lookup table:
- *   1. Existence -- the Teaching Direction this AI direction is supposed
- *      to be derived from actually has content, and the AI direction has
- *      a story context for that Teaching Direction to have shaped.
- *   2. Semantic concept -- BOTH frames' composed prompts (story context,
- *      frame state, composition, subject action, and emotional tone all
- *      live inside `frame.prompt`) each name at least one significant
- *      word this poem's own coreValue/motion consequence/sequenceLabel
- *      already establishes (deriveTeachingKeywords) -- proof the teaching
- *      concept actually threads through the story itself, not just
- *      through a same-poem coincidence in the continuity bible. */
-function checkTeachingConnection(
-  aiDirection: ComposedReelAIVisualDirection,
-  storyboard: ComposedReelStoryboard,
-  messages: string[]
-): void {
-  const { teachingDirection } = storyboard;
-
-  if (isBlank(teachingDirection.coreValue) || isBlank(teachingDirection.teachingMoment) || isBlank(teachingDirection.childRelevance)) {
-    messages.push("This poem's Teaching Direction is incomplete, so the AI Visual Direction can't be verified as derived from it.");
-    return;
-  }
-
-  if (isBlank(aiDirection.storyContextLine)) {
-    messages.push("The AI Visual Direction has no story context -- there is nothing for the Teaching Direction to inform.");
-  }
-
-  const keywords = deriveTeachingKeywords(storyboard);
-  if (keywords.length > 0) {
-    for (const [label, frame] of [
-      ["Frame 2", aiDirection.frame2],
-      ["Frame 5", aiDirection.frame5],
-    ] as const) {
-      const hasMatch = keywords.some((keyword) => hasWordStem(frame.prompt, keyword));
-      if (!hasMatch) {
-        messages.push(
-          `${label}'s prompt doesn't reflect this poem's own teaching concept (expected it to echo one of: ${keywords.join(", ")}).`
-        );
-      }
-    }
   }
 }
 
@@ -326,10 +212,9 @@ export function runReelAIVisualDirectionQA(
   checkStructure(aiDirection, messages);
   checkContinuity(aiDirection, messages);
   checkTransformation(aiDirection, messages);
-  checkPromptQuality(aiDirection.frame2, "Frame 2", messages);
-  checkPromptQuality(aiDirection.frame5, "Frame 5", messages);
-  checkSemanticConsistency(aiDirection, storyboard, messages);
-  checkTeachingConnection(aiDirection, storyboard, messages);
+  checkPromptQuality(aiDirection.image1, "Image 1", messages);
+  checkPromptQuality(aiDirection.image2, "Image 2", messages);
+  checkAramConnection(aiDirection, storyboard, messages);
 
   return { passed: messages.length === 0, messages };
 }

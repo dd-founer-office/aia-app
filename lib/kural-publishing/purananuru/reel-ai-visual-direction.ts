@@ -1,91 +1,72 @@
 /**
  * Purananuru Reel Storyboard — AI Visual Direction
  * ----------------------------------------------------------------------------
- * Phase 9C. Translates the existing structured story (Phase 7's
- * ReelVisualScene, Phase 8A's Story Arc, Phase 9A's ReelMotionDirection, and
- * the Teaching-First Content Revision's ReelTeachingDirection) into a
- * complete, copyable text brief a human can paste into an external AI
- * image-generation tool -- NOT an image-generation integration. No AI API
- * call, no image SDK, no external dependency: this file is a pure,
- * deterministic string transform, the exact same contract as
- * aathichoodi/family-image-prompt.ts's buildFamilyImagePrompt (that file's
- * own header: "This app never generates or fetches images itself... This is
- * a deterministic text transform, not a call to any model").
+ * LOCKED BUILD. Translates the current Reel Storyboard content
+ * (reel-storyboard-content.ts) into exactly TWO complete, copyable text
+ * briefs a human can paste into an external AI image-generation tool -- NOT
+ * an image-generation integration. No AI API call, no image SDK, no
+ * external dependency: this file is a pure, deterministic string transform,
+ * the exact same contract as aathichoodi/family-image-prompt.ts's
+ * buildFamilyImagePrompt (that file's own header: "This app never generates
+ * or fetches images itself... This is a deterministic text transform, not a
+ * call to any model").
  *
- *   Poem -> Teaching Direction -> Visual Story -> Motion Direction -> HERE -> prompts
+ *   Poem -> Reel Storyboard content -> HERE -> 2 image prompts
  *
- * FINAL TEACHING ARCHITECTURE (this file's second correction): an earlier
- * revision made this connection by appending an explicit "TEACHING INTENT"
- * block to every prompt, quoting coreValue/teachingMoment/childRelevance
- * directly. That over-explained the child lesson inside what is supposed
- * to be an ADULT cinematic scene -- Frame 2 and Frame 5 are the human
- * demonstration of the value (Layer A: "let the parent SEE it"), not a
- * literal illustration of the child lesson (Layer B: Frame 4/"What It
- * Teaches" and Frame 6/"Talk With Your Child" in
- * reel-storyboard-content.ts carry that explicitly instead). That block
- * has been removed. The Teaching Direction still shapes every frame here
- * -- STORY CONTEXT, FRAME STATE, COMPOSITION, SUBJECT ACTION, and EMOTION
- * were all authored FROM the poem's own teachingMoment (see each poem's
- * own comment below for exactly which words that authoring traces back
- * to) -- but the connection now lives IN the story itself, never as a
- * separate quoted paragraph telling the image model what the story means.
- * This file still only ever READS ComposedReelStoryboard.teachingDirection
- * (via reel-ai-visual-direction-qa.ts's checkTeachingConnection, which
- * verifies the connection deterministically without needing the text
- * quoted verbatim in the prompt) -- never a second, hand-typed copy of
- * coreValue/teachingMoment/childRelevance, and never a new content model.
+ * TWO-IMAGE ARCHITECTURE (this file's own locked decision): a reel is NOT
+ * seven cinematic images, and never was meant to become one image per
+ * frame. It is 2 cinematic AI images + 7 editorial frames:
  *
- * The Phase 9B abstract motion system (purananuru-reel-motion-preview-
- * renderer.ts) is UNCHANGED and UNREAD by this file -- it remains the
- * reference/prototype layer for the underlying motion grammar. This file
- * adds a parallel, human-facing layer describing what a CINEMATIC PHOTO
- * (not an abstract shape) of the same Frame 2 / Frame 5 states would look
- * like. Nothing here is drawn by any renderer; the image itself is
- * generated externally, by a human, from the copied prompt text.
+ *   IMAGE 1 -- serves Frame 1 (Parent Hook) and Frame 2 (Modern Child
+ *              Situation), reused via crop/reframe rather than requested
+ *              twice. The establishing shot: the modern child situation in
+ *              its STARTING state.
+ *   IMAGE 2 -- serves Frame 3 (Human Action). Visual continuity with Image
+ *              1 (same child, same age, same clothing, same environment,
+ *              same photographic treatment) showing the small human action
+ *              that resolves Image 1's situation.
  *
- * CONTINUITY: the whole reason this file exists as one shared
- * "continuity bible" per poem, rather than two independent frame prompts,
- * is Phase 9C's own guiding constraint -- Frame 2 and Frame 5 must read as
- * "same story, same world, different moment," never two unrelated
- * AI-generated images. Both frames' prompts are built from the SAME
- * ReelAIContinuityBible object (characters, environment, visual style,
- * recurring props) -- there is no separate frame2Bible/frame5Bible to
- * drift out of sync.
+ * Frames 4-7 (Tamil Discovery, Aram, How To Teach, Practise/Pass It On) are
+ * pure editorial typography -- see purananuru-reel-storyboard-renderer.ts's
+ * own draw functions -- and never get an AI image prompt of their own.
  *
- * SEMANTIC ANCHORING: each ReelAICharacter's `id` and each tagged
- * recurringProps entry reuse the EXACT same identifiers
- * reel-storyboard-content.ts's ReelMotionTarget already defines
- * ("giftObject", "secondaryFigure", "isolatedFigure", "communityGroup",
- * "leftColumn", "rightColumn") -- never shown in the actual prompt text
- * (which uses `role`/`appearance`/`clothing` instead), but what lets
- * reel-ai-visual-direction-qa.ts deterministically verify this file's
- * story actually matches Phase 9A's own motionDirection.relationship
- * rather than merely sitting beside it. See ReelAICharacter's own doc
- * comment.
+ * OBSOLETE LOGIC REMOVED: this file previously generated one prompt per
+ * Frame 2 / Frame 5 pair built around an adult giver/elder-recipient or
+ * two-neighbor scene, continuity anchored to Phase 9A's now-deleted
+ * ReelMotionDirection/ReelMotionTarget ("giftObject", "leftColumn", etc.),
+ * and an explicit "TEACHING INTENT" block quoting the poem's teaching
+ * content into the prompt. All of that is gone: motion direction no longer
+ * exists in this codebase, the story's own characters are now the
+ * contemporary child situation Frame 2 already establishes (not an
+ * unrelated adult scene), and the teaching connection lives in Frames 4-7's
+ * own editorial text, never inside an AI prompt.
  *
- * EDITORIAL SCOPE: every scene below is a NEW human situation the poem's
+ * CONTINUITY: the whole reason this file exists as one shared "continuity
+ * bible" per poem, rather than two independent image prompts, is that
+ * Image 1 and Image 2 must read as "same child, same world, different
+ * moment," never two unrelated AI-generated images. Both images' prompts
+ * are built from the SAME ReelAIContinuityBible object (characters,
+ * environment, visual style, recurring props) -- there is no separate
+ * image1Bible/image2Bible to drift out of sync.
+ *
+ * EDITORIAL SCOPE: every scene below is a NEW modern situation the poem's
  * classical idea maps onto (same discipline canon.ts's own
  * visualStoryDirection field already documents: "a MODERN, contemporary
- * human situation the classical idea maps onto, not generic 'ancient
- * Tamil king' imagery"). Poem 91 deliberately does NOT reuse canon.ts's
- * own airport/boarding-pass visualStoryDirection scene -- Phase 7 already
- * ruled that scene out for this same Reel Storyboard ("that belongs to a
- * different, earlier storyboard and is explicitly out of scope here"),
- * and reusing it here would contradict that precedent. Poem 189
- * deliberately does NOT render Phase 9A's literal "columns" -- the brief
- * for this phase explicitly asks for a believable human scene instead,
- * translating the same underlying quantity-contrast idea without
- * abstract shapes or a rich/poor character stereotype.
+ * human situation the classical idea maps onto, not generic 'ancient Tamil
+ * king' imagery"). The story's subjects are contemporary Tamil/South Indian
+ * children (8-10), matching Frame 2's own "a situation a contemporary child
+ * can immediately recognise" brief -- a deliberate change from earlier
+ * drafts that used adult/elder or two-neighbor scenes for these same poems.
  */
 
 import type { ComposedReelStoryboard } from "./reel-storyboard-content";
 
-/** One of two (or, for a "community", one collective) subjects appearing
- *  in BOTH Frame 2 and Frame 5 -- the same person, unchanged, in both
- *  images. `id` is an internal semantic anchor only (see this file's own
- *  header "SEMANTIC ANCHORING") -- it is never itself written into the
- *  generated prompt text, which speaks in `role`/`appearance`/`clothing`
- *  instead, exactly the way a real production continuity sheet would. */
+/** One of two subjects appearing in BOTH Image 1 and Image 2 -- the same
+ *  child(ren), unchanged, in both images. `id` is an internal label only
+ *  (for continuityRules text and human readability), never itself written
+ *  into the generated prompt text, which speaks in
+ *  `role`/`appearance`/`clothing` instead, exactly the way a real
+ *  production continuity sheet would. */
 export interface ReelAICharacter {
   id: string;
   role: string;
@@ -103,13 +84,12 @@ export interface ReelAIEnvironment {
   culturalContext: string;
 }
 
-/** "editorial-photography" is this dataset's one house style (Phase 9C
- *  section 13's own "premium editorial photography" default) -- kept as a
- *  per-poem field, not a hardcoded constant, only because a future poem's
- *  story might genuinely call for a different medium; all three current
- *  poems use the same value on purpose, the same "one house style"
- *  discipline family-image-prompt.ts's own header documents for
- *  Aathichoodi's family photos. */
+/** "editorial-photography" is this dataset's one house style ("premium
+ *  editorial photography") -- kept as a per-poem field, not a hardcoded
+ *  constant, only because a future poem's story might genuinely call for a
+ *  different medium; all three current poems use the same value on
+ *  purpose, the same "one house style" discipline family-image-prompt.ts's
+ *  own header documents for Aathichoodi's family photos. */
 export type ReelAIVisualMedium = "cinematic-photography" | "editorial-photography" | "cinematic-illustration";
 
 export interface ReelAIVisualStyle {
@@ -120,15 +100,8 @@ export interface ReelAIVisualStyle {
   realism: string;
 }
 
-/** The one shared "world" both Frame 2 and Frame 5 draw from -- see this
- *  file's own header "CONTINUITY". `recurringProps` entries that need a
- *  semantic anchor (see "SEMANTIC ANCHORING") are written as
- *  `"<ReelMotionTarget id>: <human-readable description>"`
- *  (e.g. `"giftObject: a small wrapped fruit, carried in cupped hands"`)
- *  -- reel-ai-visual-direction-qa.ts strips the id prefix before it would
- *  ever reach a prompt; buildReelAIFramePrompt strips it too, so only the
- *  human-readable description is ever shown to the person pasting the
- *  prompt into an image tool. */
+/** The one shared "world" both Image 1 and Image 2 draw from -- see this
+ *  file's own header "CONTINUITY". */
 export interface ReelAIContinuityBible {
   characters: readonly ReelAICharacter[];
   environment: ReelAIEnvironment;
@@ -137,7 +110,7 @@ export interface ReelAIContinuityBible {
   continuityRules: readonly string[];
 }
 
-/** The AUTHORED (not yet composed) half of one frame's direction --
+/** The AUTHORED (not yet composed) half of one image's direction --
  *  structured editorial fields only, no baked prompt text. The actual
  *  `prompt`/`negativePrompt` strings are DERIVED from these plus the
  *  shared ReelAIContinuityBible by buildComposedReelAIVisualDirection,
@@ -145,24 +118,26 @@ export interface ReelAIContinuityBible {
  *  reel-storyboard-content.ts's own buildComposedReelStoryboard already
  *  uses -- storing a hand-written prompt paragraph directly in this array
  *  would create a second copy of the same information to keep in sync. */
-export interface ReelAIFrameDirectionEditorial {
-  frame: 2 | 5;
-  /** One line naming this frame's story state, e.g. "Starting state: the
-   *  gift is still with the giver" / "Resolved state: the gift has been
-   *  received". */
+export interface ReelAIImageDirectionEditorial {
+  /** Which reel frame(s) this image serves, e.g. "Frames 1-2 (Parent
+   *  Hook, Modern Child Situation)" -- shown in the UI and the composed
+   *  prompt's own header line, never itself an image-generation
+   *  instruction. */
+  purpose: string;
+  /** One line naming this image's story state, e.g. "Starting state: the
+   *  child is apart from the group" / "Action state: a classmate invites
+   *  them in". */
   state: string;
   visualGoal: string;
   composition: string;
   subjectAction: string;
   emotionalTone: string;
-  /** Key visual details/props specific to THIS frame's moment (e.g. "the
-   *  wrapped gift held close to the giver's chest" for Frame 2 vs. "the
-   *  wrapped gift now held by the recipient" for Frame 5) -- the shared
-   *  bible's own recurringProps cover what's identical across both
-   *  frames; this covers what's different about how those same props
-   *  appear in this specific frame. */
+  /** Key visual details/props specific to THIS image's moment -- the
+   *  shared bible's own recurringProps cover what's identical across both
+   *  images; this covers what's different about how those same props
+   *  appear in this specific image. */
   keyVisualDetails: readonly string[];
-  /** Negatives specific to this poem/frame, appended after the shared
+  /** Negatives specific to this poem/image, appended after the shared
    *  base negative-prompt list (see BASE_NEGATIVE_PROMPT_ITEMS below). */
   extraNegatives?: readonly string[];
 }
@@ -170,25 +145,19 @@ export interface ReelAIFrameDirectionEditorial {
 export interface ReelAIVisualDirectionEditorial {
   poemNumber: number;
   continuityBible: ReelAIContinuityBible;
-  frame2: ReelAIFrameDirectionEditorial;
-  frame5: ReelAIFrameDirectionEditorial;
+  image1: ReelAIImageDirectionEditorial;
+  image2: ReelAIImageDirectionEditorial;
   /** One short, NEW editorial paragraph naming the human story -- never a
    *  copy of canon.ts's simpleMeaning or reel-storyboard-content.ts's
-   *  meaningLine, same "new editorial framing, not a retelling" rule those
-   *  two fields already follow for their own frames. Teaching Direction
-   *  integration: must encode the poem's own teachingDirection.
-   *  teachingMoment as a full choice arc -- having something -> noticing
-   *  someone else's need -> choosing -> acting -- not just the story's
-   *  outcome (see each poem's own comment in
-   *  PURANANURU_REEL_AI_VISUAL_DIRECTION for the exact teachingMoment
-   *  wording this traces back to). */
+   *  discoveryMeaning, same "new editorial framing, not a retelling" rule
+   *  those fields already follow for their own frames. */
   storyContextLine: string;
 }
 
-/** The composed, public view of one frame's AI direction -- everything
- *  ReelAIFrameDirectionEditorial has, plus the two derived prompt
+/** The composed, public view of one image's AI direction -- everything
+ *  ReelAIImageDirectionEditorial has, plus the two derived prompt
  *  strings. */
-export interface ReelAIFrameDirection extends ReelAIFrameDirectionEditorial {
+export interface ReelAIImageDirection extends ReelAIImageDirectionEditorial {
   prompt: string;
   negativePrompt: string;
 }
@@ -196,24 +165,22 @@ export interface ReelAIFrameDirection extends ReelAIFrameDirectionEditorial {
 export interface ComposedReelAIVisualDirection {
   poemNumber: number;
   continuityBible: ReelAIContinuityBible;
-  /** Exposed at this level (not just baked into frame2.prompt/frame5.prompt's
-   *  own STORY CONTEXT section) so reel-ai-visual-direction-qa.ts's
-   *  checkTeachingConnection and the UI's own "Based on" summary can read
-   *  it directly, without grepping composed prompt text for a section
-   *  marker. Still authored once, on the editorial array below -- this is
-   *  the same value, surfaced, never a second copy. */
+  /** Exposed at this level (not just baked into image1.prompt/image2.
+   *  prompt's own STORY CONTEXT section) so reel-ai-visual-direction-qa.ts
+   *  and the UI's own summary can read it directly, without grepping
+   *  composed prompt text for a section marker. Still authored once, on
+   *  the editorial array below -- this is the same value, surfaced, never
+   *  a second copy. */
   storyContextLine: string;
-  frame2: ReelAIFrameDirection;
-  frame5: ReelAIFrameDirection;
-  /** Computed, not authored -- built directly from continuityBible plus
-   *  the live storyboard's own emotionalMovement (read, never duplicated;
-   *  see buildContinuityStatement below), so it can never drift out of
-   *  sync with either. */
+  image1: ReelAIImageDirection;
+  image2: ReelAIImageDirection;
+  /** Computed, not authored -- built directly from continuityBible, so it
+   *  can never drift out of sync with it. */
   continuityStatement: string;
 }
 
-/** Section 14's negative-prompt list, applied to every frame of every
- *  poem before any poem/frame-specific extras. */
+/** Applied to every image of every poem before any poem/image-specific
+ *  extras. */
 const BASE_NEGATIVE_PROMPT_ITEMS: readonly string[] = [
   "text",
   "captions",
@@ -221,6 +188,8 @@ const BASE_NEGATIVE_PROMPT_ITEMS: readonly string[] = [
   "logos",
   "watermarks",
   "UI elements",
+  "speech bubbles",
+  "dialogue graphics",
   "split screen",
   "collage",
   "duplicate people",
@@ -235,15 +204,16 @@ const BASE_NEGATIVE_PROMPT_ITEMS: readonly string[] = [
   "exoticized poverty",
   "modern objects inconsistent with the setting",
   "inconsistent clothing",
-  "different character appearance between frames",
+  "different character appearance between images",
+  "exaggerated or theatrical gestures",
 ];
 
-/** Section 12's own guidance, applied to every poem -- what "authentic"
- *  means here and what to avoid it with, stated once rather than
- *  repeated per poem. Each poem's own environment.culturalContext adds
- *  the poem-specific detail this general rule doesn't cover. */
+/** What "authentic" means here and what to avoid it with, stated once
+ *  rather than repeated per poem. Each poem's own environment.
+ *  culturalContext adds the poem-specific detail this general rule
+ *  doesn't cover. */
 const CULTURAL_AUTHENTICITY_BASE_GUIDANCE =
-  "Authentic present-day Tamil / South Indian cultural context, conveyed naturally through clothing, architecture, food and vessels, landscape, and everyday social setting -- not through added ethnic props, exaggerated \"ancient India\" styling, fantasy costuming, unrelated temple imagery, or Bollywood-style staging. Ordinary contemporary life, not a historical reenactment.";
+  "Authentic present-day Tamil / South Indian cultural context, conveyed naturally through clothing, architecture, and everyday setting -- not through added ethnic props, exaggerated \"ancient India\" styling, fantasy costuming, unrelated temple imagery, or Bollywood-style staging. Ordinary contemporary life, not a historical reenactment.";
 
 const MEDIUM_LABEL: Record<ReelAIVisualMedium, string> = {
   "cinematic-photography": "Cinematic photography",
@@ -251,36 +221,24 @@ const MEDIUM_LABEL: Record<ReelAIVisualMedium, string> = {
   "cinematic-illustration": "Cinematic illustration (photoreal rendering, not cartoon or fantasy-art style)",
 };
 
-/** Strips a leading `"<semanticId>: "` tag (see ReelAIContinuityBible's
- *  own doc comment on recurringProps) before the text reaches an actual
- *  prompt -- the id is an internal anchor for reel-ai-visual-direction-
- *  qa.ts, never something an image generator should see. */
-function stripSemanticTag(prop: string): string {
-  const colonIndex = prop.indexOf(":");
-  if (colonIndex === -1) return prop;
-  const tag = prop.slice(0, colonIndex).trim();
-  if (!/^[a-zA-Z]+$/.test(tag)) return prop;
-  return prop.slice(colonIndex + 1).trim();
-}
-
 function formatCharacterLine(character: ReelAICharacter): string {
   const age = character.ageRange ? `${character.ageRange}, ` : "";
   const relationship = character.relationship ? ` Relationship: ${character.relationship}.` : "";
   return `${character.role} -- ${age}${character.appearance}. Wearing: ${character.clothing}.${relationship}`;
 }
 
-function buildFramePrompt(
+function buildImagePrompt(
   editorial: ReelAIVisualDirectionEditorial,
-  frame: ReelAIFrameDirectionEditorial,
-  otherFrameNumber: 2 | 5
+  image: ReelAIImageDirectionEditorial,
+  otherImageLabel: string
 ): string {
   const bible = editorial.continuityBible;
-  const propsText = bible.recurringProps.map(stripSemanticTag).join(", ");
+  const propsText = bible.recurringProps.join(", ");
   const charactersText = bible.characters.map(formatCharacterLine).join("\n");
-  const negative = buildNegativePromptText(frame);
+  const negative = buildNegativePromptText(image);
 
   return [
-    "Create a vertical 9:16 cinematic editorial image.",
+    `Create a vertical 9:16 cinematic editorial image. Serves: ${image.purpose}.`,
     "",
     "STORY CONTEXT",
     editorial.storyContextLine,
@@ -292,19 +250,19 @@ function buildFramePrompt(
     `${bible.environment.location}. ${bible.environment.period}, ${bible.environment.timeOfDay}. ${bible.environment.atmosphere}`,
     "",
     "VISUAL CONTINUITY",
-    `This is one of two images in the same visual story -- Frame ${otherFrameNumber} shows the exact same people, the exact same location, the exact same lighting and time of day, the exact same clothing, and the exact same key props (${propsText}). Every physical detail of the people and the setting must match the other frame precisely; only the story state below should differ.`,
+    `This is one of two images in the same visual story -- ${otherImageLabel} shows the exact same people, the exact same location, the exact same lighting and time of day, the exact same clothing, and the exact same key props (${propsText}). Every physical detail of the people and the setting must match the other image precisely; only the story state below should differ.`,
     "",
     "FRAME STATE",
-    frame.state,
+    image.state,
     "",
     "COMPOSITION",
-    frame.composition,
+    image.composition,
     "",
     "SUBJECT ACTION",
-    frame.subjectAction,
+    image.subjectAction,
     "",
     "EMOTION",
-    frame.emotionalTone,
+    image.emotionalTone,
     "",
     "VISUAL STYLE",
     `${MEDIUM_LABEL[bible.visualStyle.medium]}. ${bible.visualStyle.cameraLanguage} ${bible.visualStyle.lighting} ${bible.visualStyle.colorPalette} ${bible.visualStyle.realism}`,
@@ -313,302 +271,274 @@ function buildFramePrompt(
     `${bible.environment.culturalContext} ${CULTURAL_AUTHENTICITY_BASE_GUIDANCE}`,
     "",
     "IMPORTANT VISUAL DETAILS",
-    frame.keyVisualDetails.map((detail) => `- ${stripSemanticTag(detail)}`).join("\n"),
+    image.keyVisualDetails.map((detail) => `- ${detail}`).join("\n"),
     "",
     "AVOID",
     negative,
     "",
-    "The image must communicate the story visually without requiring text. No typography, captions, labels, logos, UI, watermark, or graphic overlay.",
+    "The image must communicate the story visually without requiring text. No typography, captions, labels, logos, UI, watermark, speech bubbles, or graphic overlay.",
   ].join("\n");
 }
 
-function buildNegativePromptText(frame: ReelAIFrameDirectionEditorial): string {
-  const items = [...BASE_NEGATIVE_PROMPT_ITEMS, ...(frame.extraNegatives ?? [])];
+function buildNegativePromptText(image: ReelAIImageDirectionEditorial): string {
+  const items = [...BASE_NEGATIVE_PROMPT_ITEMS, ...(image.extraNegatives ?? [])];
   return items.join(", ") + ".";
 }
 
-/** Computed, never authored -- see ComposedReelAIVisualDirection's own
- *  doc comment. Reads emotionalMovement live from the SAME composed
- *  storyboard the sidebar's Story Arc panel already reads (Phase 8A), so
- *  this statement can never say something Phase 8A's own data disagrees
- *  with. */
-function buildContinuityStatement(bible: ReelAIContinuityBible, storyboard: ComposedReelStoryboard): string {
+/** Computed, never authored -- see ComposedReelAIVisualDirection's own doc
+ *  comment. */
+function buildContinuityStatement(bible: ReelAIContinuityBible): string {
   const characterRoles = bible.characters.map((c) => c.role).join(", ");
-  const propsText = bible.recurringProps.map(stripSemanticTag).join(", ");
-  const arc = storyboard.frame2Scene.emotionalMovement || storyboard.frame5Scene.emotionalMovement;
-  return `Frame 2 and Frame 5 depict the exact same people (${characterRoles}), in the exact same location (${bible.environment.location}), under the exact same lighting and time of day, with the exact same key props (${propsText}) -- only the story state changes, following this poem's own arc: ${arc}.`;
+  const propsText = bible.recurringProps.join(", ");
+  return `Image 1 and Image 2 depict the exact same people (${characterRoles}), in the exact same location (${bible.environment.location}), under the exact same lighting and time of day, with the exact same key props (${propsText}) -- only the story state changes between them.`;
 }
 
 export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirectionEditorial[] = [
   {
     poemNumber: 91,
-    // Traces directly to teachingDirection.teachingMoment (reel-storyboard-
-    // content.ts, poem 91): "it's noticing when someone else needs the very
-    // thing you were counting on for yourself, and choosing to let them
-    // have it anyway." Rewritten (Phase 9C Correction) to encode the FULL
-    // arc -- has it / values it / notices the need / chooses to let it go
-    // -- not just the outcome ("gives it to another person") the earlier
-    // version stopped at.
     storyContextLine:
-      "Someone holds something they have every reason to keep for themselves -- it genuinely matters to them, and they were counting on it. Then they notice another person nearby who needs it more. The story is not the object changing hands; it's the moment they choose to let go of something they wanted, because someone else's need matters more than their own.",
+      "A child has one favourite snack left -- something they were genuinely looking forward to. They notice a friend nearby has none. The story is the small, ordinary moment of noticing, and the simple offer that follows.",
     continuityBible: {
       characters: [
         {
-          id: "primaryFigure",
-          role: "The giver",
-          ageRange: "mid-30s to mid-40s",
-          appearance: "Tamil South Indian adult, warm brown skin tone, dark hair, an open and thoughtful expression",
-          clothing: "simple contemporary everyday clothing -- a plain cotton shirt or kurta in a muted earth tone",
-          relationship: "a neighbor or friend of the second figure, not necessarily family",
+          id: "childWithSnack",
+          role: "The child with the snack",
+          ageRange: "8-10",
+          appearance: "Tamil South Indian child, contemporary appearance, open and thoughtful expression",
+          clothing: "ordinary contemporary school clothing",
+          relationship: "a classmate or friend of the second child",
         },
         {
-          id: "secondaryFigure",
-          role: "The recipient",
-          ageRange: "60s-70s, an elder",
-          appearance: "Tamil South Indian elder, silver-grey hair, a lined and gently weary face, dignified bearing",
-          clothing: "simple, well-worn cotton clothing in soft faded colors -- a plain veshti or a modest cotton saree",
-          relationship: "an elder in the same neighborhood, cared for but not personally wealthy",
+          id: "childWithoutSnack",
+          role: "The child without a snack",
+          ageRange: "8-10",
+          appearance: "Tamil South Indian child, contemporary appearance, ordinary and unremarkable",
+          clothing: "ordinary contemporary school clothing, matching the other child's register",
+          relationship: "a classmate or friend, not necessarily close",
         },
       ],
       environment: {
-        location: "the covered front step and threshold of a modest South Indian home, opening onto a quiet residential lane",
+        location: "a school lunch table or classroom corner",
         period: "present day",
-        timeOfDay: "late afternoon, warm golden light",
-        atmosphere: "quiet, unhurried, an ordinary day with no festival or special occasion",
-        culturalContext:
-          "Everyday contemporary Tamil Nadu domestic life -- a lived-in home threshold, not a staged or ceremonial setting.",
+        timeOfDay: "daytime, lunch or snack break",
+        atmosphere: "an ordinary school day, no special occasion",
+        culturalContext: "an everyday South Indian school snack-time setting -- realistic, not staged.",
       },
       visualStyle: {
         medium: "editorial-photography",
         cameraLanguage:
-          "Medium shot at eye level, shallow depth of field, vertical 9:16 framing that uses the doorway threshold as a natural frame-within-a-frame.",
-        lighting: "Warm, low-angle natural sunlight from one side, soft naturally falling shadows.",
-        colorPalette: "Warm, restrained earth tones -- terracotta, muted ochre, soft browns -- never oversaturated.",
-        realism: "Photorealistic documentary realism, natural skin texture, unposed candid body language.",
+          "Medium shot at child's eye level, shallow depth of field, vertical 9:16 framing with generous negative space above/around the subject for overlaid editorial text.",
+        lighting: "Warm natural daylight through a window or open doorway, soft shadows.",
+        colorPalette: "Warm, natural school-day tones, restrained, not oversaturated.",
+        realism: "Photorealistic documentary realism, natural unposed body language, no melodrama.",
       },
       recurringProps: [
-        "giftObject: a small object wrapped in cloth or held cupped in both hands -- the rare gift, never shown clearly enough to read as any one specific item, its preciousness communicated by how carefully it is held",
-        "the home's doorway threshold, worn stone or wood",
-        "a woven basket or plain brass vessel resting nearby, part of the everyday scene",
+        "a small snack or wrapped food item, held by the first child",
+        "a school lunch table or bench surface",
+        "school bags or books nearby, part of the everyday scene",
       ],
       continuityRules: [
-        "Both figures keep the exact same faces, ages, builds, and clothing in both frames.",
-        "The doorway, the lane, and the light stay exactly the same in both frames.",
-        "The gift object itself never changes in appearance -- only who is holding it.",
+        "Both children keep the exact same faces, ages, and clothing across both images.",
+        "The table, the room, and the light stay exactly the same across both images.",
+        "The snack itself never changes in appearance -- only who is holding it.",
       ],
     },
-    frame2: {
-      frame: 2,
-      state: "Starting state: the gift is still with the giver, and a visible distance still separates the two figures.",
+    image1: {
+      purpose: "Frames 1-2 (Parent Hook, Modern Child Situation)",
+      state: "Starting state: the snack is still with the first child, and the second child has just been noticed nearby.",
       visualGoal:
-        "Communicate a meaningful, precious object, a giver and a recipient, and a gentle hesitation or anticipation -- without making the object itself the center of the image.",
+        "Communicate a child holding something they were looking forward to, and a friend nearby without one -- quiet, ordinary, not staged as a lesson.",
       composition:
-        "The giver stands near the threshold, the gift held close to their chest or cupped protectively in both hands. The elder stands a few steps away, at the edge of the frame or just beyond the threshold, facing the giver. A clear, readable gap of open space separates them -- composed so the eye reads the distance as easily as the two people.",
+        "The child with the snack sits at the table, the snack close in front of them or held loosely. The second child sits or stands a short distance away, without one, visible in the same frame. Generous negative space above/around the scene for overlaid text.",
       subjectAction:
-        "The giver holds the gift the way someone holds something they were saving for themselves -- protective, not yet offering it. Their gaze shifts toward the elder, taking in something about the elder's own more modest, careworn state; a flicker of recognition crosses the giver's face, though their hands haven't moved yet. The elder simply waits, not asking, not reaching.",
-      emotionalTone:
-        "A quiet internal tension between wanting to keep and choosing to give -- warm, not sad or tense; the hesitation reads as thoughtful, not reluctant or resentful.",
+        "The first child glances toward the second child, noticing -- hands still resting near their own snack, not yet offering it. The second child isn't asking, just present.",
+      emotionalTone: "Quiet noticing -- ordinary, not sad or tense.",
       keyVisualDetails: [
-        "the gift held close to the giver's own body, not yet extended toward the elder",
-        "a clear band of open space between the two figures",
-        "soft, natural late-afternoon light picking out both faces evenly",
+        "the snack still fully with the first child, not yet extended",
+        "a natural, readable distance between the two children",
+        "warm daylight falling evenly across both children",
       ],
     },
-    frame5: {
-      frame: 5,
-      state: "Resolved state: the gift has been received, and the earlier distance has closed.",
+    image2: {
+      purpose: "Frame 3 (Human Action)",
+      state: "Offering state: the first child offers the snack to the second child.",
       visualGoal:
-        "Show the SAME two people, in the SAME place, now visibly closer -- the object has changed hands and the relationship has warmed.",
+        "Show the same two children, same table, same light -- but now the snack is mid-offer, a small natural gesture, not a staged handoff.",
       composition:
-        "The same two figures now stand close together at the same threshold. The gift is now held by the elder. The open space that separated them in the earlier moment has closed to a natural, comfortable conversational distance.",
+        "The same two children, now closer together at the same table. The first child holds the snack out toward the second child. The earlier distance has closed to a natural, comfortable closeness.",
       subjectAction:
-        "The gift now rests in the elder's hands; the giver's own hands are empty and open, no longer holding anything back. A small, natural gesture of connection passes between the two -- a light touch on the arm, or simply sustained eye contact and a small, genuine smile.",
-      emotionalTone:
-        "Warmth and quiet relief -- the tension of the earlier moment has resolved into ease; the giver reads as lighter, not diminished, by having let go of what they were holding.",
+        "The first child extends the snack with a simple, unforced gesture -- not dramatic, just an ordinary offer. The second child looks up, a small flicker of surprise or warmth.",
+      emotionalTone: "Warm and natural -- an ordinary kindness, not a grand gesture.",
       keyVisualDetails: [
-        "the gift now held by the elder, in the same wrapped/cupped form as before",
-        "the earlier gap between the two figures now closed",
-        "the same golden late-afternoon light, unchanged from the first frame",
+        "the snack mid-offer between the two children",
+        "the same clothing, faces, and table setting as Image 1",
+        "no speech bubble or text -- the gesture itself carries the moment",
       ],
-      extraNegatives: ["a new or different object appearing in place of the original gift", "a transactional or staged handoff pose"],
+      extraNegatives: ["a speech bubble or dialogue graphic", "a transactional or staged handoff pose"],
     },
   },
   {
     poemNumber: 189,
-    // Traces directly to teachingDirection.teachingMoment (reel-storyboard-
-    // content.ts, poem 189): "your own needs are still just as simple as
-    // theirs... What makes what you have worth anything is what you
-    // choose to do with what's left over." Rewritten (Phase 9C Correction)
-    // to name the surplus/need distinction explicitly, not just the
-    // before/after portion sizes.
     storyContextLine:
-      "Two people at the same table both already have what they need -- but one has more left over than the other. The story isn't the difference in what they have; it's what happens next: the surplus gets shared, not kept, until the two portions settle back into balance.",
+      "A child notices they have more pencils than they need at their desk. A classmate nearby has none. The story is the small, unprompted choice to offer the extra -- not because they were asked, but because they noticed.",
     continuityBible: {
       characters: [
         {
-          id: "leftColumn",
-          role: "The first neighbor",
-          ageRange: "30s-50s",
-          appearance: "Tamil South Indian adult, everyday appearance, relaxed and unremarkable in dress or bearing",
-          clothing: "simple, ordinary contemporary clothing -- plain and modest, matching the other figure's register exactly",
-          relationship: "a neighbor or community member sharing the same table",
+          id: "childWithExtra",
+          role: "The child with extra pencils",
+          ageRange: "8-10",
+          appearance: "Tamil South Indian child, contemporary appearance, relaxed and unremarkable",
+          clothing: "ordinary contemporary school clothing",
+          relationship: "a classmate seated nearby",
         },
         {
-          id: "rightColumn",
-          role: "The second neighbor",
-          ageRange: "30s-50s",
-          appearance: "Tamil South Indian adult, everyday appearance, relaxed and unremarkable in dress or bearing",
-          clothing: "simple, ordinary contemporary clothing -- plain and modest, matching the other figure's register exactly",
-          relationship: "a neighbor or community member sharing the same table",
+          id: "childWithoutExtra",
+          role: "The classmate without one",
+          ageRange: "8-10",
+          appearance: "Tamil South Indian child, contemporary appearance, relaxed and unremarkable",
+          clothing: "ordinary contemporary school clothing, matching the other child's register",
+          relationship: "a classmate seated nearby",
         },
       ],
       environment: {
-        location: "a simple home kitchen table, or a modest shared community dining setting",
+        location: "a classroom desk or shared school table",
         period: "present day",
-        timeOfDay: "midday, soft indirect daylight through a window or open doorway",
-        atmosphere: "an ordinary, unhurried shared meal -- domestic, not a special occasion or public charity event",
-        culturalContext:
-          "An everyday South Indian home-cooked meal -- banana leaf or plain steel plates, simple rice-and-curry style food.",
+        timeOfDay: "daytime, class time",
+        atmosphere: "an ordinary classroom moment, no special occasion",
+        culturalContext: "an everyday South Indian classroom setting -- realistic, not staged.",
       },
       visualStyle: {
         medium: "editorial-photography",
         cameraLanguage:
-          "Overhead-leaning three-quarter angle that reads both plates/leaves clearly within the same frame, vertical 9:16 framing, shallow depth of field on the food and hands.",
-        lighting: "Soft, even natural daylight, no harsh shadows.",
-        colorPalette: "Warm, natural food tones against a plain table surface -- restrained, not styled like an advertisement.",
-        realism: "Photorealistic, candid, home-cooked and lived-in rather than plated for a photoshoot.",
+          "Medium shot at child's eye level, shallow depth of field on the desk and hands, vertical 9:16 framing with generous negative space for overlaid editorial text.",
+        lighting: "Soft, even natural daylight through a classroom window, no harsh shadows.",
+        colorPalette: "Warm, natural classroom tones, restrained, not stylized.",
+        realism: "Photorealistic, candid, unposed -- an ordinary classroom moment, not a photoshoot.",
       },
       recurringProps: [
-        "two banana leaves or plain steel plates on the same table",
-        "simple home-cooked South Indian food -- rice, a vegetable curry, a small side",
-        "a plain shared table surface, unremarkable",
+        "a small handful of pencils or pens on the desk, visibly more than one child needs",
+        "a classroom desk or shared table surface",
+        "notebooks or classroom materials nearby, part of the everyday scene",
       ],
       continuityRules: [
-        "Both people keep the exact same faces, ages, builds, and clothing in both frames -- their appearance never signals which one has more or less.",
-        "The table, the room, and the light stay exactly the same in both frames.",
-        "The difference between the two people is shown ONLY through the food on their plates, never through their clothing or visible wealth.",
+        "Both children keep the exact same faces, ages, and clothing across both images -- their appearance never signals which one has more or less.",
+        "The desk, the classroom, and the light stay exactly the same across both images.",
+        "The difference between the two children is shown ONLY through the pencils on the desk, never through their clothing or visible wealth.",
       ],
     },
-    frame2: {
-      frame: 2,
-      state: "Starting state: one plate is generously full, the other is sparse, and both people have just noticed the difference.",
-      visualGoal: "Communicate an unequal distribution -- one side visibly has more, the other visibly has less -- without turning either person into a class stereotype.",
+    image1: {
+      purpose: "Frames 1-2 (Parent Hook, Modern Child Situation)",
+      state: "Starting state: extra pencils sit with the first child, unnoticed by them; the second child has none, visible nearby.",
+      visualGoal: "Communicate an unequal, unremarked distribution -- one child visibly has more, the other visibly has none -- without turning either child into a stereotype.",
       composition:
-        "Both plates are visible in the same frame, side by side on the shared table. One plate/leaf is heaped generously; the other holds a noticeably smaller portion. Both people are seated at the table, looking down at the plates rather than at each other.",
-      subjectAction:
-        "Both people pause, glancing at the visible difference in portions -- a quiet moment of noticing what one has beyond their own need, and what the other doesn't yet have enough of; observational, not accusatory or ashamed.",
+        "The desk with several pencils is visible in the same frame as the second child's empty space where a pencil should be. Both children are seated, focused on their own work rather than each other. Generous negative space for overlaid text.",
+      subjectAction: "The first child works, unaware of the extra pencils in front of them. The second child glances toward the desk, not asking, just noticing they have none.",
       emotionalTone: "Quiet, neutral awareness -- observational, not guilty or resentful.",
       keyVisualDetails: [
-        "one plate/leaf heaped generously, the other with a visibly smaller, plainer portion",
-        "both plates fully visible within the same frame",
-        "both people's hands resting near their own plate, not yet reaching toward the other's",
+        "several pencils visibly bunched at the first child's own space, more than one person needs",
+        "the second child's own desk space visibly empty of pencils",
+        "both children's hands near their own work, not yet reaching toward the other's",
       ],
     },
-    frame5: {
-      frame: 5,
-      state: "Resolved state: food has been shared between the two plates, and the visible imbalance has reduced.",
-      visualGoal: "Show the SAME two people, at the SAME table, now with visibly comparable portions -- balance restored through an ordinary, unremarkable act of sharing.",
+    image2: {
+      purpose: "Frame 3 (Human Action)",
+      state: "Offering state: the first child slides an extra pencil across to the second child.",
+      visualGoal: "Show the same two children, same desk, same light -- but now one pencil is mid-transfer, a small, natural, everyday gesture.",
       composition:
-        "The same two plates, now visibly closer in quantity -- some food has moved from the fuller plate to the sparser one. Both people are now eating together, more relaxed, occasionally glancing at each other rather than only at the food.",
-      subjectAction:
-        "One person's hand is mid-motion, having just moved a portion of food -- from what was extra, not from what they needed -- from their own plate to the other's; a small, natural, everyday gesture, not a ceremonial or performative one.",
-      emotionalTone: "Warm and companionable -- an ordinary shared meal, ease rather than obligation.",
+        "The same two children, now with one pencil visibly sliding or extended across the desk from the first child toward the second. Both children are closer, glancing at each other rather than only at their own work.",
+      subjectAction: "The first child's hand is mid-motion, pushing one pencil -- just the extra, not their whole handful -- toward the second child. The second child reaches to accept it.",
+      emotionalTone: "Warm and companionable -- an ordinary classroom kindness, ease rather than obligation.",
       keyVisualDetails: [
-        "the two portions now visibly closer in quantity than before",
-        "a small amount of food visibly mid-transfer between the two plates",
-        "the same soft midday light and table setting, unchanged from the first frame",
+        "exactly one pencil mid-transfer between the two children, the rest still with the first child",
+        "the same desk, clothing, and classroom setting as Image 1",
+        "no speech bubble or text -- the gesture itself carries the moment",
       ],
       extraNegatives: [
         "a donation, charity, or NGO-style framing",
-        "one person depicted as visibly poorer or of lower status through clothing, posture, or setting",
-        "a formal handout or transactional gesture",
+        "one child depicted as visibly poorer or of lower status through clothing, posture, or setting",
+        "the first child giving away all their pencils, not just the extra",
       ],
     },
   },
   {
     poemNumber: 192,
-    // Traces directly to teachingDirection.teachingMoment (reel-storyboard-
-    // content.ts, poem 192): "No one is really a stranger for long...
-    // there's no one worth treating as more or less than yourself."
-    // Rewritten (Phase 9C Correction) to frame the resolution as the group
-    // making room, not merely the newcomer being "drawn in."
     storyContextLine:
-      "Someone stands just outside a gathering they don't yet belong to -- watching, not yet part of it. The story is the moment the group notices them and makes room, until the space that separated them closes and they belong the same ordinary way everyone else already does.",
+      "A child sits slightly apart from a group of classmates who are already playing together. The story is not the loneliness itself -- it's the small, ordinary moment when someone notices, and closes the distance with a simple invitation.",
     continuityBible: {
       characters: [
         {
-          id: "isolatedFigure",
-          role: "The newcomer",
-          ageRange: "20s-40s",
-          appearance: "Tamil South Indian adult, ordinary contemporary appearance, alert but slightly uncertain posture",
-          clothing: "simple, ordinary contemporary clothing, unremarkable and consistent with the group's own dress",
-          relationship: "not yet acquainted with the gathered neighbors",
+          id: "isolatedChild",
+          role: "The child sitting apart",
+          ageRange: "8-10",
+          appearance: "Tamil South Indian child, contemporary appearance, alert but slightly uncertain posture",
+          clothing: "ordinary contemporary school-appropriate clothing",
+          relationship: "not yet part of the group",
         },
         {
-          id: "communityGroup",
-          role: "A small group of neighbors gathered together",
-          ageRange: "mixed ages, adults and at least one elder",
-          appearance: "3-4 Tamil South Indian neighbors of mixed ages and builds, relaxed and familiar with one another",
-          clothing: "simple, ordinary contemporary clothing, consistent with an everyday evening gathering, not festival dress",
-          relationship: "an established, familiar neighborhood group",
+          id: "playingGroup",
+          role: "A small group of classmates playing together",
+          ageRange: "8-10, mixed",
+          appearance: "3-4 Tamil South Indian children of similar age, relaxed and familiar with one another",
+          clothing: "ordinary contemporary school or playground clothing",
+          relationship: "an established group of friends",
         },
       ],
       environment: {
-        location: "an open courtyard or veranda where neighbors have gathered for the evening",
+        location: "a contemporary school playground or courtyard",
         period: "present day",
-        timeOfDay: "early evening, warm fading light",
-        atmosphere: "relaxed, communal, unhurried -- an ordinary evening gathering, not a festival or religious occasion",
-        culturalContext:
-          "An everyday South Indian neighborhood gathering -- neighbors sitting together on a veranda or courtyard, chatting, sharing tea or a simple snack.",
+        timeOfDay: "daytime, recess or break time",
+        atmosphere: "an ordinary school day, not a special event",
+        culturalContext: "an everyday South Indian school setting -- realistic, not staged.",
       },
       visualStyle: {
         medium: "editorial-photography",
         cameraLanguage:
-          "Wide-leaning medium shot, vertical 9:16 framing, camera at seated eye level so the group's own sightline is legible.",
-        lighting: "Warm, low, fading evening light, soft and natural, with a hint of ambient warm light from a doorway or lamp.",
-        colorPalette: "Warm dusk tones -- amber, soft browns, muted greens -- restrained and natural, not stylized.",
-        realism: "Photorealistic, candid documentary realism, natural and unposed body language throughout.",
+          "Medium shot at child's eye level, shallow depth of field, vertical 9:16 framing with generous negative space above/around the subject for overlaid editorial text.",
+        lighting: "Warm natural daylight, soft shadows.",
+        colorPalette: "Warm, natural playground tones, restrained, not oversaturated.",
+        realism: "Photorealistic documentary realism, natural unposed body language, no melodrama.",
       },
       recurringProps: [
-        "a low courtyard wall, veranda step, or threshold marking the edge of the gathering",
-        "simple woven mats, plastic chairs, or a low bench the group is seated on",
-        "a shared kettle, tumbler, or plate of a simple snack being passed among the group",
+        "a school bag or water bottle resting nearby, part of the everyday scene",
+        "a low wall, bench, or step the isolated child is near",
+        "a ball or simple playground equipment the group is playing with",
       ],
       continuityRules: [
-        "The newcomer and every member of the group keep the exact same faces, ages, and clothing in both frames.",
-        "The courtyard, the seating, and the evening light stay exactly the same in both frames.",
-        "No new person joins or leaves the group between the two frames -- only the newcomer's position relative to it changes.",
+        "The isolated child and every member of the group keep the exact same faces, ages, and clothing across both images.",
+        "The playground, the light, and the time of day stay exactly the same across both images.",
+        "No new child joins or leaves the group between the two images -- only the isolated child's position relative to it changes.",
       ],
     },
-    frame2: {
-      frame: 2,
-      state: "Starting state: the newcomer is physically and socially outside the group, watching rather than participating.",
-      visualGoal: "Communicate one person outside a social gathering, with visible negative space between them and the group, observing rather than joining in.",
+    image1: {
+      purpose: "Frames 1-2 (Parent Hook, Modern Child Situation)",
+      state: "Establishing state: the child is physically apart from the group, watching rather than joining in.",
+      visualGoal: "Communicate one child outside a playing group, with visible space between them, observing rather than participating -- quiet, not melodramatic.",
       composition:
-        "The group is seated together, engaged with one another, occupying roughly one side or the back of the frame. The newcomer stands alone at the edge of the courtyard or just past the threshold, with a clear, readable gap of open space between them and the seated group.",
-      subjectAction: "The newcomer watches the group from a slight distance, body language slightly closed or uncertain -- not approaching, not turning away. The group continues its own conversation, unaware of or not yet engaging with the newcomer.",
-      emotionalTone: "Quiet observation and mild uncertainty -- subtle, not exaggerated or melodramatic.",
+        "The group is playing together, occupying one side of the frame, engaged with each other. The isolated child sits or stands a short distance away, with a clear, readable gap of open space between them and the group. Generous negative space above/around the isolated child for overlaid text.",
+      subjectAction: "The isolated child watches the group with a quiet, uncertain expression -- not upset, just apart. The group continues playing, unaware of or not yet noticing the isolated child.",
+      emotionalTone: "Quiet observation and mild uncertainty -- subtle, ordinary, not sad or exaggerated.",
       keyVisualDetails: [
-        "a clear band of open space between the newcomer and the seated group",
-        "the newcomer standing while the group remains seated, reinforcing the separation",
-        "warm evening light falling evenly across both the newcomer and the group",
+        "a clear band of open space between the isolated child and the group",
+        "the isolated child's body language slightly closed, not reaching out",
+        "warm daylight falling evenly across both the child and the group",
       ],
     },
-    frame5: {
-      frame: 5,
-      state: "Resolved state: the SAME newcomer is now naturally integrated into the SAME group, in the SAME courtyard.",
-      visualGoal: "Show the identical person, environment, clothing, and lighting as Frame 2 -- but the negative space has closed and the newcomer is now seated with and participating in the group.",
+    image2: {
+      purpose: "Frame 3 (Human Action)",
+      state: "Invitation state: a child from the group approaches the isolated child with a simple gesture of invitation.",
+      visualGoal:
+        "Show the same isolated child, same playground, same light -- but now a second child from the group has approached and is mid-gesture, inviting them to play. The gesture itself must naturally read as an invitation, without any text or speech bubble.",
       composition:
-        "The same group, in the same courtyard, now with the newcomer seated among them -- part of the same cluster rather than separated from it. The earlier open gap has closed; the newcomer now occupies the space that was empty in the first frame.",
+        "The same isolated child, now with a second child from the group standing close by, mid-gesture -- perhaps extending a hand, holding out a ball, or gesturing toward the group. The earlier gap has closed to a natural, comfortable distance.",
       subjectAction:
-        "The newcomer is now seated within the circle, in a space the group has visibly made for them -- engaged in the same conversation, perhaps accepting a cup or a small snack being passed to them; a small natural gesture of inclusion rather than a dramatic welcome.",
-      emotionalTone: "Warm, quiet belonging -- understated, natural, no exaggerated celebration.",
+        "The approaching child leans in with an open, friendly gesture -- offering the ball, or simply gesturing toward the group. The isolated child looks up, a small flicker of surprise or hope crossing their face, not yet moved but clearly noticing.",
+      emotionalTone: "Warm anticipation -- the moment just before an invitation is accepted, natural and unforced.",
       keyVisualDetails: [
-        "the earlier gap between the newcomer and the group now closed",
-        "the newcomer seated at the same eye level as the rest of the group",
-        "the same warm evening light and courtyard setting, unchanged from the first frame",
+        "a natural inviting gesture (offering a ball, an open hand, a gesture toward the group) -- never a speech bubble or text",
+        "the same clothing, faces, and playground setting as Image 1",
+        "the gap between the two children now nearly closed",
       ],
-      extraNegatives: ["an exaggerated welcome gesture (applause, group hug, dramatic embrace)", "flags, maps, or overt \"world peace\" symbolism"],
+      extraNegatives: ["a speech bubble or dialogue graphic", "an exaggerated or theatrical welcome gesture"],
     },
   },
 ];
@@ -621,31 +551,30 @@ export function getReelAIVisualDirectionEditorial(poemNumber: number): ReelAIVis
  *  ComposedReelStoryboard -- reused, not recomputed: same "read the live
  *  composed object, never a second copy" discipline every other Reel
  *  Storyboard builder in this codebase already follows. Returns null when
- *  no AI Visual Direction has been authored yet for this poem number,
- *  same honest-fallback convention buildComposedReelStoryboard itself
- *  uses. */
+ *  no AI Visual Direction has been authored yet for this poem number, same
+ *  honest-fallback convention buildComposedReelStoryboard itself uses. */
 export function buildComposedReelAIVisualDirection(storyboard: ComposedReelStoryboard | null): ComposedReelAIVisualDirection | null {
   if (!storyboard) return null;
   const editorial = getReelAIVisualDirectionEditorial(storyboard.poemNumber);
   if (!editorial) return null;
 
-  const frame2: ReelAIFrameDirection = {
-    ...editorial.frame2,
-    prompt: buildFramePrompt(editorial, editorial.frame2, 5),
-    negativePrompt: buildNegativePromptText(editorial.frame2),
+  const image1: ReelAIImageDirection = {
+    ...editorial.image1,
+    prompt: buildImagePrompt(editorial, editorial.image1, "Image 2"),
+    negativePrompt: buildNegativePromptText(editorial.image1),
   };
-  const frame5: ReelAIFrameDirection = {
-    ...editorial.frame5,
-    prompt: buildFramePrompt(editorial, editorial.frame5, 2),
-    negativePrompt: buildNegativePromptText(editorial.frame5),
+  const image2: ReelAIImageDirection = {
+    ...editorial.image2,
+    prompt: buildImagePrompt(editorial, editorial.image2, "Image 1"),
+    negativePrompt: buildNegativePromptText(editorial.image2),
   };
 
   return {
     poemNumber: storyboard.poemNumber,
     continuityBible: editorial.continuityBible,
     storyContextLine: editorial.storyContextLine,
-    frame2,
-    frame5,
-    continuityStatement: buildContinuityStatement(editorial.continuityBible, storyboard),
+    image1,
+    image2,
+    continuityStatement: buildContinuityStatement(editorial.continuityBible),
   };
 }

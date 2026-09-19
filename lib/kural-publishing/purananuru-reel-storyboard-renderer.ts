@@ -1,29 +1,53 @@
 /**
  * Distant Devotion — Asset Generator: Purananuru Reel Storyboard Renderer
  * ----------------------------------------------------------------------------
- * A SECOND, independent Purananuru template alongside (never replacing)
- * purananuru-carousel-renderer.ts's 2-slide card. This one draws the 7-frame
- * "Reel grammar" (Hook / Human Moment / Purananuru / What It Teaches /
- * Today / Talk With Your Child / Signature -- PURANANURU_REEL_FRAME_LABELS
- * below is the source of truth for the exact wording) as static, full-bleed
- * 1080x1920 (9:16) PNGs -- still no animation, video, or image generation,
- * exactly like the Carousel. Both templates are consumed the same way:
- * they take the SAME ComposedPoem produced by content-engine.ts's
- * loadPoem/generateNextPoem (untouched by this file) and derive their own
- * per-frame view from it -- this one via buildComposedReelStoryboard
- * (purananuru/reel-storyboard-content.ts), which never duplicates
- * canon.ts's literary text, only slices it by line range.
+ * LOCKED BUILD. A SECOND, independent Purananuru template alongside (never
+ * replacing) purananuru-carousel-renderer.ts's 2-slide card. This one draws
+ * the 7-frame teaching journey (Parent Hook / Modern Child Situation /
+ * Human Action / Tamil Discovery / Aram / How To Teach / Practise & Pass It
+ * On -- PURANANURU_REEL_FRAME_LABELS below is the source of truth for the
+ * exact wording) as static, full-bleed 1080x1920 (9:16) PNGs -- still no
+ * animation, video, or image generation, exactly like the Carousel. Both
+ * templates are consumed the same way: they take the SAME ComposedPoem
+ * produced by content-engine.ts's loadPoem/generateNextPoem (untouched by
+ * this file) and derive their own per-frame view from it -- this one via
+ * buildComposedReelStoryboard (purananuru/reel-storyboard-content.ts),
+ * which never duplicates canon.ts's literary text, only slices it by line
+ * range.
+ *
+ * VISUAL GENERATION MODEL (locked): 2 cinematic AI image prompts (see
+ * reel-ai-visual-direction.ts) + 7 editorial frames. This renderer never
+ * draws an AI-generated photo -- there is no image asset to draw; a human
+ * pastes the two copyable prompts into an external tool and assembles the
+ * final reel outside this app, exactly like every other AI-prompt surface
+ * in this codebase (aathichoodi/family-image-prompt.ts's own header: "This
+ * app never generates or fetches images itself"). What this renderer draws
+ * for Frames 1-3 is the TEXT layer of the storyboard kit -- the hook, the
+ * modern situation, the living Tamil moment -- the same premium editorial
+ * typography treatment every other frame already uses, not a placeholder
+ * illustration of the photo.
+ *
+ * OBSOLETE LOGIC REMOVED: this file used to also draw six abstract,
+ * geometric "visual scene" compositions (silhouettes, columns, connector
+ * arcs) for a Frame 2 / Frame 5 pair, and export a parallel motion-preview
+ * renderer that animated between them. Both are gone: reel-storyboard-
+ * content.ts no longer has a ReelVisualScene type for them to draw, Phase
+ * 9A's ReelMotionDirection is gone with it, and purananuru-reel-motion-
+ * preview-renderer.ts / components/kural-publishing/useReelMotionPreview.ts
+ * have been deleted outright rather than left as a competing, now-broken
+ * visual-generation path. There is exactly one static strategy now: 2
+ * cinematic AI assets (prompts only) + 7 editorial frames, described above.
  *
  * Deliberately NOT a stretched copy of the Carousel's card-on-background
  * look: the Carousel insets a white card inside a tinted frame; this
  * template is full-bleed (background IS the frame, safe margins only) with
  * its own chrome -- a small "PURANANURU" kicker + a page indicator
- * ("03 / 07 · PURANANURU") repeated, in the same position, on every frame,
- * which is what actually reads as "one designed system" across seven
- * images rather than "one card resized seven times." Frame 6 ("Talk With
- * Your Child") inverts to a full indigo panel to give the sequence a
- * visual pause before the calm Frame 7 signature -- the one deliberate
- * visual-rhythm break in an otherwise restrained, editorial system.
+ * ("03 / 07 · HUMAN ACTION") repeated, in the same position, on every
+ * frame, which is what actually reads as "one designed system" across
+ * seven images rather than "one card resized seven times." Frame 6 ("How
+ * To Teach") inverts to a full indigo panel to give the sequence a visual
+ * pause before the calm Frame 7 close -- the one deliberate visual-rhythm
+ * break in an otherwise restrained, editorial system.
  *
  * Same indigo brand hue as purananuru-carousel-renderer.ts (so the two
  * templates read as one Purananuru identity), reusing the same generic,
@@ -31,6 +55,9 @@
  * its background texture -- never aathichoodi-renderer.ts or
  * aathichoodi-carousel-renderer.ts, which this file does not import from or
  * modify.
+ *
+ * STATIC ARCHITECTURE ONLY: no animation, motion, transitions, video, or
+ * audio in this phase -- that is explicitly the next phase's own work.
  */
 
 import { createSeededRandom } from "./seeded-random";
@@ -42,11 +69,9 @@ import type { ComposedPoem } from "./purananuru/content-engine";
 import {
   buildComposedReelStoryboard,
   type ComposedReelStoryboard,
-  type ReelVisualScene,
+  type LivingTamilMoment,
 } from "./purananuru/reel-storyboard-content";
 
-// Exported (Phase 9B) so purananuru-reel-motion-preview-renderer.ts can draw
-// with the exact same palette -- values themselves untouched.
 export const BG = "#F4F3F8";
 export const FOREGROUND = "#1E1B2E";
 export const MUTED = "#6B6B85";
@@ -59,34 +84,26 @@ const WARNING = "#8A5A00";
 const FALLBACK_GLYPHS = ["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"];
 
 export const PURANANURU_REEL_FRAME_COUNT = 7;
-// Final Teaching Architecture: frames 4 and 6 relabeled to name their
-// actual role in the teaching journey ("What It Teaches" / "Talk With
-// Your Child") rather than the old generic "Meaning" / "Reflection" --
-// pure content-constant changes (drawFrameChrome's own truncateToWidth
-// call already handles arbitrary label length safely), no drawing logic
-// touched. Frames 2 and 5 stay "Human Moment" / "Today": still the same
-// cinematic before/after pair, just now also understood to bridge toward
-// the child's world (see reel-storyboard-content.ts's own module header).
 export const PURANANURU_REEL_FRAME_LABELS: readonly string[] = [
-  "Hook",
-  "Human Moment",
-  "Purananuru",
-  "What It Teaches",
-  "Today",
-  "Talk With Your Child",
-  "Signature",
+  "Parent Hook",
+  "Modern Situation",
+  "Human Action",
+  "Tamil Discovery",
+  "Aram",
+  "How To Teach",
+  "Practise",
 ];
 /** Filename slugs, index-aligned with PURANANURU_REEL_FRAME_LABELS --
  *  exported so PublishingWorkspace's filename builder never hand-types
  *  these separately from the labels shown in the UI. */
 export const PURANANURU_REEL_FRAME_SLUGS: readonly string[] = [
   "hook",
-  "human-moment",
-  "purananuru",
-  "teaching",
-  "today",
-  "conversation",
-  "signature",
+  "situation",
+  "action",
+  "discovery",
+  "aram",
+  "teach",
+  "practise",
 ];
 
 export interface RenderPurananuruReelOptions {
@@ -101,16 +118,15 @@ export interface RenderPurananuruReelOptions {
   frameIndex: number;
   tamilFont: string;
   sansFont: string;
-  /** Frame 7 (Signature) only -- the one frame with any brand mark at all
-   *  (see this file's own header: "keep branding subtle" is honored by
-   *  omitting it from every other frame, not by shrinking it everywhere). */
+  /** Frame 7 (Practise / Pass It On) only -- the one frame with any brand
+   *  mark at all (see this file's own header: "keep branding subtle" is
+   *  honored by omitting it from every other frame, not by shrinking it
+   *  everywhere). */
   logoImage?: HTMLImageElement | null;
   brandingWordmark?: string;
   brandingHandle?: string;
 }
 
-// Exported (Phase 9B) so the motion preview renderer can wrap the SAME
-// crossfading caption text with identical metrics -- logic untouched.
 export function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const lines: string[] = [];
   for (const rawLine of text.split("\n")) {
@@ -142,11 +158,9 @@ function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: 
 /** Draws already-wrapped lines starting at startY, stepping by lineStep,
  *  and stops (truncating the last drawn line with an ellipsis) before
  *  crossing maxY -- the same overflow-safety convention
- *  purananuru-carousel-renderer.ts uses, reapplied here so long poem
- *  content can never clip against this template's own footer/margin.
- *  Returns the Y position after the last line actually drawn. */
-// Exported (Phase 9B) -- same overflow-safety line drawer, reused as-is by
-// the motion preview renderer's crossfading caption text.
+ *  purananuru-carousel-renderer.ts uses, reapplied here so long content can
+ *  never clip against this template's own footer/margin. Returns the Y
+ *  position after the last line actually drawn. */
 export function drawCappedLines(
   ctx: CanvasRenderingContext2D,
   lines: readonly string[],
@@ -168,8 +182,6 @@ export function drawCappedLines(
   return y;
 }
 
-// Exported (Phase 9B) so the motion preview renderer's own drawFrameChrome
-// calls resolve to the same content bounds the static frames use.
 export interface FrameGeometry {
   marginX: number;
   contentX: number;
@@ -178,312 +190,12 @@ export interface FrameGeometry {
   contentBottom: number;
 }
 
-/** Traces a rounded-rectangle path via arcTo, matching the corner-rounding
- *  convention already used elsewhere in this codebase's Canvas renderers
- *  (e.g. drawCardSurface in purananuru-carousel-renderer.ts) rather than
- *  ctx.roundRect. Caller fills/strokes after calling this.
- *  Exported (Phase 9B) -- the motion preview renderer's own interpolated
- *  column bars reuse this exact path helper rather than a second copy. */
-export function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
-}
-
-/** One abstract human silhouette -- a circle head plus a rounded-body
- *  block, drawn either FILLED (present, included, "has") or OUTLINED ONLY
- *  (dimmed, separated, "does not have / not yet part of the group"). This
- *  filled/outlined distinction is the entire visual vocabulary the six
- *  scenes below use to show possession, need, isolation, and belonging --
- *  never a face, a costume, or any culturally-specific detail. `topY` is
- *  the y-coordinate of the top of the head; `scale` sets the figure's
- *  overall size. Exported (Phase 9B) -- the motion preview renderer draws
- *  the SAME figure shape at interpolated positions/colors, never a second
- *  silhouette implementation. */
-export function drawFigure(
-  ctx: CanvasRenderingContext2D,
-  centerX: number,
-  topY: number,
-  scale: number,
-  color: string,
-  filled: boolean
-) {
-  const headR = scale * 0.34;
-  const bodyW = scale * 0.9;
-  const bodyH = scale * 1.05;
-  const headCenterY = topY + headR;
-  const bodyTop = headCenterY + headR * 0.75;
-
-  ctx.fillStyle = color;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = Math.max(2, scale * 0.055);
-
-  ctx.beginPath();
-  ctx.arc(centerX, headCenterY, headR, 0, Math.PI * 2);
-  if (filled) ctx.fill();
-  else ctx.stroke();
-
-  roundedRectPath(ctx, centerX - bodyW / 2, bodyTop, bodyW, bodyH, bodyW * 0.32);
-  if (filled) ctx.fill();
-  else ctx.stroke();
-}
-
-/** A small filled dot with a faint halo ring -- the one recurring "object
- *  of value" accent used by the rare-gift/choice/sharing scenes. Never a
- *  literal icon (no gift box, no ticket, no coin) -- just weight and
- *  glow standing in for "something notable". Exported (Phase 9B) for the
- *  motion preview renderer's interpolated object position. */
-export function drawObjectAccent(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
-  ctx.save();
-  ctx.globalAlpha = 0.28;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = Math.max(1, r * 0.4);
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 2, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-/** A quiet curved connector between two points -- the visual language for
- *  "something is moving from here to there" (the choice, the sharing).
- *  Dashed and low-weight so it reads as a path, not a hard line/border.
- *  Exported (Phase 9B) -- the motion preview renderer fades this arc in
- *  via ctx.globalAlpha around the SAME call, never a second connector
- *  implementation. */
-export function drawConnectorArc(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = Math.max(1, Math.abs(x2 - x1) * 0.008);
-  ctx.setLineDash([Math.abs(x2 - x1) * 0.02, Math.abs(x2 - x1) * 0.025]);
-  const midX = (x1 + x2) / 2;
-  const midY = Math.min(y1, y2) - Math.abs(x2 - x1) * 0.16;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.quadraticCurveTo(midX, midY, x2, y2);
-  ctx.stroke();
-  ctx.restore();
-}
-
-/** A column of stacked, evenly-gapped rounded units resting on a shared
- *  baseline -- the abundance/sharing scenes' entire vocabulary for
- *  "quantity". Deliberately identical unit shape/color across both
- *  columns in every scene: it is a QUANTITY contrast (count only), never
- *  a quality, class, or wealth-style contrast. Returns the drawn stack's
- *  total height. Exported (Phase 9B) so the motion preview renderer can
- *  draw the same discrete-unit look at its exact Frame 2 / Frame 5
- *  endpoints (its own interior/animating frames use a continuous bar
- *  instead -- see that file's own header for why). */
-export function drawColumn(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  width: number,
-  baselineY: number,
-  unitHeight: number,
-  unitGap: number,
-  unitCount: number,
-  color: string
-): number {
-  ctx.fillStyle = color;
-  for (let i = 0; i < unitCount; i++) {
-    const y = baselineY - (i + 1) * (unitHeight + unitGap) + unitGap;
-    roundedRectPath(ctx, x, y, width, unitHeight, unitHeight * 0.32);
-    ctx.fill();
-  }
-  return unitCount * (unitHeight + unitGap);
-}
-
-// Exported (Phase 9B) so the motion preview renderer's interior
-// interpolators share the exact same stage-rectangle shape.
-export interface SceneStage {
-  x0: number;
-  x1: number;
-  top: number;
-  bottom: number;
-}
-
-/** Dispatches one of the six abstract, editorial visual-scene compositions
- *  (Frame 2 / Frame 5) by sceneType. Every scene is built ONLY from the
- *  shapes above -- silhouettes, one accent dot, connector arcs, unit
- *  columns -- using the existing indigo/border/foreground palette already
- *  defined at the top of this file. No new colors, no photographic
- *  imagery, no clip-art, no culturally-specific detail: this is the
- *  "abstract/editorial geometric composition" the brief asks for, and the
- *  ONLY thing that changes between poems is which of these six cases
- *  runs and with what proportions -- never a reused generic placeholder.
- *  Exported (Phase 9B) -- the motion preview renderer calls this directly
- *  for its exact Frame 2 (progress=0) and Frame 5 (progress=1) endpoints,
- *  which is what guarantees those two states are pixel-identical to the
- *  static PNG export rather than a re-implemented approximation. */
-export function drawVisualScene(ctx: CanvasRenderingContext2D, stage: SceneStage, scene: ReelVisualScene) {
-  const { x0, x1, top, bottom } = stage;
-  const stageW = x1 - x0;
-  const stageH = Math.max(0, bottom - top);
-  const baselineY = top + stageH * 0.86;
-  const figureScale = Math.min(stageW * 0.22, stageH * 0.5);
-
-  switch (scene.sceneType) {
-    case "rare-gift": {
-      const ax = x0 + stageW * 0.28;
-      const bx = x0 + stageW * 0.72;
-      const figTop = baselineY - figureScale * 2.1;
-      drawFigure(ctx, ax, figTop, figureScale, PRIMARY, true);
-      drawFigure(ctx, bx, figTop, figureScale, BORDER, false);
-      drawObjectAccent(ctx, ax + figureScale * 0.05, figTop - figureScale * 0.28, figureScale * 0.16, PRIMARY);
-      break;
-    }
-    case "choice": {
-      const ax = x0 + stageW * 0.28;
-      const bx = x0 + stageW * 0.72;
-      const figTop = baselineY - figureScale * 2.1;
-      const objY = figTop - figureScale * 0.28;
-      const objX = x0 + stageW * 0.58;
-      drawFigure(ctx, ax, figTop, figureScale, BORDER, false);
-      drawFigure(ctx, bx, figTop, figureScale, PRIMARY, true);
-      drawConnectorArc(ctx, ax + figureScale * 0.3, objY, bx - figureScale * 0.3, objY, BORDER);
-      drawObjectAccent(ctx, objX, objY - stageH * 0.04, figureScale * 0.16, PRIMARY);
-      break;
-    }
-    case "abundance": {
-      const colW = stageW * 0.15;
-      const unitH = stageH * 0.075;
-      const gap = unitH * 0.4;
-      drawColumn(ctx, x0 + stageW * 0.28 - colW / 2, colW, baselineY, unitH, gap, 6, PRIMARY);
-      drawColumn(ctx, x0 + stageW * 0.72 - colW / 2, colW, baselineY, unitH, gap, 2, BORDER);
-      break;
-    }
-    case "sharing": {
-      const colW = stageW * 0.15;
-      const unitH = stageH * 0.075;
-      const gap = unitH * 0.4;
-      const leftX = x0 + stageW * 0.28 - colW / 2;
-      const rightX = x0 + stageW * 0.72 - colW / 2;
-      const leftH = drawColumn(ctx, leftX, colW, baselineY, unitH, gap, 4, PRIMARY);
-      drawColumn(ctx, rightX, colW, baselineY, unitH, gap, 4, PRIMARY);
-      const arcY = baselineY - leftH - stageH * 0.06;
-      drawConnectorArc(ctx, leftX + colW, arcY, rightX, arcY, BORDER);
-      drawObjectAccent(ctx, (leftX + colW + rightX) / 2, arcY - stageH * 0.05, unitH * 0.45, PRIMARY);
-      break;
-    }
-    case "stranger": {
-      const figTop = baselineY - figureScale * 2.0;
-      drawFigure(ctx, x0 + stageW * 0.18, figTop, figureScale * 0.95, BORDER, false);
-      for (const f of [0.58, 0.72, 0.86]) {
-        drawFigure(ctx, x0 + stageW * f, figTop + figureScale * 0.1, figureScale * 0.85, PRIMARY, true);
-      }
-      break;
-    }
-    case "belonging": {
-      const figTop = baselineY - figureScale * 2.0;
-      for (const f of [0.42, 0.58, 0.72, 0.86]) {
-        drawFigure(ctx, x0 + stageW * f, figTop + figureScale * 0.1, figureScale * 0.85, PRIMARY, true);
-      }
-      break;
-    }
-  }
-}
-
-/** The subset of RenderPurananuruReelOptions that a Frame 2 / Frame 5 scene
- *  layout actually reads -- neither computeSceneFrameLayout nor
- *  drawSceneFrame has ever touched `poem`, `frameIndex`, or the branding
- *  fields, so narrowing to exactly the fields used (rather than the full
- *  options type) lets the motion preview renderer (Phase 9B) call both
- *  without needing to fabricate a fake ComposedPoem. Purely a type-level
- *  change -- every existing call site already passes a full
- *  RenderPurananuruReelOptions, which still satisfies this narrower shape
- *  structurally, so no caller changes and no behavior changes. */
-export type SceneFrameLayoutOptions = Pick<RenderPurananuruReelOptions, "width" | "height" | "tamilFont">;
-
-export interface SceneFrameLayout {
-  stage: SceneStage;
-  captionLines: string[];
-  captionStep: number;
-  captionGap: number;
-  stageBottom: number;
-}
-
-/** Computes the Frame 2 / Frame 5 stage rectangle + caption layout for one
- *  scene -- extracted out of drawSceneFrame (Phase 9B) so the motion
- *  preview renderer can compute the SAME geometry a static frame would use
- *  without duplicating this "measure caption, then center the whole
- *  composition+caption block" math a second time. Formulas are byte-for-
- *  byte the same as before this extraction; drawSceneFrame below now just
- *  calls this and draws using the returned numbers, so static output is
- *  unchanged (verified via the Phase 9B pixel-regression test). */
-export function computeSceneFrameLayout(
-  ctx: CanvasRenderingContext2D,
-  opts: SceneFrameLayoutOptions,
-  geo: FrameGeometry,
-  scene: ReelVisualScene
-): SceneFrameLayout {
-  const { width, height, tamilFont } = opts;
-
-  ctx.font = `600 ${Math.round(width * 0.042)}px ${tamilFont}`;
-  const captionStep = width * 0.058;
-  const captionLines = wrapText(ctx, scene.captionLine, geo.contentWidth);
-  const captionHeight = captionLines.length * captionStep;
-  const captionGap = height * 0.035;
-
-  // The composition gets a fixed, generous height (rather than stretching
-  // across the entire remaining frame) so drawVisualScene's own internal
-  // proportions stay predictable -- then the WHOLE composition+caption
-  // block is measured and vertically centered in the available content
-  // area, the same "measure first, then center" discipline every other
-  // frame in this file already uses. Without this, a composition sized to
-  // a fraction of an oversized stage ends up stranded near the bottom of
-  // the frame with a large dead zone above it.
-  const compositionHeight = height * 0.4;
-  const totalBlockHeight = compositionHeight + captionGap + captionHeight;
-  const available = Math.max(0, geo.contentBottom - geo.contentTop);
-  const blockTop = geo.contentTop + Math.max(0, (available - totalBlockHeight) / 2);
-  const stageBottom = blockTop + compositionHeight;
-
-  return {
-    stage: { x0: geo.contentX, x1: geo.contentX + geo.contentWidth, top: blockTop, bottom: stageBottom },
-    captionLines,
-    captionStep,
-    captionGap,
-    stageBottom,
-  };
-}
-
-/** Shared Frame 2 / Frame 5 layout: the abstract visual-scene composition
- *  above, one short Tamil caption below -- the caption is measured FIRST
- *  so the composition's stage area fills exactly the remaining space
- *  (same "measure, then lay out" discipline as every other frame in this
- *  file), and it is the only text drawn: the scene's title/description
- *  stay internal editorial data, never rendered onto the exported PNG.
- *  Exported (Phase 9B) -- the motion preview renderer calls this directly
- *  for its exact Frame 2 (progress=0) / Frame 5 (progress=1) endpoints. */
-export function drawSceneFrame(ctx: CanvasRenderingContext2D, opts: SceneFrameLayoutOptions, geo: FrameGeometry, scene: ReelVisualScene) {
-  const { width, tamilFont } = opts;
-  const layout = computeSceneFrameLayout(ctx, opts, geo, scene);
-
-  drawVisualScene(ctx, layout.stage, scene);
-
-  ctx.fillStyle = FOREGROUND;
-  ctx.font = `600 ${Math.round(width * 0.042)}px ${tamilFont}`;
-  drawCappedLines(ctx, layout.captionLines, geo.contentX, layout.stageBottom + layout.captionGap, layout.captionStep, geo.contentBottom);
-}
-
 /** Shared chrome every frame draws first: full-bleed background, a small
- *  "PURANANURU" kicker top-left, and a page indicator ("03 / 07 · MEANING")
- *  top-right -- the one repeated element that makes seven separate PNGs
- *  read as a single designed sequence rather than seven unrelated cards.
- *  `invert` flips both the background and the chrome text color for Frame
- *  6's full-indigo panel. Exported (Phase 9B) -- the motion preview
- *  renderer calls this with the SAME frameIndex a static Frame 2 / Frame 5
- *  call would use, so the chrome (background, kicker, page label) is
- *  identical at the preview's exact endpoints, never a re-implementation. */
+ *  "PURANANURU" kicker top-left, and a page indicator ("03 / 07 · HUMAN
+ *  ACTION") top-right -- the one repeated element that makes seven separate
+ *  PNGs read as a single designed sequence rather than seven unrelated
+ *  cards. `invert` flips both the background and the chrome text color for
+ *  Frame 6's full-indigo panel. */
 export function drawFrameChrome(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -520,150 +232,329 @@ export function drawFrameChrome(
   };
 }
 
-function drawHookFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
+/** One block of pre-measured rows, all sharing one font/color/step, used
+ *  by the "measure everything first, then center the whole stack" layout
+ *  every frame below follows -- the same discipline drawPurananuruFrame
+ *  already used for its own Tamil/transliteration rows, generalized so
+ *  Frame 4 (Tamil Discovery, now carrying English intro/meaning text
+ *  around the verse too) doesn't need a bespoke one-off implementation. */
+interface TextBlock {
+  lines: string[];
+  step: number;
+  font: string;
+  color: string;
+  /** Extra vertical space inserted BEFORE this block (0 for the first
+   *  block in a stack). */
+  gapBefore: number;
+}
+
+function blockHeight(block: TextBlock): number {
+  return block.lines.length ? block.gapBefore + block.lines.length * block.step : 0;
+}
+
+function drawTextBlocks(ctx: CanvasRenderingContext2D, blocks: readonly TextBlock[], x: number, startY: number, maxY: number): number {
+  let y = startY;
+  for (const block of blocks) {
+    if (!block.lines.length) continue;
+    y += block.gapBefore;
+    ctx.font = block.font;
+    ctx.fillStyle = block.color;
+    y = drawCappedLines(ctx, block.lines, x, y, block.step, maxY);
+  }
+  return y;
+}
+
+/** Frame 1 (Parent Hook). The hook question, and -- when this poem has
+ *  one -- the living Tamil moment as a hero payoff beneath it (Tamil,
+ *  Tanglish, English). Falls back to a hook-only frame when no
+ *  livingTamilMoment is authored for this poem (see reel-storyboard-
+ *  content.ts's own doc comment: it is deliberately optional). */
+function drawParentHookFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
   const { width, height, tamilFont, sansFont } = opts;
   const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, false);
 
-  const isQuiet = storyboard.hookTreatment === "quiet";
-  ctx.fillStyle = FOREGROUND;
-  ctx.font = `${isQuiet ? "500" : "700"} ${Math.round(width * (isQuiet ? 0.052 : 0.072))}px ${tamilFont}`;
-  const lineStep = width * (isQuiet ? 0.072 : 0.095);
-  const allLines = storyboard.hookLines.flatMap((line) => wrapText(ctx, line, geo.contentWidth));
-  const blockHeight = allLines.length * lineStep;
-  // Bold treatment centers vertically for maximum scroll-stopping impact;
-  // quiet treatment sits lower, with more open space above it, per the
-  // brief's own "quiet visual/editorial treatment rather than forcing a
-  // large slogan" direction for poem 192.
-  const startY = isQuiet
-    ? geo.contentBottom - blockHeight - height * 0.14
-    : geo.contentTop + (geo.contentBottom - geo.contentTop) / 2 - blockHeight / 2;
-  drawCappedLines(ctx, allLines, geo.contentX, startY, lineStep, geo.contentBottom);
+  const hookFont = `700 ${Math.round(width * 0.058)}px ${tamilFont}`;
+  ctx.font = hookFont;
+  const hookBlock: TextBlock = {
+    lines: wrapText(ctx, storyboard.hook, geo.contentWidth),
+    step: width * 0.078,
+    font: hookFont,
+    color: FOREGROUND,
+    gapBefore: 0,
+  };
+
+  const blocks: TextBlock[] = [hookBlock];
+  if (storyboard.livingTamilMoment) {
+    blocks.push(...buildLivingTamilMomentBlocks(ctx, opts, geo, storyboard.livingTamilMoment, height * 0.055));
+  }
+
+  const totalHeight = blocks.reduce((sum, b) => sum + blockHeight(b), 0);
+  const available = geo.contentBottom - geo.contentTop;
+  const startY = geo.contentTop + Math.max(0, (available - totalHeight) / 2);
+  drawTextBlocks(ctx, blocks, geo.contentX, startY, geo.contentBottom);
 }
 
-function drawHumanMomentFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
-  const { width, height, sansFont } = opts;
+/** Shared by Frame 1 and Frame 3: the living Tamil phrase itself (large,
+ *  primary color), its Tanglish pronunciation (italic, muted), and its
+ *  English meaning in quotes -- one reusable set of TextBlocks so both
+ *  frames render the SAME phrase identically rather than two
+ *  independently-tuned implementations. */
+function buildLivingTamilMomentBlocks(
+  ctx: CanvasRenderingContext2D,
+  opts: RenderPurananuruReelOptions,
+  geo: FrameGeometry,
+  moment: LivingTamilMoment,
+  gapBefore: number
+): TextBlock[] {
+  const { width, tamilFont, sansFont } = opts;
+  const blocks: TextBlock[] = [];
+
+  const tamilFontStr = `700 ${Math.round(width * 0.074)}px ${tamilFont}`;
+  ctx.font = tamilFontStr;
+  blocks.push({
+    lines: wrapText(ctx, moment.tamil, geo.contentWidth),
+    step: width * 0.096,
+    font: tamilFontStr,
+    color: PRIMARY,
+    gapBefore,
+  });
+
+  if (moment.transliteration) {
+    const translitFontStr = `italic 500 ${Math.round(width * 0.032)}px ${sansFont}`;
+    ctx.font = translitFontStr;
+    blocks.push({
+      lines: wrapText(ctx, moment.transliteration, geo.contentWidth),
+      step: width * 0.046,
+      font: translitFontStr,
+      color: MUTED,
+      gapBefore: width * 0.02,
+    });
+  }
+
+  const englishFontStr = `500 ${Math.round(width * 0.036)}px ${sansFont}`;
+  ctx.font = englishFontStr;
+  blocks.push({
+    lines: wrapText(ctx, `"${moment.english}"`, geo.contentWidth),
+    step: width * 0.05,
+    font: englishFontStr,
+    color: FOREGROUND,
+    gapBefore: width * 0.024,
+  });
+
+  return blocks;
+}
+
+/** Frame 2 (Modern Child Situation) and Frame 6 (How To Teach) share this
+ *  layout: a small kicker, then a multi-paragraph body (paragraph breaks
+ *  are literal blank lines in the source string -- wrapText already
+ *  renders an empty rawLine as a blank spacer line, so `\n\n` in the
+ *  content just works). `invert` supports Frame 6's own indigo panel
+ *  treatment. */
+function drawKickerBodyFrame(
+  ctx: CanvasRenderingContext2D,
+  opts: RenderPurananuruReelOptions,
+  kickerTamil: string,
+  kickerEnglish: string,
+  bodyLine: string,
+  invert: boolean
+) {
+  const { width, height, tamilFont, sansFont } = opts;
+  const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, invert);
+
+  ctx.fillStyle = invert ? ON_PRIMARY_MUTED : PRIMARY;
+  ctx.font = `600 ${Math.round(width * 0.03)}px ${sansFont}`;
+  ctx.fillText(`${kickerTamil} · ${kickerEnglish.toUpperCase()}`, geo.contentX, geo.contentTop);
+
+  const bodyFont = `500 ${Math.round(width * 0.046)}px ${tamilFont}`;
+  ctx.font = bodyFont;
+  const lineStep = width * 0.064;
+  const lines = wrapText(ctx, bodyLine, geo.contentWidth);
+  const blockH = lines.length * lineStep;
+  const startY = geo.contentTop + (geo.contentBottom - geo.contentTop) / 2 - blockH / 2 + width * 0.04;
+
+  ctx.fillStyle = invert ? ON_PRIMARY : FOREGROUND;
+  ctx.font = bodyFont;
+  drawCappedLines(ctx, lines, geo.contentX, startY, lineStep, geo.contentBottom);
+}
+
+function drawModernSituationFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
+  drawKickerBodyFrame(ctx, opts, "இன்றைய நிலை", "Modern Situation", storyboard.modernSituation, false);
+}
+
+/** Frame 3 (Human Action). The simple action in one line, then -- when
+ *  this poem has one -- the SAME living Tamil moment Frame 1 already
+ *  introduced, repeated here as the payoff (reel-storyboard-content.ts's
+ *  own doc comment: "introduced as Frame 1's hero payoff, then repeated as
+ *  Frame 3's own action beat"). Never a second, independently-authored
+ *  phrase. */
+function drawHumanActionFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
+  const { width, height, tamilFont, sansFont } = opts;
   const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, false);
-  drawSceneFrame(ctx, opts, geo, storyboard.frame2Scene);
+
+  ctx.fillStyle = PRIMARY;
+  ctx.font = `600 ${Math.round(width * 0.03)}px ${sansFont}`;
+  ctx.fillText("செயல் · HUMAN ACTION", geo.contentX, geo.contentTop);
+
+  const actionFont = `500 ${Math.round(width * 0.044)}px ${tamilFont}`;
+  ctx.font = actionFont;
+  const actionBlock: TextBlock = {
+    lines: wrapText(ctx, storyboard.modernAction, geo.contentWidth),
+    step: width * 0.06,
+    font: actionFont,
+    color: FOREGROUND,
+    gapBefore: 0,
+  };
+
+  const blocks: TextBlock[] = [actionBlock];
+  if (storyboard.livingTamilMoment) {
+    blocks.push(...buildLivingTamilMomentBlocks(ctx, opts, geo, storyboard.livingTamilMoment, height * 0.05));
+  }
+
+  const totalHeight = blocks.reduce((sum, b) => sum + blockHeight(b), 0);
+  const available = geo.contentBottom - geo.contentTop;
+  const startY = geo.contentTop + Math.max(0, (available - totalHeight) / 2) + width * 0.02;
+  drawTextBlocks(ctx, blocks, geo.contentX, startY, geo.contentBottom);
 }
 
-function drawPurananuruFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
+/** Frame 4 (Tamil Discovery). "This wisdom isn't new" -- an English intro
+ *  line, the verified canonical Tamil excerpt (never retyped, always
+ *  sliced live from canon.ts), its Tanglish transliteration, and a concise
+ *  English meaning gloss -- everything the old, separate "Purananuru" and
+ *  "Meaning" frames used to carry, now one frame (the new 7-frame grammar
+ *  needs the freed slots for Frames 2/3/5). The UNVERIFIED safeguard is
+ *  preserved exactly as before. */
+function drawTamilDiscoveryFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
   const { width, height, tamilFont, sansFont } = opts;
   const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, false);
 
   ctx.fillStyle = MUTED;
-  ctx.font = `500 ${Math.round(width * 0.028)}px ${sansFont}`;
+  ctx.font = `500 ${Math.round(width * 0.026)}px ${sansFont}`;
   ctx.fillText(
     truncateToWidth(ctx, `புறநானூறு ${storyboard.poemNumber} · ${storyboard.poet.toUpperCase()}`, geo.contentWidth),
     geo.contentX,
     geo.contentTop
   );
 
-  const lineStep = width * 0.075;
-  const emphasizedStep = width * 0.09;
-  const translitStep = width * 0.036;
-  const normalFont = `500 ${Math.round(width * 0.05)}px ${tamilFont}`;
-  const emphasizedFont = `700 ${Math.round(width * 0.058)}px ${tamilFont}`;
+  const introFont = `500 ${Math.round(width * 0.036)}px ${sansFont}`;
+  ctx.font = introFont;
+  const introBlock: TextBlock = {
+    lines: wrapText(ctx, storyboard.discoveryIntro, geo.contentWidth),
+    step: width * 0.05,
+    font: introFont,
+    color: PRIMARY,
+    gapBefore: height * 0.045,
+  };
 
-  // Two-pass layout -- measure every wrapped row first (so a 1-line excerpt
-  // like poem 192's and an emphasized 5-line excerpt like poem 189's both
-  // get their whole block vertically centered in the available space,
-  // rather than always starting flush under the kicker and leaving a short
-  // excerpt stranded in the top quarter of a 1920px-tall frame).
-  const rows: { text: string; font: string; color: string; step: number }[] = [];
+  const normalFont = `500 ${Math.round(width * 0.044)}px ${tamilFont}`;
+  const emphasizedFont = `700 ${Math.round(width * 0.05)}px ${tamilFont}`;
+  const tamilStep = width * 0.062;
+  const emphasizedStep = width * 0.075;
+
+  const tamilLines: string[] = [];
+  const tamilRowIsEmphasized: boolean[] = [];
   for (let i = 0; i < storyboard.excerptTamilLines.length; i++) {
     const emphasized = i === storyboard.emphasizeExcerptIndex;
     ctx.font = emphasized ? emphasizedFont : normalFont;
-    const step = emphasized ? emphasizedStep : lineStep;
     for (const wline of wrapText(ctx, storyboard.excerptTamilLines[i], geo.contentWidth)) {
-      rows.push({ text: wline, font: emphasized ? emphasizedFont : normalFont, color: emphasized ? PRIMARY : FOREGROUND, step });
+      tamilLines.push(wline);
+      tamilRowIsEmphasized.push(emphasized);
     }
   }
-  const translitLines = storyboard.excerptTransliterationLines ?? [];
-  const translitGap = translitLines.length ? height * 0.025 : 0;
+  // Tamil rows mix two font sizes, so they're drawn as individual
+  // single-line blocks (one TextBlock per row) rather than one shared
+  // TextBlock -- drawTextBlocks below still lays them out in the same
+  // "measure everything, then draw in one pass" stack as every other
+  // block on this frame.
+  const tamilBlocks: TextBlock[] = tamilLines.map((line, i) => ({
+    lines: [line],
+    step: tamilRowIsEmphasized[i] ? emphasizedStep : tamilStep,
+    font: tamilRowIsEmphasized[i] ? emphasizedFont : normalFont,
+    color: tamilRowIsEmphasized[i] ? PRIMARY : FOREGROUND,
+    gapBefore: i === 0 ? height * 0.03 : 0,
+  }));
 
-  const tamilBlockHeight = rows.reduce((sum, r) => sum + r.step, 0);
-  const translitBlockHeight = translitLines.length * translitStep;
-  const totalBlockHeight = tamilBlockHeight + translitGap + translitBlockHeight;
+  const translitFont = `italic 400 ${Math.round(width * 0.024)}px ${sansFont}`;
+  ctx.font = translitFont;
+  const translitBlock: TextBlock = {
+    lines: storyboard.excerptTransliterationLines ? [...storyboard.excerptTransliterationLines] : [],
+    step: width * 0.033,
+    font: translitFont,
+    color: MUTED,
+    gapBefore: height * 0.02,
+  };
 
-  const badgeReserve = storyboard.verified ? 0 : height * 0.05;
-  const blockTop = geo.contentTop + height * 0.06;
+  const meaningFont = `500 ${Math.round(width * 0.032)}px ${sansFont}`;
+  ctx.font = meaningFont;
+  const meaningBlock: TextBlock = {
+    lines: wrapText(ctx, storyboard.discoveryMeaning, geo.contentWidth),
+    step: width * 0.046,
+    font: meaningFont,
+    color: FOREGROUND,
+    gapBefore: height * 0.035,
+  };
+
+  const blocks: TextBlock[] = [introBlock, ...tamilBlocks, translitBlock, meaningBlock];
+  const badgeReserve = storyboard.verified ? 0 : height * 0.045;
+  const blockTop = geo.contentTop + height * 0.04;
   const blockBottom = geo.contentBottom - badgeReserve;
+  const totalHeight = blocks.reduce((sum, b) => sum + blockHeight(b), 0);
   const available = Math.max(0, blockBottom - blockTop);
-  let cursorY = blockTop + Math.max(0, (available - totalBlockHeight) / 2);
-
-  for (const row of rows) {
-    const nextY = cursorY + row.step;
-    if (nextY > blockBottom) break;
-    cursorY = nextY;
-    ctx.fillStyle = row.color;
-    ctx.font = row.font;
-    ctx.fillText(row.text, geo.contentX, cursorY);
-  }
-
-  if (translitLines.length) {
-    cursorY += translitGap;
-    ctx.fillStyle = MUTED;
-    ctx.font = `italic 400 ${Math.round(width * 0.026)}px ${sansFont}`;
-    cursorY = drawCappedLines(ctx, translitLines, geo.contentX, cursorY, translitStep, blockBottom);
-  }
+  const startY = blockTop + Math.max(0, (available - totalHeight) / 2);
+  drawTextBlocks(ctx, blocks, geo.contentX, startY, blockBottom);
 
   if (!storyboard.verified) {
     ctx.fillStyle = WARNING;
-    ctx.font = `600 ${Math.round(width * 0.023)}px ${sansFont}`;
+    ctx.font = `600 ${Math.round(width * 0.021)}px ${sansFont}`;
     ctx.fillText("⚠ UNVERIFIED — confirm against source before publishing", geo.contentX, geo.contentBottom);
   }
 }
 
-function drawStatementFrame(
-  ctx: CanvasRenderingContext2D,
-  opts: RenderPurananuruReelOptions,
-  kickerTamil: string,
-  kickerEnglish: string,
-  bodyLine: string
-) {
+/** Frame 5 (Aram) -- the value, explicitly named, never left an invisible
+ *  layer. "அறம்" itself is a fixed, universal label drawn on every poem's
+ *  Frame 5 (not authored per poem -- it is simply the Tamil word for this
+ *  frame's own role, the same "fixed role kicker" convention the other
+ *  frames already use); `aram.value`/`aram.explanation` are the only
+ *  poem-specific content. */
+function drawAramFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
   const { width, height, tamilFont, sansFont } = opts;
   const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, false);
 
-  ctx.fillStyle = PRIMARY;
-  ctx.font = `600 ${Math.round(width * 0.03)}px ${sansFont}`;
-  ctx.fillText(`${kickerTamil} · ${kickerEnglish.toUpperCase()}`, geo.contentX, geo.contentTop);
+  const aramWordFont = `700 ${Math.round(width * 0.09)}px ${tamilFont}`;
+  const valueFont = `600 ${Math.round(width * 0.05)}px ${sansFont}`;
+  const explanationFont = `500 ${Math.round(width * 0.038)}px ${tamilFont}`;
 
-  ctx.fillStyle = FOREGROUND;
-  ctx.font = `500 ${Math.round(width * 0.052)}px ${tamilFont}`;
-  const lineStep = width * 0.072;
-  const lines = wrapText(ctx, bodyLine, geo.contentWidth);
-  const blockHeight = lines.length * lineStep;
-  const startY = geo.contentTop + (geo.contentBottom - geo.contentTop) / 2 - blockHeight / 2 + width * 0.04;
-  drawCappedLines(ctx, lines, geo.contentX, startY, lineStep, geo.contentBottom);
+  ctx.font = valueFont;
+  const valueLines = wrapText(ctx, storyboard.aram.value, geo.contentWidth);
+  ctx.font = explanationFont;
+  const explanationLines = wrapText(ctx, storyboard.aram.explanation, geo.contentWidth);
+
+  const blocks: TextBlock[] = [
+    { lines: ["அறம்"], step: width * 0.11, font: aramWordFont, color: PRIMARY, gapBefore: 0 },
+    { lines: valueLines, step: width * 0.066, font: valueFont, color: FOREGROUND, gapBefore: height * 0.045 },
+    { lines: explanationLines, step: width * 0.054, font: explanationFont, color: FOREGROUND, gapBefore: height * 0.03 },
+  ];
+
+  const totalHeight = blocks.reduce((sum, b) => sum + blockHeight(b), 0);
+  const available = geo.contentBottom - geo.contentTop;
+  const startY = geo.contentTop + Math.max(0, (available - totalHeight) / 2);
+  drawTextBlocks(ctx, blocks, geo.contentX, startY, geo.contentBottom);
 }
 
-function drawMeaningFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
-  drawStatementFrame(ctx, opts, "படிப்பினை", "What It Teaches", storyboard.meaningLine);
+/** Frame 6 (How To Teach). The one deliberate visual-rhythm break in the
+ *  sequence: a full-indigo panel, inverted chrome, so the practical
+ *  teaching question gets a visibly different moment than the calm,
+ *  off-white frames around it -- same treatment this frame's role has
+ *  always had in this template, just carrying the new teachingQuestion
+ *  content. */
+function drawTeachingFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
+  drawKickerBodyFrame(ctx, opts, "கற்பிப்போம்", "How To Teach", storyboard.teachingQuestion, true);
 }
 
-function drawTodayFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
-  const { width, height, sansFont } = opts;
-  const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, false);
-  drawSceneFrame(ctx, opts, geo, storyboard.frame5Scene);
-}
-
-function drawReflectionFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
-  const { width, height, tamilFont, sansFont } = opts;
-  // The one deliberate visual-rhythm break in the sequence: a full-indigo
-  // panel, inverted chrome, so the reflection question gets a visibly
-  // different moment than the six calm, off-white frames around it.
-  const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, true);
-
-  ctx.fillStyle = ON_PRIMARY;
-  ctx.font = `600 ${Math.round(width * 0.062)}px ${tamilFont}`;
-  const lineStep = width * 0.085;
-  const lines = storyboard.reflectionLines.flatMap((line) => wrapText(ctx, line, geo.contentWidth));
-  const blockHeight = lines.length * lineStep;
-  const startY = geo.contentTop + (geo.contentBottom - geo.contentTop) / 2 - blockHeight / 2 + width * 0.05;
-  drawCappedLines(ctx, lines, geo.contentX, startY, lineStep, geo.contentBottom);
-}
-
-function drawSignatureFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
+/** Frame 7 (Practise / Pass It On). Tamil heritage -> family practice ->
+ *  next generation, one configurable CTA, and the brand mark -- the only
+ *  frame in the sequence carrying any brand mark at all (see this file's
+ *  own header). */
+function drawPracticeFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
   const { width, height, tamilFont, sansFont } = opts;
   const geo = drawFrameChrome(ctx, width, height, opts.frameIndex, sansFont, false);
 
@@ -681,17 +572,35 @@ function drawSignatureFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananur
     clearBox: { x: 0, y: 0, width, height },
   });
 
-  ctx.fillStyle = FOREGROUND;
-  ctx.font = `600 ${Math.round(width * 0.058)}px ${tamilFont}`;
-  const lineStep = width * 0.08;
-  const lines = ["தமிழ் சொன்னது.", "நாம் வாழ்வோமா?"];
-  const blockHeight = lines.length * lineStep;
-  const startY = geo.contentTop + (geo.contentBottom - geo.contentTop) / 2 - blockHeight / 2;
-  drawCappedLines(ctx, lines, geo.contentX, startY, lineStep, geo.contentBottom);
+  const heritageFont = `600 ${Math.round(width * 0.046)}px ${tamilFont}`;
+  ctx.font = heritageFont;
+  const heritageBlock: TextBlock = {
+    lines: wrapText(ctx, storyboard.heritageStatement, geo.contentWidth),
+    step: width * 0.062,
+    font: heritageFont,
+    color: FOREGROUND,
+    gapBefore: 0,
+  };
 
-  // The ONLY frame in the sequence carrying any brand mark -- see this
-  // file's own header on "keep branding subtle" being honored by leaving
-  // it off every other frame rather than shrinking it on all seven.
+  const ctaFont = `600 ${Math.round(width * 0.032)}px ${sansFont}`;
+  ctx.font = ctaFont;
+  const ctaBlock: TextBlock = {
+    lines: wrapText(ctx, storyboard.cta.label, geo.contentWidth),
+    step: width * 0.046,
+    font: ctaFont,
+    color: PRIMARY,
+    gapBefore: height * 0.04,
+  };
+
+  const brandReserve = opts.brandingWordmark ? height * 0.06 : 0;
+  const blockTop = geo.contentTop;
+  const blockBottom = geo.contentBottom - brandReserve;
+  const blocks = [heritageBlock, ctaBlock];
+  const totalHeight = blocks.reduce((sum, b) => sum + blockHeight(b), 0);
+  const available = Math.max(0, blockBottom - blockTop);
+  const startY = blockTop + Math.max(0, (available - totalHeight) / 2);
+  drawTextBlocks(ctx, blocks, geo.contentX, startY, blockBottom);
+
   if (opts.brandingWordmark) {
     const brandY = geo.contentBottom;
     if (opts.logoImage) {
@@ -732,25 +641,25 @@ export function renderPurananuruReelFrame(ctx: CanvasRenderingContext2D, opts: R
   }
   switch (opts.frameIndex) {
     case 0:
-      drawHookFrame(ctx, opts, storyboard);
+      drawParentHookFrame(ctx, opts, storyboard);
       break;
     case 1:
-      drawHumanMomentFrame(ctx, opts, storyboard);
+      drawModernSituationFrame(ctx, opts, storyboard);
       break;
     case 2:
-      drawPurananuruFrame(ctx, opts, storyboard);
+      drawHumanActionFrame(ctx, opts, storyboard);
       break;
     case 3:
-      drawMeaningFrame(ctx, opts, storyboard);
+      drawTamilDiscoveryFrame(ctx, opts, storyboard);
       break;
     case 4:
-      drawTodayFrame(ctx, opts, storyboard);
+      drawAramFrame(ctx, opts, storyboard);
       break;
     case 5:
-      drawReflectionFrame(ctx, opts, storyboard);
+      drawTeachingFrame(ctx, opts, storyboard);
       break;
     default:
-      drawSignatureFrame(ctx, opts, storyboard);
+      drawPracticeFrame(ctx, opts, storyboard);
   }
 }
 
