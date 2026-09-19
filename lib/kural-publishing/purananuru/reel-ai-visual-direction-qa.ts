@@ -14,17 +14,19 @@
  * ComposedReelStoryboard -- it only inspects already-composed data and
  * reports on it.
  *
- * PHASE 9C CORRECTION (Teaching Direction integration): checkTeachingConnection
- * below verifies the AI Visual Direction is actually DERIVED from the
- * poem's approved teachingDirection, not merely composed alongside it --
- * see reel-ai-visual-direction.ts's own buildTeachingIntentText, which
- * builds the prompt's TEACHING INTENT section by quoting
- * storyboard.teachingDirection's fields verbatim. Every check here uses
- * the live structured data already on ComposedReelStoryboard (coreValue,
- * teachingMoment, childRelevance, motionDirection.relationship.consequence)
- * -- never a hardcoded per-poem-number keyword table -- matching the
- * existing checkSemanticConsistency check's own convention of comparing
- * real structured fields rather than free-text guesswork.
+ * FINAL TEACHING ARCHITECTURE: checkTeachingConnection below verifies the
+ * AI Visual Direction is actually DERIVED from the poem's approved
+ * teachingDirection -- WITHOUT requiring the prompt to quote
+ * coreValue/teachingMoment/childRelevance verbatim anywhere (see
+ * reel-ai-visual-direction.ts's own module header on why the earlier
+ * verbatim "TEACHING INTENT" block was removed: it over-explained the
+ * child lesson inside an adult cinematic scene). Derivation is instead
+ * proven structurally, against the live data already on
+ * ComposedReelStoryboard (coreValue, motionDirection.relationship.
+ * consequence, motionDirection.sequenceLabel) -- never a hardcoded
+ * per-poem-number keyword table -- matching the existing
+ * checkSemanticConsistency check's own convention of comparing real
+ * structured fields rather than free-text guesswork.
  */
 
 import type { ComposedReelAIVisualDirection, ReelAIFrameDirection } from "./reel-ai-visual-direction";
@@ -166,7 +168,6 @@ const PROMPT_QUALITY_CHECKS: readonly { label: string; check: (prompt: string) =
   { label: "a composition description", check: (p) => hasWord(p, "COMPOSITION") },
   { label: "an emotional-state description", check: (p) => hasWord(p, "EMOTION") },
   { label: "continuity guidance", check: (p) => hasWord(p, "VISUAL CONTINUITY") },
-  { label: "teaching-intent guidance", check: (p) => hasWord(p, "TEACHING INTENT") },
 ];
 
 /** Prompt quality: each generated prompt must actually contain the
@@ -256,25 +257,23 @@ function deriveTeachingKeywords(storyboard: ComposedReelStoryboard): string[] {
 }
 
 /** Teaching connection: verifies the AI Visual Direction is actually
- *  DERIVED from this poem's approved Teaching Direction, not merely
- *  composed alongside it -- see this file's own module header. Three
- *  checks, each against the real structured data on ComposedReelStoryboard,
- *  never a hardcoded per-poem lookup table:
+ *  DERIVED from this poem's approved Teaching Direction -- structurally,
+ *  never by requiring the prompt to quote coreValue/teachingMoment/
+ *  childRelevance verbatim (see this file's own module header on why:
+ *  that would put the child lesson explicitly inside an adult cinematic
+ *  scene, exactly what the final architecture avoids). Two checks, each
+ *  against the real structured data on ComposedReelStoryboard, never a
+ *  hardcoded per-poem lookup table:
  *   1. Existence -- the Teaching Direction this AI direction is supposed
- *      to be derived from actually has content.
- *   2. Derivation -- the poem's own teachingMoment text (verbatim, not a
- *      paraphrase) actually landed in both composed frame prompts. Since
- *      reel-ai-visual-direction.ts's buildTeachingIntentText builds the
- *      TEACHING INTENT section by quoting teachingMoment directly, this
- *      passes by construction whenever the pipeline is wired correctly,
- *      and fails the moment it silently stops being wired (a stale
- *      prompt, a mismatched storyboard, a refactor that drops the
- *      section) -- a real regression guard, not a tautology.
- *   3. Semantic concept -- the storyContextLine names at least one
- *      significant word this poem's own coreValue/motion consequence
- *      already establishes (deriveTeachingKeywords), so the story context
- *      isn't just generically "a nice story" disconnected from the
- *      specific value being taught. */
+ *      to be derived from actually has content, and the AI direction has
+ *      a story context for that Teaching Direction to have shaped.
+ *   2. Semantic concept -- BOTH frames' composed prompts (story context,
+ *      frame state, composition, subject action, and emotional tone all
+ *      live inside `frame.prompt`) each name at least one significant
+ *      word this poem's own coreValue/motion consequence/sequenceLabel
+ *      already establishes (deriveTeachingKeywords) -- proof the teaching
+ *      concept actually threads through the story itself, not just
+ *      through a same-poem coincidence in the continuity bible. */
 function checkTeachingConnection(
   aiDirection: ComposedReelAIVisualDirection,
   storyboard: ComposedReelStoryboard,
@@ -291,21 +290,18 @@ function checkTeachingConnection(
     messages.push("The AI Visual Direction has no story context -- there is nothing for the Teaching Direction to inform.");
   }
 
-  const teachingMoment = teachingDirection.teachingMoment.trim();
-  if (!aiDirection.frame2.prompt.includes(teachingMoment)) {
-    messages.push("Frame 2's prompt doesn't include this poem's own Teaching Moment -- it may not actually be derived from the approved Teaching Direction.");
-  }
-  if (!aiDirection.frame5.prompt.includes(teachingMoment)) {
-    messages.push("Frame 5's prompt doesn't include this poem's own Teaching Moment -- it may not actually be derived from the approved Teaching Direction.");
-  }
-
   const keywords = deriveTeachingKeywords(storyboard);
   if (keywords.length > 0) {
-    const hasMatch = keywords.some((keyword) => hasWordStem(aiDirection.storyContextLine, keyword));
-    if (!hasMatch) {
-      messages.push(
-        `The story context doesn't reflect this poem's own teaching concept (expected it to echo one of: ${keywords.join(", ")}).`
-      );
+    for (const [label, frame] of [
+      ["Frame 2", aiDirection.frame2],
+      ["Frame 5", aiDirection.frame5],
+    ] as const) {
+      const hasMatch = keywords.some((keyword) => hasWordStem(frame.prompt, keyword));
+      if (!hasMatch) {
+        messages.push(
+          `${label}'s prompt doesn't reflect this poem's own teaching concept (expected it to echo one of: ${keywords.join(", ")}).`
+        );
+      }
     }
   }
 }

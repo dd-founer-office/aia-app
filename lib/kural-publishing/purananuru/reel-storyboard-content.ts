@@ -34,6 +34,28 @@
  * hook, a modern reflection question -- clearly never presented as the
  * classical poem's own words. No historical fact is introduced beyond what
  * canon.ts's own simpleMeaning/poet fields already establish.
+ *
+ * FINAL TEACHING ARCHITECTURE: the seven frames now follow one teaching
+ * journey, not seven independent captions:
+ *
+ *   01 Hook               -- pose the human dilemma, reveal nothing yet
+ *   02 Human Moment/Before -- SHOW the value: the choice not yet made
+ *   03 Purananuru          -- this wisdom already exists in Tamil tradition
+ *   04 What It Teaches     -- teachingDirection.coreValue + teachingMoment
+ *   05 Human Moment/After  -- SHOW the value acted upon, resolved; a light
+ *                             "today" undertone bridges toward the child
+ *   06 Talk With Your Child -- teachingDirection.conversationHook
+ *   07 Signature            -- unchanged brand frame
+ *
+ * Frame 2 / Frame 5 (Layer A, the cinematic human story) stay exactly what
+ * they always were -- an abstract before/after visual pair that makes the
+ * viewer FEEL the value, never an illustration of the child lesson itself
+ * (no child needs to appear in them; see ReelTeachingDirection's own doc
+ * comment on "story characters != teaching audience"). Frame 4 and Frame 6
+ * (Layer B, the parent-to-child teaching bridge) are where the lesson is
+ * actually spelled out, in Tamil, as a faithful rendering of the already-
+ * approved teachingDirection -- never a second, independently-authored
+ * interpretation of the poem.
  */
 
 import type { ComposedPoem } from "./content-engine";
@@ -309,16 +331,41 @@ export interface ReelStoryboardEditorial {
    *  to render with visual emphasis -- e.g. poem 189's brief calls for
    *  "செல்வத்துப் பயனே ஈதல்" to appear prominently within its excerpt. */
   emphasizeLineIndex?: number;
-  /** Frame 4 (Meaning). Simple contemporary Tamil explanation of the
-   *  selected idea -- modern interpretation, not a retranslation of the
-   *  verse, and never merged into canon.ts's own simpleMeaning field. */
+  /** Frame 4 ("What It Teaches"). A Tamil rendering of THIS poem's own
+   *  teachingDirection.coreValue + teachingMoment (see each poem's own
+   *  "Source:" comment below for exactly which words it traces to) -- not
+   *  a retranslation of the verse, and never merged into canon.ts's own
+   *  simpleMeaning field. Final Teaching Architecture revision: this used
+   *  to be a plain gloss of the poem's literal meaning; its job is now
+   *  specifically to answer "what does this poem TEACH", the same
+   *  question teachingDirection.teachingMoment already answers in
+   *  English for the parent-facing UI -- this is the Tamil-script version
+   *  that actually appears on the exported PNG (drawn with tamilFont,
+   *  same as every other frame's body text), so it cannot simply reuse
+   *  the English string. coreValue/teachingMoment stay the single source
+   *  of TRUTH; this is a faithful Tamil RENDERING of them, not an
+   *  independently-evolving second interpretation -- exactly the same
+   *  "same idea, different script" relationship hookLines already has to
+   *  the poem's own dilemma. */
   meaningLine: string;
   /** Frame 5 (Today). The same abstract visual-scene grammar as Frame 2,
    *  showing the SAME sceneType family's resolution (the object crossing
    *  the gap, the columns leveling, the isolated figure joining the
-   *  cluster) rather than a second unrelated composition. */
+   *  cluster) rather than a second unrelated composition. Final Teaching
+   *  Architecture revision: this frame has two connected jobs -- resolve
+   *  Frame 2's cinematic story (unchanged), AND bridge to "this happens
+   *  in your child's world today too" (its captionLine below now carries
+   *  a light "today" undertone alongside the resolution, where doing so
+   *  doesn't cost the resolution its own clarity -- the fuller
+   *  child-relevance text itself stays teachingDirection.childRelevance,
+   *  read directly by the UI, never retyped here). */
   frame5Scene: ReelVisualScene;
-  /** Frame 6 (Reflection). Exact lines as specified for this experiment. */
+  /** Frame 6 ("Talk With Your Child"). A Tamil rendering of THIS poem's
+   *  own teachingDirection.conversationHook -- a genuine question for a
+   *  parent to ask, not an answer, not a moral instruction (see each
+   *  poem's own "Source:" comment below). Same "faithful rendering, not a
+   *  second interpretation" relationship to conversationHook that
+   *  meaningLine now has to coreValue/teachingMoment above. */
   reflectionLines: readonly string[];
   /** Phase 9A. Motion-direction spec for this poem's whole Frame 2 -> Frame
    *  5 transition -- see ReelMotionDirection's own doc comment. Direction
@@ -356,8 +403,14 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
     // unsourced, just because they are not the strongest lines for a
     // 7-second frame.
     excerptLineRange: [8, 10],
+    // Frame 4 -- "What It Teaches". Tamil rendering of teachingDirection.
+    // coreValue ("Generosity") + teachingMoment ("Real generosity isn't
+    // giving away what you don't need -- it's noticing when someone else
+    // needs the very thing you were counting on for yourself, and
+    // choosing to let them have it anyway."). Replaces the old plain
+    // poem-gloss meaningLine.
     meaningLine:
-      "ஆயுளை நீட்டிக்கும் என நம்பப்பட்ட ஒரு அரிய பழம் அதியமானுக்குக் கிடைத்தது. அதைத் தனக்கு வைத்துக்கொள்ளாமல், அவன் ஔவையாருக்குக் கொடுத்தான்.",
+      "தாராள குணம் என்பது தேவையற்றதை மட்டும் கொடுப்பதல்ல. நமக்கு மிகவும் தேவையான ஒன்றை, இன்னொருவருக்கு அதிகத் தேவை என உணர்ந்து, அதைக் கொடுக்கத் தேர்ந்தெடுப்பதே தாராள குணம்.",
     frame5Scene: {
       sceneType: "choice",
       title: "THE CHOICE",
@@ -365,12 +418,19 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
         "The same valuable object now shown moving from Figure A toward Figure B, mid-transfer, across the same gap seen in the earlier scene -- the moment of the choice itself, not a location.",
       visualMotif: "The accent object sits along a connecting arc between the two figures, now closer to Figure B than before.",
       composition: "Same two-figure baseline as before; the gap has narrowed and the object has crossed into it.",
-      captionLine: "அந்த தேர்வு.",
+      // Resolution ("the choice") + a light "today" undertone (Frame 5's
+      // second job -- see this file's own module header) in one short
+      // phrase: "A choice that's possible even today."
+      captionLine: "இன்றும் சாத்தியமான தேர்வு.",
       storyRole: "transformation",
       emotionalMovement: "Rare Gift → Choice",
       visualRelationship: "object-person",
     },
-    reflectionLines: ["உங்களுக்கு மிகவும் தேவையான ஒன்றை,", "யாருக்காவது கொடுத்திருப்பீர்களா?"],
+    // Frame 6 -- "Talk With Your Child". Tamil rendering of
+    // teachingDirection.conversationHook ("Have you ever had something
+    // you really wanted to keep, but someone else needed it more?") -- a
+    // genuine question, not an answer.
+    reflectionLines: ["உங்களுக்குப் பிடித்த ஒன்றை வைத்துக்கொள்ள விரும்பினீர்களா,", "வேறொருவருக்கு அது அதிகத் தேவை என்றாலும்?"],
     // rare gift -> choice: the object itself is what moves, crossing the
     // same visual gap the two frames already share -- "transfer" per the
     // brief's own poem-91 example, actor is the object (not either
@@ -428,7 +488,12 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
     // included and emphasized (see emphasizeLineIndex).
     excerptLineRange: [4, 8],
     emphasizeLineIndex: 7,
-    meaningLine: "நம் தனிப்பட்ட தேவைகள் வரையறுக்கப்பட்டவை. மீதம் இருப்பதை என்ன செய்கிறோம் என்பதே கேள்வி.",
+    // Frame 4 -- "What It Teaches". Tamil rendering of teachingDirection.
+    // coreValue ("Sharing what you have") + teachingMoment ("your own
+    // needs are still just as simple as theirs... What makes what you
+    // have worth anything is what you choose to do with what's left
+    // over, not how much of it you pile up.").
+    meaningLine: "நமக்கு எவ்வளவு இருந்தாலும், நம் சொந்தத் தேவைகள் எளியவையே. மீதம் இருப்பதை என்ன செய்கிறோம் என்பதே, அதன் மதிப்பைத் தீர்மானிக்கிறது.",
     // Deliberately no donation button, no charity logo, no reference to
     // Aram in Action -- this is a literary experiment, not a fundraising
     // creative.
@@ -439,12 +504,19 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
         "The relationship between the two columns shifts: a few units move from the taller column toward the shorter one, which is now nearly level with it -- accumulation becoming usefulness. No donation iconography of any kind.",
       visualMotif: "A few units mid-transit along a connecting arc from the tall column to the short column; the two heights are now visibly closer.",
       composition: "Same two-column layout as Frame 2, redrawn with the height gap reduced.",
+      // Left as-is (Final Teaching Architecture pass): already a
+      // self-directed, present-tense question ("What will I do with
+      // what remains?") -- it reads as "today" on its own without
+      // needing an explicit bridge word, unlike poem 91/192's captions.
       captionLine: "மிச்சம் இருப்பதை என்ன செய்வேன்?",
       storyRole: "resolution",
       emotionalMovement: "Abundance → Sharing",
       visualRelationship: "column-column",
     },
-    reflectionLines: ["உங்கள் வசதி,", "உங்களுக்காக மட்டும் இருக்கிறதா?"],
+    // Frame 6 -- "Talk With Your Child". Tamil rendering of
+    // teachingDirection.conversationHook ("If you had more of something
+    // than you actually needed, what would you do with the extra?").
+    reflectionLines: ["உங்களுக்குத் தேவைக்கு மேல் ஏதாவது இருந்தால்,", "அந்த மிச்சத்தை என்ன செய்வீர்கள்?"],
     // abundance -> sharing: the two columns move toward balance -- the
     // taller column is the actor (it has the excess to give up), the
     // shorter column is what it levels with. "equalize" per the brief's
@@ -506,7 +578,13 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
     // "புணை / புனை" wording disagreement recorded in canon.ts's own header
     // stays untouched and out of scope for this first Reel cut).
     excerptLineRange: [0, 0],
-    meaningLine: "எந்த இடமும் முற்றிலும் அந்நியமானது இல்லை. எந்த மனிதரும் முற்றிலும் தொடர்பற்றவர் இல்லை.",
+    // Frame 4 -- "What It Teaches". Tamil rendering of teachingDirection.
+    // coreValue ("Belonging") + teachingMoment ("No one is really a
+    // stranger for long -- everyone goes through the same joys, the same
+    // hard days, and the same ordinary life underneath whatever makes
+    // them look different from you at first...").
+    meaningLine:
+      "வெளியில் நாம் வேறுபட்டுத் தெரியலாம். ஆனால் உள்ளே அனைவரும் ஒரே மகிழ்ச்சியையும் ஒரே கஷ்டத்தையும் கடந்து செல்கிறோம் -- அதனால் யாரும் முற்றிலும் அந்நியர் இல்லை.",
     frame5Scene: {
       sceneType: "belonging",
       title: "NOT A STRANGER ANYMORE",
@@ -514,12 +592,18 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
         "The same isolated figure now sits closer to the cluster, filled in with the same visual weight as the others, becoming part of the group -- no flags, no maps, no world-peace imagery, just the distance closing.",
       visualMotif: "The formerly outlined figure is now filled and positioned at the near edge of the cluster; the earlier gap is closed.",
       composition: "Same cluster layout as Frame 2, redrawn with the figure integrated into the group.",
-      captionLine: "இனி அந்நியன் இல்லை.",
+      // Resolution ("no longer a stranger") + a light "today" undertone
+      // (Frame 5's second job -- see this file's own module header):
+      // "Today too, this is no longer a stranger."
+      captionLine: "இன்று இனி அந்நியன் இல்லை.",
       storyRole: "resolution",
       emotionalMovement: "Stranger → Belonging",
       visualRelationship: "individual-community",
     },
-    reflectionLines: ["இன்று நீங்கள் சந்திக்கும் அந்நியர்,", "உங்களுக்கு எப்படிப்பட்டவர்?"],
+    // Frame 6 -- "Talk With Your Child". Tamil rendering of
+    // teachingDirection.conversationHook ("What could we do when we see
+    // someone standing alone?").
+    reflectionLines: ["தனியாக நிற்கும் ஒருவரைப் பார்த்தால்,", "நாம் என்ன செய்யலாம்?"],
     // stranger -> belonging: the isolated figure is the actor, moving
     // toward the community group until the gap closes -- "connect" per
     // the brief's own poem-192 example (its "merge / connect" suggestion,

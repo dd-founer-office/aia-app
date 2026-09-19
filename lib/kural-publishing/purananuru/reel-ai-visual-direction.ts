@@ -14,22 +14,26 @@
  *
  *   Poem -> Teaching Direction -> Visual Story -> Motion Direction -> HERE -> prompts
  *
- * PHASE 9C CORRECTION (Teaching Direction integration): the Teaching
- * Direction is not a card that sits beside these prompts -- it is why the
- * prompts say what they say. Every frame prompt now includes a TEACHING
- * INTENT section built directly from the live storyboard's own
- * teachingDirection (buildTeachingIntentText below) -- never a second,
- * hand-typed copy of coreValue/teachingMoment/childRelevance, and never a
- * new content model: this file only ever READS
- * ComposedReelStoryboard.teachingDirection, the same field
- * reel-storyboard-content.ts's own Teaching Direction card already reads.
- * Each poem's storyContextLine (below) was also rewritten to encode the
- * SAME teaching moment's full choice arc (having -> recognizing ->
- * choosing -> acting), not just the outcome -- see each poem's own comment
- * for exactly which words of its teachingMoment that rewrite traces back
- * to. reel-ai-visual-direction-qa.ts's checkTeachingConnection verifies
- * this connection stays real (not just present in the source) by checking
- * the live teachingMoment text actually appears in the composed prompt.
+ * FINAL TEACHING ARCHITECTURE (this file's second correction): an earlier
+ * revision made this connection by appending an explicit "TEACHING INTENT"
+ * block to every prompt, quoting coreValue/teachingMoment/childRelevance
+ * directly. That over-explained the child lesson inside what is supposed
+ * to be an ADULT cinematic scene -- Frame 2 and Frame 5 are the human
+ * demonstration of the value (Layer A: "let the parent SEE it"), not a
+ * literal illustration of the child lesson (Layer B: Frame 4/"What It
+ * Teaches" and Frame 6/"Talk With Your Child" in
+ * reel-storyboard-content.ts carry that explicitly instead). That block
+ * has been removed. The Teaching Direction still shapes every frame here
+ * -- STORY CONTEXT, FRAME STATE, COMPOSITION, SUBJECT ACTION, and EMOTION
+ * were all authored FROM the poem's own teachingMoment (see each poem's
+ * own comment below for exactly which words that authoring traces back
+ * to) -- but the connection now lives IN the story itself, never as a
+ * separate quoted paragraph telling the image model what the story means.
+ * This file still only ever READS ComposedReelStoryboard.teachingDirection
+ * (via reel-ai-visual-direction-qa.ts's checkTeachingConnection, which
+ * verifies the connection deterministically without needing the text
+ * quoted verbatim in the prompt) -- never a second, hand-typed copy of
+ * coreValue/teachingMoment/childRelevance, and never a new content model.
  *
  * The Phase 9B abstract motion system (purananuru-reel-motion-preview-
  * renderer.ts) is UNCHANGED and UNREAD by this file -- it remains the
@@ -74,7 +78,7 @@
  * abstract shapes or a rich/poor character stereotype.
  */
 
-import type { ComposedReelStoryboard, ReelTeachingDirection } from "./reel-storyboard-content";
+import type { ComposedReelStoryboard } from "./reel-storyboard-content";
 
 /** One of two (or, for a "community", one collective) subjects appearing
  *  in BOTH Frame 2 and Frame 5 -- the same person, unchanged, in both
@@ -265,35 +269,15 @@ function formatCharacterLine(character: ReelAICharacter): string {
   return `${character.role} -- ${age}${character.appearance}. Wearing: ${character.clothing}.${relationship}`;
 }
 
-/** Teaching Direction integration (see this file's own module header).
- *  Built directly from the live storyboard's own teachingDirection --
- *  never authored per poem/frame -- so it can never say something the
- *  approved Teaching Direction card doesn't already say, and so
- *  reel-ai-visual-direction-qa.ts's checkTeachingConnection can verify the
- *  connection is real by checking this exact teachingMoment text landed in
- *  the composed prompt. Written as an instruction TO the image model
- *  (Part 11's own requirement), never as text meant to be rendered inside
- *  the image itself -- the closing sentence says so explicitly. */
-function buildTeachingIntentText(teachingDirection: ReelTeachingDirection): string {
-  return [
-    `This image exists to make one human value -- ${teachingDirection.coreValue} -- visible through action, not through symbolism or text: ${teachingDirection.teachingMoment}`,
-    "Translate that choice into body language, physical distance, who holds or needs what, and small deliberate gestures -- never into literal text, symbols, or a caption inside the image.",
-    `Keep the human situation as simple and recognizable as the way this same choice shows up in ordinary life: ${teachingDirection.childRelevance}`,
-    "Do not depict this as a moral poster, a classroom illustration, or a staged \"lesson\" -- it must read as one real, lived, cinematic moment that both a parent and a child could understand without any caption or explanation.",
-  ].join(" ");
-}
-
 function buildFramePrompt(
   editorial: ReelAIVisualDirectionEditorial,
   frame: ReelAIFrameDirectionEditorial,
-  otherFrameNumber: 2 | 5,
-  teachingDirection: ReelTeachingDirection
+  otherFrameNumber: 2 | 5
 ): string {
   const bible = editorial.continuityBible;
   const propsText = bible.recurringProps.map(stripSemanticTag).join(", ");
   const charactersText = bible.characters.map(formatCharacterLine).join("\n");
   const negative = buildNegativePromptText(frame);
-  const teachingIntent = buildTeachingIntentText(teachingDirection);
 
   return [
     "Create a vertical 9:16 cinematic editorial image.",
@@ -309,9 +293,6 @@ function buildFramePrompt(
     "",
     "VISUAL CONTINUITY",
     `This is one of two images in the same visual story -- Frame ${otherFrameNumber} shows the exact same people, the exact same location, the exact same lighting and time of day, the exact same clothing, and the exact same key props (${propsText}). Every physical detail of the people and the setting must match the other frame precisely; only the story state below should differ.`,
-    "",
-    "TEACHING INTENT (guidance for the image model, not text to render)",
-    teachingIntent,
     "",
     "FRAME STATE",
     frame.state,
@@ -428,7 +409,7 @@ export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirection
       emotionalTone:
         "A quiet internal tension between wanting to keep and choosing to give -- warm, not sad or tense; the hesitation reads as thoughtful, not reluctant or resentful.",
       keyVisualDetails: [
-        "giftObject held close to the giver's own body, not yet extended toward the elder",
+        "the gift held close to the giver's own body, not yet extended toward the elder",
         "a clear band of open space between the two figures",
         "soft, natural late-afternoon light picking out both faces evenly",
       ],
@@ -445,7 +426,7 @@ export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirection
       emotionalTone:
         "Warmth and quiet relief -- the tension of the earlier moment has resolved into ease; the giver reads as lighter, not diminished, by having let go of what they were holding.",
       keyVisualDetails: [
-        "giftObject now held by the elder, in the same wrapped/cupped form as before",
+        "the gift now held by the elder, in the same wrapped/cupped form as before",
         "the earlier gap between the two figures now closed",
         "the same golden late-afternoon light, unchanged from the first frame",
       ],
@@ -648,16 +629,14 @@ export function buildComposedReelAIVisualDirection(storyboard: ComposedReelStory
   const editorial = getReelAIVisualDirectionEditorial(storyboard.poemNumber);
   if (!editorial) return null;
 
-  const { teachingDirection } = storyboard;
-
   const frame2: ReelAIFrameDirection = {
     ...editorial.frame2,
-    prompt: buildFramePrompt(editorial, editorial.frame2, 5, teachingDirection),
+    prompt: buildFramePrompt(editorial, editorial.frame2, 5),
     negativePrompt: buildNegativePromptText(editorial.frame2),
   };
   const frame5: ReelAIFrameDirection = {
     ...editorial.frame5,
-    prompt: buildFramePrompt(editorial, editorial.frame5, 2, teachingDirection),
+    prompt: buildFramePrompt(editorial, editorial.frame5, 2),
     negativePrompt: buildNegativePromptText(editorial.frame5),
   };
 

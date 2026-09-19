@@ -3,15 +3,16 @@
  * ----------------------------------------------------------------------------
  * A SECOND, independent Purananuru template alongside (never replacing)
  * purananuru-carousel-renderer.ts's 2-slide card. This one draws the 7-frame
- * "Reel grammar" (Hook / Human Moment / Purananuru / Meaning / Today /
- * Reflection / Signature) as static, full-bleed 1080x1920 (9:16) PNGs --
- * still no animation, video, or image generation, exactly like the
- * Carousel. Both templates are consumed the same way: they take the SAME
- * ComposedPoem produced by content-engine.ts's loadPoem/generateNextPoem
- * (untouched by this file) and derive their own per-frame view from it --
- * this one via buildComposedReelStoryboard (purananuru/
- * reel-storyboard-content.ts), which never duplicates canon.ts's literary
- * text, only slices it by line range.
+ * "Reel grammar" (Hook / Human Moment / Purananuru / What It Teaches /
+ * Today / Talk With Your Child / Signature -- PURANANURU_REEL_FRAME_LABELS
+ * below is the source of truth for the exact wording) as static, full-bleed
+ * 1080x1920 (9:16) PNGs -- still no animation, video, or image generation,
+ * exactly like the Carousel. Both templates are consumed the same way:
+ * they take the SAME ComposedPoem produced by content-engine.ts's
+ * loadPoem/generateNextPoem (untouched by this file) and derive their own
+ * per-frame view from it -- this one via buildComposedReelStoryboard
+ * (purananuru/reel-storyboard-content.ts), which never duplicates
+ * canon.ts's literary text, only slices it by line range.
  *
  * Deliberately NOT a stretched copy of the Carousel's card-on-background
  * look: the Carousel insets a white card inside a tinted frame; this
@@ -19,10 +20,10 @@
  * its own chrome -- a small "PURANANURU" kicker + a page indicator
  * ("03 / 07 · PURANANURU") repeated, in the same position, on every frame,
  * which is what actually reads as "one designed system" across seven
- * images rather than "one card resized seven times." Frame 6 (Reflection)
- * inverts to a full indigo panel to give the sequence a visual pause before
- * the calm Frame 7 signature -- the one deliberate visual-rhythm break in
- * an otherwise restrained, editorial system.
+ * images rather than "one card resized seven times." Frame 6 ("Talk With
+ * Your Child") inverts to a full indigo panel to give the sequence a
+ * visual pause before the calm Frame 7 signature -- the one deliberate
+ * visual-rhythm break in an otherwise restrained, editorial system.
  *
  * Same indigo brand hue as purananuru-carousel-renderer.ts (so the two
  * templates read as one Purananuru identity), reusing the same generic,
@@ -58,13 +59,21 @@ const WARNING = "#8A5A00";
 const FALLBACK_GLYPHS = ["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"];
 
 export const PURANANURU_REEL_FRAME_COUNT = 7;
+// Final Teaching Architecture: frames 4 and 6 relabeled to name their
+// actual role in the teaching journey ("What It Teaches" / "Talk With
+// Your Child") rather than the old generic "Meaning" / "Reflection" --
+// pure content-constant changes (drawFrameChrome's own truncateToWidth
+// call already handles arbitrary label length safely), no drawing logic
+// touched. Frames 2 and 5 stay "Human Moment" / "Today": still the same
+// cinematic before/after pair, just now also understood to bridge toward
+// the child's world (see reel-storyboard-content.ts's own module header).
 export const PURANANURU_REEL_FRAME_LABELS: readonly string[] = [
   "Hook",
   "Human Moment",
   "Purananuru",
-  "Meaning",
+  "What It Teaches",
   "Today",
-  "Reflection",
+  "Talk With Your Child",
   "Signature",
 ];
 /** Filename slugs, index-aligned with PURANANURU_REEL_FRAME_LABELS --
@@ -74,9 +83,9 @@ export const PURANANURU_REEL_FRAME_SLUGS: readonly string[] = [
   "hook",
   "human-moment",
   "purananuru",
-  "meaning",
+  "teaching",
   "today",
-  "reflection",
+  "conversation",
   "signature",
 ];
 
@@ -629,7 +638,7 @@ function drawStatementFrame(
 }
 
 function drawMeaningFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {
-  drawStatementFrame(ctx, opts, "பொருள்", "Meaning", storyboard.meaningLine);
+  drawStatementFrame(ctx, opts, "படிப்பினை", "What It Teaches", storyboard.meaningLine);
 }
 
 function drawTodayFrame(ctx: CanvasRenderingContext2D, opts: RenderPurananuruReelOptions, storyboard: ComposedReelStoryboard) {

@@ -79,6 +79,55 @@ function checkStructure(storyboard: ComposedReelStoryboard, messages: string[]):
   }
 }
 
+/** A one-line Tamil couplet reading as a genuine short conversation
+ *  question, not a runaway paragraph accidentally standing in for it --
+ *  same discipline as reel-visual-story-qa.ts's own MAX_CAPTION_LENGTH,
+ *  sized a little more generously since Frame 6's couplet is two lines,
+ *  not one caption. */
+const MAX_REFLECTION_LINE_LENGTH = 60;
+
+/** Frame content presence (Final Teaching Architecture, Part 20): Frame 4
+ *  ("What It Teaches") and Frame 6 ("Talk With Your Child") must actually
+ *  have the Tamil content their new role requires -- this doesn't (and,
+ *  without an AI call, can't) verify that the Tamil TEXT is a correct
+ *  translation of coreValue/teachingMoment/conversationHook; every poem's
+ *  own "Source:" comment in reel-storyboard-content.ts documents that
+ *  traceability for a human to check, which is this project's standing
+ *  convention for cross-language content (see reel-storyboard-content.ts's
+ *  own header on hookLines vs. canon.ts's hook). What this DOES verify,
+ *  deterministically: the fields are non-blank, aren't a stray one-word
+ *  placeholder, and (for Frame 6) aren't a runaway paragraph -- the same
+ *  "would a human glancing at this notice something's wrong" bar every
+ *  other check in this file already holds to.
+ *
+ *  "Frame 5 reflects childRelevance" (Part 20's own phrasing) is checked
+ *  structurally, not textually: childRelevance's own presence is already
+ *  covered by checkStructure above, and checkTransformationIsVisible
+ *  already confirms frame5Scene is genuinely a resolution-role scene for
+ *  childRelevance to describe the "today" version of -- there is no
+ *  separate on-canvas Frame 5 text field to hold a copy of childRelevance
+ *  without duplicating it (see frame5Scene.captionLine's own doc comment
+ *  in reel-storyboard-content.ts). */
+function checkFrameContent(storyboard: ComposedReelStoryboard, messages: string[]): void {
+  if (isBlank(storyboard.meaningLine)) {
+    messages.push("Frame 4 (\"What It Teaches\") has no content.");
+  } else if (storyboard.meaningLine.trim().length < MIN_SUBSTANTIVE_LENGTH) {
+    messages.push("Frame 4's text is too short to actually teach anything -- it reads like a label, not a statement.");
+  }
+
+  if (storyboard.reflectionLines.length === 0) {
+    messages.push("Frame 6 (\"Talk With Your Child\") has no conversation lines.");
+  } else {
+    for (const line of storyboard.reflectionLines) {
+      if (isBlank(line)) {
+        messages.push("Frame 6 has a blank conversation line.");
+      } else if (line.trim().length > MAX_REFLECTION_LINE_LENGTH) {
+        messages.push("Frame 6's conversation text is too long for a short question -- it reads like a paragraph.");
+      }
+    }
+  }
+}
+
 /** Coherence with the poem's own Story Arc (Phase 8A): the teaching
  *  direction claims a "starting state -> value in action" transformation,
  *  so Frame 2 must actually be a situation-role scene and Frame 5 a
@@ -110,6 +159,7 @@ export function runReelTeachingDirectionQA(storyboard: ComposedReelStoryboard | 
   const messages: string[] = [];
 
   checkStructure(storyboard, messages);
+  checkFrameContent(storyboard, messages);
   checkTransformationIsVisible(storyboard, messages);
 
   return { passed: messages.length === 0, messages };
