@@ -2,16 +2,34 @@
  * Purananuru Reel Storyboard — AI Visual Direction
  * ----------------------------------------------------------------------------
  * Phase 9C. Translates the existing structured story (Phase 7's
- * ReelVisualScene, Phase 8A's Story Arc, Phase 9A's ReelMotionDirection)
- * into a complete, copyable text brief a human can paste into an external
- * AI image-generation tool -- NOT an image-generation integration. No AI
- * API call, no image SDK, no external dependency: this file is a pure,
+ * ReelVisualScene, Phase 8A's Story Arc, Phase 9A's ReelMotionDirection, and
+ * the Teaching-First Content Revision's ReelTeachingDirection) into a
+ * complete, copyable text brief a human can paste into an external AI
+ * image-generation tool -- NOT an image-generation integration. No AI API
+ * call, no image SDK, no external dependency: this file is a pure,
  * deterministic string transform, the exact same contract as
  * aathichoodi/family-image-prompt.ts's buildFamilyImagePrompt (that file's
  * own header: "This app never generates or fetches images itself... This is
  * a deterministic text transform, not a call to any model").
  *
- *   Poem -> Story Arc -> Visual Story -> Motion Direction -> HERE -> prompts
+ *   Poem -> Teaching Direction -> Visual Story -> Motion Direction -> HERE -> prompts
+ *
+ * PHASE 9C CORRECTION (Teaching Direction integration): the Teaching
+ * Direction is not a card that sits beside these prompts -- it is why the
+ * prompts say what they say. Every frame prompt now includes a TEACHING
+ * INTENT section built directly from the live storyboard's own
+ * teachingDirection (buildTeachingIntentText below) -- never a second,
+ * hand-typed copy of coreValue/teachingMoment/childRelevance, and never a
+ * new content model: this file only ever READS
+ * ComposedReelStoryboard.teachingDirection, the same field
+ * reel-storyboard-content.ts's own Teaching Direction card already reads.
+ * Each poem's storyContextLine (below) was also rewritten to encode the
+ * SAME teaching moment's full choice arc (having -> recognizing ->
+ * choosing -> acting), not just the outcome -- see each poem's own comment
+ * for exactly which words of its teachingMoment that rewrite traces back
+ * to. reel-ai-visual-direction-qa.ts's checkTeachingConnection verifies
+ * this connection stays real (not just present in the source) by checking
+ * the live teachingMoment text actually appears in the composed prompt.
  *
  * The Phase 9B abstract motion system (purananuru-reel-motion-preview-
  * renderer.ts) is UNCHANGED and UNREAD by this file -- it remains the
@@ -56,7 +74,7 @@
  * abstract shapes or a rich/poor character stereotype.
  */
 
-import type { ComposedReelStoryboard } from "./reel-storyboard-content";
+import type { ComposedReelStoryboard, ReelTeachingDirection } from "./reel-storyboard-content";
 
 /** One of two (or, for a "community", one collective) subjects appearing
  *  in BOTH Frame 2 and Frame 5 -- the same person, unchanged, in both
@@ -150,10 +168,16 @@ export interface ReelAIVisualDirectionEditorial {
   continuityBible: ReelAIContinuityBible;
   frame2: ReelAIFrameDirectionEditorial;
   frame5: ReelAIFrameDirectionEditorial;
-  /** One short, NEW editorial line naming the human story -- never a copy
-   *  of canon.ts's simpleMeaning or reel-storyboard-content.ts's
-   *  meaningLine, same "new editorial framing, not a retelling" rule
-   *  those two fields already follow for their own frames. */
+  /** One short, NEW editorial paragraph naming the human story -- never a
+   *  copy of canon.ts's simpleMeaning or reel-storyboard-content.ts's
+   *  meaningLine, same "new editorial framing, not a retelling" rule those
+   *  two fields already follow for their own frames. Teaching Direction
+   *  integration: must encode the poem's own teachingDirection.
+   *  teachingMoment as a full choice arc -- having something -> noticing
+   *  someone else's need -> choosing -> acting -- not just the story's
+   *  outcome (see each poem's own comment in
+   *  PURANANURU_REEL_AI_VISUAL_DIRECTION for the exact teachingMoment
+   *  wording this traces back to). */
   storyContextLine: string;
 }
 
@@ -168,6 +192,13 @@ export interface ReelAIFrameDirection extends ReelAIFrameDirectionEditorial {
 export interface ComposedReelAIVisualDirection {
   poemNumber: number;
   continuityBible: ReelAIContinuityBible;
+  /** Exposed at this level (not just baked into frame2.prompt/frame5.prompt's
+   *  own STORY CONTEXT section) so reel-ai-visual-direction-qa.ts's
+   *  checkTeachingConnection and the UI's own "Based on" summary can read
+   *  it directly, without grepping composed prompt text for a section
+   *  marker. Still authored once, on the editorial array below -- this is
+   *  the same value, surfaced, never a second copy. */
+  storyContextLine: string;
   frame2: ReelAIFrameDirection;
   frame5: ReelAIFrameDirection;
   /** Computed, not authored -- built directly from continuityBible plus
@@ -234,15 +265,35 @@ function formatCharacterLine(character: ReelAICharacter): string {
   return `${character.role} -- ${age}${character.appearance}. Wearing: ${character.clothing}.${relationship}`;
 }
 
+/** Teaching Direction integration (see this file's own module header).
+ *  Built directly from the live storyboard's own teachingDirection --
+ *  never authored per poem/frame -- so it can never say something the
+ *  approved Teaching Direction card doesn't already say, and so
+ *  reel-ai-visual-direction-qa.ts's checkTeachingConnection can verify the
+ *  connection is real by checking this exact teachingMoment text landed in
+ *  the composed prompt. Written as an instruction TO the image model
+ *  (Part 11's own requirement), never as text meant to be rendered inside
+ *  the image itself -- the closing sentence says so explicitly. */
+function buildTeachingIntentText(teachingDirection: ReelTeachingDirection): string {
+  return [
+    `This image exists to make one human value -- ${teachingDirection.coreValue} -- visible through action, not through symbolism or text: ${teachingDirection.teachingMoment}`,
+    "Translate that choice into body language, physical distance, who holds or needs what, and small deliberate gestures -- never into literal text, symbols, or a caption inside the image.",
+    `Keep the human situation as simple and recognizable as the way this same choice shows up in ordinary life: ${teachingDirection.childRelevance}`,
+    "Do not depict this as a moral poster, a classroom illustration, or a staged \"lesson\" -- it must read as one real, lived, cinematic moment that both a parent and a child could understand without any caption or explanation.",
+  ].join(" ");
+}
+
 function buildFramePrompt(
   editorial: ReelAIVisualDirectionEditorial,
   frame: ReelAIFrameDirectionEditorial,
-  otherFrameNumber: 2 | 5
+  otherFrameNumber: 2 | 5,
+  teachingDirection: ReelTeachingDirection
 ): string {
   const bible = editorial.continuityBible;
   const propsText = bible.recurringProps.map(stripSemanticTag).join(", ");
   const charactersText = bible.characters.map(formatCharacterLine).join("\n");
   const negative = buildNegativePromptText(frame);
+  const teachingIntent = buildTeachingIntentText(teachingDirection);
 
   return [
     "Create a vertical 9:16 cinematic editorial image.",
@@ -258,6 +309,9 @@ function buildFramePrompt(
     "",
     "VISUAL CONTINUITY",
     `This is one of two images in the same visual story -- Frame ${otherFrameNumber} shows the exact same people, the exact same location, the exact same lighting and time of day, the exact same clothing, and the exact same key props (${propsText}). Every physical detail of the people and the setting must match the other frame precisely; only the story state below should differ.`,
+    "",
+    "TEACHING INTENT (guidance for the image model, not text to render)",
+    teachingIntent,
     "",
     "FRAME STATE",
     frame.state,
@@ -307,8 +361,15 @@ function buildContinuityStatement(bible: ReelAIContinuityBible, storyboard: Comp
 export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirectionEditorial[] = [
   {
     poemNumber: 91,
+    // Traces directly to teachingDirection.teachingMoment (reel-storyboard-
+    // content.ts, poem 91): "it's noticing when someone else needs the very
+    // thing you were counting on for yourself, and choosing to let them
+    // have it anyway." Rewritten (Phase 9C Correction) to encode the FULL
+    // arc -- has it / values it / notices the need / chooses to let it go
+    // -- not just the outcome ("gives it to another person") the earlier
+    // version stopped at.
     storyContextLine:
-      "Someone finally holds something rare and precious -- and chooses to give it to another person who needs it more, rather than keep it for themselves.",
+      "Someone holds something they have every reason to keep for themselves -- it genuinely matters to them, and they were counting on it. Then they notice another person nearby who needs it more. The story is not the object changing hands; it's the moment they choose to let go of something they wanted, because someone else's need matters more than their own.",
     continuityBible: {
       characters: [
         {
@@ -363,8 +424,9 @@ export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirection
       composition:
         "The giver stands near the threshold, the gift held close to their chest or cupped protectively in both hands. The elder stands a few steps away, at the edge of the frame or just beyond the threshold, facing the giver. A clear, readable gap of open space separates them -- composed so the eye reads the distance as easily as the two people.",
       subjectAction:
-        "The giver pauses at the doorway, still holding the gift, caught in a moment of quiet hesitation before deciding to cross the distance. The elder looks toward the giver, waiting, not reaching out.",
-      emotionalTone: "Quiet anticipation and gentle hesitation -- warm, not sad or tense.",
+        "The giver holds the gift the way someone holds something they were saving for themselves -- protective, not yet offering it. Their gaze shifts toward the elder, taking in something about the elder's own more modest, careworn state; a flicker of recognition crosses the giver's face, though their hands haven't moved yet. The elder simply waits, not asking, not reaching.",
+      emotionalTone:
+        "A quiet internal tension between wanting to keep and choosing to give -- warm, not sad or tense; the hesitation reads as thoughtful, not reluctant or resentful.",
       keyVisualDetails: [
         "giftObject held close to the giver's own body, not yet extended toward the elder",
         "a clear band of open space between the two figures",
@@ -379,8 +441,9 @@ export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirection
       composition:
         "The same two figures now stand close together at the same threshold. The gift is now held by the elder. The open space that separated them in the earlier moment has closed to a natural, comfortable conversational distance.",
       subjectAction:
-        "The elder now holds the gift; a small, natural gesture of connection passes between the two -- a light touch on the arm, or simply sustained eye contact and a small, genuine smile.",
-      emotionalTone: "Warmth and quiet relief -- the tension of the earlier moment has resolved into ease.",
+        "The gift now rests in the elder's hands; the giver's own hands are empty and open, no longer holding anything back. A small, natural gesture of connection passes between the two -- a light touch on the arm, or simply sustained eye contact and a small, genuine smile.",
+      emotionalTone:
+        "Warmth and quiet relief -- the tension of the earlier moment has resolved into ease; the giver reads as lighter, not diminished, by having let go of what they were holding.",
       keyVisualDetails: [
         "giftObject now held by the elder, in the same wrapped/cupped form as before",
         "the earlier gap between the two figures now closed",
@@ -391,8 +454,14 @@ export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirection
   },
   {
     poemNumber: 189,
+    // Traces directly to teachingDirection.teachingMoment (reel-storyboard-
+    // content.ts, poem 189): "your own needs are still just as simple as
+    // theirs... What makes what you have worth anything is what you
+    // choose to do with what's left over." Rewritten (Phase 9C Correction)
+    // to name the surplus/need distinction explicitly, not just the
+    // before/after portion sizes.
     storyContextLine:
-      "At a shared table, one portion is visibly more generous than the other -- and then the food is shared until both portions are comparable.",
+      "Two people at the same table both already have what they need -- but one has more left over than the other. The story isn't the difference in what they have; it's what happens next: the surplus gets shared, not kept, until the two portions settle back into balance.",
     continuityBible: {
       characters: [
         {
@@ -445,7 +514,8 @@ export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirection
       visualGoal: "Communicate an unequal distribution -- one side visibly has more, the other visibly has less -- without turning either person into a class stereotype.",
       composition:
         "Both plates are visible in the same frame, side by side on the shared table. One plate/leaf is heaped generously; the other holds a noticeably smaller portion. Both people are seated at the table, looking down at the plates rather than at each other.",
-      subjectAction: "Both people pause, glancing at the visible difference in portions -- a quiet moment of noticing, not accusation or shame.",
+      subjectAction:
+        "Both people pause, glancing at the visible difference in portions -- a quiet moment of noticing what one has beyond their own need, and what the other doesn't yet have enough of; observational, not accusatory or ashamed.",
       emotionalTone: "Quiet, neutral awareness -- observational, not guilty or resentful.",
       keyVisualDetails: [
         "one plate/leaf heaped generously, the other with a visibly smaller, plainer portion",
@@ -459,7 +529,8 @@ export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirection
       visualGoal: "Show the SAME two people, at the SAME table, now with visibly comparable portions -- balance restored through an ordinary, unremarkable act of sharing.",
       composition:
         "The same two plates, now visibly closer in quantity -- some food has moved from the fuller plate to the sparser one. Both people are now eating together, more relaxed, occasionally glancing at each other rather than only at the food.",
-      subjectAction: "One person's hand is mid-motion, having just moved a portion of food from their own plate to the other's -- a small, natural, everyday gesture, not a ceremonial or performative one.",
+      subjectAction:
+        "One person's hand is mid-motion, having just moved a portion of food -- from what was extra, not from what they needed -- from their own plate to the other's; a small, natural, everyday gesture, not a ceremonial or performative one.",
       emotionalTone: "Warm and companionable -- an ordinary shared meal, ease rather than obligation.",
       keyVisualDetails: [
         "the two portions now visibly closer in quantity than before",
@@ -475,8 +546,13 @@ export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirection
   },
   {
     poemNumber: 192,
+    // Traces directly to teachingDirection.teachingMoment (reel-storyboard-
+    // content.ts, poem 192): "No one is really a stranger for long...
+    // there's no one worth treating as more or less than yourself."
+    // Rewritten (Phase 9C Correction) to frame the resolution as the group
+    // making room, not merely the newcomer being "drawn in."
     storyContextLine:
-      "A newcomer stands just outside a small evening gathering of neighbors -- watching rather than taking part -- until they are drawn naturally into the group.",
+      "Someone stands just outside a gathering they don't yet belong to -- watching, not yet part of it. The story is the moment the group notices them and makes room, until the space that separated them closes and they belong the same ordinary way everyone else already does.",
     continuityBible: {
       characters: [
         {
@@ -543,7 +619,8 @@ export const PURANANURU_REEL_AI_VISUAL_DIRECTION: readonly ReelAIVisualDirection
       visualGoal: "Show the identical person, environment, clothing, and lighting as Frame 2 -- but the negative space has closed and the newcomer is now seated with and participating in the group.",
       composition:
         "The same group, in the same courtyard, now with the newcomer seated among them -- part of the same cluster rather than separated from it. The earlier open gap has closed; the newcomer now occupies the space that was empty in the first frame.",
-      subjectAction: "The newcomer is now seated with the group, engaged in the same conversation -- perhaps accepting a cup or a small snack being passed to them, a small natural gesture of inclusion rather than a dramatic welcome.",
+      subjectAction:
+        "The newcomer is now seated within the circle, in a space the group has visibly made for them -- engaged in the same conversation, perhaps accepting a cup or a small snack being passed to them; a small natural gesture of inclusion rather than a dramatic welcome.",
       emotionalTone: "Warm, quiet belonging -- understated, natural, no exaggerated celebration.",
       keyVisualDetails: [
         "the earlier gap between the newcomer and the group now closed",
@@ -571,20 +648,23 @@ export function buildComposedReelAIVisualDirection(storyboard: ComposedReelStory
   const editorial = getReelAIVisualDirectionEditorial(storyboard.poemNumber);
   if (!editorial) return null;
 
+  const { teachingDirection } = storyboard;
+
   const frame2: ReelAIFrameDirection = {
     ...editorial.frame2,
-    prompt: buildFramePrompt(editorial, editorial.frame2, 5),
+    prompt: buildFramePrompt(editorial, editorial.frame2, 5, teachingDirection),
     negativePrompt: buildNegativePromptText(editorial.frame2),
   };
   const frame5: ReelAIFrameDirection = {
     ...editorial.frame5,
-    prompt: buildFramePrompt(editorial, editorial.frame5, 2),
+    prompt: buildFramePrompt(editorial, editorial.frame5, 2, teachingDirection),
     negativePrompt: buildNegativePromptText(editorial.frame5),
   };
 
   return {
     poemNumber: storyboard.poemNumber,
     continuityBible: editorial.continuityBible,
+    storyContextLine: editorial.storyContextLine,
     frame2,
     frame5,
     continuityStatement: buildContinuityStatement(editorial.continuityBible, storyboard),

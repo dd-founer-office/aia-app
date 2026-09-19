@@ -2378,6 +2378,17 @@ export default function PublishingWorkspace() {
                   AI Visual Direction
                 </p>
 
+                {activeReelTeachingDirection && (
+                  <div className="mt-1.5 rounded-[var(--radius-button)] border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1.5">
+                    <p className="text-[10px] text-[var(--color-muted-foreground)]">
+                      Based on: <span className="font-medium text-[var(--color-foreground)]">{activeReelTeachingDirection.coreValue}</span>
+                    </p>
+                    <p className="mt-0.5 text-[10px] italic text-[var(--color-muted-foreground)]">
+                      {activeReelTeachingDirection.teachingMoment}
+                    </p>
+                  </div>
+                )}
+
                 <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
                   Continuity Bible
                 </p>

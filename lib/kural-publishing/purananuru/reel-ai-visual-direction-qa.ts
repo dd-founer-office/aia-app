@@ -13,6 +13,18 @@
  * read-only with respect to both ComposedReelAIVisualDirection and
  * ComposedReelStoryboard -- it only inspects already-composed data and
  * reports on it.
+ *
+ * PHASE 9C CORRECTION (Teaching Direction integration): checkTeachingConnection
+ * below verifies the AI Visual Direction is actually DERIVED from the
+ * poem's approved teachingDirection, not merely composed alongside it --
+ * see reel-ai-visual-direction.ts's own buildTeachingIntentText, which
+ * builds the prompt's TEACHING INTENT section by quoting
+ * storyboard.teachingDirection's fields verbatim. Every check here uses
+ * the live structured data already on ComposedReelStoryboard (coreValue,
+ * teachingMoment, childRelevance, motionDirection.relationship.consequence)
+ * -- never a hardcoded per-poem-number keyword table -- matching the
+ * existing checkSemanticConsistency check's own convention of comparing
+ * real structured fields rather than free-text guesswork.
  */
 
 import type { ComposedReelAIVisualDirection, ReelAIFrameDirection } from "./reel-ai-visual-direction";
@@ -29,6 +41,18 @@ function isBlank(value: string): boolean {
 
 function hasWord(haystack: string, needle: string): boolean {
   return haystack.toLowerCase().includes(needle.toLowerCase());
+}
+
+/** Loose stem match ("sharing" vs. "shared", "belong" vs. "belonging") --
+ *  a plain substring check on the keyword itself is too strict on word
+ *  form for prose that's free to phrase a concept as a verb, a gerund, or
+ *  a past participle. Matches on a shared prefix of at least 4 characters
+ *  rather than requiring the exact same word, which is the deliberately
+ *  low-tech alternative to real stemming/NLP this deterministic,
+ *  no-model-calls QA convention calls for. */
+function hasWordStem(haystack: string, keyword: string): boolean {
+  const stem = keyword.slice(0, Math.min(keyword.length, Math.max(4, Math.ceil(keyword.length * 0.7))));
+  return haystack.toLowerCase().includes(stem.toLowerCase());
 }
 
 /** Structural: every field a prompt is built from actually has content.
@@ -137,10 +161,12 @@ function checkTransformation(aiDirection: ComposedReelAIVisualDirection, message
 const PROMPT_QUALITY_CHECKS: readonly { label: string; check: (prompt: string) => boolean }[] = [
   { label: "a 9:16 vertical framing instruction", check: (p) => hasWord(p, "9:16") },
   { label: "a no-text/no-typography instruction", check: (p) => hasWord(p, "no typography") || hasWord(p, "without requiring text") },
+  { label: "a story context section", check: (p) => hasWord(p, "STORY CONTEXT") },
   { label: "cultural authenticity guidance", check: (p) => hasWord(p, "CULTURAL AUTHENTICITY") },
   { label: "a composition description", check: (p) => hasWord(p, "COMPOSITION") },
   { label: "an emotional-state description", check: (p) => hasWord(p, "EMOTION") },
   { label: "continuity guidance", check: (p) => hasWord(p, "VISUAL CONTINUITY") },
+  { label: "teaching-intent guidance", check: (p) => hasWord(p, "TEACHING INTENT") },
 ];
 
 /** Prompt quality: each generated prompt must actually contain the
@@ -192,6 +218,98 @@ function checkSemanticConsistency(aiDirection: ComposedReelAIVisualDirection, st
   }
 }
 
+/** Words too generic on their own to prove anything -- filtered out of the
+ *  keyword set deriveTeachingKeywords produces below, so a match against
+ *  "what"/"have" doesn't count as evidence of a real semantic link. */
+const TEACHING_KEYWORD_STOPWORDS: ReadonlySet<string> = new Set([
+  "what",
+  "have",
+  "having",
+  "with",
+  "your",
+  "you",
+  "the",
+  "that",
+  "this",
+  "than",
+  "were",
+  "were's",
+]);
+
+/** Derives a small set of significant lowercase words from THIS poem's own
+ *  structured data -- teachingDirection.coreValue plus the existing
+ *  motionDirection's own relationship.consequence and sequenceLabel (e.g.
+ *  "balance" for poem 189, "connection" for poem 192) -- rather than a
+ *  hardcoded per-poem-number keyword table. Both source fields already
+ *  exist on ComposedReelStoryboard; this reads them, it doesn't add a new
+ *  one. */
+function deriveTeachingKeywords(storyboard: ComposedReelStoryboard): string[] {
+  const source = [
+    storyboard.teachingDirection.coreValue,
+    storyboard.motionDirection.relationship.consequence,
+    storyboard.motionDirection.sequenceLabel,
+  ].join(" ");
+  return source
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((word) => word.length > 3 && !TEACHING_KEYWORD_STOPWORDS.has(word));
+}
+
+/** Teaching connection: verifies the AI Visual Direction is actually
+ *  DERIVED from this poem's approved Teaching Direction, not merely
+ *  composed alongside it -- see this file's own module header. Three
+ *  checks, each against the real structured data on ComposedReelStoryboard,
+ *  never a hardcoded per-poem lookup table:
+ *   1. Existence -- the Teaching Direction this AI direction is supposed
+ *      to be derived from actually has content.
+ *   2. Derivation -- the poem's own teachingMoment text (verbatim, not a
+ *      paraphrase) actually landed in both composed frame prompts. Since
+ *      reel-ai-visual-direction.ts's buildTeachingIntentText builds the
+ *      TEACHING INTENT section by quoting teachingMoment directly, this
+ *      passes by construction whenever the pipeline is wired correctly,
+ *      and fails the moment it silently stops being wired (a stale
+ *      prompt, a mismatched storyboard, a refactor that drops the
+ *      section) -- a real regression guard, not a tautology.
+ *   3. Semantic concept -- the storyContextLine names at least one
+ *      significant word this poem's own coreValue/motion consequence
+ *      already establishes (deriveTeachingKeywords), so the story context
+ *      isn't just generically "a nice story" disconnected from the
+ *      specific value being taught. */
+function checkTeachingConnection(
+  aiDirection: ComposedReelAIVisualDirection,
+  storyboard: ComposedReelStoryboard,
+  messages: string[]
+): void {
+  const { teachingDirection } = storyboard;
+
+  if (isBlank(teachingDirection.coreValue) || isBlank(teachingDirection.teachingMoment) || isBlank(teachingDirection.childRelevance)) {
+    messages.push("This poem's Teaching Direction is incomplete, so the AI Visual Direction can't be verified as derived from it.");
+    return;
+  }
+
+  if (isBlank(aiDirection.storyContextLine)) {
+    messages.push("The AI Visual Direction has no story context -- there is nothing for the Teaching Direction to inform.");
+  }
+
+  const teachingMoment = teachingDirection.teachingMoment.trim();
+  if (!aiDirection.frame2.prompt.includes(teachingMoment)) {
+    messages.push("Frame 2's prompt doesn't include this poem's own Teaching Moment -- it may not actually be derived from the approved Teaching Direction.");
+  }
+  if (!aiDirection.frame5.prompt.includes(teachingMoment)) {
+    messages.push("Frame 5's prompt doesn't include this poem's own Teaching Moment -- it may not actually be derived from the approved Teaching Direction.");
+  }
+
+  const keywords = deriveTeachingKeywords(storyboard);
+  if (keywords.length > 0) {
+    const hasMatch = keywords.some((keyword) => hasWordStem(aiDirection.storyContextLine, keyword));
+    if (!hasMatch) {
+      messages.push(
+        `The story context doesn't reflect this poem's own teaching concept (expected it to echo one of: ${keywords.join(", ")}).`
+      );
+    }
+  }
+}
+
 /** Runs the full AI Visual Direction QA pass for one poem's already-
  *  composed AI direction and storyboard. Deterministic and pure -- safe
  *  to call directly in a component's render body, same as
@@ -215,6 +333,7 @@ export function runReelAIVisualDirectionQA(
   checkPromptQuality(aiDirection.frame2, "Frame 2", messages);
   checkPromptQuality(aiDirection.frame5, "Frame 5", messages);
   checkSemanticConsistency(aiDirection, storyboard, messages);
+  checkTeachingConnection(aiDirection, storyboard, messages);
 
   return { passed: messages.length === 0, messages };
 }
