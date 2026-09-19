@@ -130,6 +130,114 @@ export interface ReelVisualScene {
   visualRelationship: ReelVisualRelationship;
 }
 
+/** Phase 9A -- a controlled, deliberately small vocabulary for HOW a poem's
+ *  Frame 2 -> Frame 5 pair changes (never drawn, never animated by this
+ *  phase -- see reel-motion-direction-qa.ts and PublishingWorkspace.tsx's
+ *  own "Motion Direction" sidebar card, the only two places this reaches).
+ *  Only the three motions the current three-poem dataset actually needs
+ *  are defined, unlike ReelVisualRelationship's "figure-figure" (kept
+ *  there because a plain two-figure relationship with no object/group is
+ *  a near-certain future case); a fourth motion type isn't yet
+ *  foreseeable from this dataset alone, so it isn't pre-added here --
+ *  extend this union the next time a poem's pair needs one these three
+ *  genuinely can't describe. */
+export type ReelMotionType = "transfer" | "equalize" | "connect";
+
+/** WHAT moves, or is moved toward -- semantic, renderer-resolvable
+ *  identifiers, never a canvas coordinate or a reference to how
+ *  drawVisualScene actually draws the shape. A future animation renderer
+ *  resolves e.g. "isolatedFigure" to whatever shape the "stranger" /
+ *  "belonging" scene cases draw, without this file (or the motion
+ *  direction itself) knowing how. Reused by RELATIONSHIP FAMILY, not
+ *  per-poem: any future "one object changes hands" poem reuses
+ *  `giftObject`, any future quantity-contrast poem reuses
+ *  `leftColumn`/`rightColumn`, any future isolation/inclusion poem reuses
+ *  `isolatedFigure`/`communityGroup` -- see
+ *  reel-motion-direction-qa.ts's own family-membership check, which is
+ *  what keeps this list meaningfully enforced rather than decorative. */
+export type ReelMotionTarget =
+  | "primaryFigure"
+  | "secondaryFigure"
+  | "giftObject"
+  | "leftColumn"
+  | "rightColumn"
+  | "isolatedFigure"
+  | "communityGroup"
+  | "connectionArc";
+
+/** Cause and effect, not just "what moves" -- actor/action/target/
+ *  consequence is the simplest representation that still carries story
+ *  meaning: "the isolated figure moves toward the community group, and a
+ *  connection results" says something; "animate figure" says nothing.
+ *  `actor` and `target` are deliberately required to differ --
+ *  reel-motion-direction-qa.ts rejects a motion pointing at itself as a
+ *  no-op. */
+export interface ReelMotionRelationship {
+  actor: ReelMotionTarget;
+  action: "moveToward" | "crossGap" | "levelWith" | "closeGap";
+  target: ReelMotionTarget;
+  /** Short semantic label for what results, e.g. "connection", "balance",
+   *  "possession changes" -- editorial only, never drawn. */
+  consequence: string;
+}
+
+/** Semantic pacing only -- NOT millisecond keyframes. This project has no
+ *  existing timing-token convention to extend, so Phase 9A introduces the
+ *  smallest one a future renderer needs: how long the transition should
+ *  feel (`durationIntent`), and its coarse phase structure (`sequence`).
+ *  A real renderer picks its own concrete durations/easing curves from
+ *  these later -- this is direction, not implementation. */
+export type ReelMotionPacing = "instant" | "brief" | "moderate" | "slow";
+export type ReelMotionPhase = "hold" | "transition" | "settle";
+
+export interface ReelMotionTiming {
+  durationIntent: ReelMotionPacing;
+  sequence: readonly ReelMotionPhase[];
+}
+
+/** Named easing intent only -- deliberately no cubic-bezier values or
+ *  spring physics yet (Phase 9A brief's own explicit deferral); a future
+ *  renderer maps these to whatever curve it actually implements. */
+export type ReelMotionEasing = "linear" | "easeIn" | "easeOut" | "easeInOut";
+
+/** What a future renderer should do instead of moving anything, when the
+ *  viewer has motion reduced -- described here, not implemented (Phase 9A
+ *  is direction only). "final-state" is expected to be the common case
+ *  for this dataset: Frame 5's own static composition already exists and
+ *  already IS the final state, so the safest fallback is usually just
+ *  "render Frame 5 as already-drawn, skip Frame 2's transitional motion
+ *  entirely" rather than a faded or instant version of the motion itself. */
+export type ReelReducedMotionMode = "none" | "fade" | "final-state" | "instant";
+
+export interface ReelReducedMotion {
+  mode: ReelReducedMotionMode;
+  /** Short editorial description of the fallback, e.g. "Show the final
+   *  belonging state" -- shown in the sidebar only, never rendered. */
+  description: string;
+}
+
+/** Phase 9A's whole motion-direction spec for one poem's Frame 2 -> Frame
+ *  5 pair -- describes WHAT CHANGES, as a complement to ReelVisualScene
+ *  (which describes what EXISTS in each frame). Lives once per poem
+ *  (ReelStoryboardEditorial.motionDirection below), not once per scene,
+ *  since it describes the transition between the two scenes, not either
+ *  scene's own static content. Contains no canvas coordinates, no pixel
+ *  values, no animation-library types -- a future animation renderer
+ *  consumes this, the current static renderer never reads it (see
+ *  purananuru-reel-storyboard-renderer.ts, genuinely unchanged by Phase
+ *  9A). */
+export interface ReelMotionDirection {
+  motionType: ReelMotionType;
+  relationship: ReelMotionRelationship;
+  /** One short editorial sentence summarizing the actor -> action ->
+   *  target chain, for the sidebar's own "Sequence" row (e.g. "Object
+   *  crosses the gap"). Never drawn on the exported PNG. */
+  sequenceLabel: string;
+  timing: ReelMotionTiming;
+  easing: ReelMotionEasing;
+  reducedMotion: ReelReducedMotion;
+}
+
 export interface ReelStoryboardEditorial {
   poemNumber: number;
   /** Frame 1 (Hook). Exact lines as authored for the Reel -- deliberately
@@ -166,6 +274,10 @@ export interface ReelStoryboardEditorial {
   frame5Scene: ReelVisualScene;
   /** Frame 6 (Reflection). Exact lines as specified for this experiment. */
   reflectionLines: readonly string[];
+  /** Phase 9A. Motion-direction spec for this poem's whole Frame 2 -> Frame
+   *  5 transition -- see ReelMotionDirection's own doc comment. Direction
+   *  only, not implemented: the static renderer never reads this field. */
+  motionDirection: ReelMotionDirection;
 }
 
 export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditorial[] = [
@@ -210,6 +322,24 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       visualRelationship: "object-person",
     },
     reflectionLines: ["உங்களுக்கு மிகவும் தேவையான ஒன்றை,", "யாருக்காவது கொடுத்திருப்பீர்களா?"],
+    // rare gift -> choice: the object itself is what moves, crossing the
+    // same visual gap the two frames already share -- "transfer" per the
+    // brief's own poem-91 example, actor is the object (not either
+    // figure), since the figures' fill state simply follows the object's
+    // possession, it doesn't independently "act".
+    motionDirection: {
+      motionType: "transfer",
+      relationship: {
+        actor: "giftObject",
+        action: "crossGap",
+        target: "secondaryFigure",
+        consequence: "possession changes",
+      },
+      sequenceLabel: "Object crosses the gap",
+      timing: { durationIntent: "brief", sequence: ["hold", "transition", "settle"] },
+      easing: "easeInOut",
+      reducedMotion: { mode: "final-state", description: "Show the final choice state" },
+    },
   },
   {
     poemNumber: 189,
@@ -252,6 +382,23 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       visualRelationship: "column-column",
     },
     reflectionLines: ["உங்கள் வசதி,", "உங்களுக்காக மட்டும் இருக்கிறதா?"],
+    // abundance -> sharing: the two columns move toward balance -- the
+    // taller column is the actor (it has the excess to give up), the
+    // shorter column is what it levels with. "equalize" per the brief's
+    // own poem-189 example.
+    motionDirection: {
+      motionType: "equalize",
+      relationship: {
+        actor: "leftColumn",
+        action: "levelWith",
+        target: "rightColumn",
+        consequence: "balance",
+      },
+      sequenceLabel: "Columns move toward balance",
+      timing: { durationIntent: "moderate", sequence: ["hold", "transition", "settle"] },
+      easing: "easeInOut",
+      reducedMotion: { mode: "final-state", description: "Show the final leveled columns" },
+    },
   },
   {
     poemNumber: 192,
@@ -293,6 +440,25 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       visualRelationship: "individual-community",
     },
     reflectionLines: ["இன்று நீங்கள் சந்திக்கும் அந்நியர்,", "உங்களுக்கு எப்படிப்பட்டவர்?"],
+    // stranger -> belonging: the isolated figure is the actor, moving
+    // toward the community group until the gap closes -- "connect" per
+    // the brief's own poem-192 example (its "merge / connect" suggestion,
+    // resolved to "connect" since the renderer's own belonging scene
+    // keeps the figure a distinct shape at the cluster's edge, it never
+    // actually blends into one shape with the others).
+    motionDirection: {
+      motionType: "connect",
+      relationship: {
+        actor: "isolatedFigure",
+        action: "moveToward",
+        target: "communityGroup",
+        consequence: "connection",
+      },
+      sequenceLabel: "Move toward community, then close the gap",
+      timing: { durationIntent: "moderate", sequence: ["hold", "transition", "settle"] },
+      easing: "easeOut",
+      reducedMotion: { mode: "final-state", description: "Show the final belonging state" },
+    },
   },
 ];
 
@@ -320,6 +486,7 @@ export interface ComposedReelStoryboard {
   meaningLine: string;
   frame5Scene: ReelVisualScene;
   reflectionLines: readonly string[];
+  motionDirection: ReelMotionDirection;
 }
 
 /** Derives the Reel Storyboard's own content view from an already-composed
@@ -365,5 +532,6 @@ export function buildComposedReelStoryboard(poem: ComposedPoem): ComposedReelSto
     meaningLine: editorial.meaningLine,
     frame5Scene: editorial.frame5Scene,
     reflectionLines: editorial.reflectionLines,
+    motionDirection: editorial.motionDirection,
   };
 }

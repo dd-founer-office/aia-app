@@ -105,6 +105,7 @@ import {
 import { runQualityChecks as runPurananuruQualityChecks } from "@/lib/kural-publishing/purananuru/quality-check";
 import { buildComposedReelStoryboard } from "@/lib/kural-publishing/purananuru/reel-storyboard-content";
 import { runReelVisualStoryQA } from "@/lib/kural-publishing/purananuru/reel-visual-story-qa";
+import { runReelMotionDirectionQA } from "@/lib/kural-publishing/purananuru/reel-motion-direction-qa";
 import {
   PURANANURU_SLIDE_COUNT,
   PURANANURU_SLIDE_LABELS,
@@ -218,6 +219,16 @@ function formatStoryArcTerm(value: string): string {
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ↔ ");
+}
+
+/** Renders a Phase 9A ReelMotionDirection identifier -- a motionType
+ *  ("connect") or a camelCase ReelMotionTarget ("isolatedFigure") -- as
+ *  the sidebar's own compact editorial label ("Connect" / "Isolated
+ *  Figure"). Purely a display transform, the underlying typed value never
+ *  changes and nothing here is drawn on the exported PNG. */
+function formatMotionTerm(value: string): string {
+  const spaced = value.replace(/([a-z])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 /** Mirrors drawSlide4Carry's own split exactly -- the trailing "—" is
@@ -612,6 +623,25 @@ export default function PublishingWorkspace() {
   const reelStoryArcVisualRelationship = activeReelVisualStoryQA?.storyArc
     ? formatStoryArcTerm(activeReelVisualStoryQA.storyArc.visualRelationship)
     : "";
+
+  // Phase 9A: motion-direction spec + its own deterministic QA for the
+  // current poem's Frame 2 -> Frame 5 transition -- direction only, never
+  // animated; the static renderer never reads storyboard.motionDirection.
+  // Same "no useState/useEffect needed" pure-derivation pattern as above,
+  // and the same flat-const hoisting Phase 8A needed to keep the React
+  // Compiler's memoization-preservation pass happy for an unrelated
+  // useCallback elsewhere in this component.
+  const activeReelMotionDirection = activeReelStoryboard?.motionDirection ?? null;
+  const activeReelMotionDirectionQA = activeReelStoryboard ? runReelMotionDirectionQA(activeReelStoryboard) : null;
+  const reelMotionDirectionQAMessageText = activeReelMotionDirectionQA
+    ? activeReelMotionDirectionQA.messages.join("\n")
+    : "";
+  const reelMotionTypeLabel = activeReelMotionDirection ? formatMotionTerm(activeReelMotionDirection.motionType) : "";
+  const reelMotionActorLabel = activeReelMotionDirection
+    ? formatMotionTerm(activeReelMotionDirection.relationship.actor)
+    : "";
+  const reelMotionSequenceLabel = activeReelMotionDirection?.sequenceLabel ?? "";
+  const reelMotionReducedMotionLabel = activeReelMotionDirection?.reducedMotion.description ?? "";
 
   const content: AssetContent = isSeriesType
     ? seriesFormat === "static"
@@ -2137,6 +2167,48 @@ export default function PublishingWorkspace() {
                 ) : (
                   <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">{reelVisualStoryQAMessageText}</p>
                 )}
+              </div>
+            )}
+
+            {purananuruFormat === "reel-storyboard" && activeReelMotionDirectionQA && (
+              <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Motion Direction
+                </p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Motion
+                </p>
+                <p className="mt-0.5 text-xs font-medium text-[var(--color-foreground)]">{reelMotionTypeLabel}</p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Target
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{reelMotionActorLabel}</p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Sequence
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{reelMotionSequenceLabel}</p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Reduced Motion
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{reelMotionReducedMotionLabel}</p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  QA
+                </p>
+                {activeReelMotionDirectionQA.passed ? (
+                  <p className="mt-0.5 text-xs text-[var(--color-primary)]">✓ Motion direction valid</p>
+                ) : (
+                  <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">{reelMotionDirectionQAMessageText}</p>
+                )}
+
+                <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
+                  Direction only — this describes an intended future transition, it is not animated and never appears
+                  on the exported PNG.
+                </p>
               </div>
             )}
 
