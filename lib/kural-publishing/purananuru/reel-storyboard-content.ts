@@ -52,6 +52,27 @@ export type ReelVisualSceneType =
   | "stranger"
   | "belonging";
 
+/** What narrative job this scene does within its poem's Frame 2 -> Frame 5
+ *  pair -- Phase 8A's "story arc" vocabulary, purely editorial metadata
+ *  (never drawn, never read by the renderer). Deliberately a small closed
+ *  set rather than the richer taxonomy the Phase 8A brief sketched
+ *  (CONTRAST/SITUATION/TENSION/TRANSFORMATION/RESOLUTION): "situation" is
+ *  folded into "contrast"/"tension" (every Frame 2 in this dataset opens
+ *  on one of those two, never a neutral establishing shot), and
+ *  reel-visual-story-qa.ts's scene-type/story-role pairing check is what
+ *  keeps this set meaningfully enforced rather than decorative. */
+export type ReelStoryRole = "contrast" | "tension" | "transformation" | "resolution";
+
+/** What kind of visual axis the composition is fundamentally built on --
+ *  the same axis for both scenes in a poem's pair (Frame 5 resolves the
+ *  same relationship Frame 2 establishes, it doesn't introduce a new
+ *  one). Matches this file's `sceneType` naming convention (lowercase,
+ *  hyphenated) rather than the brief's illustrative ALL-CAPS/arrow
+ *  examples. "figure-figure" is left unused by the current three poems
+ *  but kept in the union for a future poem whose composition is a plain
+ *  two-person relationship with no object or group involved. */
+export type ReelVisualRelationship = "object-person" | "column-column" | "individual-community" | "figure-figure";
+
 /** Art direction for one abstract, geometric visual composition -- NOT an
  *  image-generation prompt and NOT a place to store literary text. Every
  *  field here describes shapes, weight, and spatial relationships (a
@@ -62,7 +83,15 @@ export type ReelVisualSceneType =
  *  literary content -- `captionLine` is the one short piece of NEW
  *  editorial Tamil text this scene contributes, kept intentionally brief
  *  ("one short supporting phrase at most") since the composition itself,
- *  not a paragraph of copy, is what carries Frame 2 / Frame 5. */
+ *  not a paragraph of copy, is what carries Frame 2 / Frame 5.
+ *
+ *  Phase 8A adds three purely editorial "story arc" fields (storyRole,
+ *  emotionalMovement, visualRelationship) so reel-visual-story-qa.ts can
+ *  check, deterministically, whether a poem's Frame 2 -> Frame 5 pair
+ *  actually describes a coherent transformation rather than two
+ *  unrelated compositions. None of the three is read by the renderer or
+ *  drawn on the exported PNG -- see PublishingWorkspace.tsx's own
+ *  "Visual Story Direction" sidebar panel, the one place they surface. */
 export interface ReelVisualScene {
   sceneType: ReelVisualSceneType;
   /** Short internal English label (e.g. "ONE RARE THING") -- shown only in
@@ -84,6 +113,21 @@ export interface ReelVisualScene {
    *  the composition -- new editorial copy, never classical text, never a
    *  retyped canon.ts line. */
   captionLine: string;
+  /** This scene's narrative job -- see ReelStoryRole. reel-visual-story-qa
+   *  checks this against `sceneType` (a "resolution"-family scene type
+   *  paired with a "contrast"/"tension" role is flagged as a mismatch). */
+  storyRole: ReelStoryRole;
+  /** The poem's whole Frame 2 -> Frame 5 arc, in short "A -> B" form (e.g.
+   *  "Stranger -> Belonging") -- deliberately IDENTICAL on both scenes in
+   *  a pair, since it names the arc the PAIR tells, not a per-frame
+   *  state. reel-visual-story-qa checks both halves agree. Describes the
+   *  visual/emotional movement only, never a retelling of the poem. */
+  emotionalMovement: string;
+  /** The visual axis this composition is built on -- see
+   *  ReelVisualRelationship. Also identical across a poem's Frame 2 /
+   *  Frame 5 pair (Frame 5 resolves the same axis Frame 2 opened, it
+   *  doesn't switch to a different one). */
+  visualRelationship: ReelVisualRelationship;
 }
 
 export interface ReelStoryboardEditorial {
@@ -140,6 +184,9 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       visualMotif: "One glowing accent object beside Figure A; Figure B stands apart, dimmed, without the object.",
       composition: "Two abstract figures on a shared baseline, separated by open space; the object sits only near Figure A.",
       captionLine: "ஒரே ஒரு அரிய பொருள்.",
+      storyRole: "contrast",
+      emotionalMovement: "Rare Gift → Choice",
+      visualRelationship: "object-person",
     },
     // canon.ts tamilText lines 8-10 (0-indexed): the fruit + the act of
     // giving, the poem's own closing clause. Lines 0-7 (the opening
@@ -158,6 +205,9 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       visualMotif: "The accent object sits along a connecting arc between the two figures, now closer to Figure B than before.",
       composition: "Same two-figure baseline as before; the gap has narrowed and the object has crossed into it.",
       captionLine: "அந்த தேர்வு.",
+      storyRole: "transformation",
+      emotionalMovement: "Rare Gift → Choice",
+      visualRelationship: "object-person",
     },
     reflectionLines: ["உங்களுக்கு மிகவும் தேவையான ஒன்றை,", "யாருக்காவது கொடுத்திருப்பீர்களா?"],
   },
@@ -176,6 +226,9 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       visualMotif: "Two vertical columns of stacked abstract units, unequal height, identical shape and color.",
       composition: "Two columns side by side on a shared baseline, generous whitespace between them.",
       captionLine: "தேவைக்கு மேல் இருப்பது.",
+      storyRole: "contrast",
+      emotionalMovement: "Abundance → Sharing",
+      visualRelationship: "column-column",
     },
     // canon.ts tamilText lines 4-8 (0-indexed): "எல்லோரும் ஒன்றே உண்கிறோம்,
     // உடுக்கிறோம்" through the poem's own close, "செல்வத்துப் பயனே ஈதல்"
@@ -194,6 +247,9 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       visualMotif: "A few units mid-transit along a connecting arc from the tall column to the short column; the two heights are now visibly closer.",
       composition: "Same two-column layout as Frame 2, redrawn with the height gap reduced.",
       captionLine: "மிச்சம் இருப்பதை என்ன செய்வேன்?",
+      storyRole: "resolution",
+      emotionalMovement: "Abundance → Sharing",
+      visualRelationship: "column-column",
     },
     reflectionLines: ["உங்கள் வசதி,", "உங்களுக்காக மட்டும் இருக்கிறதா?"],
   },
@@ -214,6 +270,9 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       visualMotif: "One dimmed, outlined figure alone on one side; a small cluster of filled figures on the other, separated by clear space.",
       composition: "Asymmetric composition: the isolated figure occupies roughly a third of the width, the cluster the rest, with a quiet gap between.",
       captionLine: "ஒரு அந்நியன்.",
+      storyRole: "tension",
+      emotionalMovement: "Stranger → Belonging",
+      visualRelationship: "individual-community",
     },
     // canon.ts tamilText line 0 ONLY, per the brief's explicit instruction
     // not to include the unresolved middle portion of this poem (the
@@ -229,6 +288,9 @@ export const PURANANURU_REEL_STORYBOARD_CONTENT: readonly ReelStoryboardEditoria
       visualMotif: "The formerly outlined figure is now filled and positioned at the near edge of the cluster; the earlier gap is closed.",
       composition: "Same cluster layout as Frame 2, redrawn with the figure integrated into the group.",
       captionLine: "இனி அந்நியன் இல்லை.",
+      storyRole: "resolution",
+      emotionalMovement: "Stranger → Belonging",
+      visualRelationship: "individual-community",
     },
     reflectionLines: ["இன்று நீங்கள் சந்திக்கும் அந்நியர்,", "உங்களுக்கு எப்படிப்பட்டவர்?"],
   },

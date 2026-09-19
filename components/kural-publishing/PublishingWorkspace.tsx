@@ -104,6 +104,7 @@ import {
 } from "@/lib/kural-publishing/purananuru/history-store";
 import { runQualityChecks as runPurananuruQualityChecks } from "@/lib/kural-publishing/purananuru/quality-check";
 import { buildComposedReelStoryboard } from "@/lib/kural-publishing/purananuru/reel-storyboard-content";
+import { runReelVisualStoryQA } from "@/lib/kural-publishing/purananuru/reel-visual-story-qa";
 import {
   PURANANURU_SLIDE_COUNT,
   PURANANURU_SLIDE_LABELS,
@@ -206,6 +207,17 @@ function slugify(text: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
   return slug || "untitled";
+}
+
+/** Renders a ReelVisualScene's hyphenated storyRole/visualRelationship
+ *  values (e.g. "individual-community") as the sidebar's own compact
+ *  editorial label ("Individual ↔ Community") -- purely a display
+ *  transform, the underlying typed value never changes. */
+function formatStoryArcTerm(value: string): string {
+  return value
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ↔ ");
 }
 
 /** Mirrors drawSlide4Carry's own split exactly -- the trailing "—" is
@@ -568,22 +580,38 @@ export default function PublishingWorkspace() {
       ? loadPoem(PURANANURU_CANON_FIRST, EMPTY_PURANANURU_HISTORY)?.poem ?? null
       : null);
 
-  // The Reel Storyboard's own "Visual Story Direction" scene for whichever
-  // frame is currently active -- Frame 2 (index 1) and Frame 5 (index 4)
-  // only, since those are the only two frames with a visual-scene
-  // composition. Derived from the same displayPurananuruPoem the Carousel's
-  // own "Visual / Story Direction" panel above already reads, via the Reel
-  // Storyboard's own compose function -- never a second copy of scene data.
-  const activeReelVisualScene =
-    isPurananuruType && displayPurananuruPoem
-      ? (() => {
-          const storyboard = buildComposedReelStoryboard(displayPurananuruPoem);
-          if (!storyboard) return null;
-          if (purananuruReelFrameIndex === 1) return storyboard.frame2Scene;
-          if (purananuruReelFrameIndex === 4) return storyboard.frame5Scene;
-          return null;
-        })()
-      : null;
+  // The Reel Storyboard's own composed view of the current poem -- computed
+  // once here (rather than separately per consumer) so the "Visual Story
+  // Direction" scene panel and the Phase 8A story-arc/QA panel below both
+  // read the SAME composed object, never two independently-derived copies.
+  const activeReelStoryboard =
+    isPurananuruType && displayPurananuruPoem ? buildComposedReelStoryboard(displayPurananuruPoem) : null;
+
+  // Frame 2 (index 1) and Frame 5 (index 4) only, since those are the only
+  // two frames with a visual-scene composition.
+  const activeReelVisualScene = (() => {
+    if (!activeReelStoryboard) return null;
+    if (purananuruReelFrameIndex === 1) return activeReelStoryboard.frame2Scene;
+    if (purananuruReelFrameIndex === 4) return activeReelStoryboard.frame5Scene;
+    return null;
+  })();
+
+  // Phase 8A: deterministic Frame2 -> Frame5 story-arc QA for the current
+  // poem's whole visual-story pair (not just whichever frame is active) --
+  // pure/derived, same "no useState/useEffect needed" pattern as the two
+  // values above.
+  const activeReelVisualStoryQA = activeReelStoryboard ? runReelVisualStoryQA(activeReelStoryboard) : null;
+  // Hoisted out of the JSX below (rather than called inline as
+  // `activeReelVisualStoryQA.messages.join(...)`) -- the React Compiler's
+  // manual-memoization-preservation pass for an unrelated useCallback
+  // elsewhere in this component could not be preserved when that array
+  // method call sat inside the sidebar's JSX tree; a plain string computed
+  // here has no such effect while rendering identically.
+  const reelVisualStoryQAMessageText = activeReelVisualStoryQA ? activeReelVisualStoryQA.messages.join("\n") : "";
+  const reelStoryArcEmotionalMovement = activeReelVisualStoryQA?.storyArc?.emotionalMovement ?? "";
+  const reelStoryArcVisualRelationship = activeReelVisualStoryQA?.storyArc
+    ? formatStoryArcTerm(activeReelVisualStoryQA.storyArc.visualRelationship)
+    : "";
 
   const content: AssetContent = isSeriesType
     ? seriesFormat === "static"
@@ -2078,6 +2106,37 @@ export default function PublishingWorkspace() {
                   Internal art direction only — the exported frame draws this composition abstractly, this text never
                   appears on the PNG.
                 </p>
+              </div>
+            )}
+
+            {purananuruFormat === "reel-storyboard" && activeReelVisualStoryQA && (
+              <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Visual Story
+                </p>
+
+                {reelStoryArcEmotionalMovement && (
+                  <>
+                    <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                      Story Arc
+                    </p>
+                    <p className="mt-0.5 text-xs font-medium text-[var(--color-foreground)]">{reelStoryArcEmotionalMovement}</p>
+
+                    <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                      Visual Relationship
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--color-foreground)]">{reelStoryArcVisualRelationship}</p>
+                  </>
+                )}
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  QA
+                </p>
+                {activeReelVisualStoryQA.passed ? (
+                  <p className="mt-0.5 text-xs text-[var(--color-primary)]">✓ Story structure valid</p>
+                ) : (
+                  <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">{reelVisualStoryQAMessageText}</p>
+                )}
               </div>
             )}
 
