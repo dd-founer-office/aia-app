@@ -112,6 +112,8 @@ import { runQualityChecks as runPurananuruQualityChecks } from "@/lib/kural-publ
 import { buildComposedReelStoryboard } from "@/lib/kural-publishing/purananuru/reel-storyboard-content";
 import { runReelVisualStoryQA } from "@/lib/kural-publishing/purananuru/reel-visual-story-qa";
 import { runReelMotionDirectionQA } from "@/lib/kural-publishing/purananuru/reel-motion-direction-qa";
+import { buildComposedReelAIVisualDirection } from "@/lib/kural-publishing/purananuru/reel-ai-visual-direction";
+import { runReelAIVisualDirectionQA } from "@/lib/kural-publishing/purananuru/reel-ai-visual-direction-qa";
 import {
   PURANANURU_SLIDE_COUNT,
   PURANANURU_SLIDE_LABELS,
@@ -661,6 +663,19 @@ export default function PublishingWorkspace() {
     play: playReelMotionPreview,
     replay: replayReelMotionPreview,
   } = useReelMotionPreview(activeReelStoryboard, reelPreviewTamilFont, reelPreviewSansFont);
+
+  // Phase 9C: the AI Visual Direction layer -- deterministic copyable text
+  // prompts for an external AI image-generation tool, derived from the same
+  // activeReelStoryboard the Motion Direction card above already reads.
+  // Still no image generation, no AI API call; just structured text. Same
+  // "no useState/useEffect needed" pure-derivation pattern as Phase 8A/9A.
+  const activeReelAIVisualDirection = buildComposedReelAIVisualDirection(activeReelStoryboard);
+  const activeReelAIVisualDirectionQA = activeReelStoryboard
+    ? runReelAIVisualDirectionQA(activeReelAIVisualDirection, activeReelStoryboard)
+    : null;
+  const reelAIVisualDirectionQAMessageText = activeReelAIVisualDirectionQA
+    ? activeReelAIVisualDirectionQA.messages.join("\n")
+    : "";
 
   const content: AssetContent = isSeriesType
     ? seriesFormat === "static"
@@ -1637,6 +1652,24 @@ export default function PublishingWorkspace() {
     }
   }, [displayEpisode, textOverrides]);
 
+  const handleCopyReelAIFrame2Prompt = useCallback(() => {
+    if (!activeReelAIVisualDirection) return;
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(activeReelAIVisualDirection.frame2.prompt).catch(() => {
+        /* clipboard permission unavailable -- prompt is still shown in the textarea for manual copy */
+      });
+    }
+  }, [activeReelAIVisualDirection]);
+
+  const handleCopyReelAIFrame5Prompt = useCallback(() => {
+    if (!activeReelAIVisualDirection) return;
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(activeReelAIVisualDirection.frame5.prompt).catch(() => {
+        /* clipboard permission unavailable -- prompt is still shown in the textarea for manual copy */
+      });
+    }
+  }, [activeReelAIVisualDirection]);
+
   const handleDownloadAsset = useCallback((asset: GeneratedAsset) => {
     triggerDownload(asset.url, asset.filename);
   }, []);
@@ -2276,6 +2309,94 @@ export default function PublishingWorkspace() {
                 <p className="mt-2 text-[10px] text-[var(--color-muted-foreground)]">
                   In-browser preview only — this is still no video/MP4/WebM export; the exported PNG never includes
                   motion.
+                </p>
+              </div>
+            )}
+
+            {purananuruFormat === "reel-storyboard" && activeReelAIVisualDirection && activeReelAIVisualDirectionQA && (
+              <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  AI Visual Direction
+                </p>
+
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Continuity Bible
+                </p>
+                <p className="mt-0.5 text-[11px] text-[var(--color-foreground)]">
+                  Characters: {activeReelAIVisualDirection.continuityBible.characters.map((c) => c.role).join(", ")}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[var(--color-foreground)]">
+                  Setting: {activeReelAIVisualDirection.continuityBible.environment.location}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[var(--color-foreground)]">
+                  Visual style: {activeReelAIVisualDirection.continuityBible.visualStyle.medium}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[var(--color-foreground)]">
+                  Key props: {activeReelAIVisualDirection.continuityBible.recurringProps.length}
+                </p>
+
+                <div className="mt-3 flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                      Frame 2 Prompt
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyReelAIFrame2Prompt}
+                      className="text-[11px] font-medium text-[var(--color-primary)]"
+                    >
+                      Copy Prompt
+                    </button>
+                  </div>
+                  <textarea
+                    readOnly
+                    value={activeReelAIVisualDirection.frame2.prompt}
+                    rows={8}
+                    className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-[11px] text-[var(--color-foreground)] outline-none"
+                  />
+                </div>
+
+                <div className="mt-3 flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                      Frame 5 Prompt
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyReelAIFrame5Prompt}
+                      className="text-[11px] font-medium text-[var(--color-primary)]"
+                    >
+                      Copy Prompt
+                    </button>
+                  </div>
+                  <textarea
+                    readOnly
+                    value={activeReelAIVisualDirection.frame5.prompt}
+                    rows={8}
+                    className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-[11px] text-[var(--color-foreground)] outline-none"
+                  />
+                </div>
+
+                <p className="mt-3 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Continuity Check
+                </p>
+                {activeReelAIVisualDirectionQA.passed ? (
+                  <ul className="mt-0.5 space-y-0.5 text-[11px] text-[var(--color-primary)]">
+                    <li>✓ Same characters</li>
+                    <li>✓ Same environment</li>
+                    <li>✓ Same visual language</li>
+                    <li>✓ Same key props</li>
+                    <li>✓ Different story state</li>
+                  </ul>
+                ) : (
+                  <p className="mt-0.5 whitespace-pre-line text-[11px] text-amber-800">
+                    {reelAIVisualDirectionQAMessageText}
+                  </p>
+                )}
+
+                <p className="mt-3 text-[10px] text-[var(--color-muted-foreground)]">
+                  For an external AI image-generation tool only — copy a prompt above and paste it there. This app
+                  never calls an image-generation API and never uploads, stores, or renders the resulting image.
                 </p>
               </div>
             )}
