@@ -7,13 +7,33 @@
  * (content-engine.ts, the carousel renderer) may reorder, merge, paraphrase,
  * or alter tamilText.
  *
- * SCOPE: still the 3-poem foundation set (139, 189, 192) requested for
- * Phase 1/2 — NOT the verified 50-poem Master Content Index, which stays a
- * deliberately separate, later pass. Adding poem 4..50 (and eventually
- * toward the full 400) is purely appending entries here; nothing in
- * content-engine.ts, the renderer, or the generator UI needs to change.
+ * SCOPE: still a 3-poem foundation set requested for Phase 1/2/4 — NOT the
+ * verified 50-poem Master Content Index, which stays a deliberately
+ * separate, later pass. Adding poem 4..50 (and eventually toward the full
+ * 400) is purely appending entries here; nothing in content-engine.ts, the
+ * renderer, or the generator UI needs to change.
  *
- * PHASE 2 CORRECTION — READ BEFORE TRUSTING POEM 139's METADATA:
+ * PHASE 4 — 139 SWAPPED OUT FOR 91: the active set is now 91, 189, 192.
+ * Poem 139 (see the Phase 2 paragraph below for why its poet/subject were
+ * corrected) never got past a two-fragment partial text despite a full
+ * Phase 3 research pass, so it is deliberately NOT production-ready for the
+ * first Reel experiment and has been removed from PURANANURU_CANON. It is
+ * not deleted from the project: its fully-sourced-as-far-as-possible entry
+ * (poet Maruthan Ilanagnanaar, subject Ay Andiran, both confirmed fragments,
+ * NEEDS_SOURCING placeholder) lives in this file's git history (the Phase 2
+ * commit) and can be re-added the same way 91 was added here, the moment
+ * its complete text is actually sourced — no schema or architecture change
+ * needed for that, just a new array entry. Purananuru 91 (Avvaiyar, on
+ * Athiyaman Nedumaan Anji's gift of the life-prolonging nelli fruit) was
+ * selected as its replacement after a dedicated Phase 3 candidate search
+ * that also checked poems 312 and 201 — 91 had the strongest independent
+ * source spread of the three, including one scholarly published
+ * translation (George Hart & Hank Heifetz, "The Four Hundred Songs of War
+ * and Wisdom", Columbia University Press, 1999) corroborating the exact
+ * wording, not just the story.
+ *
+ * PHASE 2 CORRECTION — READ BEFORE TRUSTING POEM 139's METADATA (kept for
+ * history; 139 is no longer in the active array below):
  * Phase 1 preloaded poem 139 as a Kapilar poem about the chieftain Pegan's
  * generosity in war. Phase 2 source verification (multiple independent
  * searches against a Tamil-Wikipedia poet biography, and two dedicated
@@ -23,8 +43,7 @@
  * patron for reward) — not Kapilar, not Pegan, not a war-generosity poem.
  * Kapilar's actual Pegan poem in this anthology is 143 (a different genre:
  * perunthinai, pleading with Pegan not to abandon his wife), which is NOT
- * in this dataset. Corrected below; see each field's own comment for what
- * changed and why.
+ * in this dataset.
  *
  * PROVENANCE / VERIFICATION — READ BEFORE FLIPPING verified TO true:
  * This sandboxed environment still has no general internet access in
@@ -129,6 +148,77 @@ export interface PurananuruCanonEntry {
 }
 
 export const PURANANURU_CANON: readonly PurananuruCanonEntry[] = [
+  {
+    poemNumber: 91,
+    // PHASE 3/4: selected as poem 139's replacement after a dedicated
+    // candidate search (see the Phase 3 research report) that also
+    // evaluated poems 312 and 201. Poet and text cross-checked across 4
+    // independent source types: two separately-run dedicated per-poem
+    // blogs that both title this poem "91. எமக்கு ஈத்தனையே!" (matching the
+    // poem's own closing words) -- puram400.blogspot.com and
+    // annamalai-subbu.blogspot.com; a genre/classification citation
+    // (திணை: தும்பை, துறை: வாழ்த்தியல்); and, uniquely among this dataset's
+    // three poems, an independently PUBLISHED scholarly translation (George
+    // Hart & Hank Heifetz, "The Four Hundred Songs of War and Wisdom",
+    // Columbia University Press, 1999), whose English -- "May you live as
+    // long as he lives on whose head the crescent moon glows, whose neck is
+    // as dark blue as sapphires" -- corroborates "பால்புரை பிறைநுதல்
+    // பொலிந்த சென்னி நீல மணிமிடற்று ஒருவன் போல மன்னுக" almost word for
+    // word. A handful of weaker, uncited search passes floated poem numbers
+    // 92/95/102 for what appears to be this same poem -- recorded, not
+    // silently adopted: 91 is the only number backed by a matching
+    // dedicated-post URL/title pairing on two separate sites plus the
+    // scholarly citation. Still `verified: false` per this file's header --
+    // no primary critical edition was opened directly.
+    poet: "Avvaiyar (ஔவையார்)",
+    tamilText:
+      "வலம்படு வாய்வாள் ஏந்தி ஒன்னார்\n" +
+      "களம்படக் கடந்த கழல்தொடித் தடக்கை\n" +
+      "ஆர்கலி நறவின் அதியர் கோமான்\n" +
+      "போரடு திருவிற் பொலந்தார் அஞ்சி\n" +
+      "பால்புரை பிறைநுதல் பொலிந்த சென்னி\n" +
+      "நீல மணிமிடற்று ஒருவன் போல\n" +
+      "மன்னுக பெரும! நீயே, தொன்னிலைப்\n" +
+      "பெருமலை விடரகத்து அருமிசைக் கொண்ட\n" +
+      "சிறியிலை நெல்லித் தீங்கனி குறியாது\n" +
+      "ஆதல் நின்னகத்து அடக்கிச்\n" +
+      "சாதல் நீங்க எமக்கு ஈத்தனையே.",
+    transliteration:
+      "Valampadu Vaaivaal Endhi Onnaar\n" +
+      "Kalampadak Kadandha Kazhaltodith Thadakkai\n" +
+      "Aarkali Naravin Adhiyar Komaan\n" +
+      "Poradu Thiruvir Polandhaar Anji\n" +
+      "Paalburai Pirainudhal Polindha Senni\n" +
+      "Neela Manimidatru Oruvan Pola\n" +
+      "Mannuga Peruma! Neeyey, Thonnilaip\n" +
+      "Perumalai Vidaragaththu Arumisaik Konda\n" +
+      "Siriyilai Nellith Theengani Kuriyaadhu\n" +
+      "Aadhal Ninnagaththu Adakkich\n" +
+      "Saadhal Neenga Emakku Eethanaiyey.",
+    // Literal/simple meaning only -- the modern framing lives entirely in
+    // curated.modernReflection/hook/visualStoryDirection below, never
+    // blended into this field. See this file's header for the "do not
+    // present modern interpretation as literal translation" rule this
+    // split exists to satisfy.
+    simpleMeaning:
+      "Avvaiyar blesses Athiyaman Nedumaan Anji, wishing him a life as long and lasting as the blue-throated one's (a reference to Shiva). She explains why: on an ancient, hard-to-climb mountain, in a rare crevice, grew a small-leaved nelli (gooseberry) tree bearing a fruit believed to ward off death and prolong life. Without hesitation, Athiyaman kept none of it for himself and gave the fruit to her.",
+    coreAramTheme: "generosity",
+    hook: "உங்களுக்கு கிடைத்த அரிய ஒன்றை,\nயாருக்காவது கொடுப்பீர்களா?",
+    visualStoryDirection:
+      "A modern person finally gets the one available seat on a fully-booked flight home for a family emergency -- then notices a stranger at the gate who needs it even more (a mother trying to reach a sick child) and hands over the boarding pass instead of using it. No king, no court, no ancient mountain -- the rare, hard-won thing is modern and mundane, and the choice is the entire story.",
+    verified: false,
+    sourceUrl: "http://puram400.blogspot.com/2009/07/91.html",
+    curated: {
+      // Modern editorial interpretation only -- not a claim about what the
+      // 8th-century poem itself says. Ends with the brief's own suggested
+      // closing question rather than adding a new, unrequested schema field
+      // for it (this dataset's schema stays exactly as it was in Phase 2).
+      modernReflection:
+        "நாம் கொடுப்பது எளிதாக கிடைத்ததா? அல்லது நமக்கே மிகவும் தேவையானதா? நீங்கள் இப்படிச் செய்வீர்களா?",
+      understanding:
+        "The value of generosity is greatest when we give something that is genuinely valuable to ourselves -- Avvaiyar's blessing is really a description of exactly that: a king who had every reason to keep a death-defying fruit for himself, and didn't.",
+    },
+  },
   {
     poemNumber: 189,
     // PHASE 2: cross-checked again this session across 4 independent
@@ -254,60 +344,6 @@ export const PURANANURU_CANON: readonly PurananuruCanonEntry[] = [
         "Strip away hometown, job title, and bank balance, and everyone is riding the same raft down the same river — the same joys, the same losses, the same one death waiting at the end. That's not a reason for despair; it's the reason no stranger is really a stranger.",
       understanding:
         "Kaniyan Poongundranar opens with the single most quoted line in Tamil ethics — no town is foreign, no person unrelated — then grounds it in something harder to argue with: everyone's pain, relief, and death arrive the same way, so no one is worth envying or looking down on.",
-    },
-  },
-  {
-    poemNumber: 139,
-    // PHASE 2 CORRECTION: Phase 1 preloaded this as a Kapilar poem about
-    // Pegan's wartime generosity. That was wrong. Independent verification
-    // this session — a Tamil Wikipedia biography of the poet Maruthan
-    // Ilanagnanaar listing his 5 known Purananuru poems (52, 55, 138, 139,
-    // 349); tamilsurangam.in's own dedicated page for poem 139, titled
-    // "139. சாதல் அஞ்சாய் நீயே!" and tagged with பரிசில் (reward),
-    // கூறேன்/மெய்/பொய் (I-will-not-say/truth/falsehood); and the
-    // puram400.blogspot.com discussion group's own notes — all
-    // independently agree: poem 139 is by Maruthan Ilanagnanaar, turai
-    // பரிசில் கடாநிலை (a poet's direct appeal to a patron for reward),
-    // in praise of the chieftain Ay Andiran (ஆய் அண்டிரன்), not Kapilar,
-    // not Pegan. Kapilar's actual Pegan poem in this anthology is 143 (a
-    // different genre — perunthinai, pleading with Pegan not to leave his
-    // wife for a mistress), confirmed by puram400.blogspot.com,
-    // sangathamizh.com, and tamilsurangam.in's own dedicated page for 143
-    // — and is NOT part of this dataset.
-    poet: "Maruthan Ilanagnanaar (மருதன் இளநாகனார்)",
-    // NEEDS_SOURCING: only two short fragments could be confirmed as
-    // actual quoted lines (not paraphrase) — the poem's own traditional
-    // opening/title line, and one further declarative line, both
-    // corroborated by tamilsurangam.in's own tag cloud for this specific
-    // poem (independent confirmation the words are really in the poem's
-    // vocabulary, not just an AI paraphrase). The majority of the poem's
-    // body was NOT retrievable this session and is explicitly marked
-    // below rather than reconstructed. One near-miss is worth recording:
-    // a search for wording near "சாதல்" + "நீயே" returned a fuller-looking
-    // passage, but cross-checking it showed it was actually Purananuru 91
-    // (a different poem, coincidentally sharing those two words) — caught
-    // and discarded rather than used, exactly the failure mode this task
-    // warned about.
-    tamilText:
-      "சாதல் அஞ்சாய் நீயே…\n" +
-      "[NEEDS_SOURCING — most of Purananuru 139's body could not be retrieved from a reliable source this session; do not publish.]\n" +
-      "…வாழ்தல் வேண்டிப் பொய் கூறேன்; மெய் கூறுவல்.",
-    transliteration:
-      "Saadhal Anjaai Neeyey…\n" +
-      "…Vaazhthal Vendip Poy Kooren; Mei Kooruval.",
-    simpleMeaning:
-      "A praise-poem for the chieftain Ay Andiran, in the பரிசில் கடாநிலை genre where a poet appeals directly to a patron for reward. Its two confirmed lines frame the poem's own ethical claim: it praises Ay Andiran's fearlessness toward death, and the poet insists the praise itself is not flattery bought by need — \"I will not lie for my living; I speak only the truth.\" (Full meaning pending the missing body of the poem.)",
-    coreAramTheme: "honesty",
-    hook: "பாராட்டு உண்மையா? பணத்துக்காகவா?",
-    visualStoryDirection:
-      "A freelance reviewer or consultant at their laptop, cursor hovering over a glowing 5-star rating for a paying client's mediocre product, then instead typing an honest, less flattering line — a modern echo of refusing to praise for pay, matching the poem's own confirmed declaration far better than any court/battlefield imagery would.",
-    verified: false,
-    sourceUrl: "http://www.tamilsurangam.in/literatures/ettuthogai/purananooru/purananooru_139.html",
-    curated: {
-      modernReflection:
-        "The poem's own defense isn't 'I praise you because you paid me' — it's 'I would say this even if you hadn't.' That's a genuinely hard bar for anyone whose living depends on the person they're describing.",
-      understanding:
-        "Even in a genre built around asking a patron for support, Maruthan Ilanagnanaar draws a line: whatever is said in this poem is offered as true, not manufactured because a reward is on the line — an early, blunt statement of editorial integrity.",
     },
   },
 ];

@@ -250,7 +250,7 @@ function buildSeriesCarouselFilename(
 // value and the pure fallback compose target (mirrors displayEpisode's own
 // composeEpisode(1, EMPTY_HISTORY) fallback, using this dataset's actual
 // first entry rather than assuming poem "1" exists, since Purananuru's
-// preloaded set is sparse (139/189/192), not contiguous from 1.
+// preloaded set is sparse (91/189/192, Phase 4), not contiguous from 1.
 const PURANANURU_CANON_FIRST = PURANANURU_CANON[0]?.poemNumber ?? 1;
 
 function buildPurananuruFilename(
@@ -1407,10 +1407,10 @@ export default function PublishingWorkspace() {
 
   // "Load Poem #N" -- direct lookup by canonical anthology number, same
   // convention as handleLoadEpisode above. Unlike episodes, Purananuru's
-  // preloaded poem numbers are sparse (139/189/192, not contiguous from 1),
-  // so there is no valid numeric range to clamp to -- an out-of-canon
-  // number simply surfaces a warning instead of silently substituting
-  // something else.
+  // preloaded poem numbers are sparse (91/189/192, Phase 4, not contiguous
+  // from 1), so there is no valid numeric range to clamp to -- an
+  // out-of-canon number simply surfaces a warning instead of silently
+  // substituting something else.
   const handleLoadPurananuruPoem = useCallback(
     (targetPoem: number) => {
       const result = loadPoem(targetPoem, purananuruHistory);
