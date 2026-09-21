@@ -1398,7 +1398,7 @@ export default function PublishingWorkspace() {
     const effectiveText = generatedParagraphs
       .map((generated, i) => textOverrides.slide2?.paragraphs?.[i] || generated)
       .join(" ");
-    const prompt = buildFamilyImagePrompt(effectiveText);
+    const prompt = buildFamilyImagePrompt(effectiveText, displayEpisode.episodeNumber);
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(prompt).catch(() => {
         /* clipboard permission unavailable -- prompt can still be selected from an alert/log if needed */
