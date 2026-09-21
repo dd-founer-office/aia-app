@@ -13,7 +13,7 @@ export default function OnboardingJourneyPage() {
       totalSteps={5}
       title="Your Aram Journey"
       subtitle="Progress through participation, not contribution size."
-      continueHref="/sign-in"
+      continueHref="/sign-in?mode=signup"
       continueLabel="Create your account"
       backHref="/onboarding/causes"
     >
