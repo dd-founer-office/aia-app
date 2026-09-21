@@ -169,7 +169,7 @@ export function HomeClient({
                 style={{ height: "64px", width: "auto" }}
               />
               <div className="flex flex-col">
-                <h1 className="text-2xl font-semibold leading-tight tracking-tight">
+                <h1 className="text-2xl font-medium leading-tight tracking-tight">
                   <span className="font-tamil-sans font-medium">
                     {"வணக்கம்"}
                   </span>
