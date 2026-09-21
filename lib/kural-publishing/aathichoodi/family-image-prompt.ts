@@ -39,11 +39,14 @@
  * picked via pickFresh keyed on episodeNumber -- same selection.ts helper
  * every other pool in this series uses, just without history tracking
  * since this is generated on demand rather than composed once). Founder-
- * flagged: every copied prompt was landing on the same generic "home"
- * setting (no location specified beyond "real everyday home setting"),
- * so every generated photo looked alike. Rotating the setting doesn't
- * override a scenario that already names a location (see the wording
- * below) -- it only fills in when the scene itself is location-agnostic.
+ * flagged (twice): every copied prompt was landing on the same generic
+ * "home" look. First fix rotated the setting but hedged it behind "if
+ * the scene doesn't already specify a location" buried mid-sentence --
+ * still the same result, because a conditional clause tucked inside a
+ * lighting sentence is exactly the kind of instruction an image generator
+ * skims past. Setting is now its own short, unconditional, clearly
+ * labeled sentence ("Setting: ...") placed right after the Scene line --
+ * no hedge, no burying it in the middle of another instruction.
  */
 
 import { pickFresh, type Pickable } from "./selection";
@@ -53,16 +56,16 @@ interface BackgroundSetting extends Pickable {
 }
 
 const BACKGROUND_SETTINGS: readonly BackgroundSetting[] = [
-  { id: "kitchen", text: "at the kitchen counter, soft morning light through a window" },
-  { id: "dining-table", text: "at the dining table, a meal still out, warm evening light" },
-  { id: "living-room-couch", text: "on the living room couch, a lamp lit in the evening" },
-  { id: "study-corner", text: "at a home study corner or desk, books and a desk lamp nearby" },
-  { id: "porch-balcony", text: "on a back porch or balcony, potted plants in the background" },
-  { id: "front-yard", text: "in the front yard or driveway, natural daylight" },
-  { id: "bedroom-nook", text: "in a bedroom reading nook by the window, afternoon light" },
-  { id: "entryway", text: "by the front hallway/entryway, shoes and bags set down nearby" },
-  { id: "car-back-seat", text: "in the back seat of a car during a drive, seen from behind" },
-  { id: "grandparents-home", text: "in a grandparent's living room, an older family member present" },
+  { id: "kitchen", text: "In the kitchen, at the counter, soft morning light through a window" },
+  { id: "dining-table", text: "At the dining table, a meal still out, warm evening light" },
+  { id: "living-room-couch", text: "On the living room couch, a lamp lit in the evening" },
+  { id: "study-corner", text: "At a home study corner or desk, books and a desk lamp nearby" },
+  { id: "porch-balcony", text: "On a back porch or balcony, potted plants in the background" },
+  { id: "front-yard", text: "In the front yard or driveway, natural daylight" },
+  { id: "bedroom-nook", text: "In a bedroom reading nook by the window, afternoon light" },
+  { id: "entryway", text: "By the front hallway/entryway, shoes and bags set down nearby" },
+  { id: "car-back-seat", text: "In the back seat of a car during a drive, seen from behind" },
+  { id: "grandparents-home", text: "In a grandparent's living room, an older family member present" },
 ];
 
 /** Best-effort rewrite of the second-person scenario copy ("Your child
@@ -91,8 +94,9 @@ export function buildFamilyImagePrompt(familyAngleText: string, episodeNumber: n
   const setting = pickFresh(BACKGROUND_SETTINGS, [], episodeNumber).text;
   return [
     `Warm, realistic documentary-style family photograph. Scene: ${scene}`,
+    `Setting: ${setting}.`,
     "The family is Tamil / South Indian in heritage and appearance, living abroad in a Western diaspora country (for example a modern home in the US, UK, Canada, Australia, or Singapore) -- an authentic contemporary diaspora household, not a rural or 'exoticized' village-India setting. Natural, lived-in cultural touches are welcome where they'd realistically appear in such a home (a small home altar or Tamil calendar in the background, a South Indian coffee tumbler, a saree or traditional jewelry worn naturally by an older family member) but should feel everyday, never costumed or staged for the camera.",
-    `Natural window light, candid and unposed, soft warm tones, genuine expressions. If the scene above doesn't already specify a location, set it ${setting}.`,
+    "Natural light, candid and unposed, soft warm tones, genuine expressions.",
     "Vertical portrait composition (roughly 4:5 aspect ratio). IMPORTANT: keep everyone in the scene within the RIGHT two-thirds of the frame -- the left third should be simple, uncluttered background (a wall, soft shadow, blurred negative space), since that side of the final image will carry overlaid text. Do not spread people or the main action across the full width or toward the left edge.",
     "Photorealistic only -- no text, no logos, no watermarks, no illustration or cartoon style.",
   ].join(" ");
