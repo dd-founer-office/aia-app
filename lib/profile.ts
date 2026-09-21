@@ -5,8 +5,8 @@ import type { StageName } from "@/types";
 export interface ProfileDetail {
   displayName: string;
   /** users.country -- nullable (see users_country_column migration).
-   *  Genuinely unknown until a real "Personal details" edit flow exists to
-   *  collect it; Profile renders this line only when set. */
+   *  Editable via Account Settings' Personal details row
+   *  (updatePersonalDetailsAction); Profile renders this line only when set. */
   country: string | null;
   memberSinceIso: string;
   currentStage: StageName;

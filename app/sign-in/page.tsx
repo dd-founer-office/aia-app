@@ -8,6 +8,7 @@ import { getSupabaseAuthBrowserClient } from "@/lib/supabase/browser-client";
 type SendState = "idle" | "sending" | "sent" | "error";
 
 export default function SignInPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [state, setState] = useState<SendState>("idle");
 
@@ -29,6 +30,13 @@ export default function SignInPage() {
         // preview deploy, or production) -- never a hardcoded env var that
         // would break on every preview URL.
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // CA-006 Signup: only meaningful the first time this email signs
+        // in -- handle_new_auth_user() reads raw_user_meta_data.full_name
+        // when it provisions the new users/contributors rows, falling
+        // back to the email's local-part when this is blank. Harmless to
+        // send on every return sign-in too: Supabase stores it on the
+        // auth user regardless, and the trigger only fires once.
+        data: name.trim() ? { full_name: name.trim() } : undefined,
       },
     });
 
@@ -42,7 +50,6 @@ export default function SignInPage() {
           title="Sign in to Aram in Action"
           subtitle="Enter your email and we'll send you a link to sign in — no password needed."
         />
-
         {state === "sent" ? (
           <div className="mt-8 flex flex-col gap-2">
             <p className="text-sm font-medium text-[var(--color-foreground)]">Check your email</p>
@@ -52,7 +59,20 @@ export default function SignInPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">
-            <label htmlFor="email" className="text-sm font-medium text-[var(--color-foreground)]">
+            <label htmlFor="name" className="text-sm font-medium text-[var(--color-foreground)]">
+              Name <span className="font-normal text-[var(--color-muted-foreground)]">(new here? tell us what to call you)</span>
+            </label>
+            <input
+              id="name"
+              type="text"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              className="rounded-[var(--radius-button)] border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+
+            <label htmlFor="email" className="mt-2 text-sm font-medium text-[var(--color-foreground)]">
               Email
             </label>
             <input
