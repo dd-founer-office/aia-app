@@ -1,5 +1,5 @@
-import { getActsFeed } from "@/lib/mock-data";
 import { getPublishedActsFeed } from "@/lib/published-acts";
+import { getMyLinkedPublishedMissionIds } from "@/lib/act-attribution";
 
 export interface ActFeedItem {
   id: string;
@@ -16,32 +16,25 @@ export interface ActFeedItem {
 }
 
 /**
- * Merges the 5 demo Acts (lib/mock-data.ts) with real published missions
- * (lib/published-acts.ts), sorted newest first -- the same merge
- * app/acts/page.tsx already did inline, now shared with the Act Detail
- * page's Related Acts section (CA-011 Section 8) so both read one
- * definition of "the feed."
+ * The signed-in contributor's own Acts of Aram feed -- founder-directed
+ * override (2026-09-21): this is a personal-use-case app, so "Acts of
+ * Aram" must mean Acts the signed-in contributor personally participated
+ * in, never the org-wide feed. Replaces the earlier getMergedActsFeed(),
+ * which (a) merged in 5 presentation-only demo Acts from lib/mock-data.ts
+ * that don't belong to any real contributor, and (b) showed every
+ * published mission system-wide rather than just this contributor's own.
+ * [] for a signed-out visitor or a contributor with no published Acts yet
+ * -- same "hide, don't fabricate" rule the rest of this codebase follows.
  */
-export async function getMergedActsFeed(): Promise<ActFeedItem[]> {
-  const mockActs = getActsFeed();
+export async function getMyActsFeed(): Promise<ActFeedItem[]> {
+  const missionIds = await getMyLinkedPublishedMissionIds();
+  if (missionIds.length === 0) return [];
+
+  const linkedIds = new Set(missionIds);
   const publishedActs = await getPublishedActsFeed();
 
-  const mockFeedItems: ActFeedItem[] = mockActs.map((act) => ({
-    id: act.id,
-    heroImage: act.hero_image_url,
-    supportingImageCount: act.supporting_image_urls.length,
-    category: act.cause,
-    placeName: act.place_name,
-    completedDate: act.completed_date,
-    headline: act.impact_summary,
-    supportingCopy: act.supporting_copy,
-    isSharedAct: act.is_shared_act,
-    contributorCount: act.contributor_count,
-    sortDate: new Date(act.completed_date_iso).getTime(),
-  }));
-
-  const publishedFeedItems: ActFeedItem[] = publishedActs
-    .filter((act) => act.heroImageUrl)
+  return publishedActs
+    .filter((act) => linkedIds.has(act.id) && act.heroImageUrl)
     .map((act) => ({
       id: act.id,
       heroImage: act.heroImageUrl as string,
@@ -54,7 +47,6 @@ export async function getMergedActsFeed(): Promise<ActFeedItem[]> {
       isSharedAct: act.isSharedAct,
       contributorCount: act.contributorCount,
       sortDate: new Date(act.missionDateIso).getTime(),
-    }));
-
-  return [...mockFeedItems, ...publishedFeedItems].sort((a, b) => b.sortDate - a.sortDate);
+    }))
+    .sort((a, b) => b.sortDate - a.sortDate);
 }

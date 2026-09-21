@@ -361,16 +361,13 @@ timeline: [
   },
 ];
 
-// Feed Ordering Rules (Locked, CA-010): Primary sort = Publication Date,
-// newest first. Never reordered by views, engagement, participation
-// volume, contributor count, or cause popularity.
-export function getActsFeed(): MockAct[] {
-  return [...mockActs].sort(
-    (a, b) =>
-      new Date(b.completed_date_iso).getTime() - new Date(a.completed_date_iso).getTime()
-  );
-}
-
+// getActsFeed() (the merged-into-the-real-feed reader) was removed
+// 2026-09-21 when the Acts Feed became personal-use-case scoped (see
+// lib/acts-feed.ts's getMyActsFeed()) -- these demo Acts don't belong to
+// any real contributor, so they can no longer honestly appear in anyone's
+// "my Acts of Aram" feed. getActById() stays: the demo detail routes
+// (app/acts/[id]/{verification,records,timeline,impact,location}) still
+// render from it directly for design-reference purposes.
 export function getActById(id: string): MockAct | undefined {
   return mockActs.find((act) => act.id === id);
 }
