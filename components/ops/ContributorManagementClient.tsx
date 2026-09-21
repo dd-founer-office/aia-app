@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Badge, type BadgeStatus } from "@/components/shared/Badge";
 import { STAGE_LABELS, STAGE_ORDER } from "@/types";
-import { exportContributorsAction, exportCommunityReportAction } from "@/lib/contributors-actions";
+import { CAUSES, type CauseId } from "@/types/participation";
+import { exportContributorsAction, exportCommunityReportAction, recordPastParticipationAction } from "@/lib/contributors-actions";
 import type { ContributorManagementData, ContributorRow, ContributorStatus, SuggestedAction } from "@/lib/contributors";
 
 const STATUS_BADGE: Record<ContributorStatus, { status: BadgeStatus; label: string }> = {
@@ -64,7 +66,104 @@ function downloadText(content: string, filename: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-function ContributorDetailPanel({ contributor }: { contributor: ContributorRow }) {
+/** Founder-directed addition (2026-09-21), not part of OP-008's locked
+ *  spec: lets an operator backfill a real contributor's past participation
+ *  (e.g. a contributor who joined the app after already participating for
+ *  months, like Rabia from March) so their Journey stage, continuity
+ *  streak, and Lifetime Acts count reflect reality. See
+ *  recordPastParticipationAction's own comment for why this must be done
+ *  oldest-month-first when backfilling more than one month. */
+function RecordPastParticipationForm({ contributorId, onRecorded }: { contributorId: string; onRecorded: () => void }) {
+  const maxMonth = new Date().toISOString().slice(0, 7);
+  const [month, setMonth] = useState("");
+  const [selectedCauses, setSelectedCauses] = useState<CauseId[]>([]);
+  const [totalAmount, setTotalAmount] = useState("");
+  const [splits, setSplits] = useState<Partial<Record<CauseId, string>>>({});
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  function toggleCause(id: CauseId) {
+    setSuccess(null);
+    setSelectedCauses((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+  }
+
+  const allocatedSum = selectedCauses.reduce((sum, id) => sum + (Number(splits[id]) || 0), 0);
+  const totalAmountNumber = Number(totalAmount) || 0;
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    const causeAllocationsRupees: Partial<Record<CauseId, number>> = {};
+    for (const id of selectedCauses) causeAllocationsRupees[id] = Number(splits[id]) || 0;
+
+    setPending(true);
+    const result = await recordPastParticipationAction(contributorId, month, selectedCauses, totalAmountNumber, causeAllocationsRupees);
+    setPending(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setSuccess(`Recorded participation for ${month}.`);
+    setMonth("");
+    setSelectedCauses([]);
+    setTotalAmount("");
+    setSplits({});
+    onRecorded();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 border-t border-[var(--color-border)] pt-3">
+      <p className="text-sm font-medium text-[var(--color-foreground)]">Record past participation</p>
+      <label className="flex flex-col gap-1 text-xs">
+        Month
+        <input type="month" required max={maxMonth} value={month} onChange={(e) => setMonth(e.target.value)} className={inputClass()} />
+      </label>
+      <div className="flex flex-wrap gap-3">
+        {CAUSES.map((cause) => (
+          <label key={cause.id} className="flex items-center gap-1.5 text-xs">
+            <input type="checkbox" checked={selectedCauses.includes(cause.id)} onChange={() => toggleCause(cause.id)} />
+            {cause.title}
+          </label>
+        ))}
+      </div>
+      <label className="flex flex-col gap-1 text-xs">
+        Total amount (₹)
+        <input type="number" min={1} step={1} value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} className={inputClass()} />
+      </label>
+      {selectedCauses.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {selectedCauses.map((id) => (
+            <label key={id} className="flex items-center justify-between gap-2 text-xs">
+              {CAUSES.find((c) => c.id === id)?.title} split (₹)
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={splits[id] ?? ""}
+                onChange={(e) => setSplits((prev) => ({ ...prev, [id]: e.target.value }))}
+                className={`${inputClass()} w-28`}
+              />
+            </label>
+          ))}
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            Split total: ₹{allocatedSum} of ₹{totalAmountNumber}
+          </p>
+        </div>
+      )}
+      <Button type="submit" disabled={pending} className="self-start">
+        {pending ? "Recording…" : "Record participation"}
+      </Button>
+      {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
+      {success && <p className="text-sm text-[var(--color-primary)]">{success}</p>}
+    </form>
+  );
+}
+
+function ContributorDetailPanel({ contributor, onParticipationRecorded }: { contributor: ContributorRow; onParticipationRecorded: () => void }) {
   const label = STAGE_LABELS[contributor.currentStage];
   return (
     <section>
@@ -126,6 +225,8 @@ function ContributorDetailPanel({ contributor }: { contributor: ContributorRow }
         {/* Row 7's "Recent acts viewed" is intentionally omitted -- nothing
             in the app records which published Acts a contributor has
             viewed, so there's no real data to show here. */}
+
+        <RecordPastParticipationForm contributorId={contributor.id} onRecorded={onParticipationRecorded} />
       </Card>
     </section>
   );
@@ -139,6 +240,7 @@ function ContributorDetailPanel({ contributor }: { contributor: ContributorRow }
  *  as OP-006/OP-007: selecting a contributor row drives the Row 7 detail
  *  panel below the table rather than navigating to a dedicated page. */
 export function ContributorManagementClient({ data }: { data: ContributorManagementData }) {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [exportPending, setExportPending] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -405,7 +507,13 @@ export function ContributorManagementClient({ data }: { data: ContributorManagem
       </section>
 
       {/* Row 7 -- Contributor Detail Preview */}
-      {selectedContributor && <ContributorDetailPanel key={selectedContributor.id} contributor={selectedContributor} />}
+      {selectedContributor && (
+        <ContributorDetailPanel
+          key={selectedContributor.id}
+          contributor={selectedContributor}
+          onParticipationRecorded={() => router.refresh()}
+        />
+      )}
 
       {/* Row 8 -- Community Insights */}
       <section>
