@@ -47,6 +47,16 @@
  * skims past. Setting is now its own short, unconditional, clearly
  * labeled sentence ("Setting: ...") placed right after the Scene line --
  * no hedge, no burying it in the middle of another instruction.
+ *
+ * TAMIL_TOUCHES rotates the same way, separately -- founder-flagged a
+ * third time: the cultural-detail sentence originally listed every touch
+ * at once ("a home altar or Tamil calendar... a coffee tumbler... a
+ * saree or jewelry..."), so every generated photo tended to include the
+ * same handful of props. Each pool entry now names just ONE or TWO
+ * specific touches, one picked per episode -- seeded on episodeNumber + 5
+ * (not the bare episodeNumber BACKGROUND_SETTINGS uses) so the two
+ * rotations don't happen to land on the same pool index together and
+ * repeat each other's pattern episode to episode.
  */
 
 import { pickFresh, type Pickable } from "./selection";
@@ -68,6 +78,23 @@ const BACKGROUND_SETTINGS: readonly BackgroundSetting[] = [
   { id: "grandparents-home", text: "In a grandparent's living room, an older family member present" },
 ];
 
+interface TamilTouch extends Pickable {
+  text: string;
+}
+
+const TAMIL_TOUCHES: readonly TamilTouch[] = [
+  { id: "altar-lamp", text: "a small home altar with a lit diya or brass lamp nearby" },
+  { id: "calendar", text: "a Tamil calendar or almanac hanging on the wall" },
+  { id: "filter-coffee", text: "a stainless steel filter coffee tumbler and davara on the counter" },
+  { id: "saree", text: "a folded silk saree or pattu material set aside on a chair" },
+  { id: "jasmine", text: "fresh jasmine flowers in a small dish, or worn in someone's hair" },
+  { id: "kolam", text: "a kolam/rangoli pattern visible just outside the front door" },
+  { id: "family-photos", text: "a framed photo of grandparents or ancestors on a side table" },
+  { id: "kuthuvilakku", text: "a brass kuthuvilakku (traditional standing oil lamp) in the corner" },
+  { id: "tamil-reading", text: "a Tamil magazine or newspaper set on a side table" },
+  { id: "jewelry", text: "simple traditional gold jewelry worn naturally by an older family member" },
+];
+
 /** Best-effort rewrite of the second-person scenario copy ("Your child
  *  sees...") into a third-person scene description an image generator can
  *  act on ("A child sees..."). Plain word-boundary substitutions, not a
@@ -87,15 +114,18 @@ function toSceneDescription(text: string): string {
 /** familyAngleText should be whatever's CURRENTLY shown on Slide 3 (the
  *  generated scenario, or the founder's own text override if one is set)
  *  so the prompt always matches what the slide actually says. episodeNumber
- *  seeds the rotating background setting (see BACKGROUND_SETTINGS above)
- *  so consecutive episodes don't land on the same generic "home" look. */
+ *  seeds both rotating pools (BACKGROUND_SETTINGS, TAMIL_TOUCHES above) so
+ *  consecutive episodes don't land on the same generic look or the same
+ *  cultural props every time. */
 export function buildFamilyImagePrompt(familyAngleText: string, episodeNumber: number): string {
   const scene = toSceneDescription(familyAngleText.trim());
   const setting = pickFresh(BACKGROUND_SETTINGS, [], episodeNumber).text;
+  const touch = pickFresh(TAMIL_TOUCHES, [], episodeNumber + 5).text;
   return [
     `Warm, realistic documentary-style family photograph. Scene: ${scene}`,
     `Setting: ${setting}.`,
-    "The family is Tamil / South Indian in heritage and appearance, living abroad in a Western diaspora country (for example a modern home in the US, UK, Canada, Australia, or Singapore) -- an authentic contemporary diaspora household, not a rural or 'exoticized' village-India setting. Natural, lived-in cultural touches are welcome where they'd realistically appear in such a home (a small home altar or Tamil calendar in the background, a South Indian coffee tumbler, a saree or traditional jewelry worn naturally by an older family member) but should feel everyday, never costumed or staged for the camera.",
+    "The family is Tamil / South Indian in heritage and appearance, living abroad in a Western diaspora country (for example a modern home in the US, UK, Canada, Australia, or Singapore) -- an authentic contemporary diaspora household, not a rural or 'exoticized' village-India setting.",
+    `Cultural detail: include ${touch}, if it fits naturally -- just this one touch, not a checklist of props. It should feel like an ordinary detail of the home, never costumed or staged for the camera.`,
     "Natural light, candid and unposed, soft warm tones, genuine expressions.",
     "Vertical portrait composition (roughly 4:5 aspect ratio). IMPORTANT: keep everyone in the scene within the RIGHT two-thirds of the frame -- the left third should be simple, uncluttered background (a wall, soft shadow, blurred negative space), since that side of the final image will carry overlaid text. Do not spread people or the main action across the full width or toward the left edge.",
     "Photorealistic only -- no text, no logos, no watermarks, no illustration or cartoon style.",
