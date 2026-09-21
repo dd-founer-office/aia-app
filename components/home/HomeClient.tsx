@@ -19,7 +19,7 @@ import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 import KuralScrollFormation from "@/components/home/KuralScrollFormation";
 import type { CurrentContributor } from "@/lib/contributor";
-import type { PublishedActSummary, PublishedActFeedItem } from "@/lib/published-acts";
+import type { PublishedActSummary } from "@/lib/published-acts";
 
 export function HomeClient({
   contributor,
@@ -29,7 +29,7 @@ export function HomeClient({
 }: {
   contributor: CurrentContributor;
   sharedAct: PublishedActSummary | null;
-  latestAct: PublishedActFeedItem | null;
+  latestAct: PublishedActSummary | null;
   unreadNotificationCount: number;
 }) {
   const router = useRouter();
@@ -233,10 +233,11 @@ export function HomeClient({
             section title is 'Recent Impact' for comprehension; the card
             itself may still label 'Act of Aram'" -- title corrected to
             match (was "Your Latest Act of Aram"), card content unchanged.
-            Real now (lib/published-acts.ts's getLatestPublishedAct()) --
-            the most recently published Act system-wide, not contributor-
-            specific (that's Shared Act of Aram below). Was hardcoded to
-            lib/mock-data.ts's mockLatestAct; also fixes "View Act" never
+            Real now (lib/published-acts.ts's getMyLatestPublishedAct()) --
+            founder-directed override (2026-09-21): this is a personal-use-
+            case app, so this is the signed-in contributor's own most
+            recently published Act, not the org-wide latest. Was hardcoded
+            to lib/mock-data.ts's mockLatestAct; also fixes "View Act" never
             having had a real href before. */}
         <Card className="flex flex-col gap-4">
           <SectionHeader title="Recent Impact" />

@@ -319,16 +319,34 @@ export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
   return items;
 }
 
-/** CA-009 Home Section 3's "Recent Impact" -- the single most recently
- *  published Act system-wide, not contributor-specific (unlike Section 4's
- *  Shared Act, the locked spec just wants "most recent published impact").
- *  Requires a hero image to render, same guard the main feed applies. Was
- *  hardcoded to lib/mock-data.ts's mockLatestAct until now -- Act of Aram
- *  not being a Sprint 1 table was the reason then; it's a real, queryable
- *  entity now. */
-export async function getLatestPublishedAct(): Promise<PublishedActFeedItem | null> {
-  const acts = await getPublishedActsFeed();
-  return acts.find((act) => act.heroImageUrl) ?? null;
+/** CA-009 Home Section 3's "Recent Impact" -- founder-directed override of
+ *  CA-009's original "most recent published Act system-wide" rule
+ *  (2026-09-21): this is a personal-use-case app, so every Act shown to a
+ *  contributor must be one they personally participated in, never another
+ *  contributor's. Same shape as getMySharedAct() below, just without the
+ *  "shared with someone else" filter -- the contributor's own most recently
+ *  published Act, period. Requires a hero image to render, same guard the
+ *  main feed applies. null (empty state) when the contributor has no
+ *  published Acts of their own yet. */
+export async function getMyLatestPublishedAct(): Promise<PublishedActSummary | null> {
+  const missionIds = await getMyLinkedPublishedMissionIds();
+  if (missionIds.length === 0) return null;
+
+  const supabase = getSupabasePublicClient();
+  if (!supabase) return null;
+
+  const { data: missions } = await supabase
+    .from('missions')
+    .select('id, mission_date')
+    .in('id', missionIds)
+    .order('mission_date', { ascending: false })
+    .limit(1);
+
+  const mostRecentId = missions?.[0]?.id as string | undefined;
+  if (!mostRecentId) return null;
+
+  const summary = await getPublishedActSummary(mostRecentId);
+  return summary && summary.heroImageUrl ? summary : null;
 }
 
 /** CA-009 Home Section 4's real "Shared Act of Aram" -- the signed-in
