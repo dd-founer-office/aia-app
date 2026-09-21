@@ -156,6 +156,10 @@ function PublicationPanel({ item, onDone }: { item: PublicationQueueItem; onDone
     capturedBy: item.executionOwner ?? "AiA Operations",
     verifiedBy: item.preparedByName ?? "—",
     publishedAtDisplay: item.publicationDateIso ? formatDate(item.publicationDateIso) : "Not yet published",
+    // Real attribution only exists for a mission that's actually been
+    // published (see lib/act-attribution.ts) -- this preview renders
+    // before that happens, so there's nothing real to show yet here.
+    participatingContributorCount: null,
   };
 
   return (

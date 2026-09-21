@@ -42,18 +42,21 @@ export async function runAllocationAction(): Promise<{ error?: string; allocated
   }
 
   const allocationMonth = `${currentMonthKey()}-01`;
-  const { error: insertError } = await supabase.from("allocations").insert(
-    toAllocate.map((r) => ({
-      opportunity_id: r.opportunityId,
-      cause: r.cause,
-      participations_allocated: r.recommendedAllocation,
-      recommended_allocation: r.recommendedAllocation,
-      confidence: r.confidence,
-      is_manual_override: false,
-      allocation_month: allocationMonth,
-      created_by: auth.operator.operatorId,
-    }))
-  );
+  const { data: insertedAllocations, error: insertError } = await supabase
+    .from("allocations")
+    .insert(
+      toAllocate.map((r) => ({
+        opportunity_id: r.opportunityId,
+        cause: r.cause,
+        participations_allocated: r.recommendedAllocation,
+        recommended_allocation: r.recommendedAllocation,
+        confidence: r.confidence,
+        is_manual_override: false,
+        allocation_month: allocationMonth,
+        created_by: auth.operator.operatorId,
+      }))
+    )
+    .select("id, opportunity_id");
   if (insertError) return { error: insertError.message };
 
   const { error: updateError } = await supabase
@@ -68,6 +71,28 @@ export async function runAllocationAction(): Promise<{ error?: string; allocated
   for (const r of toAllocate) {
     const { error: executionError } = await ensureExecutionForOpportunity(supabase, r.opportunityId);
     if (executionError) return { error: executionError };
+  }
+
+  // Real attribution: link the specific (participation, cause) rows this
+  // run actually consumed to their new allocation, not just a count. Pools
+  // are decremented per cause as opportunities are processed in the same
+  // priority order the recommendations themselves were computed in, so two
+  // opportunities sharing a cause never claim the same participation twice.
+  const allocationIdByOpportunityId = new Map((insertedAllocations ?? []).map((a) => [a.opportunity_id as string, a.id as string]));
+  const causePools = new Map(data.monthlyParticipation.byCause.map((c) => [c.cause, c.unallocated.slice()]));
+  const linkRows: { participation_id: string; cause_id: string; allocation_id: string }[] = [];
+  for (const r of toAllocate) {
+    const allocationId = allocationIdByOpportunityId.get(r.opportunityId);
+    if (!allocationId) continue;
+    const pool = causePools.get(r.cause) ?? [];
+    const picked = pool.splice(0, r.recommendedAllocation);
+    for (const p of picked) {
+      linkRows.push({ participation_id: p.participationId, cause_id: p.causeId, allocation_id: allocationId });
+    }
+  }
+  if (linkRows.length > 0) {
+    const { error: linkError } = await supabase.from("participation_allocations").insert(linkRows);
+    if (linkError) return { error: linkError.message };
   }
 
   revalidateAllocations();
@@ -119,17 +144,21 @@ export async function createManualAllocationAction(
   }
 
   const allocationMonth = `${currentMonthKey()}-01`;
-  const { error: insertError } = await supabase.from("allocations").insert({
-    opportunity_id: opportunityId,
-    cause: opportunity.cause,
-    participations_allocated: participationsAllocated,
-    recommended_allocation: recommendedAllocation,
-    confidence: recommendation?.confidence ?? null,
-    is_manual_override: isOverride,
-    override_reason: isOverride ? reason.trim() : null,
-    allocation_month: allocationMonth,
-    created_by: auth.operator.operatorId,
-  });
+  const { data: insertedAllocation, error: insertError } = await supabase
+    .from("allocations")
+    .insert({
+      opportunity_id: opportunityId,
+      cause: opportunity.cause,
+      participations_allocated: participationsAllocated,
+      recommended_allocation: recommendedAllocation,
+      confidence: recommendation?.confidence ?? null,
+      is_manual_override: isOverride,
+      override_reason: isOverride ? reason.trim() : null,
+      allocation_month: allocationMonth,
+      created_by: auth.operator.operatorId,
+    })
+    .select("id")
+    .single();
   if (insertError) return { error: insertError.message };
 
   const { error: updateError } = await supabase
@@ -140,6 +169,17 @@ export async function createManualAllocationAction(
 
   const { error: executionError } = await ensureExecutionForOpportunity(supabase, opportunityId);
   if (executionError) return { error: executionError };
+
+  // Real attribution -- same discipline as runAllocationAction: link the
+  // specific (participation, cause) rows this allocation actually consumed.
+  const causeData = data.monthlyParticipation.byCause.find((c) => c.cause === opportunity.cause);
+  const picked = (causeData?.unallocated ?? []).slice(0, participationsAllocated);
+  if (picked.length > 0) {
+    const { error: linkError } = await supabase.from("participation_allocations").insert(
+      picked.map((p) => ({ participation_id: p.participationId, cause_id: p.causeId, allocation_id: insertedAllocation.id as string }))
+    );
+    if (linkError) return { error: linkError.message };
+  }
 
   revalidateAllocations();
   return {};

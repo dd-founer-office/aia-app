@@ -51,6 +51,8 @@ export async function getMergedActsFeed(): Promise<ActFeedItem[]> {
       completedDate: act.missionDate,
       headline: act.title,
       supportingCopy: act.description,
+      isSharedAct: act.isSharedAct,
+      contributorCount: act.contributorCount,
       sortDate: new Date(act.missionDateIso).getTime(),
     }));
 

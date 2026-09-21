@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentContributor } from "@/lib/contributor";
+import { getMySharedAct, getLatestPublishedAct } from "@/lib/published-acts";
 import { HomeClient } from "@/components/home/HomeClient";
 import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
@@ -37,5 +38,7 @@ export default async function HomePage() {
     );
   }
 
-  return <HomeClient contributor={contributor} />;
+  const [sharedAct, latestAct] = await Promise.all([getMySharedAct(), getLatestPublishedAct()]);
+
+  return <HomeClient contributor={contributor} sharedAct={sharedAct} latestAct={latestAct} />;
 }

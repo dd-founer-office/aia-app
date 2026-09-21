@@ -1,4 +1,5 @@
 import { getSupabasePublicClient } from '@/lib/supabase/client';
+import { getActContributorCounts, getMyLinkedPublishedMissionIds } from '@/lib/act-attribution';
 import type { EvidenceCategory, EvidenceTraceItem, TrustCardData } from '@/components/acts/living-trace/types';
 
 const CAUSE_TO_CATEGORY: Record<string, EvidenceCategory> = {
@@ -75,6 +76,12 @@ export interface PublishedActSummary {
   capturedBy: string;
   verifiedBy: string;
   publishedAtDisplay: string;
+  // CA-011's locked "Participating Contributors" field -- real now (see
+  // lib/act-attribution.ts), a count only, never contributor identities.
+  // null when this mission has no attributable allocation at all (e.g. it
+  // predates the participation_allocations ledger), same "genuinely
+  // unknown, never a fabricated zero" discipline as beneficiaryCount.
+  participatingContributorCount: number | null;
 }
 
 export async function getPublishedActSummary(missionId: string): Promise<PublishedActSummary | null> {
@@ -113,6 +120,8 @@ export async function getPublishedActSummary(missionId: string): Promise<Publish
     .select('gps_lat, gps_lng')
     .eq('mission_id', missionId);
 
+  const contributorCounts = await getActContributorCounts([missionId]);
+
   return {
     id: mission.id,
     cause: mission.cause,
@@ -131,6 +140,7 @@ export async function getPublishedActSummary(missionId: string): Promise<Publish
     capturedBy: mission.field_executive,
     verifiedBy: prettifyReviewerName(publication.published_by as string),
     publishedAtDisplay: formatDisplayDate(publication.published_at as string),
+    participatingContributorCount: contributorCounts.get(missionId) ?? null,
   };
 }
 
@@ -236,6 +246,12 @@ export interface PublishedActFeedItem {
   landmark: string | null;
   heroImageUrl: string | null;
   evidenceCount: number;
+  // Real now -- see lib/act-attribution.ts. isSharedAct is true only when
+  // 2+ distinct contributors are attributed (locked rule: a single
+  // contributor's own Act isn't "shared"), contributorCount is only ever
+  // set alongside it.
+  isSharedAct?: boolean;
+  contributorCount?: number;
 }
 
 export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
@@ -271,6 +287,8 @@ export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
     photoByEvidenceId.set(row.id as string, row.photo_url as string);
   }
 
+  const contributorCounts = await getActContributorCounts(missionIds);
+
   const items: PublishedActFeedItem[] = [];
   for (const mission of missions) {
     const publication = publicationByMission.get(mission.id as string);
@@ -279,6 +297,8 @@ export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
     const heroImageUrl = publication.featured_evidence_id
       ? (photoByEvidenceId.get(publication.featured_evidence_id as string) ?? null)
       : null;
+
+    const contributorCount = contributorCounts.get(mission.id as string);
 
     items.push({
       id: mission.id as string,
@@ -291,8 +311,54 @@ export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
       landmark: publication.landmark as string | null,
       heroImageUrl,
       evidenceCount: evidenceCountByMission.get(mission.id as string) ?? 0,
+      isSharedAct: contributorCount !== undefined && contributorCount > 1,
+      contributorCount,
     });
   }
 
   return items;
+}
+
+/** CA-009 Home Section 3's "Recent Impact" -- the single most recently
+ *  published Act system-wide, not contributor-specific (unlike Section 4's
+ *  Shared Act, the locked spec just wants "most recent published impact").
+ *  Requires a hero image to render, same guard the main feed applies. Was
+ *  hardcoded to lib/mock-data.ts's mockLatestAct until now -- Act of Aram
+ *  not being a Sprint 1 table was the reason then; it's a real, queryable
+ *  entity now. */
+export async function getLatestPublishedAct(): Promise<PublishedActFeedItem | null> {
+  const acts = await getPublishedActsFeed();
+  return acts.find((act) => act.heroImageUrl) ?? null;
+}
+
+/** CA-009 Home Section 4's real "Shared Act of Aram" -- the signed-in
+ *  contributor's most recently published Act that at least one other
+ *  contributor also participated in. null (section hidden) when they have
+ *  no linked Acts at all, or none of their linked Acts are shared -- same
+ *  "hide, don't fabricate" rule the section's own locked spec calls for. */
+export async function getMySharedAct(): Promise<PublishedActSummary | null> {
+  const missionIds = await getMyLinkedPublishedMissionIds();
+  if (missionIds.length === 0) return null;
+
+  const counts = await getActContributorCounts(missionIds);
+  const sharedIds = missionIds.filter((id) => (counts.get(id) ?? 0) > 1);
+  if (sharedIds.length === 0) return null;
+
+  const supabase = getSupabasePublicClient();
+  if (!supabase) return null;
+
+  const { data: missions } = await supabase
+    .from('missions')
+    .select('id, mission_date')
+    .in('id', sharedIds)
+    .order('mission_date', { ascending: false })
+    .limit(1);
+
+  const mostRecentId = missions?.[0]?.id as string | undefined;
+  if (!mostRecentId) return null;
+
+  const summary = await getPublishedActSummary(mostRecentId);
+  // EvidenceCard (what Home renders this with) requires a hero image --
+  // same guard getPublishedActsFeed() already applies to the main feed.
+  return summary && summary.heroImageUrl ? summary : null;
 }
