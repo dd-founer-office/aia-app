@@ -8,6 +8,7 @@ import { STAGE_LABELS, type StageName } from "@/types";
 import { getProfileDetail } from "@/lib/profile";
 import { formatMonthYear } from "@/lib/format";
 import { signOutAction } from "@/lib/auth-actions";
+import { PersonalDetailsRow } from "@/components/profile/PersonalDetailsRow";
 import { VidhaiSeedIcon } from "@/components/home/icons/VidhaiSeedIcon";
 import { ThulirSproutIcon } from "@/components/home/icons/ThulirSproutIcon";
 import { KandruSaplingIcon } from "@/components/home/icons/KandruSaplingIcon";
@@ -69,8 +70,9 @@ export default async function ProfilePage() {
       <main className="flex flex-col gap-5 px-5">
         {/* Section 1 -- Profile Header (Locked). Country only, no city.
             No public profile info, no public sharing anywhere on this screen.
-            country is nullable (no collection flow exists yet) -- shown only
-            when set, never a fabricated default. */}
+            country is nullable -- editable via Account Settings' Personal
+            details row below, shown here only when set, never a fabricated
+            default. */}
         <Card>
           <p className="text-lg font-medium">{profile.displayName}</p>
           {profile.country && (
@@ -196,13 +198,15 @@ export default async function ProfilePage() {
         </section>
 
         {/* Section 5 -- Account Settings (Locked, minimal). "Logout" wired
-            to real Supabase Auth (see lib/auth-actions.ts); the other three
-            rows still have no real destination yet and stay static
-            placeholders. */}
+            to real Supabase Auth (see lib/auth-actions.ts); "Personal
+            details" now edits real name/country via PersonalDetailsRow.
+            The remaining two rows still have no real destination and stay
+            static placeholders. */}
         <section>
           <SectionHeader title="Account Settings" />
           <Card className="mt-3 divide-y divide-[var(--color-border)] p-0">
-            {["Personal details", "Communication preferences", "Privacy settings"].map((label) => (
+            <PersonalDetailsRow initialName={profile.displayName} initialCountry={profile.country} />
+            {["Communication preferences", "Privacy settings"].map((label) => (
               <div key={label} className="flex items-center justify-between px-5 py-3.5 text-sm">
                 {label}
                 <ChevronRight size={16} className="text-[var(--color-muted-foreground)]" />

@@ -22,10 +22,13 @@ export default async function HomePage() {
           <Card className="flex flex-col gap-3 text-center">
             <p className="text-lg font-semibold leading-snug">Welcome to Aram in Action</p>
             <p className="text-sm text-[var(--color-muted-foreground)]">
-              Sign in to see your journey, your Acts of Aram, and your practice of Aram.
+              See your journey, your Acts of Aram, and your practice of Aram.
             </p>
-            <Link href="/sign-in">
-              <Button className="mt-1 w-full">Sign in</Button>
+            <Link href="/onboarding/welcome">
+              <Button className="mt-1 w-full">Get Started</Button>
+            </Link>
+            <Link href="/sign-in" className="text-sm text-[var(--color-muted-foreground)] underline">
+              Already have an account? Sign in
             </Link>
           </Card>
         </main>
