@@ -124,6 +124,13 @@ import {
   buildDesignOverrides,
 } from "@/lib/kural-publishing/aathichoodi-carousel-design-store";
 import { buildFamilyImagePrompt } from "@/lib/kural-publishing/aathichoodi/family-image-prompt";
+import {
+  loadFlags,
+  addFlag,
+  removeFlag,
+  formatFlagsForReview,
+  type FlaggedEpisode,
+} from "@/lib/kural-publishing/aathichoodi/flags-store";
 
 type ContentField = keyof KuralPublishingContent;
 
@@ -437,6 +444,12 @@ export default function PublishingWorkspace() {
   const [qualityWarnings, setQualityWarnings] = useState<string[]>([]);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [seriesHistory, setSeriesHistory] = useState<SeriesHistory>(() => loadHistory());
+  // "Flag this episode" -- content-correctness review queue, separate from
+  // the design/text overrides above (which change what renders; a flag
+  // doesn't). See flags-store.ts's own doc comment for why a flag
+  // snapshots the episode's content rather than just its number.
+  const [flags, setFlags] = useState<FlaggedEpisode[]>(() => loadFlags());
+  const [flagNote, setFlagNote] = useState("");
 
   // Live-editable carousel design system (colours/sizes/layout, shared
   // across every episode) and per-episode text overrides -- see the
@@ -1308,8 +1321,9 @@ export default function PublishingWorkspace() {
       setTextOverrides(loadTextOverrides(clamped));
       setInvertColors(loadInvertColors(clamped));
       setFamilyImageDataUrl(loadFamilyImage(clamped));
+      setFlagNote(flags.find((f) => f.episodeNumber === clamped)?.note ?? "");
     },
-    [seriesHistory]
+    [seriesHistory, flags]
   );
 
   const handleGenerateNextEpisode = useCallback(() => {
@@ -1325,6 +1339,42 @@ export default function PublishingWorkspace() {
       });
     }
   }, [composedEpisode]);
+
+  const isFlagged = isSeriesType && Boolean(displayEpisode) && flags.some((f) => f.episodeNumber === displayEpisode!.episodeNumber);
+
+  const handleFlagEpisode = useCallback(() => {
+    if (!displayEpisode) return;
+    setFlags((prev) =>
+      addFlag(prev, displayEpisode.episodeNumber, flagNote.trim(), {
+        tamilText: displayEpisode.tamilText,
+        transliteration: displayEpisode.transliteration,
+        simpleMeaning: displayEpisode.simpleMeaning,
+        themeLabel: displayEpisode.themeLabel,
+        hook: displayEpisode.hook,
+        understanding: displayEpisode.understanding,
+        familyAngle: displayEpisode.familyAngle,
+        todayAction: displayEpisode.todayAction,
+        aiaConnection: displayEpisode.aiaConnection,
+      })
+    );
+  }, [displayEpisode, flagNote]);
+
+  const handleUnflagEpisode = useCallback(
+    (episodeNumber: number) => {
+      setFlags((prev) => removeFlag(prev, episodeNumber));
+      if (displayEpisode?.episodeNumber === episodeNumber) setFlagNote("");
+    },
+    [displayEpisode]
+  );
+
+  const handleCopyFlagsForReview = useCallback(() => {
+    const text = formatFlagsForReview(flags);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(() => {
+        /* clipboard permission unavailable -- flags are still listed in the panel for manual copy */
+      });
+    }
+  }, [flags]);
 
   const handleFamilyImageUpload = useCallback((file: File) => {
     const reader = new FileReader();
@@ -1441,6 +1491,83 @@ export default function PublishingWorkspace() {
                 {!displayEpisode.verified ? " · ⚠ unverified line, check source" : ""}
               </p>
             </div>
+
+            <div className="flex flex-col gap-1.5 rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+              <span className="text-xs font-medium text-[var(--color-foreground)]">
+                {isFlagged ? "This episode is flagged" : "Something wrong with this episode's content?"}
+              </span>
+              <p className="text-[10px] text-[var(--color-muted-foreground)]">
+                For a meaning/fact error (not a wording preference) -- flags don&apos;t change what renders, they queue it for a permanent fix in the canonical data.
+              </p>
+              <textarea
+                value={flagNote}
+                onChange={(e) => setFlagNote(e.target.value)}
+                placeholder="What's wrong? e.g. &quot;meaning drifted from the actual proverb&quot;"
+                rows={2}
+                className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1.5 text-xs text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleFlagEpisode}
+                  className="flex-1 rounded-[var(--radius-button)] border border-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-[var(--color-primary)]"
+                >
+                  {isFlagged ? "Update flag" : "Flag this episode"}
+                </button>
+                {isFlagged && (
+                  <button
+                    type="button"
+                    onClick={() => handleUnflagEpisode(displayEpisode.episodeNumber)}
+                    className="rounded-[var(--radius-button)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted-foreground)]"
+                  >
+                    Unflag
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {flags.length > 0 && (
+              <details className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+                <summary className="cursor-pointer text-xs font-medium text-[var(--color-foreground)]">
+                  Flagged episodes ({flags.length})
+                </summary>
+                <div className="mt-2 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyFlagsForReview}
+                    className="self-start text-xs font-medium text-[var(--color-primary)]"
+                  >
+                    Copy all for review
+                  </button>
+                  <ul className="flex flex-col gap-2">
+                    {[...flags]
+                      .sort((a, b) => a.episodeNumber - b.episodeNumber)
+                      .map((f) => (
+                        <li
+                          key={f.episodeNumber}
+                          className="flex items-start justify-between gap-2 rounded border border-[var(--color-border)] p-2 text-[11px]"
+                        >
+                          <div>
+                            <p className="font-medium text-[var(--color-foreground)]">
+                              Episode {f.episodeNumber}
+                            </p>
+                            <p className="text-[var(--color-muted-foreground)]">
+                              {f.note || "(no note given)"}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleUnflagEpisode(f.episodeNumber)}
+                            className="shrink-0 text-[var(--color-muted-foreground)]"
+                          >
+                            Resolve
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              </details>
+            )}
 
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
