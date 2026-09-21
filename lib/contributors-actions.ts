@@ -1,7 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getOperatorAuthState } from "@/lib/operator";
+import { getSupabaseServiceClient } from "@/lib/supabase/service";
+import { currentMonthKey } from "@/lib/contributor";
 import { getContributorManagementData } from "@/lib/contributors";
+import type { CauseId } from "@/types/participation";
 
 function csvCell(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
@@ -82,4 +86,85 @@ export async function exportCommunityReportAction(): Promise<{ error?: string; r
   ];
 
   return { report: lines.join("\n") };
+}
+
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/**
+ * Operator-only backfill for a contributor's participation history --
+ * founder-directed addition (2026-09-21), not part of OP-008's locked
+ * spec. The only other place a participations row gets written
+ * (lib/participation-actions.ts's recordParticipationAction) is
+ * contributor self-service, hardcoded to the current month, and
+ * authorized by RLS as the contributor's own auth.uid() -- none of that
+ * fits "an operator enters a real contributor's March participation in
+ * September," so this uses the service-role client instead (same
+ * pattern as Mission Camera's unauthenticated writes and the
+ * notifications cron) after its own explicit operator check.
+ *
+ * IMPORTANT for the caller: the continuity/stage trigger this feeds
+ * (handle_participation_completed -> apply_participation_to_journey)
+ * assumes it is always being told about the contributor's NEWEST
+ * participation so far -- it compares the incoming month against
+ * aram_journeys.last_participation_month to decide whether the streak
+ * continues, resets, or holds. Backfilling multiple past months for the
+ * same contributor MUST be done oldest-month-first, one at a time, or
+ * the computed continuity streak will be wrong.
+ */
+export async function recordPastParticipationAction(
+  contributorId: string,
+  month: string,
+  causeIds: CauseId[],
+  totalAmountRupees: number,
+  causeAllocationsRupees: Partial<Record<CauseId, number>>
+): Promise<{ error?: string }> {
+  const auth = await getOperatorAuthState();
+  if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
+
+  if (!MONTH_PATTERN.test(month)) return { error: "Enter a valid month." };
+  if (month > currentMonthKey()) return { error: "Can't record participation for a future month." };
+  if (causeIds.length === 0) return { error: "Select at least one cause." };
+  if (!Number.isInteger(totalAmountRupees) || totalAmountRupees <= 0) {
+    return { error: "Enter an amount." };
+  }
+  const allocations = causeIds.map((id) => causeAllocationsRupees[id] ?? 0);
+  if (allocations.some((amount) => !Number.isInteger(amount) || amount < 0)) {
+    return { error: "Each cause's amount must be a whole, non-negative number." };
+  }
+  if (allocations.reduce((sum, amount) => sum + amount, 0) !== totalAmountRupees) {
+    return { error: "The split across causes must add up to the total amount." };
+  }
+
+  const supabase = getSupabaseServiceClient();
+  if (!supabase) return { error: "Supabase is not configured on this deployment." };
+
+  const { data: participation, error: participationError } = await supabase
+    .from("participations")
+    .insert({ contributor_id: contributorId, month, status: "completed", amount: totalAmountRupees })
+    .select("id")
+    .single();
+
+  if (participationError) {
+    if (participationError.code === "23505") {
+      return { error: "This contributor already has a participation recorded for that month." };
+    }
+    return { error: participationError.message };
+  }
+
+  const { data: causeRows, error: causesError } = await supabase.from("causes").select("id, slug").in("slug", causeIds);
+  if (causesError) return { error: causesError.message };
+
+  const participationCauseRows = (causeRows ?? []).map((cause) => ({
+    participation_id: participation.id,
+    cause_id: cause.id,
+    allocation_amount: causeAllocationsRupees[cause.slug as CauseId] ?? 0,
+  }));
+
+  if (participationCauseRows.length > 0) {
+    const { error: causesInsertError } = await supabase.from("participation_causes").insert(participationCauseRows);
+    if (causesInsertError) return { error: causesInsertError.message };
+  }
+
+  revalidatePath("/ops/contributors");
+  return {};
 }
