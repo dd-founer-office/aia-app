@@ -16,6 +16,11 @@ export interface ProfileDetail {
   firstParticipationDateIso: string | null;
   hasParticipated: boolean;
   causeDistribution: CauseDistributionEntry[];
+  /** Account Settings > Communication preferences -- backs
+   *  updateNotificationPreferencesAction(). */
+  notifyParticipationReminders: boolean;
+  notifyActPublished: boolean;
+  notifyContinuityReminders: boolean;
 }
 
 /**
@@ -47,7 +52,7 @@ export async function getProfileDetail(): Promise<ProfileDetail | null> {
 
   const { data: contributor } = await supabase
     .from("contributors")
-    .select("id, display_name, created_at")
+    .select("id, display_name, created_at, notify_participation_reminders, notify_act_published, notify_continuity_reminders")
     .eq("user_id", user.id)
     .maybeSingle();
   if (!contributor) return null;
@@ -80,5 +85,8 @@ export async function getProfileDetail(): Promise<ProfileDetail | null> {
     firstParticipationDateIso: completed[0]?.created_at ?? null,
     hasParticipated: lifetimeParticipationCount > 0,
     causeDistribution: buildCauseDistribution(completed),
+    notifyParticipationReminders: contributor.notify_participation_reminders,
+    notifyActPublished: contributor.notify_act_published,
+    notifyContinuityReminders: contributor.notify_continuity_reminders,
   };
 }

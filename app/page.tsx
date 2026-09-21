@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentContributor } from "@/lib/contributor";
 import { getMySharedAct, getLatestPublishedAct } from "@/lib/published-acts";
+import { getUnreadNotificationCount } from "@/lib/notifications";
 import { HomeClient } from "@/components/home/HomeClient";
 import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
@@ -38,7 +39,18 @@ export default async function HomePage() {
     );
   }
 
-  const [sharedAct, latestAct] = await Promise.all([getMySharedAct(), getLatestPublishedAct()]);
+  const [sharedAct, latestAct, unreadNotificationCount] = await Promise.all([
+    getMySharedAct(),
+    getLatestPublishedAct(),
+    getUnreadNotificationCount(),
+  ]);
 
-  return <HomeClient contributor={contributor} sharedAct={sharedAct} latestAct={latestAct} />;
+  return (
+    <HomeClient
+      contributor={contributor}
+      sharedAct={sharedAct}
+      latestAct={latestAct}
+      unreadNotificationCount={unreadNotificationCount}
+    />
+  );
 }

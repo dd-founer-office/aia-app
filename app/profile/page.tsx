@@ -9,6 +9,7 @@ import { getProfileDetail } from "@/lib/profile";
 import { formatMonthYear } from "@/lib/format";
 import { signOutAction } from "@/lib/auth-actions";
 import { PersonalDetailsRow } from "@/components/profile/PersonalDetailsRow";
+import { CommunicationPreferencesRow } from "@/components/profile/CommunicationPreferencesRow";
 import { VidhaiSeedIcon } from "@/components/home/icons/VidhaiSeedIcon";
 import { ThulirSproutIcon } from "@/components/home/icons/ThulirSproutIcon";
 import { KandruSaplingIcon } from "@/components/home/icons/KandruSaplingIcon";
@@ -199,14 +200,21 @@ export default async function ProfilePage() {
 
         {/* Section 5 -- Account Settings (Locked, minimal). "Logout" wired
             to real Supabase Auth (see lib/auth-actions.ts); "Personal
-            details" now edits real name/country via PersonalDetailsRow.
-            The remaining two rows still have no real destination and stay
-            static placeholders. */}
+            details" edits real name/country via PersonalDetailsRow;
+            "Communication preferences" now toggles the three Phase 4
+            notification types via CommunicationPreferencesRow. "Privacy
+            settings" still has no real destination and stays a static
+            placeholder. */}
         <section>
           <SectionHeader title="Account Settings" />
           <Card className="mt-3 divide-y divide-[var(--color-border)] p-0">
             <PersonalDetailsRow initialName={profile.displayName} initialCountry={profile.country} />
-            {["Communication preferences", "Privacy settings"].map((label) => (
+            <CommunicationPreferencesRow
+              initialNotifyParticipationReminders={profile.notifyParticipationReminders}
+              initialNotifyActPublished={profile.notifyActPublished}
+              initialNotifyContinuityReminders={profile.notifyContinuityReminders}
+            />
+            {["Privacy settings"].map((label) => (
               <div key={label} className="flex items-center justify-between px-5 py-3.5 text-sm">
                 {label}
                 <ChevronRight size={16} className="text-[var(--color-muted-foreground)]" />

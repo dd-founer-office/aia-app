@@ -13,6 +13,7 @@ import { Badge } from "@/components/shared/Badge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { EvidenceCard } from "@/components/shared/EvidenceCard";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 import { JourneyTimeline } from "@/components/home/JourneyTimeline";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
@@ -24,10 +25,12 @@ export function HomeClient({
   contributor,
   sharedAct,
   latestAct,
+  unreadNotificationCount,
 }: {
   contributor: CurrentContributor;
   sharedAct: PublishedActSummary | null;
   latestAct: PublishedActFeedItem | null;
+  unreadNotificationCount: number;
 }) {
   const router = useRouter();
   const stageIndex = STAGE_ORDER.indexOf(contributor.currentStage);
@@ -159,24 +162,27 @@ export function HomeClient({
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
         {/* Hero */}
         <section className="flex flex-col gap-1">
-          <div className="flex items-start gap-3">
-            <PrayingHandsIcon
-              className="mt-0.5 shrink-0 text-[var(--color-primary)]"
-              style={{ height: "64px", width: "auto" }}
-            />
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-semibold leading-tight tracking-tight">
-                <span className="font-tamil-sans font-medium">
-                  {"வணக்கம்"}
-                </span>
-                ,
-                <br />
-                {contributor.displayName}
-              </h1>
-              <p className="font-tamil-sans font-normal mt-1.5 text-sm text-[var(--color-muted-foreground)]">
-                {"அறம் செய பழகு"}
-              </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <PrayingHandsIcon
+                className="mt-0.5 shrink-0 text-[var(--color-primary)]"
+                style={{ height: "64px", width: "auto" }}
+              />
+              <div className="flex flex-col">
+                <h1 className="text-2xl font-semibold leading-tight tracking-tight">
+                  <span className="font-tamil-sans font-medium">
+                    {"வணக்கம்"}
+                  </span>
+                  ,
+                  <br />
+                  {contributor.displayName}
+                </h1>
+                <p className="font-tamil-sans font-normal mt-1.5 text-sm text-[var(--color-muted-foreground)]">
+                  {"அறம் செய பழகு"}
+                </p>
+              </div>
             </div>
+            <NotificationBell unreadCount={unreadNotificationCount} />
           </div>
           <div className="mt-4">
             <JourneyTimeline currentStage={contributor.currentStage} />

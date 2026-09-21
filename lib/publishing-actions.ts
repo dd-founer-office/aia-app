@@ -325,6 +325,43 @@ export async function publishAction(executionId: string): Promise<{ error?: stri
 
   await supabase.from("opportunities").update({ status: "published", published_at: new Date().toISOString() }).eq("id", opportunity.id);
 
+  // Act Published notification (Phase 4) -- real attribution, not a
+  // guess: every contributor whose participation was actually linked to
+  // this opportunity via participation_allocations (see
+  // lib/act-attribution.ts), filtered to those who haven't opted out.
+  // Best-effort -- the Act is already genuinely published by this point,
+  // so a notification failure here is logged-by-omission, not a reason to
+  // fail the whole publish.
+  const { data: allocRows } = await supabase.from("allocations").select("id").eq("opportunity_id", opportunity.id);
+  const allocationIds = (allocRows ?? []).map((a) => a.id as string);
+  if (allocationIds.length > 0) {
+    const { data: linkRows } = await supabase.from("participation_allocations").select("participation_id").in("allocation_id", allocationIds);
+    const participationIds = Array.from(new Set((linkRows ?? []).map((l) => l.participation_id as string)));
+    if (participationIds.length > 0) {
+      const { data: participationRows } = await supabase.from("participations").select("contributor_id").in("id", participationIds);
+      const contributorIds = Array.from(new Set((participationRows ?? []).map((p) => p.contributor_id as string)));
+      if (contributorIds.length > 0) {
+        const { data: eligibleContributors } = await supabase
+          .from("contributors")
+          .select("id")
+          .in("id", contributorIds)
+          .eq("notify_act_published", true);
+        const notifyIds = (eligibleContributors ?? []).map((c) => c.id as string);
+        if (notifyIds.length > 0) {
+          await supabase.from("notifications").insert(
+            notifyIds.map((contributorId) => ({
+              contributor_id: contributorId,
+              type: "act_published",
+              title: "A new Act of Aram has been published",
+              body: `${execution.publication_act_title as string} is now live.`,
+              link: `/acts/${missionId}`,
+            }))
+          );
+        }
+      }
+    }
+  }
+
   revalidatePublishing(missionId);
   return { missionId };
 }
