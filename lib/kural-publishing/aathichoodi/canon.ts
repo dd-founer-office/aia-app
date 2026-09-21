@@ -134,7 +134,27 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   { episodeNumber: 5, tamilText: "உடையது விளம்பேல்", simpleMeaning: "Do not boast about what you own.", transliteration: "Udaiyathu Vilambel", primaryTheme: "character", verified: true },
   { episodeNumber: 6, tamilText: "ஊக்கமது கைவிடேல்", simpleMeaning: "Never give up your enthusiasm.", transliteration: "Ookkamathu Kaividel", primaryTheme: "responsibility", verified: true },
   { episodeNumber: 7, tamilText: "எண்ணெழுத் திகழேல்", simpleMeaning: "Never look down on numbers and letters — keep learning them.", transliteration: "Ennezhuth Thigazhel", primaryTheme: "education", verified: true },
-  { episodeNumber: 8, tamilText: "ஏற்பது இகழ்ச்சி", simpleMeaning: "Depending on begging is shameful.", transliteration: "Erpathu Igazhchi", primaryTheme: "responsibility", verified: true },
+  { episodeNumber: 8, tamilText: "ஏற்பது இகழ்ச்சி", simpleMeaning: "Living by begging when you're able to work is shameful.", transliteration: "Erpathu Igazhchi", primaryTheme: "responsibility", verified: true,
+    // Curated per explicit founder correction: this line is specifically
+    // about self-reliance and the dignity of labor -- not begging when
+    // you're able to earn your own way -- not generic task-completion
+    // "responsibility" (the theme it's tagged under here only for pool
+    // bookkeeping; the responsibility POOL's own hook/understanding/
+    // scenario/action entries are about finishing tasks properly, which
+    // has nothing to do with self-reliance, so composing this episode
+    // from that pool silently drifted its meaning). Every field below is
+    // hand-authored so this episode never drifts again regardless of
+    // what the responsibility pool itself contains.
+    curated: {
+      hookOverride: "Does your child know the pride of earning something themselves?",
+      understanding: "Avvaiyar draws a clear line here: there's no shame in honest work, however small — the real disgrace is choosing to depend on others' charity when you're able to earn your own way. This line is about self-reliance and the dignity of labor, not about refusing to ever accept real help.",
+      familyAngle: "Your child wants a new toy and asks you to just buy it. Instead of handing it over, you ask them to earn part of it — extra chores, saved allowance, a small job around the house. Watching them work for it, instead of simply being given it, is exactly what today's line is teaching.",
+      childLesson: "Earning something yourself feels different from being given it — and that difference is worth protecting.",
+      todayAction: "The next time your child asks for something today, before saying yes, ask: \"What could you do to earn part of this yourself?\"",
+      aiaConnection: "Self-reliance isn't coldness — it's dignity. Aram in Action is about helping people stand on their own, not just get by.",
+      recommendedCta: "TRY_TODAY",
+    },
+  },
   { episodeNumber: 9, tamilText: "ஐயமிட்டுண்", simpleMeaning: "Give alms to those in need before you eat.", transliteration: "Aiyamittu Un", primaryTheme: "generosity", verified: true,
     curated: {
       familyAngle: "Before a family meal, there's often a moment to notice who has less — and choose to share first.",
