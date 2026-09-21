@@ -12,13 +12,21 @@ import { Button } from "@/components/shared/Button";
 import { Badge } from "@/components/shared/Badge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
+import { EvidenceCard } from "@/components/shared/EvidenceCard";
 import { JourneyTimeline } from "@/components/home/JourneyTimeline";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 import KuralScrollFormation from "@/components/home/KuralScrollFormation";
 import type { CurrentContributor } from "@/lib/contributor";
+import type { PublishedActSummary } from "@/lib/published-acts";
 
-export function HomeClient({ contributor }: { contributor: CurrentContributor }) {
+export function HomeClient({
+  contributor,
+  sharedAct,
+}: {
+  contributor: CurrentContributor;
+  sharedAct: PublishedActSummary | null;
+}) {
   const router = useRouter();
   const stageIndex = STAGE_ORDER.indexOf(contributor.currentStage);
   const nextStageName = STAGE_ORDER[stageIndex + 1];
@@ -282,12 +290,29 @@ export function HomeClient({ contributor }: { contributor: CurrentContributor })
 
         {/* Shared Act of Aram (CA-009 Section 4, conditional). Locked rule:
             "Only shown if Shared Act exists" / "Hide section" otherwise --
-            no Shared Act entity exists in the Sprint 1 schema at all yet,
-            so this always hides for now (previously showed an explanatory
-            empty-state card, which the locked spec doesn't call for on
-            this section specifically -- unlike Opportunity for Aram below,
-            whose own spec explicitly wants an awareness-only empty state).
-            Re-add the render once a real Shared Act entity exists. */}
+            real now (see lib/act-attribution.ts + getMySharedAct()): the
+            contributor's own most recent published Act that at least one
+            other contributor also participated in. sharedAct is already
+            null unless a real one exists, so this render is a bare
+            existence check, not a second filter. */}
+        {sharedAct && (
+          <section>
+            <SectionHeader title="Shared Act of Aram" />
+            <div className="mt-3">
+              <EvidenceCard
+                actId={sharedAct.id}
+                heroImage={sharedAct.heroImageUrl as string}
+                category={sharedAct.cause}
+                placeName={sharedAct.landmark ?? sharedAct.organization}
+                completedDate={sharedAct.missionDate}
+                headline={sharedAct.title}
+                supportingCopy={sharedAct.description}
+                isSharedAct
+                contributorCount={sharedAct.participatingContributorCount ?? undefined}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Opportunity for Aram (CA-009 Section 6). Awareness only, not
             fundraising (locked rule). No Opportunity entity exists yet

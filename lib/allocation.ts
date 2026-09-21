@@ -20,11 +20,21 @@ const CAUSE_LABEL_BY_SLUG: Record<CauseId, string> = {
 
 const PRIORITY_ORDER: Record<OpportunityPriority, number> = { critical: 0, high: 1, normal: 2, low: 3 };
 
+export interface UnallocatedParticipation {
+  participationId: string;
+  causeId: string;
+}
+
 export interface ParticipationByCause {
   cause: string;
   total: number;
   allocatedThisMonth: number;
   available: number;
+  /** The actual (participation, cause) pairs not yet linked to any
+   *  allocation this month -- what an allocation action picks specific
+   *  rows from, not just a count to decrement. See participation_allocations
+   *  migration's own comment for why this exists. */
+  unallocated: UnallocatedParticipation[];
 }
 
 export interface AllocationReadyOpportunity {
@@ -216,7 +226,7 @@ export async function getAllocationEngineData(): Promise<AllocationEngineData> {
       supabase.from("allocations").select("*").eq("allocation_month", monthStart),
       supabase
         .from("participations")
-        .select("id, participation_causes(causes(slug))")
+        .select("id, participation_causes(cause_id, causes(slug))")
         .eq("month", month)
         .eq("status", "completed"),
     ]);
@@ -226,31 +236,49 @@ export async function getAllocationEngineData(): Promise<AllocationEngineData> {
   const allocationRows = allocations ?? [];
   const participationRows = (participations ?? []) as {
     id: string;
-    participation_causes: { causes: unknown }[] | null;
+    participation_causes: { cause_id: string; causes: unknown }[] | null;
   }[];
 
   const partnerById = new Map(partnerRows.map((p) => [p.id as string, p]));
   const opportunityById = new Map(opps.map((o) => [o.id as string, o]));
 
-  // -- Monthly Participation Summary (Header + Row 1) --
+  // -- Monthly Participation Summary (Header + Row 1) -- and the real
+  // unallocated (participation, cause) pool the action layer links from.
+  // Deliberately re-derived from participation_allocations here rather
+  // than trusted from allocations.participations_allocated's own running
+  // count -- that field is written once at insert time and never updated,
+  // so it can't drift, but deriving from the actual link rows means this
+  // screen and the action that consumes it can never disagree about
+  // what's really still available.
+  const monthParticipationIds = participationRows.map((p) => p.id);
+  const { data: linkedRows } =
+    monthParticipationIds.length > 0
+      ? await supabase.from("participation_allocations").select("participation_id, cause_id").in("participation_id", monthParticipationIds)
+      : { data: [] };
+  const linkedSet = new Set((linkedRows ?? []).map((r) => `${r.participation_id}:${r.cause_id}`));
+
   const byCauseTotal = new Map<string, number>();
+  const unallocatedByCause = new Map<string, UnallocatedParticipation[]>();
   const totalParticipations = participationRows.length;
   for (const participation of participationRows) {
     for (const row of participation.participation_causes ?? []) {
       const slug = (row.causes as { slug: CauseId } | null)?.slug;
-      if (slug) byCauseTotal.set(CAUSE_LABEL_BY_SLUG[slug], (byCauseTotal.get(CAUSE_LABEL_BY_SLUG[slug]) ?? 0) + 1);
+      if (!slug) continue;
+      const label = CAUSE_LABEL_BY_SLUG[slug];
+      byCauseTotal.set(label, (byCauseTotal.get(label) ?? 0) + 1);
+      if (!linkedSet.has(`${participation.id}:${row.cause_id}`)) {
+        const list = unallocatedByCause.get(label);
+        const entry = { participationId: participation.id, causeId: row.cause_id };
+        if (list) list.push(entry);
+        else unallocatedByCause.set(label, [entry]);
+      }
     }
-  }
-  const allocatedByCause = new Map<string, number>();
-  for (const a of allocationRows) {
-    const cause = a.cause as string;
-    allocatedByCause.set(cause, (allocatedByCause.get(cause) ?? 0) + (a.participations_allocated as number));
   }
   const byCause: ParticipationByCause[] = CAUSES.map((c) => {
     const label = CAUSE_LABEL_BY_SLUG[c.id];
     const total = byCauseTotal.get(label) ?? 0;
-    const allocatedThisMonth = allocatedByCause.get(label) ?? 0;
-    return { cause: label, total, allocatedThisMonth, available: Math.max(0, total - allocatedThisMonth) };
+    const unallocated = unallocatedByCause.get(label) ?? [];
+    return { cause: label, total, allocatedThisMonth: total - unallocated.length, available: unallocated.length, unallocated };
   });
   const availableByCause = Object.fromEntries(byCause.map((c) => [c.cause, c.available]));
 

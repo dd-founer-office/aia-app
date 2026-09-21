@@ -11,11 +11,11 @@ import type { ActFeedItem } from "@/lib/acts-feed";
 // Review didn't collect that data -- it now collects beneficiary count and
 // a short story (mission_publications_impact_story_fields migration), so
 // CA-011's Impact Snapshot/Story/Verification Summary sections render here
-// too. Still honest about what's genuinely missing: no documents exist in
-// this schema at all (Records has no real backing, unlike the mock Acts'
-// invented ones), and Shared Impact needs a contributor<->mission link that
-// doesn't exist yet (Allocation Center, Milestone 4) -- both stay omitted
-// rather than fabricated.
+// too. Participating Contributors is real now too (lib/act-attribution.ts)
+// -- shown only when known, per the same "genuinely unknown, never a
+// fabricated zero" rule as beneficiaryCount. Still honest about what's
+// genuinely missing: no documents exist in this schema at all (Records has
+// no real backing, unlike the mock Acts' invented ones).
 //
 // NOTE: bg-[var(--color-background)] intentionally removed from this root
 // wrapper -- body already carries this exact background color
@@ -74,6 +74,12 @@ export function PublishedActDetail({
             <div className="flex items-center justify-between">
               <dt className="text-[var(--color-muted-foreground)]">Location</dt>
               <dd className="text-[var(--color-foreground)]">{act.landmark}</dd>
+            </div>
+          )}
+          {act.participatingContributorCount !== null && (
+            <div className="flex items-center justify-between">
+              <dt className="text-[var(--color-muted-foreground)]">Participating Contributors</dt>
+              <dd className="text-[var(--color-foreground)]">{act.participatingContributorCount}</dd>
             </div>
           )}
         </dl>
