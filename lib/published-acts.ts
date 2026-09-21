@@ -319,6 +319,18 @@ export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
   return items;
 }
 
+/** CA-009 Home Section 3's "Recent Impact" -- the single most recently
+ *  published Act system-wide, not contributor-specific (unlike Section 4's
+ *  Shared Act, the locked spec just wants "most recent published impact").
+ *  Requires a hero image to render, same guard the main feed applies. Was
+ *  hardcoded to lib/mock-data.ts's mockLatestAct until now -- Act of Aram
+ *  not being a Sprint 1 table was the reason then; it's a real, queryable
+ *  entity now. */
+export async function getLatestPublishedAct(): Promise<PublishedActFeedItem | null> {
+  const acts = await getPublishedActsFeed();
+  return acts.find((act) => act.heroImageUrl) ?? null;
+}
+
 /** CA-009 Home Section 4's real "Shared Act of Aram" -- the signed-in
  *  contributor's most recently published Act that at least one other
  *  contributor also participated in. null (section hidden) when they have

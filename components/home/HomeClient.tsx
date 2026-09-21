@@ -5,7 +5,7 @@ import { MapPin } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
-import { mockLatestAct, mockKuralOfTheDay } from "@/lib/mock-data";
+import { mockKuralOfTheDay } from "@/lib/mock-data";
 import { STAGE_LABELS, STAGE_ORDER } from "@/types";
 import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
@@ -18,14 +18,16 @@ import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 import KuralScrollFormation from "@/components/home/KuralScrollFormation";
 import type { CurrentContributor } from "@/lib/contributor";
-import type { PublishedActSummary } from "@/lib/published-acts";
+import type { PublishedActSummary, PublishedActFeedItem } from "@/lib/published-acts";
 
 export function HomeClient({
   contributor,
   sharedAct,
+  latestAct,
 }: {
   contributor: CurrentContributor;
   sharedAct: PublishedActSummary | null;
+  latestAct: PublishedActFeedItem | null;
 }) {
   const router = useRouter();
   const stageIndex = STAGE_ORDER.indexOf(contributor.currentStage);
@@ -225,20 +227,20 @@ export function HomeClient({
             section title is 'Recent Impact' for comprehension; the card
             itself may still label 'Act of Aram'" -- title corrected to
             match (was "Your Latest Act of Aram"), card content unchanged.
-            mockLatestAct is temporary presentation-only mock data (see
-            lib/mock-data.ts); Act of Aram is not a table in the locked
-            Sprint 1 schema. Swap the ternary's truthy branch for a live
-            query when the real entity ships -- the empty-state branch is
-            left in place for that day. */}
+            Real now (lib/published-acts.ts's getLatestPublishedAct()) --
+            the most recently published Act system-wide, not contributor-
+            specific (that's Shared Act of Aram below). Was hardcoded to
+            lib/mock-data.ts's mockLatestAct; also fixes "View Act" never
+            having had a real href before. */}
         <Card className="flex flex-col gap-4">
           <SectionHeader title="Recent Impact" />
-          {mockLatestAct ? (
+          {latestAct ? (
             <>
               <div className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={mockLatestAct.hero_image_url}
-                  alt={`${mockLatestAct.cause} Act of Aram`}
+                  src={latestAct.heroImageUrl as string}
+                  alt={latestAct.title}
                   className="h-[260px] w-full rounded-[var(--radius-photo)] object-cover"
                 />
                 <span
@@ -246,25 +248,23 @@ export function HomeClient({
                   style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
                 >
                   <MapPin size={12} />
-                  {mockLatestAct.location}
+                  {latestAct.landmark ?? latestAct.organization}
                   <span className="opacity-70">·</span>
-                  {mockLatestAct.completed_date}
+                  {latestAct.missionDate}
                 </span>
               </div>
-              <p className="text-lg font-semibold leading-snug">{mockLatestAct.cause}</p>
+              <p className="text-lg font-semibold leading-snug">{latestAct.title}</p>
               <div className="flex flex-wrap gap-2">
                 <Badge status="verified" label="Verified" />
                 <Badge status="verified" label="Executed" />
                 <Badge status="verified" label="Documented" />
               </div>
-              <p className="text-sm text-[var(--color-foreground)]">
-                {mockLatestAct.impact_summary}
-              </p>
+              <p className="text-sm text-[var(--color-foreground)]">{latestAct.description}</p>
               <div className="flex items-center justify-between">
-                <p className="text-sm text-[var(--color-muted-foreground)]">
-                  {mockLatestAct.completed_date}
-                </p>
-                <Button variant="text">View Act →</Button>
+                <p className="text-sm text-[var(--color-muted-foreground)]">{latestAct.missionDate}</p>
+                <Link href={`/acts/${latestAct.id}`}>
+                  <Button variant="text">View Act →</Button>
+                </Link>
               </div>
             </>
           ) : (
