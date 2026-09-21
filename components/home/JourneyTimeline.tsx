@@ -91,7 +91,7 @@ export function JourneyTimeline({ currentStage, reachedAtByStage }: JourneyTimel
             <div className={`pl-5 pt-1.5 ${isLast ? "" : "pb-10"}`}>
               <p className="font-tamil-sans text-xl font-medium leading-tight text-[var(--color-foreground)]">
                 {label.ta}{" "}
-                <span className="font-display font-normal">
+                <span className="font-display font-medium">
                   {"\u2022"} {label.en}
                 </span>
               </p>
