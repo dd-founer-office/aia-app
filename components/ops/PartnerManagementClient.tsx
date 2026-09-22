@@ -240,7 +240,11 @@ function PartnerDetailPanel({ partner, onDone }: { partner: PartnerRow; onDone: 
 
 /** OP-009 Partner Management (Locked v1.0). See lib/partners.ts's own
  *  header comment for the documented simplifications (no document-upload
- *  pipeline for verification, no fabricated trend lines in Row 8). */
+ *  pipeline for verification, no fabricated trend lines in Performance
+ *  Insights). Row numbering in comments below follows the original OP-009
+ *  spec; the old Row 1 (Health Overview) was folded into the header
+ *  stats, and Rows 2/3/8 were merged into one Partner Insights section --
+ *  see the audit note above that section. */
 export function PartnerManagementClient({ data }: { data: PartnersData }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -315,11 +319,12 @@ export function PartnerManagementClient({ data }: { data: PartnersData }) {
           </h1>
           <Button onClick={() => setShowAddForm((v) => !v)}>{showAddForm ? "Cancel" : "Add partner"}</Button>
         </div>
-        <Card className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Card className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Stat label="Total partners" value={data.totalPartners} />
           <Stat label="Verified" value={data.verifiedPartners} />
           <Stat label="Active" value={data.activePartners} />
           <Stat label="Pending verification" value={data.pendingVerification} />
+          <Stat label="Suspended" value={data.healthOverview.suspended} />
         </Card>
 
         {showAddForm && (
@@ -357,40 +362,6 @@ export function PartnerManagementClient({ data }: { data: PartnersData }) {
         </Button>
         {exportError && <p className="mt-2 text-sm text-[var(--color-error)]">{exportError}</p>}
       </div>
-
-      {/* Row 1 -- Partner Health Overview */}
-      <section>
-        <SectionHeader title="Partner Health Overview" />
-        <Card className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-5">
-          <Stat label="Total" value={data.healthOverview.total} />
-          <Stat label="Verified" value={data.healthOverview.verified} />
-          <Stat label="Active" value={data.healthOverview.active} />
-          <Stat label="Pending" value={data.healthOverview.pending} />
-          <Stat label="Suspended" value={data.healthOverview.suspended} />
-        </Card>
-      </section>
-
-      {/* Row 2 -- Partner Capacity Overview */}
-      <section>
-        <SectionHeader title="Partner Capacity Overview" />
-        <Card className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Available capacity" value={data.capacityOverview.availableCapacity} />
-          <Stat label="Allocated capacity" value={data.capacityOverview.allocatedCapacity} />
-          <Stat label="Remaining capacity" value={data.capacityOverview.remainingCapacity} />
-          <Stat label="Utilization" value={formatPercent(data.capacityOverview.utilizationPct)} />
-        </Card>
-      </section>
-
-      {/* Row 3 -- Partner Reliability Overview */}
-      <section>
-        <SectionHeader title="Partner Reliability Overview" />
-        <Card className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="On-time completion" value={formatPercent(data.reliabilityOverview.avgOnTimeCompletionRate)} />
-          <Stat label="Documentation quality" value={formatPercent(data.reliabilityOverview.avgDocumentationQualityRate)} />
-          <Stat label="Execution success" value={formatPercent(data.reliabilityOverview.avgExecutionSuccessRate)} />
-          <Stat label="Avg. reliability score" value={formatPercent(data.reliabilityOverview.avgReliabilityScore)} />
-        </Card>
-      </section>
 
       {/* Row 4 -- Partner Table */}
       <section>
@@ -470,30 +441,52 @@ export function PartnerManagementClient({ data }: { data: PartnersData }) {
 
       {selectedPartner && <PartnerDetailPanel key={selectedPartner.id} partner={selectedPartner} onDone={() => setSelectedId(null)} />}
 
-      {/* Row 7 -- Capacity Risk Panel */}
+      {/* Row 7 -- Capacity Risk Panel. Each count lists the actual partners
+          behind it (same pattern as the Verification Queue) so a number
+          is never a dead end -- click a name to open its detail panel. */}
       <section>
         <SectionHeader title="Capacity Risk Panel" />
         <Card className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div>
-            <p className="text-lg font-medium text-[var(--color-foreground)]">{data.riskPanel.overCapacityPartners.length}</p>
-            <p className="text-xs text-[var(--color-muted-foreground)]">Over-capacity partners</p>
-          </div>
-          <div>
-            <p className="text-lg font-medium text-[var(--color-foreground)]">{data.riskPanel.limitedCapacityPartners.length}</p>
-            <p className="text-xs text-[var(--color-muted-foreground)]">Limited-capacity partners (also covers upcoming risk)</p>
-          </div>
-          <div>
-            <p className="text-lg font-medium text-[var(--color-foreground)]">{data.riskPanel.inactivePartners.length}</p>
-            <p className="text-xs text-[var(--color-muted-foreground)]">Inactive partners</p>
-          </div>
+          <RiskGroup
+            label="Over-capacity partners"
+            partners={data.riskPanel.overCapacityPartners}
+            onSelect={setSelectedId}
+          />
+          <RiskGroup
+            label="Limited-capacity partners (also covers upcoming risk)"
+            partners={data.riskPanel.limitedCapacityPartners}
+            onSelect={setSelectedId}
+          />
+          <RiskGroup
+            label="Inactive partners"
+            partners={data.riskPanel.inactivePartners}
+            onSelect={setSelectedId}
+          />
         </Card>
       </section>
 
-      {/* Row 8 -- Partner Performance Insights */}
+      {/* Row 2/3/8 merged -- Partner Insights. These were three separate
+          top-level sections (Capacity Overview, Reliability Overview,
+          Performance Insights); none of them are something an operator
+          acts on directly, so they're grouped as one reference section.
+          "Known capacity" (old Row 8) is dropped here -- it was an exact
+          duplicate of "Available capacity" below. */}
       <section>
-        <SectionHeader title="Partner Performance Insights" />
+        <SectionHeader title="Partner Insights" />
         <Card className="mt-3 flex flex-col gap-4">
-          <div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Stat label="Available capacity" value={data.capacityOverview.availableCapacity} />
+            <Stat label="Allocated capacity" value={data.capacityOverview.allocatedCapacity} />
+            <Stat label="Remaining capacity" value={data.capacityOverview.remainingCapacity} />
+            <Stat label="Utilization" value={formatPercent(data.capacityOverview.utilizationPct)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-t border-[var(--color-border)] pt-4 sm:grid-cols-4">
+            <Stat label="On-time completion" value={formatPercent(data.reliabilityOverview.avgOnTimeCompletionRate)} />
+            <Stat label="Documentation quality" value={formatPercent(data.reliabilityOverview.avgDocumentationQualityRate)} />
+            <Stat label="Execution success" value={formatPercent(data.reliabilityOverview.avgExecutionSuccessRate)} />
+            <Stat label="Avg. reliability score" value={formatPercent(data.reliabilityOverview.avgReliabilityScore)} />
+          </div>
+          <div className="border-t border-[var(--color-border)] pt-4">
             <p className="text-sm font-medium text-[var(--color-foreground)]">Most reliable partner types</p>
             {data.insights.mostReliablePartnerTypes.length === 0 ? (
               <p className="text-xs text-[var(--color-muted-foreground)]">No reliability data yet.</p>
@@ -517,13 +510,32 @@ export function PartnerManagementClient({ data }: { data: PartnersData }) {
               ))
             )}
           </div>
-          <div className="grid grid-cols-3 gap-3 border-t border-[var(--color-border)] pt-3">
-            <Stat label="Known capacity" value={data.insights.totalKnownCapacity} />
+          <div className="grid grid-cols-2 gap-3 border-t border-[var(--color-border)] pt-3">
             <Stat label="Executions this month" value={data.insights.executionsThisMonth} />
             <Stat label="Doc. approval rate" value={formatPercent(data.insights.documentationApprovalRateOverall)} />
           </div>
         </Card>
       </section>
+    </div>
+  );
+}
+
+function RiskGroup({ label, partners, onSelect }: { label: string; partners: PartnerRow[]; onSelect: (id: string) => void }) {
+  return (
+    <div>
+      <p className="text-lg font-medium text-[var(--color-foreground)]">{partners.length}</p>
+      <p className="text-xs text-[var(--color-muted-foreground)]">{label}</p>
+      {partners.length > 0 && (
+        <ul className="mt-2 flex flex-col gap-1">
+          {partners.map((p) => (
+            <li key={p.id}>
+              <button type="button" className="text-xs text-[var(--color-primary)] underline" onClick={() => onSelect(p.id)}>
+                {p.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
