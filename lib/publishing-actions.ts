@@ -206,23 +206,32 @@ export async function archivePublicationAction(executionId: string): Promise<{ e
  * unpublished-looking missions row; that's a known, documented gap, not
  * a silent one.
  */
+// Logged, not silent: a `{ error }` return here never throws, so it never
+// shows up in Vercel's runtime error logs on its own -- console.error makes
+// a rejected publish attempt actually diagnosable after the fact instead of
+// just vanishing back to the queue with no trace.
+function publishError(executionId: string, message: string): { error: string } {
+  console.error(`publishAction(${executionId}) failed: ${message}`);
+  return { error: message };
+}
+
 export async function publishAction(executionId: string): Promise<{ error?: string; missionId?: string }> {
   const auth = await getOperatorAuthState();
-  if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
+  if (auth.status !== "operator") return publishError(executionId, "You need to sign in as an operator.");
 
   const supabase = await getSupabaseServerClient();
-  if (!supabase) return { error: "Supabase is not configured on this deployment." };
+  if (!supabase) return publishError(executionId, "Supabase is not configured on this deployment.");
 
   const data = await getPublishingCenterData();
   const item = data.items.find((i) => i.executionId === executionId);
-  if (!item) return { error: "This execution isn't eligible for publishing." };
-  if (!item.canPublish) return { error: "The Final Approval checklist must be complete before publishing." };
+  if (!item) return publishError(executionId, "This execution isn't eligible for publishing.");
+  if (!item.canPublish) return publishError(executionId, "The Final Approval checklist must be complete before publishing.");
 
   const { data: execution } = await supabase.from("executions").select("*").eq("id", executionId).maybeSingle();
-  if (!execution) return { error: "Execution not found." };
+  if (!execution) return publishError(executionId, "Execution not found.");
 
   const { data: opportunity } = await supabase.from("opportunities").select("*").eq("id", execution.opportunity_id as string).maybeSingle();
-  if (!opportunity) return { error: "Opportunity not found." };
+  if (!opportunity) return publishError(executionId, "Opportunity not found.");
 
   let partnerName: string | null = null;
   if (opportunity.partner_id) {
@@ -242,7 +251,7 @@ export async function publishAction(executionId: string): Promise<{ error?: stri
   // "Cover image" radio on photo rows), so this also guarantees at least
   // one photo is selected even when video evidence is included too.
   if (evidence.length === 0 || !evidence.some((e) => e.is_cover)) {
-    return { error: "Select at least one photo and a cover image before publishing." };
+    return publishError(executionId, "Select at least one photo and a cover image before publishing.");
   }
 
   // Copy every selected photo/video into the public bucket before any
@@ -253,14 +262,14 @@ export async function publishAction(executionId: string): Promise<{ error?: stri
       .from("execution-evidence")
       .download(e.storage_path as string);
     if (downloadError || !downloaded) {
-      return { error: `Couldn't read ${e.file_name} from storage: ${downloadError?.message ?? "unknown error"}` };
+      return publishError(executionId, `Couldn't read ${e.file_name} from storage: ${downloadError?.message ?? "unknown error"}`);
     }
     const publicPath = `${executionId}/${index + 1}-${Date.now()}-${e.file_name}`;
     const { error: uploadError } = await supabase.storage
       .from("mission-evidence")
       .upload(publicPath, downloaded, { contentType: e.file_type as string });
     if (uploadError) {
-      return { error: `Couldn't publish ${e.file_name}: ${uploadError.message}` };
+      return publishError(executionId, `Couldn't publish ${e.file_name}: ${uploadError.message}`);
     }
     const { data: publicUrlData } = supabase.storage.from("mission-evidence").getPublicUrl(publicPath);
     copied.push({
@@ -288,7 +297,7 @@ export async function publishAction(executionId: string): Promise<{ error?: stri
     })
     .select("id")
     .single();
-  if (missionError || !mission) return { error: missionError?.message ?? "Failed to create the Act." };
+  if (missionError || !mission) return publishError(executionId, missionError?.message ?? "Failed to create the Act.");
   const missionId = mission.id as string;
 
   // Cover is guaranteed to exist and to be a photo (checked above), so it's
@@ -312,7 +321,7 @@ export async function publishAction(executionId: string): Promise<{ error?: stri
       })
       .select("id")
       .single();
-    if (evidenceError || !evidenceRow) return { error: evidenceError?.message ?? "Failed to attach evidence to the Act." };
+    if (evidenceError || !evidenceRow) return publishError(executionId, evidenceError?.message ?? "Failed to attach evidence to the Act.");
     if (file.isCover) featuredEvidenceId = evidenceRow.id as string;
   }
 
@@ -328,7 +337,7 @@ export async function publishAction(executionId: string): Promise<{ error?: stri
     story_action: execution.publication_story_action as string | null,
     story_outcome: execution.publication_story_outcome as string | null,
   });
-  if (publicationError) return { error: publicationError.message };
+  if (publicationError) return publishError(executionId, publicationError.message);
 
   await supabase
     .from("executions")
