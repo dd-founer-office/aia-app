@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { X } from "lucide-react";
 import { MissionHeader } from "./MissionHeader";
 import { CaptureProgressDots } from "./CaptureProgressDots";
@@ -17,7 +18,9 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDeviceOrientation } from "@/hooks/useDeviceOrientation";
 import { analyzeFrame, estimateMotion, scoreCQI } from "@/lib/capture-quality";
 import { submitMissionEvidenceAction } from "@/lib/capture-actions";
+import { submitPartnerEvidenceAction } from "@/lib/partner-capture-actions";
 import { getSupabasePublicClient } from "@/lib/supabase/client";
+import { getSupabaseAuthBrowserClient } from "@/lib/supabase/browser-client";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 import type { CQIReading, CapturedEvidence, EvidenceRequirement, MissionTemplate } from "@/types/mission-camera";
@@ -26,6 +29,13 @@ interface MissionCameraProps {
   missionId: string;
   missionName: string;
   template: MissionTemplate;
+  /** Set only by the partner flow (/capture/[executionId] resolving a
+   *  real execution). Submission then targets the private
+   *  execution-evidence bucket + table instead of the old public
+   *  mission-evidence path -- see handleSubmit's branch below. Never
+   *  set by the old /capture test harness, whose behavior is otherwise
+   *  completely unchanged. */
+  executionId?: string;
 }
 
 const ANALYSIS_SAMPLE_SIZE = 64;
@@ -41,7 +51,7 @@ const MISSION_CATEGORY_TO_AMBIENT_EVENT: Partial<Record<MissionTemplate["categor
   annadhanam: "food",
 };
 
-export function MissionCamera({ missionId, missionName, template }: MissionCameraProps) {
+export function MissionCamera({ missionId, missionName, template, executionId }: MissionCameraProps) {
   const router = useRouter();
 
   const [requirements, setRequirements] = useState<EvidenceRequirement[]>(() =>
@@ -267,52 +277,93 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
     setReviewFrame(null);
   }
 
+  async function handleSubmitToExecution(executionId: string) {
+    const supabase = getSupabaseAuthBrowserClient();
+    if (!supabase) throw new Error("Supabase is not configured.");
+
+    const items: { storagePath: string; fileName: string; fileType: string; mediaKind: "photo" | "video" }[] = [];
+    for (let i = 0; i < captured.length; i++) {
+      const item = captured[i];
+      const isVideo = item.mediaKind === "video";
+      const category = isVideo ? "video" : "execution_photo";
+
+      if (isVideo) {
+        const videoBlob = await fetch(item.blobUrl).then((r) => r.blob());
+        const fileType = videoBlob.type || "video/webm";
+        const fileName = `${Date.now()}.${fileType.includes("mp4") ? "mp4" : "webm"}`;
+        const storagePath = `${executionId}/${category}/${fileName}`;
+        const { error } = await supabase.storage.from("execution-evidence").upload(storagePath, videoBlob, { contentType: fileType });
+        if (error) throw new Error(error.message);
+        items.push({ storagePath, fileName, fileType, mediaKind: "video" });
+      } else {
+        const photoBlob = await fetch(item.blobUrl).then((r) => r.blob());
+        const fileType = "image/jpeg";
+        const fileName = `${Date.now()}.jpg`;
+        const storagePath = `${executionId}/${category}/${fileName}`;
+        const { error } = await supabase.storage.from("execution-evidence").upload(storagePath, photoBlob, { contentType: fileType });
+        if (error) throw new Error(error.message);
+        items.push({ storagePath, fileName, fileType, mediaKind: "photo" });
+      }
+    }
+
+    const result = await submitPartnerEvidenceAction(executionId, items);
+    if (result.error) throw new Error(result.error);
+  }
+
+  async function handleSubmitToMission() {
+    const supabase = getSupabasePublicClient();
+    if (!supabase) throw new Error("Supabase is not configured.");
+
+    const items = [];
+    for (let i = 0; i < captured.length; i++) {
+      const item = captured[i];
+      const isVideo = item.mediaKind === "video";
+
+      const posterSourceUrl = isVideo ? (item.posterBlobUrl ?? item.blobUrl) : item.blobUrl;
+      const posterBlob = await fetch(posterSourceUrl).then((r) => r.blob());
+      const posterPath = `${missionId}/${i + 1}-${Date.now()}-poster.jpg`;
+      const { error: posterError } = await supabase.storage
+        .from("mission-evidence")
+        .upload(posterPath, posterBlob, { contentType: "image/jpeg" });
+      if (posterError) throw new Error(posterError.message);
+      const { data: posterUrlData } = supabase.storage.from("mission-evidence").getPublicUrl(posterPath);
+
+      let videoUrl: string | null = null;
+      if (isVideo) {
+        const videoBlob = await fetch(item.blobUrl).then((r) => r.blob());
+        const videoPath = `${missionId}/${i + 1}-${Date.now()}.webm`;
+        const { error: videoError } = await supabase.storage
+          .from("mission-evidence")
+          .upload(videoPath, videoBlob, { contentType: videoBlob.type || "video/webm" });
+        if (videoError) throw new Error(videoError.message);
+        const { data: videoUrlData } = supabase.storage.from("mission-evidence").getPublicUrl(videoPath);
+        videoUrl = videoUrlData.publicUrl;
+      }
+
+      items.push({
+        photoUrl: posterUrlData.publicUrl,
+        videoUrl,
+        mediaKind: item.mediaKind,
+        captureTime: item.capturedAtIso,
+        captureTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        gpsLat: item.gpsLat,
+        gpsLng: item.gpsLng,
+        gpsAccuracyMeters: item.gpsAccuracyMeters,
+      });
+    }
+
+    await submitMissionEvidenceAction(missionId, items);
+  }
+
   async function handleSubmit() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const supabase = getSupabasePublicClient();
-      if (!supabase) throw new Error("Supabase is not configured.");
-
-      const items = [];
-      for (let i = 0; i < captured.length; i++) {
-        const item = captured[i];
-        const isVideo = item.mediaKind === "video";
-
-        const posterSourceUrl = isVideo ? (item.posterBlobUrl ?? item.blobUrl) : item.blobUrl;
-        const posterBlob = await fetch(posterSourceUrl).then((r) => r.blob());
-        const posterPath = `${missionId}/${i + 1}-${Date.now()}-poster.jpg`;
-        const { error: posterError } = await supabase.storage
-          .from("mission-evidence")
-          .upload(posterPath, posterBlob, { contentType: "image/jpeg" });
-        if (posterError) throw new Error(posterError.message);
-        const { data: posterUrlData } = supabase.storage.from("mission-evidence").getPublicUrl(posterPath);
-
-        let videoUrl: string | null = null;
-        if (isVideo) {
-          const videoBlob = await fetch(item.blobUrl).then((r) => r.blob());
-          const videoPath = `${missionId}/${i + 1}-${Date.now()}.webm`;
-          const { error: videoError } = await supabase.storage
-            .from("mission-evidence")
-            .upload(videoPath, videoBlob, { contentType: videoBlob.type || "video/webm" });
-          if (videoError) throw new Error(videoError.message);
-          const { data: videoUrlData } = supabase.storage.from("mission-evidence").getPublicUrl(videoPath);
-          videoUrl = videoUrlData.publicUrl;
-        }
-
-        items.push({
-          photoUrl: posterUrlData.publicUrl,
-          videoUrl,
-          mediaKind: item.mediaKind,
-          captureTime: item.capturedAtIso,
-          captureTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          gpsLat: item.gpsLat,
-          gpsLng: item.gpsLng,
-          gpsAccuracyMeters: item.gpsAccuracyMeters,
-        });
+      if (executionId) {
+        await handleSubmitToExecution(executionId);
+      } else {
+        await handleSubmitToMission();
       }
-
-      await submitMissionEvidenceAction(missionId, items);
       setSubmitted(true);
     } catch {
       setSubmitError("Submission failed. Check your connection and try again.");
@@ -330,6 +381,36 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
     // background color (globals.css). No other change. (The live camera
     // viewfinder further below correctly keeps bg-black -- that's an
     // unrelated, intentional choice for a video element, not this class.)
+    if (executionId && submitted) {
+      // Partner flow's confirmation state -- reuses this exact screen
+      // (locked rule: no separate evidence-management/confirmation
+      // screen), just its own honest copy: no fake progress bar, no
+      // percentage, no invented workflow states -- a plain three-step
+      // list of what's actually knowable from here.
+      return (
+        <div className="partner-portal flex h-dvh flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: "var(--pp-mint)" }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--pp-mint-foreground)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="pp-display text-xl">Your evidence has been received</p>
+          <ol className="flex flex-col gap-1.5 text-left text-[14px] opacity-70">
+            <li>1. AiA Operations will review it</li>
+            <li>2. Once approved, it moves toward publishing</li>
+            <li>3. You&apos;ll see it reflected here</li>
+          </ol>
+          <Link
+            href={`/partner/activities/${executionId}`}
+            className="mt-2 rounded-2xl px-6 py-3.5 text-[15px] font-bold"
+            style={{ background: "var(--pp-deep-teal)", color: "var(--pp-mint)" }}
+          >
+            Back to Activity
+          </Link>
+        </div>
+      );
+    }
+
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="font-display text-xl text-[var(--color-foreground)]">
@@ -338,6 +419,8 @@ export function MissionCamera({ missionId, missionName, template }: MissionCamer
         <p className="max-w-xs text-sm text-[var(--color-muted-foreground)]">
           {submitted
             ? `${captured.length} pieces of evidence have been submitted for ${missionName} and are now pending review.`
+            : executionId
+            ? `${captured.length} pieces of evidence captured for ${missionName}. Submit them to AiA Operations for review.`
             : `${captured.length} pieces of evidence captured for ${missionName}. Submit them for review to move into the Living Trace.`}
         </p>
         {submitError && <p className="text-sm text-[var(--color-error)]">{submitError}</p>}

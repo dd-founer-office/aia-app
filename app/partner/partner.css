@@ -1,0 +1,37 @@
+/* AiA Partner Portal -- scoped, additive visual system. Never referenced
+ * outside .partner-portal, so the Contributor App and Ops Portal's own
+ * tokens (app/globals.css) are completely unaffected. Approved palette
+ * (2026-09-22): exactly five colors, no additional hues. Color creates
+ * hierarchy, not decoration -- see the approved design exploration for
+ * the reasoning behind each role below. */
+.partner-portal {
+  --pp-deep-teal: #0a363a;
+  --pp-deep-teal-foreground: #ffffff;
+  --pp-mint: #68ffad;
+  --pp-mint-foreground: #0a363a;
+  --pp-text: #062023;
+  --pp-surface: #eaf2f2;
+  --pp-white: #ffffff;
+
+  font-family: var(--font-inter), sans-serif;
+  background: var(--pp-surface);
+  color: var(--pp-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.partner-portal h1,
+.partner-portal h2,
+.partner-portal .pp-display {
+  font-family: var(--font-cal-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.partner-portal a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.partner-portal button {
+  font-family: inherit;
+}
