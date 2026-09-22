@@ -218,6 +218,12 @@ export function ExecutionDetailClient({ execution }: { execution: ExecutionDetai
 
   const [completePending, setCompletePending] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
+  // Defaults to today (live ops, unchanged behavior) but overridable --
+  // founder-directed addition (2026-09-22) so an operator backfilling a
+  // contributor's real past participation can give the resulting Act its
+  // actual historical date instead of today's. See completeExecutionAction's
+  // own comment for why this is the one place that date can be set.
+  const [completedOnDate, setCompletedOnDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const [submitPending, setSubmitPending] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -244,7 +250,7 @@ export function ExecutionDetailClient({ execution }: { execution: ExecutionDetai
   async function handleMarkComplete() {
     setCompletePending(true);
     setCompleteError(null);
-    const result = await completeExecutionAction(execution.id);
+    const result = await completeExecutionAction(execution.id, completedOnDate);
     setCompletePending(false);
     if (result.error) {
       setCompleteError(result.error);
@@ -288,7 +294,7 @@ export function ExecutionDetailClient({ execution }: { execution: ExecutionDetai
         <p className="text-xs text-[var(--color-muted-foreground)]">
           Scheduled {formatDate(execution.scheduledDate)} · Completed {formatDate(execution.completedAtIso)}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap items-end gap-2">
           <Button
             type="button"
             disabled={savePending}
@@ -296,6 +302,16 @@ export function ExecutionDetailClient({ execution }: { execution: ExecutionDetai
           >
             {savePending ? "Saving…" : "Save draft"}
           </Button>
+          <label className="flex flex-col gap-1 text-xs text-[var(--color-muted-foreground)]">
+            Completed on
+            <input
+              type="date"
+              value={completedOnDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setCompletedOnDate(e.target.value)}
+              className="rounded-[var(--radius-button)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
           <Button variant="secondary" disabled={completePending} onClick={handleMarkComplete}>
             {completePending ? "Marking…" : "Mark complete"}
           </Button>
