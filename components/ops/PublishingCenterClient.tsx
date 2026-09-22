@@ -72,7 +72,11 @@ function PublicationPanel({ item, onDone }: { item: PublicationQueueItem; onDone
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(item.availablePhotos.filter((p) => p.selected).map((p) => p.id)));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    new Set(
+      [...item.availablePhotos, ...item.availableVideos].filter((f) => f.selected).map((f) => f.id)
+    )
+  );
   const [coverId, setCoverId] = useState<string | null>(item.availablePhotos.find((p) => p.isCover)?.id ?? null);
 
   async function handleSaveStory(e: FormEvent<HTMLFormElement>) {
@@ -237,9 +241,29 @@ function PublicationPanel({ item, onDone }: { item: PublicationQueueItem; onDone
               </div>
             ))
           )}
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            Video evidence isn&apos;t selectable yet -- see lib/publishing.ts for why.
-          </p>
+          {item.availableVideos.length > 0 && (
+            <div className="flex flex-col gap-2 border-t border-[var(--color-border)] pt-3">
+              <p className="text-xs font-medium text-[var(--color-muted-foreground)]">Videos</p>
+              {item.availableVideos.map((video) => (
+                <label key={video.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(video.id)}
+                    onChange={(e) => {
+                      const next = new Set(selectedIds);
+                      if (e.target.checked) next.add(video.id);
+                      else next.delete(video.id);
+                      setSelectedIds(next);
+                    }}
+                  />
+                  {video.fileName}
+                </label>
+              ))}
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                Videos aren&apos;t cover-eligible -- the published Act still shows the cover photo above; the video plays from the Act&apos;s evidence gallery.
+              </p>
+            </div>
+          )}
           <Button disabled={pending} onClick={handleSaveEvidence} className="self-start">
             {pending ? "Saving…" : "Save evidence selection"}
           </Button>

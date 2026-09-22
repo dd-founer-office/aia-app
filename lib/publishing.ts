@@ -31,6 +31,13 @@ export interface SelectablePhoto {
   isCover: boolean;
 }
 
+export interface SelectableVideo {
+  id: string;
+  fileName: string;
+  url: string | null;
+  selected: boolean;
+}
+
 export interface PublicationTimelineEntry {
   label: string;
   dateIso: string;
@@ -55,6 +62,7 @@ export interface PublicationQueueItem {
   executionOwner: string | null;
   scheduledDateIso: string | null;
   availablePhotos: SelectablePhoto[];
+  availableVideos: SelectableVideo[];
   checklist: FinalApprovalChecklist;
   canPublish: boolean;
   publishedMissionId: string | null;
@@ -122,13 +130,17 @@ function average(values: number[]): number | null {
  *  the queue table and every per-item row (Story Preparation through
  *  Publication Timeline) on one page, same architecture as OP-006.
  *
- *  Two documented gaps: (1) video evidence isn't selectable for
- *  publication -- the existing `evidence` table's photo_url is NOT NULL,
- *  and Mission Camera fills it by generating a poster frame client-side
- *  at capture time; this server-side pipeline has no video-processing
- *  capability to generate one, so only photo evidence (before/after/
- *  execution categories) can become a published Act's images this round.
- *  (2) "Publication accuracy rate" / "corrections required" (Row 7) have
+ *  Video evidence is selectable for publication, but with one honest
+ *  simplification: the `evidence` table's photo_url is NOT NULL, and
+ *  Mission Camera normally fills it with a poster frame generated
+ *  client-side at capture time -- this server-side pipeline has no
+ *  video-processing capability to generate one. publishAction instead
+ *  reuses the Act's own chosen cover photo as the video row's photo_url
+ *  (thumbnail), never a fabricated frame grab. A cover photo is still
+ *  required to publish at all, so this is always available.
+ *
+ *  One remaining documented gap: "Publication accuracy rate" / "corrections
+ *  required" (Row 7) have
  *  no real data source -- no post-publication correction/versioning
  *  system exists (the locked rule calling for one is a future gap, not
  *  built here) -- both stay null/honestly absent rather than fabricated. */
@@ -173,16 +185,18 @@ export async function getPublishingCenterData(): Promise<PublishingCenterData> {
           .from("execution_evidence")
           .select("id, execution_id, file_name, category, storage_path, status, selected_for_publication, is_cover")
           .in("execution_id", executionIds)
-          .in("category", PHOTO_CATEGORIES)
+          .in("category", [...PHOTO_CATEGORIES, "video"])
           .neq("status", "deleted")
       : { data: [] as EvidenceRow[] };
   const evidenceRows = (evidenceRowsRaw ?? []) as EvidenceRow[];
   const photosByExecution = new Map<string, EvidenceRow[]>();
+  const videosByExecution = new Map<string, EvidenceRow[]>();
   for (const row of evidenceRows) {
     const key = row.execution_id;
-    const list = photosByExecution.get(key);
+    const byExecution = row.category === "video" ? videosByExecution : photosByExecution;
+    const list = byExecution.get(key);
     if (list) list.push(row);
-    else photosByExecution.set(key, [row]);
+    else byExecution.set(key, [row]);
   }
   const signedUrlByPath = new Map<string, string | null>();
   await Promise.all(
@@ -202,6 +216,12 @@ export async function getPublishingCenterData(): Promise<PublishingCenterData> {
       url: signedUrlByPath.get(row.storage_path as string) ?? null,
       selected: row.selected_for_publication as boolean,
       isCover: row.is_cover as boolean,
+    }));
+    const videos: SelectableVideo[] = (videosByExecution.get(e.id as string) ?? []).map((row) => ({
+      id: row.id as string,
+      fileName: row.file_name as string,
+      url: signedUrlByPath.get(row.storage_path as string) ?? null,
+      selected: row.selected_for_publication as boolean,
     }));
 
     const checklist: FinalApprovalChecklist = {
@@ -239,6 +259,7 @@ export async function getPublishingCenterData(): Promise<PublishingCenterData> {
       executionOwner: e.execution_owner as string | null,
       scheduledDateIso: e.scheduled_date as string | null,
       availablePhotos: photos,
+      availableVideos: videos,
       checklist,
       canPublish: canPublish(status, checklist),
       publishedMissionId: e.published_mission_id as string | null,
