@@ -195,7 +195,7 @@ export async function archivePublicationAction(executionId: string): Promise<{ e
  * Writes into the existing missions/evidence/mission_publications tables
  * -- the exact schema CA-010/CA-011 already read from (lib/published-acts.ts)
  * -- rather than inventing a parallel publishing entity. Selected photos
- * are copied from the private 'execution-evidence' bucket into the
+ * and videos are copied from the private 'execution-evidence' bucket into the
  * public 'mission-evidence' bucket (the contributor app fetches evidence
  * URLs directly with no signing step, so they must live in a public
  * bucket to be visible at all) -- all copies happen before any table
@@ -232,19 +232,22 @@ export async function publishAction(executionId: string): Promise<{ error?: stri
 
   const { data: selectedEvidence } = await supabase
     .from("execution_evidence")
-    .select("id, file_name, file_type, storage_path, is_cover, uploaded_at")
+    .select("id, file_name, file_type, category, storage_path, is_cover, uploaded_at")
     .eq("execution_id", executionId)
     .eq("selected_for_publication", true)
     .neq("status", "deleted")
     .order("uploaded_at", { ascending: true });
   const evidence = selectedEvidence ?? [];
+  // Cover is always a photo (the Evidence Selection UI only ever offers the
+  // "Cover image" radio on photo rows), so this also guarantees at least
+  // one photo is selected even when video evidence is included too.
   if (evidence.length === 0 || !evidence.some((e) => e.is_cover)) {
     return { error: "Select at least one photo and a cover image before publishing." };
   }
 
-  // Copy every selected photo into the public bucket before any table
-  // writes -- if a copy fails, nothing has been published yet.
-  const copied: { fileName: string; fileType: string; publicUrl: string; isCover: boolean; uploadedAt: string }[] = [];
+  // Copy every selected photo/video into the public bucket before any
+  // table writes -- if a copy fails, nothing has been published yet.
+  const copied: { fileName: string; fileType: string; category: string; publicUrl: string; isCover: boolean; uploadedAt: string }[] = [];
   for (const [index, e] of evidence.entries()) {
     const { data: downloaded, error: downloadError } = await supabase.storage
       .from("execution-evidence")
@@ -263,6 +266,7 @@ export async function publishAction(executionId: string): Promise<{ error?: stri
     copied.push({
       fileName: e.file_name as string,
       fileType: e.file_type as string,
+      category: e.category as string,
       publicUrl: publicUrlData.publicUrl,
       isCover: e.is_cover as boolean,
       uploadedAt: e.uploaded_at as string,
@@ -287,14 +291,22 @@ export async function publishAction(executionId: string): Promise<{ error?: stri
   if (missionError || !mission) return { error: missionError?.message ?? "Failed to create the Act." };
   const missionId = mission.id as string;
 
+  // Cover is guaranteed to exist and to be a photo (checked above), so it's
+  // always safe as the thumbnail (photo_url, NOT NULL) for any video rows --
+  // see this file's header comment on why videos reuse it instead of a
+  // generated frame grab.
+  const coverPublicUrl = copied.find((f) => f.isCover)?.publicUrl as string;
+
   let featuredEvidenceId: string | null = null;
   for (const [index, file] of copied.entries()) {
+    const isVideo = file.category === "video";
     const { data: evidenceRow, error: evidenceError } = await supabase
       .from("evidence")
       .insert({
         mission_id: missionId,
-        photo_url: file.publicUrl,
-        media_kind: "photo",
+        photo_url: isVideo ? coverPublicUrl : file.publicUrl,
+        video_url: isVideo ? file.publicUrl : null,
+        media_kind: isVideo ? "video" : "photo",
         capture_time: file.uploadedAt,
         capture_order: index + 1,
       })
