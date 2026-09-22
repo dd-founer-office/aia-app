@@ -16,6 +16,7 @@ import {
   updateCapacityAction,
   updateVerificationNotesAction,
   exportPartnersAction,
+  deletePartnerAction,
 } from "@/lib/partners-actions";
 import type { PartnerType, PartnersData, PartnerRow, PartnerVerificationStatus } from "@/lib/partners";
 import type { CapacityStatus } from "@/lib/allocation";
@@ -93,8 +94,18 @@ function PartnerDetailPanel({ partner, onDone }: { partner: PartnerRow; onDone: 
   const [error, setError] = useState<string | null>(null);
   const [decisionMode, setDecisionMode] = useState<"reject" | "request" | "suspend" | null>(null);
   const [decisionText, setDecisionText] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [capacity, setCapacity] = useState(partner.monthlyCapacity?.toString() ?? "");
   const [notes, setNotes] = useState(partner.verificationNotes ?? "");
+
+  // Hard delete only makes sense for a junk/mistaken entry: no real
+  // history to lose, and no opportunities.partner_id foreign key to
+  // violate (see deletePartnerAction's own comment). Anything else
+  // should be suspended instead, which keeps the audit trail.
+  const canDelete =
+    (partner.status === "pending" || partner.status === "rejected") &&
+    partner.activeOpportunitiesCount === 0 &&
+    partner.pastExecutionsCount === 0;
 
   async function runAction(action: () => Promise<{ error?: string }>) {
     setPending(true);
@@ -190,7 +201,26 @@ function PartnerDetailPanel({ partner, onDone }: { partner: PartnerRow; onDone: 
                 Reinstate
               </Button>
             )}
+            {canDelete && (
+              <Button variant="secondary" disabled={pending} onClick={() => setConfirmDelete(true)}>
+                Delete partner
+              </Button>
+            )}
           </div>
+
+          {confirmDelete && (
+            <div className="flex flex-col gap-2 border-t border-[var(--color-border)] pt-3">
+              <p className="text-sm text-[var(--color-error)]">Delete {partner.name}? This can&apos;t be undone.</p>
+              <div className="flex gap-2">
+                <Button variant="secondary" disabled={pending} onClick={() => runAction(() => deletePartnerAction(partner.id))}>
+                  Confirm delete
+                </Button>
+                <Button variant="text" onClick={() => setConfirmDelete(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
 
           {decisionMode && (
             <div className="flex flex-col gap-2 border-t border-[var(--color-border)] pt-3">
