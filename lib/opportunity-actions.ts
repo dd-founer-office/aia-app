@@ -6,6 +6,7 @@ import { getOperatorAuthState } from "@/lib/operator";
 import { canApproveOpportunity, type ImpactAssuranceChecklist, type RiskLevel } from "@/lib/opportunity-detail";
 import { currentMonthKey } from "@/lib/contributor";
 import { ensureExecutionForOpportunity } from "@/lib/execution";
+import { getAllocationEngineData } from "@/lib/allocation";
 import type { OpportunityStatus } from "@/lib/ops-dashboard";
 
 const VALID_RISK_LEVELS: RiskLevel[] = ["low", "medium", "high", "critical"];
@@ -248,7 +249,18 @@ export async function requestInformationAction(opportunityId: string, notes: str
  *  estimate as a manual override; when there's no beneficiary estimate to
  *  size it from, the status still moves to allocated but no allocations
  *  row is written (the check constraint requires a positive amount, and
- *  there's nothing real to record). */
+ *  there's nothing real to record).
+ *
+ *  Bug fix (2026-09-22): this path used to write the allocations row and
+ *  stop there, never linking it to any real participation_allocations
+ *  rows -- unlike OP-004's own actions. That silently broke contributor
+ *  attribution for every opportunity allocated this way: the resulting
+ *  Act could never show up in anyone's personal Acts feed, no matter how
+ *  real the underlying participation was (caught while trying to publish
+ *  a real contributor's Medical Act that had been allocated through this
+ *  exact path). Now draws from the same oldest-first unallocated pool
+ *  getAllocationEngineData() computes for OP-004, same discipline as
+ *  runAllocationAction/createManualAllocationAction. */
 export async function allocateOpportunityAction(opportunityId: string): Promise<{ error?: string }> {
   const auth = await getOperatorAuthState();
   if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
@@ -268,18 +280,32 @@ export async function allocateOpportunityAction(opportunityId: string): Promise<
 
   const beneficiaryEstimate = opp.beneficiary_estimate as number | null;
   if (beneficiaryEstimate && beneficiaryEstimate > 0) {
-    const { error: allocationError } = await supabase.from("allocations").insert({
-      opportunity_id: opportunityId,
-      cause: opp.cause,
-      participations_allocated: beneficiaryEstimate,
-      recommended_allocation: null,
-      confidence: null,
-      is_manual_override: true,
-      override_reason: "Allocated directly from Opportunity Detail (OP-003), outside the Allocation Engine.",
-      allocation_month: `${currentMonthKey()}-01`,
-      created_by: auth.operator.operatorId,
-    });
+    const { data: insertedAllocation, error: allocationError } = await supabase
+      .from("allocations")
+      .insert({
+        opportunity_id: opportunityId,
+        cause: opp.cause,
+        participations_allocated: beneficiaryEstimate,
+        recommended_allocation: null,
+        confidence: null,
+        is_manual_override: true,
+        override_reason: "Allocated directly from Opportunity Detail (OP-003), outside the Allocation Engine.",
+        allocation_month: `${currentMonthKey()}-01`,
+        created_by: auth.operator.operatorId,
+      })
+      .select("id")
+      .single();
     if (allocationError) return { error: allocationError.message };
+
+    const data = await getAllocationEngineData();
+    const causeData = data.monthlyParticipation.byCause.find((c) => c.cause === opp.cause);
+    const picked = (causeData?.unallocated ?? []).slice(0, beneficiaryEstimate);
+    if (picked.length > 0) {
+      const { error: linkError } = await supabase.from("participation_allocations").insert(
+        picked.map((p) => ({ participation_id: p.participationId, cause_id: p.causeId, allocation_id: insertedAllocation.id as string }))
+      );
+      if (linkError) return { error: linkError.message };
+    }
   }
 
   const { error } = await supabase
