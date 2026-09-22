@@ -92,9 +92,11 @@ export function AllocationEngineClient({ data }: { data: AllocationEngineData })
   );
   const selectedOpportunity = readyOpportunities.find((o) => o.id === selectedOpportunityId) ?? null;
   const selectedRecommendation = data.recommendations.find((r) => r.opportunityId === selectedOpportunityId) ?? null;
-  const selectedAvailable = selectedOpportunity
-    ? (data.monthlyParticipation.byCause.find((c) => c.cause === selectedOpportunity.cause)?.available ?? 0)
-    : 0;
+  const selectedCauseData = selectedOpportunity
+    ? data.monthlyParticipation.byCause.find((c) => c.cause === selectedOpportunity.cause)
+    : undefined;
+  const selectedAvailable = selectedCauseData?.available ?? 0;
+  const selectedBacklog = selectedCauseData?.backlogAvailable ?? 0;
 
   async function handleRunAllocation() {
     setRunPending(true);
@@ -215,7 +217,8 @@ export function AllocationEngineClient({ data }: { data: AllocationEngineData })
               <div key={c.cause}>
                 <p className="text-lg font-medium text-[var(--color-foreground)]">{c.available}</p>
                 <p className="text-xs text-[var(--color-muted-foreground)]">
-                  {c.cause} available ({c.total} total, {c.allocatedThisMonth} allocated)
+                  {c.cause} available ({c.total} this month, {c.allocatedThisMonth} allocated
+                  {c.backlogAvailable > 0 ? `, +${c.backlogAvailable} backfilled` : ""})
                 </p>
               </div>
             ))}
@@ -306,7 +309,8 @@ export function AllocationEngineClient({ data }: { data: AllocationEngineData })
 
             {selectedOpportunity && (
               <p className="text-xs text-[var(--color-muted-foreground)]">
-                {selectedAvailable} available for {selectedOpportunity.cause} this month · suggested{" "}
+                {selectedAvailable} available for {selectedOpportunity.cause}
+                {selectedBacklog > 0 ? ` (${selectedBacklog} backfilled from past months)` : ""} · suggested{" "}
                 {selectedRecommendation?.recommendedAllocation ?? "—"}
               </p>
             )}

@@ -23,17 +23,34 @@ const PRIORITY_ORDER: Record<OpportunityPriority, number> = { critical: 0, high:
 export interface UnallocatedParticipation {
   participationId: string;
   causeId: string;
+  /** "YYYY-MM" the underlying participation actually happened in --
+   *  distinct from `available`/`unallocated` being scoped to more than just
+   *  the current month, see backlogAvailable's own comment below. */
+  month: string;
 }
 
 export interface ParticipationByCause {
   cause: string;
   total: number;
   allocatedThisMonth: number;
+  /** Total allocatable right now for this cause -- this month's own
+   *  unallocated participations PLUS any backlog from past months (see
+   *  backlogAvailable). This is what the action layer actually validates
+   *  against and pulls from; it was current-month-only before backfilled
+   *  history (e.g. an operator recording a contributor's past
+   *  participation, see lib/contributors-actions.ts's
+   *  recordPastParticipationAction) had no way to ever reach an Act. */
   available: number;
+  /** Of `available`, how many came from a month before the current one --
+   *  shown separately so an operator isn't confused why `available` can
+   *  exceed this month's own `total`. */
+  backlogAvailable: number;
   /** The actual (participation, cause) pairs not yet linked to any
-   *  allocation this month -- what an allocation action picks specific
-   *  rows from, not just a count to decrement. See participation_allocations
-   *  migration's own comment for why this exists. */
+   *  allocation -- what an allocation action picks specific rows from, not
+   *  just a count to decrement. Oldest month first, so backfilled history
+   *  is allocated before this month's own participation. See
+   *  participation_allocations migration's own comment for why this
+   *  exists. */
   unallocated: UnallocatedParticipation[];
 }
 
@@ -224,10 +241,16 @@ export async function getAllocationEngineData(): Promise<AllocationEngineData> {
       supabase.from("opportunities").select("*"),
       supabase.from("partners").select("id, name, status, monthly_capacity"),
       supabase.from("allocations").select("*").eq("allocation_month", monthStart),
+      // Not month-scoped (unlike allocations above): a completed
+      // participation from any past month that never got allocated -- e.g.
+      // an operator backfilling a contributor's history months after the
+      // fact (recordPastParticipationAction) -- must still be reachable
+      // here, or it can never become a real Act. "This month" figures below
+      // (total/allocatedThisMonth/totalParticipationsThisMonth) are still
+      // computed from only the current-month subset of these rows.
       supabase
         .from("participations")
-        .select("id, participation_causes(cause_id, causes(slug))")
-        .eq("month", month)
+        .select("id, month, participation_causes(cause_id, causes(slug))")
         .eq("status", "completed"),
     ]);
 
@@ -236,6 +259,7 @@ export async function getAllocationEngineData(): Promise<AllocationEngineData> {
   const allocationRows = allocations ?? [];
   const participationRows = (participations ?? []) as {
     id: string;
+    month: string;
     participation_causes: { cause_id: string; causes: unknown }[] | null;
   }[];
 
@@ -250,35 +274,50 @@ export async function getAllocationEngineData(): Promise<AllocationEngineData> {
   // so it can't drift, but deriving from the actual link rows means this
   // screen and the action that consumes it can never disagree about
   // what's really still available.
-  const monthParticipationIds = participationRows.map((p) => p.id);
+  const allParticipationIds = participationRows.map((p) => p.id);
   const { data: linkedRows } =
-    monthParticipationIds.length > 0
-      ? await supabase.from("participation_allocations").select("participation_id, cause_id").in("participation_id", monthParticipationIds)
+    allParticipationIds.length > 0
+      ? await supabase.from("participation_allocations").select("participation_id, cause_id").in("participation_id", allParticipationIds)
       : { data: [] };
   const linkedSet = new Set((linkedRows ?? []).map((r) => `${r.participation_id}:${r.cause_id}`));
 
-  const byCauseTotal = new Map<string, number>();
-  const unallocatedByCause = new Map<string, UnallocatedParticipation[]>();
-  const totalParticipations = participationRows.length;
+  const byCauseTotalThisMonth = new Map<string, number>();
+  const unallocatedThisMonthByCause = new Map<string, UnallocatedParticipation[]>();
+  const unallocatedBacklogByCause = new Map<string, UnallocatedParticipation[]>();
+  let totalParticipations = 0;
   for (const participation of participationRows) {
+    const isThisMonth = participation.month === month;
+    if (isThisMonth) totalParticipations += 1;
     for (const row of participation.participation_causes ?? []) {
       const slug = (row.causes as { slug: CauseId } | null)?.slug;
       if (!slug) continue;
       const label = CAUSE_LABEL_BY_SLUG[slug];
-      byCauseTotal.set(label, (byCauseTotal.get(label) ?? 0) + 1);
+      if (isThisMonth) byCauseTotalThisMonth.set(label, (byCauseTotalThisMonth.get(label) ?? 0) + 1);
       if (!linkedSet.has(`${participation.id}:${row.cause_id}`)) {
-        const list = unallocatedByCause.get(label);
-        const entry = { participationId: participation.id, causeId: row.cause_id };
+        const entry = { participationId: participation.id, causeId: row.cause_id, month: participation.month };
+        const byCauseMap = isThisMonth ? unallocatedThisMonthByCause : unallocatedBacklogByCause;
+        const list = byCauseMap.get(label);
         if (list) list.push(entry);
-        else unallocatedByCause.set(label, [entry]);
+        else byCauseMap.set(label, [entry]);
       }
     }
   }
   const byCause: ParticipationByCause[] = CAUSES.map((c) => {
     const label = CAUSE_LABEL_BY_SLUG[c.id];
-    const total = byCauseTotal.get(label) ?? 0;
-    const unallocated = unallocatedByCause.get(label) ?? [];
-    return { cause: label, total, allocatedThisMonth: total - unallocated.length, available: unallocated.length, unallocated };
+    const total = byCauseTotalThisMonth.get(label) ?? 0;
+    const unallocatedThisMonth = unallocatedThisMonthByCause.get(label) ?? [];
+    // Oldest first, so backfilled history is allocated before this month's
+    // own participation when an opportunity can't cover everything at once.
+    const backlog = (unallocatedBacklogByCause.get(label) ?? []).sort((a, b) => a.month.localeCompare(b.month));
+    const unallocated = [...backlog, ...unallocatedThisMonth];
+    return {
+      cause: label,
+      total,
+      allocatedThisMonth: total - unallocatedThisMonth.length,
+      available: unallocated.length,
+      backlogAvailable: backlog.length,
+      unallocated,
+    };
   });
   const availableByCause = Object.fromEntries(byCause.map((c) => [c.cause, c.available]));
 

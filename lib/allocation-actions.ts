@@ -105,9 +105,11 @@ export async function runAllocationAction(): Promise<{ error?: string; allocated
  * when the engine had no recommendation to deviate from (no beneficiary
  * estimate set). Also independently re-checks the opportunity is actually
  * Ready and that the requested amount doesn't exceed what's genuinely
- * available this month for that cause -- "no allocation may create future
- * backlog" means an operator can't allocate participation that doesn't
- * exist yet, override or not.
+ * available for that cause -- "no allocation may create future backlog"
+ * means an operator can't allocate participation that doesn't exist yet,
+ * override or not. "Available" here is this month's own unallocated
+ * participation PLUS any backfilled history from past months still
+ * waiting to be linked (see lib/allocation.ts's ParticipationByCause).
  */
 export async function createManualAllocationAction(
   opportunityId: string,
@@ -133,7 +135,7 @@ export async function createManualAllocationAction(
 
   const available = data.monthlyParticipation.byCause.find((c) => c.cause === opportunity.cause)?.available ?? 0;
   if (participationsAllocated > available) {
-    return { error: `Only ${available} participation(s) are available for ${opportunity.cause} this month.` };
+    return { error: `Only ${available} participation(s) are available for ${opportunity.cause} right now (this month plus any backfilled history).` };
   }
 
   const recommendation = data.recommendations.find((r) => r.opportunityId === opportunityId);
