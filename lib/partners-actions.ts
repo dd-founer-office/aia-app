@@ -208,3 +208,35 @@ export async function exportPartnersAction(): Promise<{ error?: string; csv?: st
 
   return { csv };
 }
+
+/** OP-009's Delete action, for cleaning up a mistaken or never-verified
+ *  entry. Deliberately narrower than Suspend: only 'pending' or
+ *  'rejected' partners with zero opportunities can be hard-deleted --
+ *  opportunities.partner_id has a NO ACTION foreign key to partners, so a
+ *  partner with any real history can't be deleted without breaking that
+ *  reference, and a verified/suspended partner should be suspended
+ *  (reversible, keeps the audit trail) rather than erased. */
+export async function deletePartnerAction(partnerId: string): Promise<{ error?: string }> {
+  const auth = await getOperatorAuthState();
+  if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
+
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) return { error: "Supabase is not configured on this deployment." };
+
+  const { data: partner } = await supabase.from("partners").select("status").eq("id", partnerId).maybeSingle();
+  if (!partner) return { error: "Partner not found." };
+  if (partner.status !== "pending" && partner.status !== "rejected") {
+    return { error: "Only a pending or rejected partner can be deleted. Suspend a verified partner instead." };
+  }
+
+  const { count } = await supabase.from("opportunities").select("id", { count: "exact", head: true }).eq("partner_id", partnerId);
+  if (count && count > 0) {
+    return { error: "This partner has opportunities on record and can't be deleted." };
+  }
+
+  const { error } = await supabase.from("partners").delete().eq("id", partnerId);
+  if (error) return { error: error.message };
+
+  revalidatePartners();
+  return {};
+}
