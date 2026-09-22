@@ -118,6 +118,8 @@ export async function startExecutionAction(executionId: string): Promise<{ error
   return {};
 }
 
+const COMPLETED_ON_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
  * OP-005 Row 3's Complete action. This is a status-only transition, not
  * the real Outcome Recording OP-005A specifies (actual beneficiaries,
@@ -125,8 +127,20 @@ export async function startExecutionAction(executionId: string): Promise<{ error
  * locked rule "execution completion does not equal publication", the
  * opportunity's own status deliberately stays 'executing', not 'published'
  * -- OP-006/OP-007 are what would earn that transition.
+ *
+ * completedOnDate ("YYYY-MM-DD") is optional and defaults to right now --
+ * founder-directed addition (2026-09-22): an operator backfilling a real
+ * contributor's past participation (e.g. Rabia's March-August history,
+ * see recordPastParticipationAction) needs the resulting Act to carry its
+ * actual historical date, not today's. publishAction (lib/publishing-
+ * actions.ts) reads this completed_at first when computing the published
+ * Act's mission_date, ahead of scheduled_date -- so this is the one place
+ * that date can honestly be set. Stamped at noon UTC rather than midnight
+ * so every later `.slice(0, 10)`/`.startsWith(month)` read of this
+ * timestamptz lands on the same calendar date regardless of the reader's
+ * timezone.
  */
-export async function completeExecutionAction(executionId: string): Promise<{ error?: string }> {
+export async function completeExecutionAction(executionId: string, completedOnDate?: string): Promise<{ error?: string }> {
   const auth = await getOperatorAuthState();
   if (auth.status !== "operator") return { error: "You need to sign in as an operator." };
 
@@ -139,9 +153,18 @@ export async function completeExecutionAction(executionId: string): Promise<{ er
     return { error: "Only a scheduled, in-progress, or delayed execution can be marked complete." };
   }
 
+  let completedAt = new Date().toISOString();
+  if (completedOnDate) {
+    if (!COMPLETED_ON_DATE_PATTERN.test(completedOnDate)) return { error: "Enter a valid completion date." };
+    if (completedOnDate > new Date().toISOString().slice(0, 10)) {
+      return { error: "Completion date can't be in the future." };
+    }
+    completedAt = `${completedOnDate}T12:00:00.000Z`;
+  }
+
   const { error } = await supabase
     .from("executions")
-    .update({ status: "completed", completed_at: new Date().toISOString() })
+    .update({ status: "completed", completed_at: completedAt })
     .eq("id", executionId);
   if (error) return { error: error.message };
 

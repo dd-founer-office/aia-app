@@ -82,6 +82,9 @@ function downloadCsv(csv: string, monthLabel: string) {
 function ExecutionRowPanel({ execution, onDone }: { execution: ExecutionRow; onDone: () => void }) {
   const [owner, setOwner] = useState(execution.executionOwner ?? "");
   const [scheduledDate, setScheduledDate] = useState(execution.scheduledDate ?? "");
+  // Defaults to today (live ops, unchanged behavior) but overridable -- see
+  // completeExecutionAction's own comment for why this exists.
+  const [completedOnDate, setCompletedOnDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reasonMode, setReasonMode] = useState<"delay" | "block" | "cancel" | null>(null);
@@ -147,11 +150,21 @@ function ExecutionRowPanel({ execution, onDone }: { execution: ExecutionRow; onD
         </Button>
       </form>
 
-      <div className="flex flex-wrap gap-2 border-t border-[var(--color-border)] pt-3">
+      <div className="flex flex-wrap items-end gap-2 border-t border-[var(--color-border)] pt-3">
         <Button variant="secondary" disabled={pending} onClick={() => runAction(() => startExecutionAction(execution.id))}>
           Start
         </Button>
-        <Button variant="secondary" disabled={pending} onClick={() => runAction(() => completeExecutionAction(execution.id))}>
+        <label className="flex flex-col gap-1 text-xs text-[var(--color-muted-foreground)]">
+          Completed on
+          <input
+            type="date"
+            value={completedOnDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setCompletedOnDate(e.target.value)}
+            className="rounded-[var(--radius-button)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]"
+          />
+        </label>
+        <Button variant="secondary" disabled={pending} onClick={() => runAction(() => completeExecutionAction(execution.id, completedOnDate))}>
           Complete
         </Button>
         <Button variant="secondary" disabled={pending} onClick={() => setReasonMode("delay")}>
