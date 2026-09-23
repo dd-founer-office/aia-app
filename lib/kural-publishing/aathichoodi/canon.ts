@@ -172,7 +172,7 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       recommendedCta: "AIA_PARTICIPATION",
     },
   },
-  { episodeNumber: 10, tamilText: "ஒப்புர வொழுகு", simpleMeaning: "Live in harmony with the ways of the world.", transliteration: "Oppuravu Ozhugu", primaryTheme: "community", verified: true },
+  { episodeNumber: 10, tamilText: "ஒப்புர வொழுகு", simpleMeaning: "Act virtuously, living in harmony with the ways of the world.", transliteration: "Oppuravu Ozhugu", primaryTheme: "community", verified: true },
   { episodeNumber: 11, tamilText: "ஓதுவ தொழியேல்", simpleMeaning: "Never stop studying.", transliteration: "Oathuvathu Ozhiyel", primaryTheme: "education", verified: true },
   { episodeNumber: 12, tamilText: "ஒளவியம் பேசேல்", simpleMeaning: "Never speak with envy or jealousy.", transliteration: "Auviyam Pesel", primaryTheme: "speech", verified: true },
   { episodeNumber: 13, tamilText: "அஃகஞ் சுருக்கேல்", simpleMeaning: "Do not shortchange grain (or goods) when trading.", transliteration: "Ahkam Surukkel", primaryTheme: "honesty", verified: true },
