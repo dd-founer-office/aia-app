@@ -4,6 +4,7 @@ import { getPartnerHomeData } from "@/lib/partner-portal";
 import { PartnerSignedOutCard, PartnerNotAuthorizedCard } from "@/components/partner/PartnerAuthGate";
 import { PartnerBottomNav } from "@/components/partner/PartnerBottomNav";
 import { ActivityCard } from "@/components/partner/ActivityCard";
+import { EndOfListNote } from "@/components/partner/EndOfListNote";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,8 @@ export default async function PartnerHomePage() {
             </div>
           </div>
         )}
+
+        {hasAnyActivity && <EndOfListNote />}
       </main>
       <PartnerBottomNav />
     </div>
