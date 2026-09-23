@@ -15,6 +15,7 @@ import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { EvidenceCard } from "@/components/shared/EvidenceCard";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { JourneyTimeline } from "@/components/home/JourneyTimeline";
+import { EditorialHero } from "@/components/home/EditorialHero";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 import KuralScrollFormation from "@/components/home/KuralScrollFormation";
@@ -160,6 +161,14 @@ export function HomeClient({
     // shows through identically. This is the only line changed in this file.
     <div className="flex min-h-screen flex-col">
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
+        {/* Sprint 5.2 design exploration -- Abyssale-inspired editorial hero,
+            added above the existing (unchanged) Hero below purely for live
+            review. See components/home/EditorialHero.tsx. */}
+        <EditorialHero
+          displayName={contributor.displayName}
+          latestActId={latestAct?.id ?? null}
+        />
+
         {/* Hero */}
         <section className="flex flex-col gap-1">
           <div className="flex items-start justify-between gap-3">
