@@ -1,0 +1,214 @@
+/**
+ * Daily Aathichoodi Series — Content Engine
+ * ----------------------------------------------------------------------------
+ * The one place Content -> Theme -> generated framing comes together for a
+ * given episode. No AI/LLM call exists anywhere in this app (confirmed by a
+ * full-repo audit before building this) -- every other content-generation
+ * flow here is deterministic (typed fields -> canvas render), so this
+ * engine follows the same pattern: real, working, rule-based composition
+ * from tagged data pools, not a prompt to a model. It is intentionally
+ * isolated in its own module so a real LLM-backed version could later
+ * replace composeEpisode's internals alone, without touching canon.ts, the
+ * renderers, or the UI.
+ *
+ * Locked slide framework (founder-approved, Episode 1 is the benchmark):
+ *   1. STOP              -> hook + tagline (hooks.ts / taglines.ts: each
+ *                            episode gets its own, per explicit founder
+ *                            direction -- no line is fixed/repeated across
+ *                            the series anymore)
+ *   2. UNDERSTAND         -> understanding (understanding.ts: opener + the
+ *                            episode's own meaning + a theme-rooted "what
+ *                            this builds in a child" clause)
+ *   3. SEE IT IN FAMILY LIFE -> familyAngle (scenarios.ts: one concrete,
+ *                            ordinary family moment, never a generic
+ *                            statement)
+ *   4. PRACTICE THE VALUE TODAY -> todayAction (actions.ts: one small,
+ *                            concrete, doable-today behaviour)
+ *   5. CARRY IT FORWARD + AiA -> aiaConnection (voice.ts: paraphrases of
+ *                            ONE consistent idea, "wisdom becomes
+ *                            meaningful when it becomes action") + cta
+ *
+ * A canon entry's own `curated` fields (see canon.ts), when present, are
+ * used verbatim for familyAngle/todayAction/childLesson/aiaConnection/
+ * understanding/recommendedCta -- an editor already made that call
+ * deliberately. Every other episode -- including the hook and tagline now
+ * -- is composed live from the theme pools with anti-repetition history
+ * (history-store.ts) so consistency comes from STRUCTURE (the five-slide
+ * framework, the tone) rather than from repeating the same wording episode
+ * after episode. A curated hookOverride still wins when an editor has
+ * hand-authored one for a specific episode.
+ *
+ * `verified` reflects the canon entry's own flag (Tamil text confidence),
+ * never invented per-episode.
+ */
+
+import { AATHICHOODI_CANON, getCanonEntry, type AathichoodiCanonEntry } from "./canon";
+import { themeLabel, type ThemeId } from "./themes";
+import { selectHook } from "./hooks";
+import { selectTagline } from "./taglines";
+import { selectHashtags } from "./hashtags";
+import { selectCaptionOpener, selectCaptionCloser, selectCaptionCta } from "./caption-copy";
+import { selectScenario } from "./scenarios";
+import { selectAction } from "./actions";
+import { selectChildLesson, selectAiaConnection, matchAiaConnectionId } from "./voice";
+import { composeUnderstanding } from "./understanding";
+import { classifyCta, type CtaSelection } from "./cta";
+import {
+  clampRecent,
+  type SeriesHistory,
+} from "./history-store";
+
+export type AathichoodiFormat = "carousel" | "static";
+
+export interface ComposedEpisode {
+  episodeNumber: number;
+  totalEpisodes: number;
+  tamilText: string;
+  transliteration: string;
+  simpleMeaning: string;
+  understanding: string;
+  primaryTheme: ThemeId;
+  themeLabel: string;
+  hook: string;
+  /** Slide 1's closing couplet (e.g. "One pause today. / A calmer child
+   *  tomorrow.") -- per-episode now, not fixed design copy (see
+   *  taglines.ts). "\n" separates the two lines. */
+  tagline: string;
+  familyAngle: string;
+  childLesson: string;
+  todayAction: string;
+  aiaConnection: string;
+  distantDevotionConnection?: string;
+  cta: CtaSelection;
+  /** Exactly 3: brand + theme + a rotated broad-reach tag (hashtags.ts). */
+  hashtags: string[];
+  /** Caption-only copy (caption-copy.ts) -- deliberately separate writing
+   *  from hook/tagline/cta.copy above, which are the SLIDE's own text.
+   *  caption.ts builds the caption from these, never from the slide
+   *  fields, so the caption reads as its own piece, not a copy. */
+  captionOpener: string;
+  captionCloser: string;
+  captionCta: string;
+  recommendedFormat: AathichoodiFormat;
+  verified: boolean;
+}
+
+/** STATIC is recommended only for short, emotionally-anchored lines --
+ *  everything else defaults to CAROUSEL, per the brief. */
+export function recommendFormat(entry: AathichoodiCanonEntry): AathichoodiFormat {
+  const wordCount = entry.tamilText.trim().split(/\s+/).length;
+  const emotionalThemes: readonly ThemeId[] = ["family", "gratitude", "devotion"];
+  if (wordCount <= 2 && emotionalThemes.includes(entry.primaryTheme)) return "static";
+  return "carousel";
+}
+
+export interface ComposeResult {
+  episode: ComposedEpisode;
+  nextHistory: SeriesHistory;
+}
+
+export function composeEpisode(
+  episodeNumber: number,
+  history: SeriesHistory
+): ComposeResult | null {
+  const entry = getCanonEntry(episodeNumber);
+  if (!entry) return null;
+
+  const theme = entry.primaryTheme;
+  const curated = entry.curated;
+
+  // Slide 1's hook and closing tagline are per-episode now (hooks.ts/
+  // taglines.ts), same theme-pool + anti-repetition pattern as every other
+  // generated field, unless this specific episode has a hand-authored
+  // hook override.
+  const hook = curated?.hookOverride
+    ? { id: "curated", text: curated.hookOverride }
+    : selectHook(theme, episodeNumber, history.recentHookIds);
+  const tagline = selectTagline(theme, episodeNumber, history.recentTaglineIds);
+  const hashtags = selectHashtags(theme, episodeNumber, history.recentReachHashtagIds);
+
+  const scenario = curated?.familyAngle
+    ? { id: "curated", text: curated.familyAngle }
+    : selectScenario(theme, episodeNumber, history.recentScenarioIds);
+  const action = curated?.todayAction
+    ? { id: "curated", text: curated.todayAction }
+    : selectAction(theme, episodeNumber, history.recentActionIds);
+  const childLesson = curated?.childLesson
+    ? { id: "curated", text: curated.childLesson }
+    : selectChildLesson(theme, episodeNumber, history.recentChildLessonIds);
+  const aiaConnection = curated?.aiaConnection
+    ? { id: matchAiaConnectionId(curated.aiaConnection) ?? "curated", text: curated.aiaConnection }
+    : selectAiaConnection(episodeNumber, history.recentAiaConnectionIds);
+  const understanding = curated?.understanding
+    ? { text: curated.understanding, openerId: "curated", reframingId: "curated" }
+    : composeUnderstanding(
+        theme,
+        episodeNumber,
+        entry.simpleMeaning,
+        history.recentUnderstandingOpenerIds,
+        history.recentReframingIds
+      );
+  const cta = classifyCta(
+    theme,
+    entry.simpleMeaning,
+    history.recentCtaTypes as CtaSelection["type"][],
+    curated?.recommendedCta
+  );
+
+  // Caption-only copy -- deliberately its own writing (caption-copy.ts),
+  // never the slide's own hook/tagline/cta.copy above, so the caption
+  // reads as a separate piece rather than a copy of the graphic.
+  const captionOpener = selectCaptionOpener(theme, episodeNumber, history.recentCaptionOpenerIds);
+  const captionCloser = selectCaptionCloser(theme, episodeNumber, history.recentCaptionCloserIds);
+  const captionCta = selectCaptionCta(cta.type, episodeNumber, history.recentCaptionCtaIds);
+
+  const episode: ComposedEpisode = {
+    episodeNumber: entry.episodeNumber,
+    totalEpisodes: AATHICHOODI_CANON.length,
+    tamilText: entry.tamilText,
+    transliteration: entry.transliteration,
+    simpleMeaning: entry.simpleMeaning,
+    understanding: understanding.text,
+    primaryTheme: theme,
+    themeLabel: themeLabel(theme),
+    hook: hook.text,
+    tagline: tagline.text,
+    familyAngle: scenario.text,
+    childLesson: childLesson.text,
+    todayAction: action.text,
+    aiaConnection: aiaConnection.text,
+    distantDevotionConnection: curated?.distantDevotionConnection,
+    cta,
+    hashtags: hashtags.tags,
+    captionOpener: captionOpener.text,
+    captionCloser: captionCloser.text,
+    captionCta: captionCta.text,
+    recommendedFormat: recommendFormat(entry),
+    verified: entry.verified,
+  };
+
+  const nextHistory: SeriesHistory = {
+    lastEpisodeNumber: episodeNumber,
+    recentScenarioIds: clampRecent([...history.recentScenarioIds, scenario.id]),
+    recentActionIds: clampRecent([...history.recentActionIds, action.id]),
+    recentChildLessonIds: clampRecent([...history.recentChildLessonIds, childLesson.id]),
+    recentAiaConnectionIds: clampRecent([...history.recentAiaConnectionIds, aiaConnection.id]),
+    recentCtaTypes: clampRecent([...history.recentCtaTypes, cta.type]),
+    recentUnderstandingOpenerIds: clampRecent([...history.recentUnderstandingOpenerIds, understanding.openerId]),
+    recentReframingIds: clampRecent([...history.recentReframingIds, understanding.reframingId]),
+    recentHookIds: clampRecent([...history.recentHookIds, hook.id]),
+    recentTaglineIds: clampRecent([...history.recentTaglineIds, tagline.id]),
+    recentReachHashtagIds: clampRecent([...history.recentReachHashtagIds, hashtags.id]),
+    recentCaptionOpenerIds: clampRecent([...history.recentCaptionOpenerIds, captionOpener.id]),
+    recentCaptionCloserIds: clampRecent([...history.recentCaptionCloserIds, captionCloser.id]),
+    recentCaptionCtaIds: clampRecent([...history.recentCaptionCtaIds, captionCta.id]),
+  };
+
+  return { episode, nextHistory };
+}
+
+export function nextEpisodeNumber(lastEpisodeNumber: number): number {
+  if (lastEpisodeNumber <= 0) return 1;
+  if (lastEpisodeNumber >= AATHICHOODI_CANON.length) return 1; // series loops after the final episode
+  return lastEpisodeNumber + 1;
+}

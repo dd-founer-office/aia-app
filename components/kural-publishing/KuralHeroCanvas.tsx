@@ -1,0 +1,469 @@
+"use client";
+
+/**
+ * KuralHeroCanvas — Distant Devotion Asset Generator
+ * ----------------------------------------------------------------------------
+ * Originally MVP-scoped to the Kural Koorum Aram landscape publication only;
+ * now the shared preview/export canvas for the Asset Generator's two
+ * templates ("kka" -> publishing-renderer.ts, unchanged; "aathichoodi" ->
+ * aathichoodi-renderer.ts, new). Dispatch is by `template` prop -- content
+ * shape is validated by the caller (PublishingWorkspace), not here.
+ *
+ * Renders into a backing canvas sized to the selected ASSET_FORMAT, displayed
+ * responsively via CSS (width: 100%, height: auto) so the preview scales to
+ * fit the workspace without ever changing the actual export resolution.
+ *
+ * Deliberately NOT the Living Field's LivingFieldEngine/requestAnimationFrame
+ * loop -- this draws exactly once per (content, generation, debug, format)
+ * change and then stops. No animation.
+ *
+ * Font resolution mirrors components/field/LivingField.tsx's own approach
+ * (read --font-tamil-sans / --font-sans from the document, re-render once
+ * document.fonts settles) without importing that component -- concept reuse
+ * only.
+ *
+ * `debugFormationLogic` is KKA-template-only (it overlays that renderer's
+ * Formation Path structure) and is a no-op for the Aathichoodi template.
+ * Download PNG never reads pixels off the live preview canvas -- it always
+ * goes through the *ForExport helpers below, both of which force the debug
+ * overlay off independent of whatever the on-screen toggle is set to.
+ */
+
+import { useEffect, useRef } from "react";
+import {
+  renderKuralPublishing,
+} from "@/lib/kural-publishing/publishing-renderer";
+import type { KuralPublishingContent } from "@/lib/kural-publishing/kural200-state";
+import {
+  renderAathichoodi,
+  renderAathichoodiForExport,
+} from "@/lib/kural-publishing/aathichoodi-renderer";
+import {
+  renderAathichoodiCarouselSlide,
+  renderAathichoodiCarouselSlideForExport,
+  type CarouselDesignOverrides,
+  type CarouselHotspot,
+} from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
+import {
+  renderPurananuruCarouselSlide,
+  renderPurananuruCarouselSlideForExport,
+} from "@/lib/kural-publishing/purananuru-carousel-renderer";
+import {
+  renderPurananuruReelFrame,
+  renderPurananuruReelFrameForExport,
+} from "@/lib/kural-publishing/purananuru-reel-storyboard-renderer";
+import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
+import type { ComposedEpisode } from "@/lib/kural-publishing/aathichoodi/content-engine";
+import type { ComposedPoem } from "@/lib/kural-publishing/purananuru/content-engine";
+
+export const CANVAS_WIDTH = 1648;
+export const CANVAS_HEIGHT = 928;
+
+export type AssetContent = KuralPublishingContent | AathichoodiContent | ComposedEpisode | ComposedPoem;
+
+/** GOLD MASTER asset-format registry. Real, standard dimensions for each
+ *  platform, not guessed. `templates` says which template(s) each format is
+ *  offered for -- PublishingWorkspace filters this list by the active
+ *  content type's template so, e.g., "KKA Cover" never shows up while
+ *  Aathichoodi content is selected. */
+export interface AssetFormat {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+  /** Whether this format gets the wordmark/handle. The two "master" formats
+   *  (KKA Cover, Aathichoodi Post) do not -- they are the original,
+   *  un-branded design for each template, matching the original landscape
+   *  format's founder-scoped behavior. Every social format does. */
+  branding: boolean;
+  templates: readonly TemplateId[];
+}
+
+export const ASSET_FORMATS: readonly AssetFormat[] = [
+  { id: "kka-cover", label: "KKA Cover", width: CANVAS_WIDTH, height: CANVAS_HEIGHT, branding: false, templates: ["kka"] },
+  // GOLD MASTER: primary Aathichoodi carousel format, explicit founder
+  // direction -- Instagram's recommended 4:5 portrait carousel size, listed
+  // first among aathichoodi-carousel's templates so formatsForTemplate
+  // picks it as the default (never the 1:1 square below).
+  { id: "aathichoodi-carousel-4x5", label: "Aathichoodi Carousel (4:5)", width: 1080, height: 1350, branding: true, templates: ["aathichoodi-carousel"] },
+  // Purananuru's own master format, same Instagram 4:5 portrait size as
+  // Aathichoodi's, listed first among "purananuru-carousel"'s templates so
+  // formatsForTemplate defaults to it (never the 1:1 square below).
+  { id: "purananuru-carousel-4x5", label: "Purananuru Carousel (4:5)", width: 1080, height: 1350, branding: true, templates: ["purananuru-carousel"] },
+  // Purananuru Reel Storyboard's own master format -- true 9:16, the
+  // format this template is actually designed for (unlike the carousel's
+  // 4:5), listed first among "purananuru-reel-storyboard"'s templates so
+  // formatsForTemplate defaults to it.
+  { id: "purananuru-reel-9x16", label: "Purananuru Reel (9:16)", width: 1080, height: 1920, branding: true, templates: ["purananuru-reel-storyboard"] },
+  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
+  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel", "purananuru-reel-storyboard"] },
+  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel", "purananuru-reel-storyboard"] },
+  { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "purananuru-carousel"] },
+  { id: "aathichoodi-post", label: "Aathichoodi Post", width: 1080, height: 1080, branding: false, templates: ["aathichoodi"] },
+];
+
+/** Formats available for a given template, "KKA Cover"/original landscape
+ *  always first for the "kka" template to preserve prior default behavior. */
+export function formatsForTemplate(template: TemplateId): AssetFormat[] {
+  return ASSET_FORMATS.filter((f) => f.templates.includes(template));
+}
+
+/** Back-compat alias: the original single-format-tool export name. */
+export type ExportFormat = AssetFormat;
+
+/** Real text supplied directly by the founder, not invented -- see the
+ *  drawSocialBranding doc comment in publishing-renderer.ts. */
+export const BRANDING_WORDMARK = "AiA — Aram in Action";
+export const BRANDING_HANDLE = "aram_in_action";
+
+/** Where the canonical Kural Koorum Aram logo is expected to live once
+ *  supplied. Nothing in this file generates a fallback if it's missing --
+ *  PublishingWorkspace's loader simply fails silently and no logo draws,
+ *  per the standing rule against placeholder/generated marks. Used by the
+ *  original "kka" template only -- a different sub-brand's ornate seal
+ *  (circuit-pattern bronze seal with its own wordmark ring), wrong for a
+ *  general "AiA" lockup, so it stays separate from AIA_KOLAM_MARK_PATH
+ *  below. */
+export const KKA_LOGO_PATH = "/brand/kural-koorum-aram-logo.png";
+
+/** The actual AiA brand mark, used by the Aathichoodi Carousel's brand
+ *  lockup. Per the standing rule, this is the real, official logo file
+ *  supplied by the founder -- never approximated with text, never
+ *  recolored or redrawn. */
+export const AIA_KOLAM_MARK_PATH = "/brand/AiA.png";
+
+const TAMIL_FALLBACK =
+  "'Noto Sans Tamil','Nirmala UI','Tamil Sangam MN','Tamil MN',sans-serif";
+const SANS_FALLBACK =
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+const TAMIL_SERIF_FALLBACK = "'Noto Serif Tamil','Tamil Sangam MN','Tamil MN',serif";
+const SERIF_FALLBACK = "Georgia,'Times New Roman',serif";
+const DISPLAY_FALLBACK = "Georgia,'Times New Roman',serif";
+// No safe cross-platform fallback exists for Brahmi -- if the web font
+// hasn't loaded, glyphs render as tofu/boxes on most systems. Known, accepted
+// limitation (see lib/living-field/glyphs.ts), KKA template only.
+const BRAHMI_FALLBACK = "'Noto Sans Brahmi',sans-serif";
+
+function resolveFont(cssVarName: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(cssVarName)
+    .trim();
+  return value.length > 0 ? `${value}, ${fallback}` : fallback;
+}
+
+// Exported (Phase 9B) so the Motion Preview canvas (a second, separate
+// <canvas> in PublishingWorkspace.tsx) can resolve the SAME real font
+// strings this component already uses -- logic itself untouched.
+export function resolveAllFonts() {
+  return {
+    tamilFont: resolveFont("--font-tamil-sans", TAMIL_FALLBACK),
+    sansFont: resolveFont("--font-sans", SANS_FALLBACK),
+    tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
+    serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
+    brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
+    // DM Serif Display -- the app's own designated display serif (see
+    // app/layout.tsx's --font-display), used only for the Aathichoodi
+    // Carousel's Slide 5 editorial statement, per explicit founder
+    // direction allowing "a very restrained serif...for a major closing
+    // statement only." Already loaded app-wide; no new font added.
+    displayFont: resolveFont("--font-display", DISPLAY_FALLBACK),
+  };
+}
+
+interface KuralHeroCanvasProps {
+  template: TemplateId;
+  content: AssetContent;
+  /** Bump to force a re-render even when content is byte-identical to the
+   *  last render (the explicit "Generate / Refresh" button). */
+  generation: number;
+  /** Optional canonical KKA logo, once available. */
+  logoImage?: HTMLImageElement | null;
+  /** aathichoodi-carousel template only, Slide 3 (Family Situation) only:
+   *  an optional founder-supplied photo, loaded from the per-episode
+   *  upload in the workspace sidebar. Ignored by every other template
+   *  and slide. */
+  familyImage?: HTMLImageElement | null;
+  /** INTERNAL, development-only. Live-preview only, KKA template only.
+   *  Defaults to false. */
+  debugFormationLogic?: boolean;
+  /** Which asset format to render at. */
+  format: AssetFormat;
+  /** aathichoodi-carousel template only: which of the 5 slides to render
+   *  (0-indexed). Ignored by every other template. Defaults to 0. */
+  slideIndex?: number;
+  /** aathichoodi-carousel template only: live design/text overrides for
+   *  the editable design-controls panel. Ignored by every other template.
+   *  Omit for the founder-approved default look. */
+  carouselDesign?: CarouselDesignOverrides;
+  /** aathichoodi-carousel template only: called after every repaint with
+   *  the current slide's clickable hotspot regions, for the workspace's
+   *  click-to-edit overlay. Ignored by every other template. */
+  onCarouselHotspots?: (hotspots: CarouselHotspot[]) => void;
+}
+
+export default function KuralHeroCanvas({
+  template,
+  content,
+  generation,
+  logoImage,
+  familyImage,
+  debugFormationLogic = false,
+  format,
+  slideIndex = 0,
+  carouselDesign,
+  onCarouselHotspots,
+}: KuralHeroCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const { width, height, branding } = format;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const paint = (): void => {
+      const fonts = resolveAllFonts();
+      if (template === "kka") {
+        renderKuralPublishing(ctx, {
+          width,
+          height,
+          content: content as KuralPublishingContent,
+          ...fonts,
+          logoImage: logoImage ?? null,
+          debugFormationLogic,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+        });
+      } else if (template === "aathichoodi-carousel") {
+        const hotspots = renderAathichoodiCarouselSlide(ctx, {
+          width,
+          height,
+          episode: content as ComposedEpisode,
+          slideIndex,
+          tamilSerifFont: fonts.tamilSerifFont,
+          tamilFont: fonts.tamilFont,
+          serifFont: fonts.serifFont,
+          sansFont: fonts.sansFont,
+          displayFont: fonts.displayFont,
+          logoImage: logoImage ?? null,
+          familyImage: familyImage ?? null,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+          design: carouselDesign,
+        });
+        onCarouselHotspots?.(hotspots);
+      } else if (template === "purananuru-carousel") {
+        renderPurananuruCarouselSlide(ctx, {
+          width,
+          height,
+          poem: content as ComposedPoem,
+          slideIndex,
+          tamilFont: fonts.tamilFont,
+          sansFont: fonts.sansFont,
+          logoImage: logoImage ?? null,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+        });
+      } else if (template === "purananuru-reel-storyboard") {
+        // Same ComposedPoem as the carousel branch above -- this template
+        // derives its own 7-frame view from it internally (see
+        // purananuru-reel-storyboard-renderer.ts's own buildComposedReelStoryboard
+        // call), so PublishingWorkspace never needs a second content shape.
+        renderPurananuruReelFrame(ctx, {
+          width,
+          height,
+          poem: content as ComposedPoem,
+          frameIndex: slideIndex,
+          tamilFont: fonts.tamilFont,
+          sansFont: fonts.sansFont,
+          logoImage: logoImage ?? null,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+        });
+      } else {
+        renderAathichoodi(ctx, {
+          width,
+          height,
+          content: content as AathichoodiContent,
+          tamilSerifFont: fonts.tamilSerifFont,
+          tamilFont: fonts.tamilFont,
+          serifFont: fonts.serifFont,
+          sansFont: fonts.sansFont,
+          logoImage: logoImage ?? null,
+          brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? BRANDING_HANDLE : undefined,
+        });
+      }
+    };
+
+    paint();
+
+    let cancelled = false;
+    if (typeof document !== "undefined" && "fonts" in document) {
+      document.fonts.ready
+        .then(() => {
+          if (!cancelled) paint();
+        })
+        .catch(() => {
+          /* fallback chain already in place */
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [template, content, generation, logoImage, familyImage, debugFormationLogic, width, height, branding, slideIndex, carouselDesign, onCarouselHotspots]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={width}
+      height={height}
+      aria-label="Distant Devotion asset preview"
+      style={{
+        width: "100%",
+        height: "auto",
+        display: "block",
+        borderRadius: "var(--radius-card)",
+        border: "1px solid var(--color-border)",
+      }}
+    />
+  );
+}
+
+/** Renders a fresh, fully independent canvas for PNG export -- always with
+ *  debugFormationLogic: false (KKA template) regardless of the live
+ *  preview's current toggle state. This is the ONLY function
+ *  PublishingWorkspace's Download PNG button should call for the KKA
+ *  template, precisely so the debug overlay can never appear in an exported
+ *  file. Accepts the same logo image the preview is showing. */
+export async function renderKuralPublishingForExport(
+  content: KuralPublishingContent,
+  logoImage: HTMLImageElement | null = null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  const { width, height, branding } = format;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  if (typeof document !== "undefined" && "fonts" in document) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      /* fallback chain already in place */
+    }
+  }
+
+  renderKuralPublishing(ctx, {
+    width,
+    height,
+    content,
+    ...resolveAllFonts(),
+    logoImage,
+    debugFormationLogic: false,
+    brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
+    brandingHandle: branding ? BRANDING_HANDLE : undefined,
+  });
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/png");
+  });
+}
+
+/** Aathichoodi/generic-template counterpart to renderKuralPublishingForExport
+ *  above. Thin wrapper around aathichoodi-renderer.ts's own export helper so
+ *  PublishingWorkspace can call one dispatch point per template without
+ *  re-resolving fonts itself. */
+export async function renderAssetForExport(
+  template: TemplateId,
+  content: AssetContent,
+  logoImage: HTMLImageElement | null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  if (template === "kka") {
+    return renderKuralPublishingForExport(
+      content as KuralPublishingContent,
+      logoImage,
+      format
+    );
+  }
+  return renderAathichoodiForExport(
+    content as AathichoodiContent,
+    logoImage,
+    format,
+    resolveAllFonts(),
+    format.branding ? BRANDING_WORDMARK : undefined,
+    format.branding ? BRANDING_HANDLE : undefined
+  );
+}
+
+/** Carousel-specific export counterpart -- takes an extra slideIndex the
+ *  other *ForExport helpers don't need, so it's kept as its own function
+ *  rather than overloading renderAssetForExport's signature. */
+export async function renderAathichoodiCarouselAssetForExport(
+  episode: ComposedEpisode,
+  slideIndex: number,
+  logoImage: HTMLImageElement | null,
+  format: AssetFormat,
+  carouselDesign?: CarouselDesignOverrides,
+  familyImage?: HTMLImageElement | null
+): Promise<Blob | null> {
+  return renderAathichoodiCarouselSlideForExport(
+    episode,
+    slideIndex,
+    logoImage,
+    format,
+    resolveAllFonts(),
+    format.branding ? BRANDING_WORDMARK : undefined,
+    format.branding ? BRANDING_HANDLE : undefined,
+    carouselDesign,
+    familyImage
+  );
+}
+
+/** Purananuru counterpart to renderAathichoodiCarouselAssetForExport above
+ *  -- same "own dedicated export helper per carousel-shaped template"
+ *  pattern, never routed through renderAssetForExport. */
+export async function renderPurananuruCarouselAssetForExport(
+  poem: ComposedPoem,
+  slideIndex: number,
+  logoImage: HTMLImageElement | null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  const fonts = resolveAllFonts();
+  return renderPurananuruCarouselSlideForExport(
+    poem,
+    slideIndex,
+    logoImage,
+    format,
+    { tamilFont: fonts.tamilFont, sansFont: fonts.sansFont },
+    format.branding ? BRANDING_WORDMARK : undefined,
+    format.branding ? BRANDING_HANDLE : undefined
+  );
+}
+
+/** Reel Storyboard counterpart to renderPurananuruCarouselAssetForExport
+ *  above -- same pattern, own dedicated export helper, never routed
+ *  through renderAssetForExport. */
+export async function renderPurananuruReelAssetForExport(
+  poem: ComposedPoem,
+  frameIndex: number,
+  logoImage: HTMLImageElement | null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  const fonts = resolveAllFonts();
+  return renderPurananuruReelFrameForExport(
+    poem,
+    frameIndex,
+    logoImage,
+    format,
+    { tamilFont: fonts.tamilFont, sansFont: fonts.sansFont },
+    format.branding ? BRANDING_WORDMARK : undefined,
+    format.branding ? BRANDING_HANDLE : undefined
+  );
+}
