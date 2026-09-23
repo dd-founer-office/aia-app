@@ -24,6 +24,26 @@
  * treating it as final -- per the standing rule, uncertainty is flagged,
  * never silently papered over.
  *
+ * FOLLOW-UP CORRECTION PASS (2026-09): that spelling pass corrected
+ * tamilText but left simpleMeaning stale on four episodes where the
+ * founder-supplied reference document's own English gloss differs from
+ * what was already here. Fixed:
+ *   - Episode 10: "Live in harmony with the ways of the world" ->
+ *     "Act virtuously" (the reference document's own gloss).
+ *   - Episode 16 (சனி நீராடு): "Bathe regularly (traditionally, on
+ *     Saturdays)" -> "Bathe in cool, refreshing water" -- சனி here is an
+ *     archaic/dialectal word for "cold," not the day of the week.
+ *   - Episode 33 (காப்பது விரதம்): "Protecting living beings is itself a
+ *     sacred practice" -> "Standing by a vow you've undertaken... is
+ *     itself a sacred discipline" -- விரதம் as perseverance in a
+ *     commitment, not animal protection.
+ *   - Episode 63 (தையல் சொல் கேளேல்): "Do not act purely on your spouse's
+ *     word" -> "Do not blindly trust words spoken carelessly or by the
+ *     immature" -- தையல் read as a general "unformed/young person," not
+ *     specifically "wife."
+ * Episode 23's simpleMeaning was already corrected as part of the
+ * original spelling pass and needed no further change.
+ *
  * primaryTheme is a new editorial tag (this project's own taxonomy, see
  * themes.ts) used only to pick which hook/scenario/action pools apply when
  * content-engine.ts composes an episode -- it carries no claim about the
@@ -169,13 +189,13 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       recommendedCta: "AIA_PARTICIPATION",
     },
   },
-  { episodeNumber: 10, tamilText: "ஒப்புரவு ஒழுகு", simpleMeaning: "Live in harmony with the ways of the world.", transliteration: "Oppuravu Ozhugu", primaryTheme: "community", verified: true },
+  { episodeNumber: 10, tamilText: "ஒப்புரவு ஒழுகு", simpleMeaning: "Act virtuously.", transliteration: "Oppuravu Ozhugu", primaryTheme: "community", verified: true },
   { episodeNumber: 11, tamilText: "ஓதுவது ஒழியேல்", simpleMeaning: "Never stop studying.", transliteration: "Oathuvathu Ozhiyel", primaryTheme: "education", verified: true },
   { episodeNumber: 12, tamilText: "ஔவியம் பேசேல்", simpleMeaning: "Never speak with envy or jealousy.", transliteration: "Auviyam Pesel", primaryTheme: "speech", verified: true },
   { episodeNumber: 13, tamilText: "அஃகம் சுருக்கேல்", simpleMeaning: "Do not shortchange grain (or goods) when trading.", transliteration: "Ahkam Surukkel", primaryTheme: "honesty", verified: true },
   { episodeNumber: 14, tamilText: "கண்டொன்று சொல்லேல்", simpleMeaning: "Do not say something different from what you actually saw.", transliteration: "Kandondru Sollel", primaryTheme: "honesty", verified: true },
   { episodeNumber: 15, tamilText: "ஙப் போல் வளை", simpleMeaning: "Bend like the letter 'nga' — stay connected to your own people.", transliteration: "Ngapol Valai", primaryTheme: "community", verified: true },
-  { episodeNumber: 16, tamilText: "சனி நீராடு", simpleMeaning: "Bathe regularly (traditionally, on Saturdays).", transliteration: "Sani Neeradu", primaryTheme: "self-control", verified: true },
+  { episodeNumber: 16, tamilText: "சனி நீராடு", simpleMeaning: "Bathe in cool, refreshing water.", transliteration: "Sani Neeradu", primaryTheme: "self-control", verified: true },
   { episodeNumber: 17, tamilText: "ஞயம்பட உரை", simpleMeaning: "Speak so that your words bring sweetness to the listener.", transliteration: "Nyayampada Urai", primaryTheme: "speech", verified: true },
   { episodeNumber: 18, tamilText: "இடம்பட வீடு எடேல்", simpleMeaning: "Do not build a house larger than you need.", transliteration: "Idampada Veedu Edel", primaryTheme: "responsibility", verified: true },
   { episodeNumber: 19, tamilText: "இணக்கம் அறிந்து இணங்கு", simpleMeaning: "Know a person's true character before befriending them.", transliteration: "Inakkam Arindhu Inangu", primaryTheme: "community", verified: true },
@@ -224,7 +244,7 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   { episodeNumber: 30, tamilText: "அறனை மறவேல்", simpleMeaning: "Never forget righteousness.", transliteration: "Aranai Maravel", primaryTheme: "character", verified: true },
   { episodeNumber: 31, tamilText: "அனந்தல் ஆடேல்", simpleMeaning: "Do not indulge in excessive sleep.", transliteration: "Anandhal Aadel", primaryTheme: "self-control", verified: true },
   { episodeNumber: 32, tamilText: "கடிவது மற", simpleMeaning: "Let go of the urge to scold or rebuke in anger.", transliteration: "Kadivathu Mara", primaryTheme: "self-control", verified: true },
-  { episodeNumber: 33, tamilText: "காப்பது விரதம்", simpleMeaning: "Protecting living beings is itself a sacred practice.", transliteration: "Kaappathu Viratham", primaryTheme: "generosity", verified: true },
+  { episodeNumber: 33, tamilText: "காப்பது விரதம்", simpleMeaning: "Standing by a vow you've undertaken, without abandoning it, is itself a sacred discipline.", transliteration: "Kaappathu Viratham", primaryTheme: "generosity", verified: true },
   { episodeNumber: 34, tamilText: "கிழமைப்பட வாழ்", simpleMeaning: "Live so that your body and wealth are of use to others.", transliteration: "Kizhamaipada Vaazh", primaryTheme: "responsibility", verified: true },
   { episodeNumber: 35, tamilText: "கீழ்மை அகற்று", simpleMeaning: "Remove base or unworthy conduct from yourself.", transliteration: "Keezhmai Agatru", primaryTheme: "character", verified: true },
   { episodeNumber: 36, tamilText: "குணமது கைவிடேல்", simpleMeaning: "Never let go of good character.", transliteration: "Gunamathu Kaividel", primaryTheme: "character", verified: true },
@@ -254,7 +274,7 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   { episodeNumber: 60, tamilText: "தூக்கி வினை செய்", simpleMeaning: "Weigh things carefully before you act.", transliteration: "Thooki Vinaisey", primaryTheme: "responsibility", verified: true },
   { episodeNumber: 61, tamilText: "தெய்வம் இகழேல்", simpleMeaning: "Never scorn the divine.", transliteration: "Deivam Igazhel", primaryTheme: "devotion", verified: true },
   { episodeNumber: 62, tamilText: "தேசத்தோடு ஒட்டி வாழ்", simpleMeaning: "Live in harmony with your country/community.", transliteration: "Desathodu Otti Vaazh", primaryTheme: "community", verified: true },
-  { episodeNumber: 63, tamilText: "தையல் சொல் கேளேல்", simpleMeaning: "Do not act purely on your spouse's word without your own judgment.", transliteration: "Thaiyalsol Kelel", primaryTheme: "family", verified: true },
+  { episodeNumber: 63, tamilText: "தையல் சொல் கேளேல்", simpleMeaning: "Do not blindly trust words spoken carelessly or by the immature.", transliteration: "Thaiyalsol Kelel", primaryTheme: "family", verified: true },
   { episodeNumber: 64, tamilText: "தொன்மை மறவேல்", simpleMeaning: "Never forget old, established bonds of friendship.", transliteration: "Thonmai Maravel", primaryTheme: "gratitude", verified: true },
   { episodeNumber: 65, tamilText: "தோற்பன தொடரேல்", simpleMeaning: "Do not pursue things bound to fail.", transliteration: "Thorpana Thodarel", primaryTheme: "responsibility", verified: true },
   { episodeNumber: 66, tamilText: "நன்மை கடைப்பிடி", simpleMeaning: "Hold on firmly to doing good.", transliteration: "Nanmai Kadaipidi", primaryTheme: "character", verified: true },
