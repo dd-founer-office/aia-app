@@ -42,6 +42,7 @@ import { useEffect, useRef } from "react";
 import { LIVING_FIELD_CONFIG } from "@/lib/living-field/config";
 import { LivingFieldEngine } from "@/lib/living-field/engine";
 import { setActiveLivingFieldEngine } from "@/lib/living-field/engine-registry";
+import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 
 /** Height delta (px) below which a resize is treated as browser-chrome
  *  movement and ignored, not a real viewport change. */
@@ -69,6 +70,16 @@ export default function LivingField() {
     });
     engine.start();
     setActiveLivingFieldEngine(engine);
+
+    // Ambient Language Layer: "வணக்கம்" (Greetings) on app launch. No race
+    // to guard against here, unlike every other call site of notifyEvent()
+    // -- this call happens synchronously right after registering THIS
+    // engine as active, in the same effect, so the engine is guaranteed
+    // already reachable. (Strict Mode's dev-only double-invoke can't cause
+    // a duplicate emergence either: the second mount's call lands inside
+    // the first call's own cooldown window, which notifyEvent's module-
+    // level cooldown gate already rejects -- no extra guard needed here.)
+    notifyEvent("appLaunch");
 
     // Repaint with the real web font once loading settles (canvas does not
     // reflow automatically the way DOM text does).

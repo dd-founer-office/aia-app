@@ -1,96 +1,9 @@
-import {
-  AramJourney,
-  Cause,
-  Contributor,
-  Participation,
-  ParticipationCause,
-  User,
-} from "@/types";
-
-// Mock data only -- to be replaced with Supabase queries once integration
-// begins (per Frontend Architecture section 8: mock data first, Supabase after UI
-// approval). Shaped to match the locked six-table Sprint 1 schema exactly,
-// so swapping in real queries later is a data-fetching change only.
-
-export const mockUser: User = {
-  id: "user_1",
-  email: "suresh@example.com",
-  full_name: "Suresh",
-  created_at: "2025-11-02T00:00:00Z",
-};
-
-export const mockContributor: Contributor = {
-  id: "contributor_1",
-  user_id: mockUser.id,
-  display_name: "Suresh",
-  created_at: "2025-11-02T00:00:00Z",
-};
-
-export const mockJourney: AramJourney = {
-  id: "journey_1",
-  contributor_id: mockContributor.id,
-  current_stage: "thulir",
-  continuity_month_count: 3,
-  last_participation_month: "2026-05",
-  created_at: "2025-11-02T00:00:00Z",
-  updated_at: "2026-05-30T00:00:00Z",
-};
-
-export const mockCauses: Cause[] = [
-  { id: "cause_education", name: "Education", slug: "education" },
-  { id: "cause_medical", name: "Medical", slug: "medical" },
-  { id: "cause_annadhanam", name: "Annadhanam", slug: "annadhanam" },
-  { id: "cause_environment", name: "Environment", slug: "environment" },
-];
-
-export const mockParticipations: Participation[] = [
-  {
-    id: "participation_2026_06",
-    contributor_id: mockContributor.id,
-    month: "2026-06",
-    status: "pending",
-    amount: 0,
-    created_at: "2026-06-01T00:00:00Z",
-  },
-  {
-    id: "participation_2026_05",
-    contributor_id: mockContributor.id,
-    month: "2026-05",
-    status: "completed",
-    amount: 1500,
-    created_at: "2026-05-03T00:00:00Z",
-  },
-  {
-    id: "participation_2026_04",
-    contributor_id: mockContributor.id,
-    month: "2026-04",
-    status: "completed",
-    amount: 1000,
-    created_at: "2026-04-04T00:00:00Z",
-  },
-];
-
-export const mockParticipationCauses: ParticipationCause[] = [
-  {
-    id: "pc_1",
-    participation_id: "participation_2026_05",
-    cause_id: "cause_education",
-    allocation_amount: 1500,
-  },
-  {
-    id: "pc_2",
-    participation_id: "participation_2026_04",
-    cause_id: "cause_annadhanam",
-    allocation_amount: 1000,
-  },
-];
-
-// Convenience accessor for the current month's participation -- a small
-// derivation over already-given mock fields, not stage/continuity logic.
-export function getCurrentMonthParticipation(): Participation | undefined {
-  const currentMonth = "2026-06";
-  return mockParticipations.find((p) => p.month === currentMonth);
-}
+// Mock data only, for screens whose backing entity doesn't exist in the
+// real schema yet (Act of Aram / Acts Feed / Kural of the Day -- all
+// Milestone 3+). Screens backed by the locked six-table Sprint 1 schema
+// (Home's contributor/journey data, CA-012 Journey, CA-013 Profile) now
+// read real Supabase queries instead -- see lib/contributor.ts,
+// lib/journey.ts, lib/profile.ts.
 
 // -----------------------------------------------------------------------
 // Presentation-only mock data for the Home "Your Latest Act of Aram"
@@ -448,75 +361,13 @@ timeline: [
   },
 ];
 
-// Feed Ordering Rules (Locked, CA-010): Primary sort = Publication Date,
-// newest first. Never reordered by views, engagement, participation
-// volume, contributor count, or cause popularity.
-export function getActsFeed(): MockAct[] {
-  return [...mockActs].sort(
-    (a, b) =>
-      new Date(b.completed_date_iso).getTime() - new Date(a.completed_date_iso).getTime()
-  );
-}
-
+// getActsFeed() (the merged-into-the-real-feed reader) was removed
+// 2026-09-21 when the Acts Feed became personal-use-case scoped (see
+// lib/acts-feed.ts's getMyActsFeed()) -- these demo Acts don't belong to
+// any real contributor, so they can no longer honestly appear in anyone's
+// "my Acts of Aram" feed. getActById() stays: the demo detail routes
+// (app/acts/[id]/{verification,records,timeline,impact,location}) still
+// render from it directly for design-reference purposes.
 export function getActById(id: string): MockAct | undefined {
   return mockActs.find((act) => act.id === id);
-}
-
-// -----------------------------------------------------------------------
-// Presentation-only mock data for CA-013 Profile. Two fields below are
-// NOT part of the locked six-table Sprint 1 schema and have no home yet:
-//   - country: Profile Header (Locked) requires a "Country" display; the
-//     `users` table has no country column. Flagging for Sprint 1 schema
-//     review -- likely a `users.country` addition.
-//   - longest_continuity_month_count / published_acts_count: both require
-//     the Continuity Engine and a real Act of Aram entity, neither of
-//     which exist yet (Sprint 1 backend not started). Mocked here only so
-//     Participation Summary can be visually validated; replace with real
-//     queries once the Continuity Engine + Act of Aram ship.
-// -----------------------------------------------------------------------
-export interface MockProfileMeta {
-  country: string;
-  longest_continuity_month_count: number;
-  published_acts_count: number;
-}
-
-export const mockProfileMeta: MockProfileMeta = {
-  country: "United Arab Emirates",
-  longest_continuity_month_count: 3,
-  published_acts_count: 2,
-};
-
-// Expressions of Aram (CA-013 §4, Locked): cause distribution by
-// participation COUNT, never contribution amount.
-export function getCauseDistribution(): {
-  cause: Cause;
-  count: number;
-  percentage: number;
-}[] {
-  const total = mockParticipationCauses.length;
-  return mockCauses.map((cause) => {
-    const count = mockParticipationCauses.filter((pc) => pc.cause_id === cause.id).length;
-    return {
-      cause,
-      count,
-      percentage: total === 0 ? 0 : Math.round((count / total) * 100),
-    };
-  });
-}
-
-// Practice Snapshot "lifetime acts": count of completed participations.
-// Distinct from published_acts_count above -- this counts the
-// contributor's own participations, not published Act of Aram records.
-export function getLifetimeActsCount(): number {
-  return mockParticipations.filter((p) => p.status === "completed").length;
-}
-
-// First participation date (Participation Summary, Locked): earliest
-// completed participation's created_at, or null if the contributor has
-// never completed one (drives the CA-013 empty state).
-export function getFirstParticipationDate(): string | null {
-  const completed = mockParticipations
-    .filter((p) => p.status === "completed")
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-  return completed[0]?.created_at ?? null;
 }

@@ -14,11 +14,19 @@ const STORAGE_KEY = "aia:participation-flow";
 
 const DEFAULT_STATE: ParticipationFlowState = {
   selectedCauses: [],
+  totalAmountRupees: null,
+  causeAllocationsRupees: {},
 };
 
 interface ParticipationFlowContextValue {
   state: ParticipationFlowState;
   toggleCause: (id: CauseId) => void;
+  setTotalAmountRupees: (amount: number | null) => void;
+  setCauseAllocationRupees: (id: CauseId, amount: number) => void;
+  /** Called once participation is actually recorded (CA-014 Step 4 mount) --
+   *  clears this month's selection so a future visit to Step 1 starts from
+   *  nothing rather than carrying over an already-recorded month's causes. */
+  resetSelection: () => void;
 }
 
 const ParticipationFlowContext =
@@ -61,12 +69,31 @@ export function ParticipationFlowProvider({
     () => ({
       state,
       toggleCause: (id) =>
+        setState((prev) => {
+          const nowSelected = !prev.selectedCauses.includes(id);
+          // Deselecting a cause drops its allocation too -- otherwise a
+          // stale amount would keep counting toward the split-vs-total
+          // validation on the Enter Amount step for a cause that's no
+          // longer even part of this participation.
+          const restAllocations = Object.fromEntries(
+            Object.entries(prev.causeAllocationsRupees).filter(([causeId]) => causeId !== id)
+          );
+          return {
+            ...prev,
+            selectedCauses: nowSelected
+              ? [...prev.selectedCauses, id]
+              : prev.selectedCauses.filter((c) => c !== id),
+            causeAllocationsRupees: nowSelected ? prev.causeAllocationsRupees : restAllocations,
+          };
+        }),
+      setTotalAmountRupees: (amount) =>
+        setState((prev) => ({ ...prev, totalAmountRupees: amount })),
+      setCauseAllocationRupees: (id, amount) =>
         setState((prev) => ({
           ...prev,
-          selectedCauses: prev.selectedCauses.includes(id)
-            ? prev.selectedCauses.filter((c) => c !== id)
-            : [...prev.selectedCauses, id],
+          causeAllocationsRupees: { ...prev.causeAllocationsRupees, [id]: amount },
         })),
+      resetSelection: () => setState(DEFAULT_STATE),
     }),
     [state],
   );
