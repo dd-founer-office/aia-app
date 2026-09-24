@@ -37,14 +37,23 @@ const FIELD_LETTERS = [
  * Points the hand-drawn arrow at the real BottomNavigation center FAB
  * (`a[aria-label="practice"]`) by measuring both elements' actual screen
  * positions, rather than a hardcoded angle tuned for one canvas mockup.
- * Recomputed on mount/resize/scroll (rAF-throttled) so it stays correct
- * across devices and as the page scrolls. The arrow's own size stays
- * fixed (the small, thin size settled on during design review) — only
- * its rotation is dynamic, since scaling it to literally reach the FAB
- * from way down the page would make it enormous.
+ * Also measures the note block against the real nav bar itself and lifts
+ * it clear if they'd overlap — the nav is `position:fixed`, so on a short
+ * real-device viewport (browser chrome eating vertical space) a vertical
+ * rhythm tuned against one desktop test window can still land the note
+ * behind it; this makes correctness a runtime guarantee instead of a
+ * pixel-budget guess. Recomputed on mount/resize/scroll (rAF-throttled).
+ * The arrow's own size stays fixed (the small, thin size settled on
+ * during design review) — only its rotation is dynamic, since scaling it
+ * to literally reach the FAB from way down the page would make it huge.
  */
-function useArrowRotationToFab(anchorRef: RefObject<HTMLElement | null>) {
+function useDynamicNotePointer(
+  anchorRef: RefObject<HTMLElement | null>,
+  noteBlockRef: RefObject<HTMLElement | null>
+) {
   const [rotation, setRotation] = useState<number | null>(null);
+  const [liftPx, setLiftPx] = useState(0);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
     let rafId: number | null = null;
@@ -52,27 +61,44 @@ function useArrowRotationToFab(anchorRef: RefObject<HTMLElement | null>) {
     function recompute() {
       rafId = null;
       const anchor = anchorRef.current;
+      const noteBlock = noteBlockRef.current;
       const fab = document.querySelector<HTMLElement>('a[aria-label="practice"]');
+      const nav = document.querySelector<HTMLElement>("nav");
       if (!anchor || !fab) {
         setRotation(null);
-        return;
+      } else {
+        const a = anchor.getBoundingClientRect();
+        const f = fab.getBoundingClientRect();
+        const dx = f.left + f.width / 2 - a.right;
+        const dy = f.top + f.height / 2 - a.top;
+        // FAB is above (or the anchor has scrolled past it) — nothing sane to point at.
+        if (dy < 20) {
+          setRotation(null);
+        } else {
+          // Local tip direction measured on the source illustration: out of a
+          // mask-size:contain'd square, its sharp tip sits at roughly
+          // (52.5, 92.3) from the top-left starting point — an angle of
+          // ~60.4° off horizontal, constant regardless of box render size.
+          const localTipAngle = Math.atan2(92.3, 52.5);
+          const targetAngle = Math.atan2(dy, dx);
+          setRotation(((targetAngle - localTipAngle) * 180) / Math.PI);
+        }
       }
-      const a = anchor.getBoundingClientRect();
-      const f = fab.getBoundingClientRect();
-      const dx = f.left + f.width / 2 - a.right;
-      const dy = f.top + f.height / 2 - a.top;
-      // FAB is above (or the anchor has scrolled past it) — nothing sane to point at.
-      if (dy < 20) {
-        setRotation(null);
-        return;
+
+      if (noteBlock && nav) {
+        const noteRect = noteBlock.getBoundingClientRect();
+        const navRect = nav.getBoundingClientRect();
+        const overlap = noteRect.bottom + 12 - navRect.top;
+        // Below this, lifting the note would push it up into the CTA
+        // buttons above it instead — on a viewport that short, the
+        // annotation just doesn't fit; hide it rather than collide.
+        const MAX_LIFT = 48;
+        setHidden(overlap > MAX_LIFT);
+        setLiftPx(Math.min(Math.max(overlap, 0), MAX_LIFT));
+      } else {
+        setHidden(false);
+        setLiftPx(0);
       }
-      // Local tip direction measured on the source illustration: out of a
-      // mask-size:contain'd square, its sharp tip sits at roughly (52.5, 92.3)
-      // from the top-left starting point — an angle of ~60.4° off horizontal,
-      // constant regardless of how large the box is rendered.
-      const localTipAngle = Math.atan2(92.3, 52.5);
-      const targetAngle = Math.atan2(dy, dx);
-      setRotation(((targetAngle - localTipAngle) * 180) / Math.PI);
     }
 
     function schedule() {
@@ -88,9 +114,9 @@ function useArrowRotationToFab(anchorRef: RefObject<HTMLElement | null>) {
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", schedule);
     };
-  }, [anchorRef]);
+  }, [anchorRef, noteBlockRef]);
 
-  return rotation;
+  return { rotation, liftPx, hidden };
 }
 
 export function EditorialHero({
@@ -102,11 +128,15 @@ export function EditorialHero({
 }) {
   const router = useRouter();
   const noteAnchorRef = useRef<HTMLSpanElement>(null);
-  const arrowRotation = useArrowRotationToFab(noteAnchorRef);
+  const noteBlockRef = useRef<HTMLDivElement>(null);
+  const { rotation: arrowRotation, liftPx, hidden: noteHidden } = useDynamicNotePointer(
+    noteAnchorRef,
+    noteBlockRef
+  );
 
   return (
     <section
-      className="relative -mx-5 -mt-10 mb-2 flex min-h-[100svh] flex-col overflow-hidden px-7 pb-8 pt-6"
+      className="relative -mx-5 -mt-10 mb-2 flex min-h-[100svh] flex-col overflow-hidden px-7 pb-8 pt-5"
       style={{ background: TEAL }}
     >
       <div className="pointer-events-none absolute inset-0">
@@ -136,8 +166,8 @@ export function EditorialHero({
         }
       `}</style>
 
-      <div className="relative flex shrink-0 items-center gap-3.5">
-        <PrayingHandsIcon className="h-11 w-auto shrink-0" style={{ color: MINT }} />
+      <div className="relative flex shrink-0 items-center gap-3">
+        <PrayingHandsIcon className="h-9 w-auto shrink-0" style={{ color: MINT }} />
         <div>
           <div className="font-tamil-sans text-[19px] font-extrabold leading-tight text-white">
             வணக்கம்,
@@ -150,9 +180,9 @@ export function EditorialHero({
         </div>
       </div>
 
-      <div className="relative mt-14 shrink-0">
+      <div className="relative mt-8 shrink-0">
         <h1
-          className="font-tamil-sans text-center text-[38px] font-extrabold leading-[1.55]"
+          className="font-tamil-sans text-center text-[32px] font-extrabold leading-[1.4]"
           style={{ color: MINT, margin: 0 }}
         >
           அறம்
@@ -169,23 +199,23 @@ export function EditorialHero({
             <span className="absolute -bottom-[3px] -right-[3px] h-[5px] w-[5px] rounded-[1px]" style={{ background: MINT }} />
           </span>
         </h1>
-        <p className="mt-14 max-w-[300px] text-left text-sm leading-relaxed text-white">
+        <p className="mt-6 max-w-[300px] text-left text-sm leading-relaxed text-white">
           Choose a cause. AiA finds and verifies the opportunity — you&apos;ll see it happen.
         </p>
       </div>
 
-      <div className="relative mt-14 flex shrink-0 flex-col items-center gap-4">
+      <div className="relative mt-8 flex shrink-0 flex-col items-center gap-3">
         <button
           type="button"
           onClick={() => router.push("/participate/causes")}
-          className="flex w-[212px] items-center justify-center rounded-[15px] py-[13px] text-[14.5px] font-bold"
+          className="flex w-[212px] items-center justify-center rounded-[15px] py-3 text-[14.5px] font-bold"
           style={{ background: "rgba(255,255,255,.08)", color: MINT }}
         >
           Begin Your Next Act
         </button>
         <Link
           href={latestActId ? `/acts/${latestActId}` : "/acts"}
-          className="flex w-[212px] items-center justify-center gap-2 rounded-[15px] py-[13px] text-[14.5px] font-bold"
+          className="flex w-[212px] items-center justify-center gap-2 rounded-[15px] py-3 text-[14.5px] font-bold"
           style={{ background: MINT, color: TEAL }}
         >
           See a Verified Act
@@ -200,7 +230,16 @@ export function EditorialHero({
         </Link>
       </div>
 
-      <div className="relative z-[5] mt-14 flex shrink-0 justify-end">
+      <div
+        ref={noteBlockRef}
+        className="relative z-[5] mt-8 flex shrink-0 justify-end"
+        style={{
+          transform: liftPx > 0 ? `translateY(-${liftPx}px)` : undefined,
+          opacity: noteHidden ? 0 : 1,
+          pointerEvents: noteHidden ? "none" : undefined,
+          transition: "transform 150ms ease-out, opacity 150ms ease-out",
+        }}
+      >
         <div
           className={`${caveat.className} text-left text-2xl font-bold leading-tight`}
           style={{ color: MINT, transform: "rotate(-3deg)" }}
