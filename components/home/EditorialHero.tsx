@@ -128,7 +128,7 @@ export function EditorialHero({
           செய{" "}
           <span
             className="relative inline-block rounded-[2px] p-[2px] leading-none text-white"
-            style={{ background: "rgba(104,255,173,.16)" }}
+            style={{ background: "rgba(255,255,255,.08)" }}
           >
             பழகு
             <span className="absolute -left-[3px] -top-[3px] h-[5px] w-[5px] rounded-[1px]" style={{ background: MINT }} />
@@ -149,7 +149,7 @@ export function EditorialHero({
           type="button"
           onClick={() => router.push("/participate/causes")}
           className={`${inter.className} flex w-[212px] items-center justify-center rounded-[5px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
-          style={{ background: "rgba(255,255,255,.08)", color: MINT }}
+          style={{ background: "rgba(104,255,173,.16)", color: MINT }}
         >
           Begin Your Next Act
         </button>
