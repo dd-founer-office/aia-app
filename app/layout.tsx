@@ -17,7 +17,7 @@ const dmSans = DM_Sans({
 
 const notoSansTamil = Noto_Sans_Tamil({
   subsets: ["tamil"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600"],
   variable: "--font-tamil-sans",
 });
 

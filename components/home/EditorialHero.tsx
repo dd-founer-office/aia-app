@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import localFont from "next/font/local";
-import { Caveat } from "next/font/google";
+import { Caveat, Inter } from "next/font/google";
 import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
 
 /**
@@ -22,6 +22,8 @@ const calSans = localFont({
 });
 
 const caveat = Caveat({ subsets: ["latin"], weight: ["700"], display: "swap" });
+
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
 
 const TEAL = "#0A363A";
 const MINT = "#68FFAD";
@@ -105,11 +107,11 @@ export function EditorialHero({
           strokeWidth={150}
         />
         <div>
-          <div className="font-tamil-sans text-[19px] font-extrabold leading-tight text-white">
+          <div className="font-tamil-sans text-[18px] font-semibold leading-[1.2] tracking-[-0.4px] text-white">
             வணக்கம்,
           </div>
           <div
-            className={`${calSans.className} text-2xl font-bold leading-tight text-white`}
+            className={`${calSans.className} text-[18px] font-semibold leading-[1.2] tracking-[-0.4px] text-white`}
           >
             {displayName}
           </div>
@@ -118,7 +120,7 @@ export function EditorialHero({
 
       <div className="relative mt-8 shrink-0">
         <h1
-          className="font-tamil-sans text-center text-[32px] font-extrabold leading-[1.4]"
+          className="font-tamil-sans text-center text-[80px] font-semibold leading-[1.1] tracking-[-0.4px]"
           style={{ color: MINT, margin: 0 }}
         >
           அறம்
@@ -135,7 +137,9 @@ export function EditorialHero({
             <span className="absolute -bottom-[3px] -right-[3px] h-[5px] w-[5px] rounded-[1px]" style={{ background: MINT }} />
           </span>
         </h1>
-        <p className="mt-6 max-w-[300px] text-left text-sm leading-relaxed text-white">
+        <p
+          className={`${inter.className} mt-6 max-w-[300px] text-left text-[18px] font-normal leading-[1.5] tracking-[-0.4px] text-white`}
+        >
           Choose a cause. AiA finds and verifies the opportunity — you&apos;ll see it happen.
         </p>
       </div>
@@ -144,14 +148,14 @@ export function EditorialHero({
         <button
           type="button"
           onClick={() => router.push("/participate/causes")}
-          className="flex w-[212px] items-center justify-center rounded-[15px] py-3 text-[14.5px] font-bold"
+          className={`${inter.className} flex w-[212px] items-center justify-center rounded-[15px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
           style={{ background: "rgba(255,255,255,.08)", color: MINT }}
         >
           Begin Your Next Act
         </button>
         <Link
           href={latestActId ? `/acts/${latestActId}` : "/acts"}
-          className="flex w-[212px] items-center justify-center gap-2 rounded-[15px] py-3 text-[14.5px] font-bold"
+          className={`${inter.className} flex w-[212px] items-center justify-center gap-2 rounded-[15px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
           style={{ background: MINT, color: TEAL }}
         >
           See a Verified Act
