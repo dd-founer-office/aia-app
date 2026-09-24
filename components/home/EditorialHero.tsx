@@ -102,7 +102,7 @@ export function EditorialHero({
         <PrayingHandsIcon
           className="w-auto shrink-0"
           style={{ height: "54px", color: MINT }}
-          strokeWidth={500}
+          strokeWidth={150}
         />
         <div>
           <div className="font-tamil-sans text-[19px] font-extrabold leading-tight text-white">
