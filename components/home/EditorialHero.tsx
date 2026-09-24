@@ -99,7 +99,11 @@ export function EditorialHero({
       style={{ background: TEAL }}
     >
       <div className="relative flex shrink-0 items-center gap-3.5">
-        <PrayingHandsIcon className="h-11 w-auto shrink-0" style={{ color: MINT }} />
+        <PrayingHandsIcon
+          className="h-11 w-auto shrink-0"
+          style={{ color: MINT }}
+          strokeWidth={500}
+        />
         <div>
           <div className="font-tamil-sans text-[19px] font-extrabold leading-tight text-white">
             வணக்கம்,

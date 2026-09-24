@@ -10,11 +10,21 @@ import type { SVGProps } from "react";
  * matching the visual weight of the Lucide navigation icons.
  * Sized via `1em` height by default so it matches the surrounding text size
  * exactly; pass a className or style to override.
+ *
+ * `strokeWidth` (in the path's own pre-scale coordinate units, i.e.
+ * pre-`scale(0.1)`) optionally adds an outward-growing stroke on top of
+ * the fill, for callers that need this specific traced glyph to read a
+ * touch bolder at small render sizes -- a raster CSS filter (feMorphology
+ * dilate) was tried first but snaps to whole device pixels, which is far
+ * too coarse a step at this icon's ~40px render size and DPI-dependent on
+ * top of that; an SVG stroke on the path scales exactly with the viewBox
+ * instead. Omit it (default) for the original fill-only rendering.
  */
 export function PrayingHandsIcon({
   style,
+  strokeWidth,
   ...props
-}: SVGProps<SVGSVGElement>) {
+}: SVGProps<SVGSVGElement> & { strokeWidth?: number }) {
   return (
     <svg
       viewBox="0 0 1332 1578"
@@ -25,7 +35,11 @@ export function PrayingHandsIcon({
       {...props}
     >
       <g transform="translate(-293.645317,1749.611893) scale(0.100000,-0.100000)">
-        <path d="M8935 17493 c-18 -3 -50 -24 -82 -55 -49 -48 -53 -57 -82 -162 -64
+        <path
+          stroke={strokeWidth ? "currentColor" : "none"}
+          strokeWidth={strokeWidth}
+          strokeLinejoin="round"
+          d="M8935 17493 c-18 -3 -50 -24 -82 -55 -49 -48 -53 -57 -82 -162 -64
 -234 -87 -432 -101 -876 -18 -529 -26 -652 -60 -860 -17 -107 -44 -276 -60
 -375 -17 -99 -39 -282 -50 -405 -23 -260 -24 -267 -56 -380 -13 -47 -39 -159
 -58 -250 -30 -149 -45 -192 -149 -452 -69 -171 -122 -318 -131 -365 -9 -43
