@@ -182,38 +182,43 @@ export function EditorialHero({
       >
         <div
           className={`${caveat.className} text-left text-2xl font-bold leading-[1.2]`}
-          style={{ color: MINT, transform: "rotate(-3deg)" }}
+          style={{ color: MINT, transform: "translateX(8px) rotate(-6deg)" }}
         >
           Watch this change
           <br />
-          <span className="relative inline-block">
-            as you do
-            {/* Small handwritten pointer -- a gesture, not an illustration.
-                Recolored to mint via a CSS mask on a cropped, upside-down
-                variant of the uploaded arrow art (plain tail near the text,
-                barbed head aimed at the FAB). Anchored at this line's end
-                and nudged a little further right; a settled, gently-tuned
-                rotation rather than a solved pixel-precise angle, so it
-                reads as a natural down-left gesture toward the button. */}
-            <div
-              className="pointer-events-none absolute top-0 h-[95px] w-[74px]"
-              style={{
-                left: "calc(100% + 10px)",
-                transformOrigin: "0 0",
-                transform: "rotate(4deg)",
-                backgroundColor: MINT,
-                WebkitMaskImage: "url(/home/editorial-hero-arrow-2.png)",
-                maskImage: "url(/home/editorial-hero-arrow-2.png)",
-                WebkitMaskSize: "contain",
-                maskSize: "contain",
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-                WebkitMaskPosition: "center",
-                maskPosition: "center",
-              }}
-            />
-          </span>
+          as you do
         </div>
+        {/* Small handwritten pointer -- a gesture, not an illustration.
+            Recolored to mint via a CSS mask on a cropped, upside-down
+            variant of the uploaded arrow art (plain tail near the text,
+            barbed head aimed at the FAB). Pinned at a fixed position
+            relative to the (unrotated) note wrapper -- rather than
+            anchored to the text's inline flow -- so nudging or
+            re-tilting the handwritten text above never moves it. Its
+            own rotate(4deg) used to compose with the text block's
+            rotate(-3deg) parent, netting ~1deg on screen; now
+            decoupled, it carries that same net 1deg itself so the
+            arrow's rendered position/angle are pixel-identical to
+            before (verified by probing its four corners pre- and
+            post-decouple). */}
+        <div
+          className="pointer-events-none absolute h-[95px] w-[74px]"
+          style={{
+            top: "28.46px",
+            left: "201.88px",
+            transformOrigin: "0 0",
+            transform: "rotate(1deg)",
+            backgroundColor: MINT,
+            WebkitMaskImage: "url(/home/editorial-hero-arrow-2.png)",
+            maskImage: "url(/home/editorial-hero-arrow-2.png)",
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+          }}
+        />
       </div>
     </section>
   );
