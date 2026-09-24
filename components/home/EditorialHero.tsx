@@ -148,14 +148,14 @@ export function EditorialHero({
         <button
           type="button"
           onClick={() => router.push("/participate/causes")}
-          className={`${inter.className} flex w-[212px] items-center justify-center rounded-[15px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
+          className={`${inter.className} flex w-[212px] items-center justify-center rounded-[5px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
           style={{ background: "rgba(255,255,255,.08)", color: MINT }}
         >
           Begin Your Next Act
         </button>
         <Link
           href={latestActId ? `/acts/${latestActId}` : "/acts"}
-          className={`${inter.className} flex w-[212px] items-center justify-center gap-2 rounded-[15px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
+          className={`${inter.className} flex w-[212px] items-center justify-center gap-2 rounded-[5px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
           style={{ background: MINT, color: TEAL }}
         >
           See a Verified Act
