@@ -100,8 +100,8 @@ export function EditorialHero({
     >
       <div className="relative flex shrink-0 items-center gap-3.5">
         <PrayingHandsIcon
-          className="h-11 w-auto shrink-0"
-          style={{ color: MINT }}
+          className="w-auto shrink-0"
+          style={{ height: "54px", color: MINT }}
           strokeWidth={500}
         />
         <div>
