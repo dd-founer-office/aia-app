@@ -120,7 +120,7 @@ export function EditorialHero({
 
       <div className="relative mt-8 shrink-0">
         <h1
-          className="font-tamil-sans text-center text-[40px] font-semibold leading-[1.4] tracking-[-0.4px]"
+          className="font-tamil-sans text-center text-[40px] font-extrabold leading-[1.4] tracking-[-0.4px]"
           style={{ color: MINT, margin: 0 }}
         >
           அறம்
@@ -172,7 +172,7 @@ export function EditorialHero({
 
       <div
         ref={noteBlockRef}
-        className="relative z-[5] mt-14 flex shrink-0 justify-end pr-[60px]"
+        className="relative z-[5] mt-8 flex shrink-0 justify-end pr-[60px]"
         style={{
           transform: liftPx > 0 ? `translateY(-${liftPx}px)` : undefined,
           opacity: noteHidden ? 0 : 1,
