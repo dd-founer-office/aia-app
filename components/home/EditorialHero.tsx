@@ -155,15 +155,15 @@ export function EditorialHero({
         </button>
         <Link
           href={latestActId ? `/acts/${latestActId}` : "/acts"}
-          className={`${inter.className} flex w-[212px] items-center justify-center gap-2 rounded-[5px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
+          className={`${inter.className} flex items-center justify-center gap-2 rounded-[5px] p-[14px] text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
           style={{ background: MINT, color: TEAL }}
         >
           See a Verified Act
           <span
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px]"
+            className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[4px]"
             style={{ background: TEAL }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </span>
