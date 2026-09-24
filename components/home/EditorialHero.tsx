@@ -120,7 +120,7 @@ export function EditorialHero({
 
       <div className="relative mt-8 shrink-0">
         <h1
-          className="font-tamil-sans text-center text-[80px] font-semibold leading-[1.1] tracking-[-0.4px]"
+          className="font-tamil-sans text-center text-[72px] font-semibold leading-[1.4] tracking-[-0.4px]"
           style={{ color: MINT, margin: 0 }}
         >
           அறம்
