@@ -46,7 +46,7 @@ export function BottomNavigation({ active }: BottomNavigationProps) {
     <nav className="fixed inset-x-0 bottom-0 z-50 flex justify-center bg-transparent pb-[env(safe-area-inset-bottom)]">
       <div className="relative w-full max-w-md" style={{ aspectRatio: "360 / 100" }}>
         <svg width="100%" height="100%" viewBox="0 0 360 100" className="absolute inset-0 block">
-          <path d={NOTCH_PATH} fill="var(--color-card)" />
+          <path d={NOTCH_PATH} fill="#EAF2F2" />
         </svg>
 
         <div

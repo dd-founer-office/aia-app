@@ -135,14 +135,9 @@ export function HomeClient({
   }, []);
 
   return (
-    // NOTE: bg-[var(--color-background)] intentionally removed from this
-    // root wrapper. body already carries this exact background color
-    // (globals.css), so this class was a redundant duplicate paint that
-    // silently sat on top of the Living Field's ambient canvas (which
-    // lives at z-index:-10, painted before body's own background). No
-    // visual change from this removal on its own -- body's background
-    // shows through identically. This is the only line changed in this file.
-    <div className="flex min-h-screen flex-col">
+    // #EAF2F2 is scoped to Home only (inline style here), not the global
+    // --color-background token in globals.css, so other pages are unaffected.
+    <div className="flex min-h-screen flex-col" style={{ background: "#EAF2F2" }}>
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
         {/* All other Home sections (original Hero, Next Action, Recent
             Impact, Shared Act, Opportunity, Kural Koorum Aram) are
