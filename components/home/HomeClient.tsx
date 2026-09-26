@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { EditorialHero } from "@/components/home/EditorialHero";
-import { KuralTestimonialCard } from "@/components/home/KuralTestimonialCard";
+import { KuralKoorumAramSection } from "@/components/home/KuralKoorumAramSection";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 import type { CurrentContributor } from "@/lib/contributor";
@@ -150,13 +150,13 @@ export function HomeClient({
           latestActId={latestAct?.id ?? null}
         />
 
-        {/* Kural Koorum Aram -- testimonial-card treatment (founder
-            reference, 2026-09-26), replacing the previous teal
-            scroll-formation section. kuralSectionRef re-attached here so
-            the Ambient Language Layer's IntersectionObserver above has a
-            real DOM target again. */}
+        {/* Kural Koorum Aram -- full redesign per founder's canvas mockup
+            (2026-09-26), replacing the earlier testimonial-card pass.
+            kuralSectionRef re-attached here so the Ambient Language
+            Layer's IntersectionObserver above has a real DOM target
+            again. */}
         <div ref={kuralSectionRef}>
-          <KuralTestimonialCard />
+          <KuralKoorumAramSection />
         </div>
       </main>
 
