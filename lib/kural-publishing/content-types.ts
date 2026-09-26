@@ -27,9 +27,25 @@
  * Carousel (its nominal template below) or Static (reusing the "aathichoodi"
  * template/renderer via a content mapping) -- see PublishingWorkspace.tsx's
  * own effective-template derivation for that runtime switch.
+ *
+ * "distant-devotion" is a THIRD, independent content system (not a fourth
+ * AiA/KKA-style template variant) -- see lib/kural-publishing/distant-
+ * devotion/ for its intelligence layer (worlds, FLP lenses, network
+ * dimension, safety validation) and distant-devotion-renderer.ts for its
+ * own visual identity. It follows the exact aathichoodi/aathichoodi-carousel
+ * precedent: one nominal template ("distant-devotion-carousel", multi-slide)
+ * and one single-card counterpart ("distant-devotion"), switched at runtime
+ * by the workspace exactly like isSeriesType/seriesFormat does for the
+ * Daily Series. AiA and KKA's own templates/content types are unchanged by
+ * its addition -- this is strictly additive.
  */
 
-export type TemplateId = "kka" | "aathichoodi" | "aathichoodi-carousel";
+export type TemplateId =
+  | "kka"
+  | "aathichoodi"
+  | "aathichoodi-carousel"
+  | "distant-devotion"
+  | "distant-devotion-carousel";
 
 export type ContentTypeId =
   | "aathichoodi"
@@ -38,7 +54,8 @@ export type ContentTypeId =
   | "kka"
   | "tamil-learning"
   | "announcement"
-  | "custom";
+  | "custom"
+  | "distant-devotion";
 
 export interface ContentTypeConfig {
   id: ContentTypeId;
@@ -59,6 +76,7 @@ export const CONTENT_TYPES: readonly ContentTypeConfig[] = [
   { id: "tamil-learning", label: "Tamil Learning", template: "aathichoodi" },
   { id: "announcement", label: "Announcement", template: "aathichoodi" },
   { id: "custom", label: "Custom", template: "aathichoodi" },
+  { id: "distant-devotion", label: "Distant Devotion", template: "distant-devotion-carousel" },
 ];
 
 export function getContentType(id: ContentTypeId): ContentTypeConfig {

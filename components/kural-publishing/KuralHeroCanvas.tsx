@@ -44,13 +44,27 @@ import {
   type CarouselDesignOverrides,
   type CarouselHotspot,
 } from "@/lib/kural-publishing/aathichoodi-carousel-renderer";
+import {
+  renderDistantDevotion,
+  renderDistantDevotionForExport,
+  renderDistantDevotionCarouselSlide,
+  renderDistantDevotionCarouselSlideForExport,
+  DD_CAROUSEL_SLIDE_COUNT,
+} from "@/lib/kural-publishing/distant-devotion-renderer";
+import type { DdComposedAsset } from "@/lib/kural-publishing/distant-devotion/types";
 import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
 import type { ComposedEpisode } from "@/lib/kural-publishing/aathichoodi/content-engine";
 
 export const CANVAS_WIDTH = 1648;
 export const CANVAS_HEIGHT = 928;
 
-export type AssetContent = KuralPublishingContent | AathichoodiContent | ComposedEpisode;
+export type AssetContent =
+  | KuralPublishingContent
+  | AathichoodiContent
+  | ComposedEpisode
+  | DdComposedAsset;
+
+export { DD_CAROUSEL_SLIDE_COUNT };
 
 /** GOLD MASTER asset-format registry. Real, standard dimensions for each
  *  platform, not guessed. `templates` says which template(s) each format is
@@ -77,11 +91,15 @@ export const ASSET_FORMATS: readonly AssetFormat[] = [
   // first among aathichoodi-carousel's templates so formatsForTemplate
   // picks it as the default (never the 1:1 square below).
   { id: "aathichoodi-carousel-4x5", label: "Aathichoodi Carousel (4:5)", width: 1080, height: 1350, branding: true, templates: ["aathichoodi-carousel"] },
-  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
-  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
-  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
-  { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel"] },
+  // Distant Devotion's own carousel master format, listed first among its
+  // templates for the same reason as above -- see formatsForTemplate.
+  { id: "distant-devotion-carousel-4x5", label: "Distant Devotion Carousel (4:5)", width: 1080, height: 1350, branding: true, templates: ["distant-devotion-carousel"] },
+  { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "distant-devotion", "distant-devotion-carousel"] },
+  { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "distant-devotion", "distant-devotion-carousel"] },
+  { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "distant-devotion", "distant-devotion-carousel"] },
+  { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "distant-devotion", "distant-devotion-carousel"] },
   { id: "aathichoodi-post", label: "Aathichoodi Post", width: 1080, height: 1080, branding: false, templates: ["aathichoodi"] },
+  { id: "distant-devotion-single", label: "Distant Devotion (Single Image)", width: 1080, height: 1080, branding: false, templates: ["distant-devotion"] },
 ];
 
 /** Formats available for a given template, "KKA Cover"/original landscape
@@ -113,6 +131,17 @@ export const KKA_LOGO_PATH = "/brand/kural-koorum-aram-logo.png";
  *  supplied by the founder -- never approximated with text, never
  *  recolored or redrawn. */
 export const AIA_KOLAM_MARK_PATH = "/brand/AiA.png";
+
+/** Distant Devotion's own logo, kept fully separate from the KKA seal and
+ *  the AiA kolam mark above -- same standing rule: if no real file exists
+ *  at this path yet, the loader simply fails and no logo draws, never a
+ *  generated placeholder. Wordmark/handle text below is a reasonable
+ *  placeholder pending real founder-supplied brand copy (unlike
+ *  BRANDING_WORDMARK above, which IS confirmed founder text) -- flagged
+ *  here rather than silently presented as equally authoritative. */
+export const DISTANT_DEVOTION_LOGO_PATH = "/brand/distant-devotion-logo.png";
+export const DD_BRANDING_WORDMARK = "Distant Devotion";
+export const DD_BRANDING_HANDLE = "distant_devotion";
 
 const TAMIL_FALLBACK =
   "'Noto Sans Tamil','Nirmala UI','Tamil Sangam MN','Tamil MN',sans-serif";
@@ -233,6 +262,31 @@ export default function KuralHeroCanvas({
           design: carouselDesign,
         });
         onCarouselHotspots?.(hotspots);
+      } else if (template === "distant-devotion") {
+        renderDistantDevotion(ctx, {
+          width,
+          height,
+          asset: content as DdComposedAsset,
+          tamilFont: fonts.tamilFont,
+          sansFont: fonts.sansFont,
+          serifFont: fonts.serifFont,
+          logoImage: logoImage ?? null,
+          brandingWordmark: branding ? DD_BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? DD_BRANDING_HANDLE : undefined,
+        });
+      } else if (template === "distant-devotion-carousel") {
+        renderDistantDevotionCarouselSlide(ctx, {
+          width,
+          height,
+          asset: content as DdComposedAsset,
+          slideIndex,
+          tamilFont: fonts.tamilFont,
+          sansFont: fonts.sansFont,
+          serifFont: fonts.serifFont,
+          logoImage: logoImage ?? null,
+          brandingWordmark: branding ? DD_BRANDING_WORDMARK : undefined,
+          brandingHandle: branding ? DD_BRANDING_HANDLE : undefined,
+        });
       } else {
         renderAathichoodi(ctx, {
           width,
@@ -343,6 +397,20 @@ export async function renderAssetForExport(
       format
     );
   }
+  if (template === "distant-devotion") {
+    const fonts = resolveAllFonts();
+    return renderDistantDevotionForExport({
+      width: format.width,
+      height: format.height,
+      asset: content as DdComposedAsset,
+      tamilFont: fonts.tamilFont,
+      sansFont: fonts.sansFont,
+      serifFont: fonts.serifFont,
+      logoImage,
+      brandingWordmark: format.branding ? DD_BRANDING_WORDMARK : undefined,
+      brandingHandle: format.branding ? DD_BRANDING_HANDLE : undefined,
+    });
+  }
   return renderAathichoodiForExport(
     content as AathichoodiContent,
     logoImage,
@@ -351,6 +419,30 @@ export async function renderAssetForExport(
     format.branding ? BRANDING_WORDMARK : undefined,
     format.branding ? BRANDING_HANDLE : undefined
   );
+}
+
+/** Distant Devotion carousel export counterpart, same pattern as
+ *  renderAathichoodiCarouselAssetForExport below -- takes an extra
+ *  slideIndex the generic renderAssetForExport doesn't need. */
+export async function renderDistantDevotionCarouselAssetForExport(
+  asset: DdComposedAsset,
+  slideIndex: number,
+  logoImage: HTMLImageElement | null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  const fonts = resolveAllFonts();
+  return renderDistantDevotionCarouselSlideForExport({
+    width: format.width,
+    height: format.height,
+    asset,
+    slideIndex,
+    tamilFont: fonts.tamilFont,
+    sansFont: fonts.sansFont,
+    serifFont: fonts.serifFont,
+    logoImage,
+    brandingWordmark: format.branding ? DD_BRANDING_WORDMARK : undefined,
+    brandingHandle: format.branding ? DD_BRANDING_HANDLE : undefined,
+  });
 }
 
 /** Carousel-specific export counterpart -- takes an extra slideIndex the

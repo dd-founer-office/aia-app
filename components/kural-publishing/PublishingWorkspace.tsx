@@ -52,13 +52,35 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import KuralHeroCanvas, {
   KKA_LOGO_PATH,
   AIA_KOLAM_MARK_PATH,
+  DISTANT_DEVOTION_LOGO_PATH,
   ASSET_FORMATS,
   formatsForTemplate,
   renderAssetForExport,
   renderAathichoodiCarouselAssetForExport,
+  renderDistantDevotionCarouselAssetForExport,
   type AssetFormat,
   type AssetContent,
 } from "./KuralHeroCanvas";
+import { DD_SLIDE_LABELS } from "@/lib/kural-publishing/distant-devotion-renderer";
+import type {
+  WorldId,
+  ContentMode as DdContentMode,
+  DdFormat,
+  DdComposedAsset,
+} from "@/lib/kural-publishing/distant-devotion/types";
+import { WORLD_IDS, WORLD_LABELS, CONTENT_MODES as DD_CONTENT_MODES } from "@/lib/kural-publishing/distant-devotion/types";
+import {
+  PRACTICE_SOURCE_LIBRARY,
+  listVerifiedValuesSources,
+} from "@/lib/kural-publishing/distant-devotion/source-library";
+import {
+  loadDdHistory,
+  saveDdHistory,
+  type DistantDevotionHistory,
+} from "@/lib/kural-publishing/distant-devotion/history-store";
+import { compileDistantDevotionPrompt, type DdBrief } from "@/lib/kural-publishing/distant-devotion/prompt-compiler";
+import { parseDistantDevotionResponse } from "@/lib/kural-publishing/distant-devotion/response-parser";
+import { composeDistantDevotionAsset } from "@/lib/kural-publishing/distant-devotion/content-engine";
 import {
   DEFAULT_KURAL_200_CONTENT,
   deriveIssueNumber,
@@ -249,6 +271,49 @@ function seriesEpisodeToStaticContent(episode: ComposedEpisode): AathichoodiCont
     english: episode.childLesson,
     series: `Aathichoodi Series · ${episode.episodeNumber} of ${episode.totalEpisodes}`,
   };
+}
+
+/** Shown before any prompt has been compiled/pasted -- a friendly
+ *  instructional stand-in, never presented as a real asset (world is a
+ *  real WorldId so the renderer's world-label chrome still makes sense,
+ *  but every other field is clearly placeholder copy, not content). */
+const DEFAULT_DD_COMPOSED_ASSET: DdComposedAsset = {
+  metadata: {
+    contentSystem: "DISTANT_DEVOTION",
+    world: "LANGUAGE",
+    source: "No citation — universal scenario",
+    flpLens: "LIVE",
+    network: {
+      transmitter: "—",
+      receiver: "—",
+      relationship: "—",
+      transmissionMechanism: "—",
+    },
+    desiredOutcome: "CONNECTION",
+    treatment: "INFORMATION_FIRST",
+    contentMode: "REFLECT",
+    culturalClaimType: "UNIVERSAL_HUMAN_SCENARIO",
+    practiceSafetyResolution: "NOT_APPLICABLE",
+    status: "READY_TO_EDIT",
+    sourceReuseCount: 0,
+    sourcePoolStatus: "—",
+  },
+  content: {
+    hook: "Compile a prompt below, paste it into your chat model of choice, then paste the response back in.",
+    body: "Your generated asset will preview here once you've pasted a validated response.",
+  },
+};
+
+function buildDistantDevotionFilename(asset: DdComposedAsset, format: AssetFormat): string {
+  return `distant-devotion-${slugify(asset.metadata.world)}-${format.id}.png`;
+}
+
+function buildDistantDevotionCarouselFilename(
+  asset: DdComposedAsset,
+  slideIndex: number,
+  format: AssetFormat
+): string {
+  return `distant-devotion-${slugify(asset.metadata.world)}-slide${slideIndex + 1}-${format.id}.png`;
 }
 
 interface GeneratedAsset {
@@ -476,17 +541,49 @@ export default function PublishingWorkspace() {
   // effect below, same pattern as the logo image effects.
   const [familyImageDataUrl, setFamilyImageDataUrl] = useState<string | null>(() => loadFamilyImage(1));
 
+  // Distant Devotion state. Isolated to its own block, same as the Daily
+  // Series' state above -- unaffected by, and not affecting, any other
+  // content type. Generation itself is NOT an API call (explicit product
+  // direction, no key/server route): the world/source/brief below compile
+  // into a prompt (see prompt-compiler.ts) copied to an external chat
+  // model; its response is pasted back in and parsed + deterministically
+  // validated (response-parser.ts / validation.ts) before anything renders.
+  const [ddWorld, setDdWorld] = useState<WorldId>("LANGUAGE");
+  const [ddPracticeSourceId, setDdPracticeSourceId] = useState<string>(PRACTICE_SOURCE_LIBRARY[0].id);
+  const [ddVerifiedSourceId, setDdVerifiedSourceId] = useState<string>("");
+  const [ddBriefText, setDdBriefText] = useState("");
+  const [ddOutputFormat, setDdOutputFormat] = useState<DdFormat>("carousel");
+  const [ddMode, setDdMode] = useState<DdContentMode>("AUTO");
+  const [ddHistory, setDdHistory] = useState<DistantDevotionHistory>(() => loadDdHistory());
+  const [ddCompiledPrompt, setDdCompiledPrompt] = useState("");
+  const [ddPasteText, setDdPasteText] = useState("");
+  const [ddParsedAsset, setDdParsedAsset] = useState<DdComposedAsset | null>(null);
+  const [ddParseErrors, setDdParseErrors] = useState<string[]>([]);
+  const [ddValidationNotes, setDdValidationNotes] = useState<string[]>([]);
+  const [ddShowIntelligence, setDdShowIntelligence] = useState(false);
+  const [ddLogoImage, setDdLogoImage] = useState<HTMLImageElement | null>(null);
+
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
   const isSeriesType = contentTypeId === "aathichoodi-series";
+  const isDistantDevotion = contentTypeId === "distant-devotion";
   const effectiveTemplate: TemplateId = isSeriesType
     ? seriesFormat === "static"
       ? "aathichoodi"
       : "aathichoodi-carousel"
-    : template;
+    : isDistantDevotion
+      ? ddOutputFormat === "single-image"
+        ? "distant-devotion"
+        : "distant-devotion-carousel"
+      : template;
+  const ddVerifiedSources = useMemo(() => listVerifiedValuesSources(), []);
   const availableFormats = formatsForTemplate(effectiveTemplate);
   const activeLogoImage =
-    effectiveTemplate === "aathichoodi-carousel" ? aiaLogoImage : logoImage;
+    effectiveTemplate === "aathichoodi-carousel"
+      ? aiaLogoImage
+      : effectiveTemplate === "distant-devotion" || effectiveTemplate === "distant-devotion-carousel"
+        ? ddLogoImage
+        : logoImage;
 
   // A pure, cheap fallback so the preview always has a valid episode to
   // render during the brief one-render gap between switching to this
@@ -500,9 +597,11 @@ export default function PublishingWorkspace() {
         ? seriesEpisodeToStaticContent(displayEpisode)
         : defaultAathichoodiContentFor("aathichoodi")
       : displayEpisode ?? (composeEpisode(1, EMPTY_HISTORY)?.episode as ComposedEpisode)
-    : template === "kka"
-      ? kuralContent
-      : aathichoodiContent;
+    : isDistantDevotion
+      ? ddParsedAsset ?? DEFAULT_DD_COMPOSED_ASSET
+      : template === "kka"
+        ? kuralContent
+        : aathichoodiContent;
 
   // Derived-state resets, computed during render rather than in an effect --
   // see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
@@ -585,6 +684,22 @@ export default function PublishingWorkspace() {
       // but fails silently rather than crashing, same standing rule.
     };
     img.src = AIA_KOLAM_MARK_PATH;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) setDdLogoImage(img);
+    };
+    img.onerror = () => {
+      // Not supplied yet -- expected until a real file exists at
+      // DISTANT_DEVOTION_LOGO_PATH. No placeholder, same standing rule.
+    };
+    img.src = DISTANT_DEVOTION_LOGO_PATH;
     return () => {
       cancelled = true;
     };
@@ -1228,6 +1343,7 @@ export default function PublishingWorkspace() {
     );
     if (formats.length === 0) return;
     if (isSeriesType && !composedEpisode) return;
+    if (isDistantDevotion && !ddParsedAsset) return;
 
     setGeneration((g) => g + 1);
     setIsGenerating(true);
@@ -1256,12 +1372,32 @@ export default function PublishingWorkspace() {
             });
           }
         }
+      } else if (isDistantDevotion && effectiveTemplate === "distant-devotion-carousel" && ddParsedAsset) {
+        for (const format of formats) {
+          for (let slide = 0; slide < DD_SLIDE_LABELS.length; slide++) {
+            const blob = await renderDistantDevotionCarouselAssetForExport(
+              ddParsedAsset,
+              slide,
+              ddLogoImage,
+              format
+            );
+            if (!blob) continue;
+            results.push({
+              formatId: `${format.id}-slide${slide + 1}`,
+              label: `${format.label} · ${DD_SLIDE_LABELS[slide]}`,
+              width: format.width,
+              height: format.height,
+              url: URL.createObjectURL(blob),
+              filename: buildDistantDevotionCarouselFilename(ddParsedAsset, slide, format),
+            });
+          }
+        }
       } else {
         for (const format of formats) {
           const blob = await renderAssetForExport(
             effectiveTemplate,
             content,
-            logoImage,
+            activeLogoImage,
             format
           );
           if (!blob) continue;
@@ -1274,13 +1410,15 @@ export default function PublishingWorkspace() {
             filename:
               isSeriesType && composedEpisode
                 ? buildSeriesStaticFilename(composedEpisode, format)
-                : buildFilename(
-                    contentTypeId,
-                    template,
-                    kuralContent,
-                    aathichoodiContent,
-                    format
-                  ),
+                : isDistantDevotion && ddParsedAsset
+                  ? buildDistantDevotionFilename(ddParsedAsset, format)
+                  : buildFilename(
+                      contentTypeId,
+                      template,
+                      kuralContent,
+                      aathichoodiContent,
+                      format
+                    ),
           });
         }
       }
@@ -1293,10 +1431,13 @@ export default function PublishingWorkspace() {
     selectedFormatIds,
     isSeriesType,
     composedEpisode,
+    isDistantDevotion,
+    ddParsedAsset,
+    ddLogoImage,
     effectiveTemplate,
     template,
     content,
-    logoImage,
+    activeLogoImage,
     aiaLogoImage,
     familyImageElement,
     contentTypeId,
@@ -1304,6 +1445,52 @@ export default function PublishingWorkspace() {
     aathichoodiContent,
     carouselDesign,
   ]);
+
+  const handleCompileDdPrompt = useCallback(() => {
+    const brief: DdBrief = {
+      world: ddWorld,
+      practiceSourceId: ddWorld === "PRACTICES" ? ddPracticeSourceId : undefined,
+      verifiedSourceId: ddWorld === "VALUES" && ddVerifiedSourceId ? ddVerifiedSourceId : undefined,
+      briefText: ddBriefText,
+      format: ddOutputFormat,
+      mode: ddMode,
+    };
+    setDdCompiledPrompt(compileDistantDevotionPrompt(brief, ddHistory));
+  }, [ddWorld, ddPracticeSourceId, ddVerifiedSourceId, ddBriefText, ddOutputFormat, ddMode, ddHistory]);
+
+  const handleCopyDdPrompt = useCallback(() => {
+    if (!ddCompiledPrompt || typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(ddCompiledPrompt).catch(() => {
+      /* clipboard unavailable -- the text is still visible/selectable to copy by hand */
+    });
+  }, [ddCompiledPrompt]);
+
+  const handleParseDdResponse = useCallback(() => {
+    const parsed = parseDistantDevotionResponse(ddPasteText);
+    if (!parsed.ok) {
+      setDdParseErrors(parsed.errors);
+      setDdParsedAsset(null);
+      setDdValidationNotes([]);
+      return;
+    }
+    const brief: DdBrief = {
+      world: ddWorld,
+      practiceSourceId: ddWorld === "PRACTICES" ? ddPracticeSourceId : undefined,
+      verifiedSourceId: ddWorld === "VALUES" && ddVerifiedSourceId ? ddVerifiedSourceId : undefined,
+      briefText: ddBriefText,
+      format: ddOutputFormat,
+      mode: ddMode,
+    };
+    const result = composeDistantDevotionAsset(brief, parsed.response, ddHistory);
+    setDdParsedAsset(result.asset);
+    setDdValidationNotes(result.validationNotes);
+    setDdParseErrors([]);
+    setDdHistory(result.nextHistory);
+    saveDdHistory(result.nextHistory);
+    setActiveSlideIndex(0);
+    setGeneratedAssets([]);
+    setGeneration((g) => g + 1);
+  }, [ddPasteText, ddWorld, ddPracticeSourceId, ddVerifiedSourceId, ddBriefText, ddOutputFormat, ddMode, ddHistory]);
 
   const handleLoadEpisode = useCallback(
     (targetEpisode: number) => {
@@ -1885,6 +2072,188 @@ export default function PublishingWorkspace() {
               </details>
             )}
           </div>
+        ) : isDistantDevotion ? (
+        <div className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">World</span>
+            <select
+              value={ddWorld}
+              onChange={(e) => setDdWorld(e.target.value as WorldId)}
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            >
+              {WORLD_IDS.map((w) => (
+                <option key={w} value={w}>{WORLD_LABELS[w]}</option>
+              ))}
+            </select>
+          </label>
+
+          {ddWorld === "PRACTICES" && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+                Source (Family Ritual pool — culturally common, not source-verified)
+              </span>
+              <select
+                value={ddPracticeSourceId}
+                onChange={(e) => setDdPracticeSourceId(e.target.value)}
+                className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+              >
+                {PRACTICE_SOURCE_LIBRARY.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.label} · Class {u.riskClass} · used {ddHistory.sourceReuseCounts[u.id] ?? 0}×
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {ddWorld === "VALUES" && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+                Source (verified citation, optional)
+              </span>
+              <select
+                value={ddVerifiedSourceId}
+                onChange={(e) => setDdVerifiedSourceId(e.target.value)}
+                className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+              >
+                <option value="">No citation — universal scenario</option>
+                {ddVerifiedSources.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {(ddWorld === "LANGUAGE" || ddWorld === "MEMORY") && (
+            <p className="text-[10px] text-[var(--color-muted-foreground)]">
+              No structured citation needed for this world — describe the situation below; it composes as a universal family scenario, asserting no named-practice claim.
+            </p>
+          )}
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">Brief</span>
+            <textarea
+              value={ddBriefText}
+              onChange={(e) => setDdBriefText(e.target.value)}
+              rows={3}
+              placeholder="The specific situation or angle to compose from…"
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
+
+          <div className="flex gap-2">
+            <label className="flex flex-1 flex-col gap-1">
+              <span className="text-xs font-medium text-[var(--color-muted-foreground)]">Format</span>
+              <select
+                value={ddOutputFormat}
+                onChange={(e) => setDdOutputFormat(e.target.value as DdFormat)}
+                className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+              >
+                <option value="carousel">Carousel</option>
+                <option value="reel">Reel</option>
+                <option value="story">Story</option>
+                <option value="single-image">Single Image</option>
+              </select>
+            </label>
+            <label className="flex flex-1 flex-col gap-1">
+              <span className="text-xs font-medium text-[var(--color-muted-foreground)]">Mode</span>
+              <select
+                value={ddMode}
+                onChange={(e) => setDdMode(e.target.value as DdContentMode)}
+                className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+              >
+                {DD_CONTENT_MODES.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCompileDdPrompt}
+            className="rounded-[var(--radius-button)] border border-[var(--color-primary)] px-3 py-2 text-xs font-medium text-[var(--color-primary)]"
+          >
+            Compile Prompt
+          </button>
+
+          {ddCompiledPrompt && (
+            <div className="flex flex-col gap-1.5 rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-[var(--color-foreground)]">Prompt — copy into ChatGPT (or any chat model)</span>
+                <button type="button" onClick={handleCopyDdPrompt} className="text-xs font-medium text-[var(--color-primary)]">
+                  Copy
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={ddCompiledPrompt}
+                rows={8}
+                className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1.5 font-mono text-[10px] text-[var(--color-foreground)] outline-none"
+              />
+            </div>
+          )}
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Paste the model&apos;s response (JSON)
+            </span>
+            <textarea
+              value={ddPasteText}
+              onChange={(e) => setDdPasteText(e.target.value)}
+              rows={6}
+              placeholder="Paste the JSON object returned by the chat model here…"
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 font-mono text-[10px] text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleParseDdResponse}
+            disabled={!ddPasteText.trim()}
+            className="rounded-[var(--radius-button)] bg-[var(--color-primary)] px-3 py-2 text-xs font-medium text-[var(--color-primary-foreground)] disabled:opacity-50"
+          >
+            Parse &amp; Validate
+          </button>
+
+          {ddParseErrors.length > 0 && (
+            <div className="rounded-[var(--radius-photo)] border border-red-300 bg-red-50 p-2 text-[10px] text-red-800">
+              {ddParseErrors.map((e, i) => <p key={i}>{e}</p>)}
+            </div>
+          )}
+          {ddValidationNotes.length > 0 && (
+            <div className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-background)] p-2 text-[10px] text-[var(--color-muted-foreground)]">
+              <p className="mb-1 font-medium text-[var(--color-foreground)]">Validation notes (this app, not the model, decides these):</p>
+              {ddValidationNotes.map((n, i) => <p key={i} className="mb-0.5">{n}</p>)}
+            </div>
+          )}
+
+          {ddParsedAsset && (
+            <div className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => setDdShowIntelligence((v) => !v)}
+                className="text-left text-xs font-medium text-[var(--color-primary)]"
+              >
+                {ddShowIntelligence ? "Hide" : "Show"} Editorial Intelligence
+              </button>
+              {ddShowIntelligence && (
+                <div className="flex flex-col gap-1 rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3 text-[10px] text-[var(--color-foreground)]">
+                  <p><strong>World:</strong> {WORLD_LABELS[ddParsedAsset.metadata.world]}</p>
+                  <p><strong>FLP Lens:</strong> {ddParsedAsset.metadata.flpLens}</p>
+                  <p><strong>Network:</strong> {ddParsedAsset.metadata.network.transmitter} → {ddParsedAsset.metadata.network.receiver} ({ddParsedAsset.metadata.network.relationship})</p>
+                  <p><strong>Transmission:</strong> {ddParsedAsset.metadata.network.transmissionMechanism}</p>
+                  <p><strong>Outcome:</strong> {ddParsedAsset.metadata.desiredOutcome}</p>
+                  <p><strong>Treatment:</strong> {ddParsedAsset.metadata.treatment}</p>
+                  <p><strong>Content Mode:</strong> {ddParsedAsset.metadata.contentMode}</p>
+                  <p><strong>Cultural Claim:</strong> {ddParsedAsset.metadata.culturalClaimType}</p>
+                  <p><strong>Practice Safety:</strong> {ddParsedAsset.metadata.practiceSafetyResolution}</p>
+                  <p><strong>Status:</strong> {ddParsedAsset.metadata.status}{ddParsedAsset.metadata.reviewReason ? ` (${ddParsedAsset.metadata.reviewReason})` : ""}</p>
+                  <p><strong>Source:</strong> {ddParsedAsset.metadata.source} — reused {ddParsedAsset.metadata.sourceReuseCount}×</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         ) : (
         <div className="flex flex-col gap-4">
           {template === "kka"
@@ -1996,7 +2365,7 @@ export default function PublishingWorkspace() {
           <button
             type="button"
             onClick={handleGenerateSelected}
-            disabled={isGenerating || selectedFormats.length === 0}
+            disabled={isGenerating || selectedFormats.length === 0 || (isDistantDevotion && !ddParsedAsset)}
             className="rounded-[var(--radius-button)] bg-[var(--color-primary)] px-5 py-3 text-sm font-medium text-[var(--color-primary-foreground)] disabled:opacity-50"
           >
             {isGenerating ? "Generating…" : "Generate Selected Assets"}
@@ -2021,6 +2390,27 @@ export default function PublishingWorkspace() {
                   }`}
                 >
                   {f.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {isDistantDevotion && effectiveTemplate === "distant-devotion-carousel" && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {DD_SLIDE_LABELS.map((label, index) => {
+              const active = index === activeSlideIndex;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setActiveSlideIndex(index)}
+                  className={`rounded-[var(--radius-button)] border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                      : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)]"
+                  }`}
+                >
+                  {index + 1}. {label}
                 </button>
               );
             })}
