@@ -1,44 +1,50 @@
 import { Inter } from "next/font/google";
 import { mockKuralOfTheDay } from "@/lib/mock-data";
 
-const inter = Inter({ subsets: ["latin"], weight: ["400"], display: "swap" });
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
 
 const TEXT = "#062023";
-const MUTED = "#8A8678";
+const MUTED = "#788485";
 const CARD_BG = "#EAF3F2";
 
 /**
- * Typography below (size/weight/line-height/letter-spacing) comes
- * directly from the founder's typography-audit reference table
- * (h1/h3/body roles). The audited family, "Calsans", has no Tamil
- * glyphs, so Tamil-script text keeps font-tamil-sans (Noto Sans Tamil)
- * and only the English reflection copy uses the audited Inter family;
- * the numeric spec is followed exactly either way.
+ * Typography below (size/weight/line-height/letter-spacing) starts from
+ * the founder's typography-audit reference table (h1/h3/body roles),
+ * then several roles diverge per follow-up direction (heading
+ * weight up/size down, insights weight +100, card text sized/weighted
+ * down, eyebrow letter-spacing tightened) -- see each constant's own
+ * comment for the exact deviation. The audited "Calsans" family has no
+ * Tamil glyphs, so Tamil-script text keeps font-tamil-sans (Noto Sans
+ * Tamil) and only the English reflection copy uses the audited Inter
+ * family.
  */
-// 80px is the audited spec's literal size, but "திருக்குறள்" is a single
-// compound word with no space to wrap at -- at a fixed 80px it measures
-// ~508px wide and runs off a 390px phone screen instead of wrapping.
-// Scaled fluidly against the viewport (measured: 507.9px wide at 80px,
-// so ~6.35px of width per px of font-size) so it always fits inside the
-// section's 20px side padding, reaching the literal 80px only at/above
-// a 600px-wide viewport.
-const H1 = {
-  fontSize: "clamp(36px, 13.33vw, 80px)",
+
+// Eyebrow. Same H3 base as the audit's h3 role, but letter-spacing
+// tightened by a further -2pt (audit's -0.4px -> -2.4px) per direction.
+const EYEBROW = {
+  fontSize: "18px",
   fontWeight: 600,
+  lineHeight: 1.2,
+  letterSpacing: "-2.4px",
+  color: TEXT,
+} as const;
+
+// Heading. Weight raised from the audit's 600 to the boldest Tamil
+// weight this app loads (800), size brought down from the audit's
+// literal 80px -- both per direction, and a smaller size only makes
+// the single-word overflow problem (see below) easier to avoid.
+// "திருக்குறள்" is one compound word with no space to wrap at, so it's
+// still a fluid clamp rather than a fixed size, scaled from the same
+// ~6.35px-of-width-per-px-of-font-size measurement as before.
+const H1 = {
+  fontSize: "clamp(28px, 9vw, 56px)",
+  fontWeight: 800,
   lineHeight: 1.1,
   letterSpacing: "-0.4px",
   color: TEXT,
 } as const;
 
-const H3 = {
-  fontSize: "18px",
-  fontWeight: 600,
-  lineHeight: 1.2,
-  letterSpacing: "-0.4px",
-  color: TEXT,
-} as const;
-
-const BODY = {
+const PARAGRAPH = {
   fontSize: "18px",
   fontWeight: 400,
   lineHeight: 1.5,
@@ -46,11 +52,37 @@ const BODY = {
   color: TEXT,
 } as const;
 
+// Insights. Same as PARAGRAPH but +100 weight per direction (400 -> 500).
+const INSIGHT = {
+  ...PARAGRAPH,
+  fontWeight: 500,
+} as const;
+
+// Card text, all sized down and the Kural quote's weight reduced, per
+// direction ("reduce the size" / "reduce the weight of the kural").
+const CARD_QUOTE = {
+  fontSize: "15px",
+  fontWeight: 500,
+  lineHeight: 1.35,
+  letterSpacing: "-0.4px",
+  color: TEXT,
+} as const;
+
 const LABEL = {
-  fontSize: "14px",
+  fontSize: "12px",
   fontWeight: 500,
   lineHeight: 1.5,
   letterSpacing: "-0.4px",
+} as const;
+
+// The " . " between name/number and between arathuppal/athikaram is a
+// divider, not a sentence period -- rendered as a middle dot (which
+// sits vertically centered on the line, unlike a period) at a heavier
+// weight than the label text around it, per direction. Label weight
+// itself ("the metadata weight") is left as it was.
+const DIVIDER = {
+  fontWeight: 700,
+  color: MUTED,
 } as const;
 
 /**
@@ -66,10 +98,10 @@ const LABEL = {
 export function KuralKoorumAramSection() {
   return (
     <section className="-mx-5 bg-white px-5 pt-6 pb-8">
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="h-4 w-4 shrink-0"
+          className="h-6 w-6 shrink-0"
           style={{
             backgroundColor: TEXT,
             WebkitMaskImage: "url(/home/kural-koorum-aram-icon.png)",
@@ -82,7 +114,7 @@ export function KuralKoorumAramSection() {
             maskPosition: "center",
           }}
         />
-        <span className="font-tamil-sans" style={H3}>
+        <span className="font-tamil-sans" style={EYEBROW}>
           தமிழ் கூறும் அறம்
         </span>
       </div>
@@ -91,38 +123,42 @@ export function KuralKoorumAramSection() {
         திருக்குறள்
       </h2>
 
-      <p className={`${inter.className} mt-4`} style={BODY}>
+      <p className={`${inter.className} mt-4`} style={PARAGRAPH}>
         Every enduring system begins with a foundation. True understanding
         starts by recognizing and respecting that foundation.
       </p>
 
       <div className="mt-5 flex flex-col gap-2.5">
-        <span className={inter.className} style={BODY}>
+        <span className={inter.className} style={INSIGHT}>
           Every meaningful journey becomes stronger when we understand where
           we come from.
         </span>
-        <span className={inter.className} style={BODY}>
+        <span className={inter.className} style={INSIGHT}>
           Knowing our roots gives purpose to our future.
         </span>
       </div>
 
       <div className="mt-6 rounded-2xl p-[18px]" style={{ background: CARD_BG }}>
-        <p className="font-tamil-sans" style={H3}>
+        <p className="font-tamil-sans" style={CARD_QUOTE}>
+          &ldquo;
           {mockKuralOfTheDay.kural_tamil.split("\n").map((line, i) => (
             <span key={i}>
               {line}
-              <br />
+              {i === 0 && <br />}
             </span>
           ))}
+          &rdquo;
         </p>
         <div className="mt-3 flex flex-col gap-1">
           <span className="font-tamil-sans" style={LABEL}>
             <span style={{ fontWeight: 600, color: TEXT }}>திருவள்ளுவர்</span>
-            <span style={{ color: MUTED }}> . குறள் - 0001</span>
+            <span style={DIVIDER}> · </span>
+            <span style={{ color: MUTED }}>குறள் - 0001</span>
           </span>
           <span className="font-tamil-sans block text-right" style={LABEL}>
             <span style={{ color: MUTED }}>அறத்துப்பால்</span>
-            <span style={{ fontWeight: 600, color: TEXT }}> . அதிகாரம் -001</span>
+            <span style={DIVIDER}> · </span>
+            <span style={{ fontWeight: 600, color: TEXT }}>அதிகாரம் -001</span>
           </span>
         </div>
       </div>

@@ -136,9 +136,11 @@ export function HomeClient({
   }, []);
 
   return (
-    // #EAF2F2 is scoped to Home only (inline style here), not the global
-    // --color-background token in globals.css, so other pages are unaffected.
-    <div className="flex min-h-screen flex-col" style={{ background: "#EAF2F2" }}>
+    // #FFFFFF is scoped to Home only (inline style here), not the global
+    // --color-background token in globals.css, so other pages are
+    // unaffected. EditorialHero's own teal background is set on its own
+    // section element and is untouched by this -- it stays locked.
+    <div className="flex min-h-screen flex-col" style={{ background: "#FFFFFF" }}>
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
         {/* All other Home sections besides EditorialHero and Kural Koorum
             Aram (original Hero, Next Action, Recent Impact, Shared Act,
