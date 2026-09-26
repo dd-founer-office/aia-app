@@ -31,18 +31,17 @@ const EYEBROW = {
   color: TEXT,
 } as const;
 
-// Heading ("திருக்குறள்" -- Thirukkural). Weight raised again to 900,
-// the heaviest weight Noto Sans Tamil offers (app now loads it in
-// layout.tsx) -- 800 was already the heaviest available before this
-// pass. Size brought down from the audit's literal 80px, both per
-// direction, and a smaller size only makes the single-word overflow
-// problem (see below) easier to avoid. "திருக்குறள்" is one compound
-// word with no space to wrap at, so it's still a fluid clamp rather
-// than a fixed size, scaled from the same ~6.35px-of-width-per-px-of-
-// font-size measurement as before.
+// Heading ("திருக்குறள்" -- Thirukkural). Weight went 600 -> 800 -> 900
+// over earlier passes, eased back down 100 to 800 this pass (still
+// bolder than the audit's original 600). Size brought down from the
+// audit's literal 80px, both per direction, and a smaller size only
+// makes the single-word overflow problem (see below) easier to avoid.
+// "திருக்குறள்" is one compound word with no space to wrap at, so it's
+// still a fluid clamp rather than a fixed size, scaled from the same
+// ~6.35px-of-width-per-px-of-font-size measurement as before.
 const H1 = {
   fontSize: "clamp(28px, 9vw, 56px)",
-  fontWeight: 900,
+  fontWeight: 800,
   lineHeight: 1.1,
   letterSpacing: "-0.4px",
   color: TEXT,
@@ -112,7 +111,7 @@ export function KuralKoorumAramSection() {
       <div className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="h-[28px] w-[28px] shrink-0"
+          className="h-[32px] w-[32px] shrink-0"
           style={{
             backgroundColor: TEXT,
             WebkitMaskImage: "url(/home/kural-koorum-aram-icon.png)",
@@ -139,16 +138,6 @@ export function KuralKoorumAramSection() {
         starts by recognizing and respecting that foundation.
       </p>
 
-      <div className="mt-5 flex flex-col gap-2.5">
-        <span className={inter.className} style={INSIGHT}>
-          Every meaningful journey becomes stronger when we understand where
-          we come from.
-        </span>
-        <span className={inter.className} style={INSIGHT}>
-          Knowing our roots gives purpose to our future.
-        </span>
-      </div>
-
       <div className="mt-6 rounded-2xl p-[18px]" style={{ background: CARD_BG }}>
         <p className="font-tamil-sans" style={CARD_QUOTE}>
           &ldquo;
@@ -172,6 +161,16 @@ export function KuralKoorumAramSection() {
             <span style={{ fontWeight: 600, color: TEXT }}>அதிகாரம் - 001</span>
           </span>
         </div>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-2.5">
+        <span className={inter.className} style={INSIGHT}>
+          Every meaningful journey becomes stronger when we understand where
+          we come from.
+        </span>
+        <span className={inter.className} style={INSIGHT}>
+          Knowing our roots gives purpose to our future.
+        </span>
       </div>
     </section>
   );
