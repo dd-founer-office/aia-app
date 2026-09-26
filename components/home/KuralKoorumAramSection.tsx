@@ -31,14 +31,13 @@ const EYEBROW = {
   color: TEXT,
 } as const;
 
-// Heading ("திருக்குறள்" -- Thirukkural). Weight went 600 -> 800 -> 900
-// over earlier passes, eased back down 100 to 800 this pass (still
-// bolder than the audit's original 600). Size brought down from the
-// audit's literal 80px, both per direction, and a smaller size only
-// makes the single-word overflow problem (see below) easier to avoid.
-// "திருக்குறள்" is one compound word with no space to wrap at, so it's
-// still a fluid clamp rather than a fixed size, scaled from the same
-// ~6.35px-of-width-per-px-of-font-size measurement as before.
+// Heading. Was the Tamil word "திருக்குறள்" (Thirukkural); now English
+// copy, so it renders in Inter (like the rest of the section's English
+// text) instead of font-tamil-sans. Weight went 600 -> 800 -> 900 -> 800
+// over earlier passes on the Tamil heading; kept at 800 here. The fluid
+// clamp is no longer load-bearing for overflow (English wraps normally
+// at spaces, unlike the old single Tamil compound word), but stays for
+// the same responsive scaling the rest of the section uses.
 const H1 = {
   fontSize: "clamp(28px, 9vw, 56px)",
   fontWeight: 800,
@@ -107,41 +106,78 @@ const MUTED_TEXT = {
  * Thirukkural couplet with its attribution -- replacing the previous
  * teal scroll-formation section and its later testimonial-card pass.
  * Full-bleed white (-mx-5), sitting directly below EditorialHero.
- * Content is still mockKuralOfTheDay -- placeholder until the founder
- * supplies the real copy.
+ * Heading/paragraph/insight copy is founder-supplied English text;
+ * the card's Kural quote is still mockKuralOfTheDay -- placeholder
+ * until the founder supplies the real Kural copy too.
  */
 export function KuralKoorumAramSection() {
   return (
     <section className="-mx-5 bg-white px-5 pt-6 pb-8">
       <div className="flex items-center gap-2">
+        {/* Nudged up 2px, and faux-bolded by stacking two copies of the
+            same mask 0.4px apart -- this is a raster silhouette mask,
+            not a stroke-based icon, so there's no real weight axis to
+            turn up; overlapping two slightly offset copies thickens
+            the apparent stroke instead. */}
         <span
           aria-hidden="true"
-          className="h-[40px] w-[40px] shrink-0"
-          style={{
-            backgroundColor: TEXT,
-            WebkitMaskImage: "url(/home/kural-koorum-aram-icon.png)",
-            maskImage: "url(/home/kural-koorum-aram-icon.png)",
-            WebkitMaskSize: "contain",
-            maskSize: "contain",
-            WebkitMaskRepeat: "no-repeat",
-            maskRepeat: "no-repeat",
-            WebkitMaskPosition: "center",
-            maskPosition: "center",
-          }}
-        />
+          className="relative h-[40px] w-[40px] shrink-0"
+          style={{ transform: "translateY(-2px)" }}
+        >
+          <span
+            className="absolute inset-0"
+            style={{
+              backgroundColor: TEXT,
+              WebkitMaskImage: "url(/home/kural-koorum-aram-icon.png)",
+              maskImage: "url(/home/kural-koorum-aram-icon.png)",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+            }}
+          />
+          <span
+            className="absolute inset-0"
+            style={{
+              backgroundColor: TEXT,
+              WebkitMaskImage: "url(/home/kural-koorum-aram-icon.png)",
+              maskImage: "url(/home/kural-koorum-aram-icon.png)",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+              transform: "translate(0.4px, 0.4px)",
+            }}
+          />
+        </span>
         <span className="font-tamil-sans" style={EYEBROW}>
           தமிழ் கூறும் அறம்
         </span>
       </div>
 
-      <h2 className="font-tamil-sans mt-4" style={H1}>
-        திருக்குறள்
+      <h2 className={`${inter.className} mt-4`} style={H1}>
+        You think you&apos;re the story. You&apos;re the alphabet.
       </h2>
 
       <p className={`${inter.className} mt-4`} style={PARAGRAPH}>
-        Every enduring system begins with a foundation. True understanding
-        starts by recognizing and respecting that foundation.
+        Everything enduring begins with a foundation. Understanding where we
+        begin helps us understand what we are becoming.
       </p>
+
+      <div className="mt-6 flex flex-col gap-2.5">
+        <span className={inter.className} style={INSIGHT}>
+          We don&apos;t just inherit a story. We become part of what gets
+          written next.
+        </span>
+        <span className={inter.className} style={INSIGHT}>
+          What we understand, practice, and live today can become someone
+          else&apos;s beginning tomorrow.
+        </span>
+      </div>
 
       <div className="mt-6 rounded-2xl p-[18px]" style={{ background: CARD_BG }}>
         <p className="font-tamil-serif" style={CARD_QUOTE}>
@@ -166,16 +202,6 @@ export function KuralKoorumAramSection() {
             <span style={{ fontWeight: 600, color: TEXT }}>அதிகாரம் - 001</span>
           </span>
         </div>
-      </div>
-
-      <div className="mt-6 flex flex-col gap-2.5">
-        <span className={inter.className} style={INSIGHT}>
-          Every meaningful journey becomes stronger when we understand where
-          we come from.
-        </span>
-        <span className={inter.className} style={INSIGHT}>
-          Knowing our roots gives purpose to our future.
-        </span>
       </div>
     </section>
   );
