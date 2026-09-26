@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
 import { EditorialHero } from "@/components/home/EditorialHero";
+import { KuralTestimonialCard } from "@/components/home/KuralTestimonialCard";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
 import type { CurrentContributor } from "@/lib/contributor";
@@ -69,8 +70,8 @@ export function HomeClient({
   }, []);
 
   // Living Literature Prelude: let the field recognize "அறம்" -- the theme
-  // Kural Koorum Aram represents -- shortly BEFORE the Kural Scroll
-  // Formation actually reaches the user's reading position at the footer.
+  // Kural Koorum Aram represents -- shortly BEFORE the Kural section
+  // actually reaches the user's reading position at the footer.
   //
   // IntersectionObserver, not scroll-position polling or a timer, is the
   // clean lifecycle tool for "notify me when this element is about to
@@ -139,19 +140,24 @@ export function HomeClient({
     // --color-background token in globals.css, so other pages are unaffected.
     <div className="flex min-h-screen flex-col" style={{ background: "#EAF2F2" }}>
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
-        {/* All other Home sections (original Hero, Next Action, Recent
-            Impact, Shared Act, Opportunity, Kural Koorum Aram) are
-            temporarily removed while the page is rebuilt around this
-            hero -- founder direction, 2026-09-26. Not deleted from
-            history, just out of render for now; kuralSectionRef and the
-            Ambient Language Layer effects below are kept as-is (per
-            explicit instruction) even though the Kural section they
-            target isn't rendered, so they're inert until that section
-            comes back. */}
+        {/* All other Home sections besides EditorialHero and Kural Koorum
+            Aram (original Hero, Next Action, Recent Impact, Shared Act,
+            Opportunity) are temporarily removed while the page is
+            rebuilt around this hero -- founder direction, 2026-09-26.
+            Not deleted from history, just out of render for now. */}
         <EditorialHero
           displayName={contributor.displayName}
           latestActId={latestAct?.id ?? null}
         />
+
+        {/* Kural Koorum Aram -- testimonial-card treatment (founder
+            reference, 2026-09-26), replacing the previous teal
+            scroll-formation section. kuralSectionRef re-attached here so
+            the Ambient Language Layer's IntersectionObserver above has a
+            real DOM target again. */}
+        <div ref={kuralSectionRef}>
+          <KuralTestimonialCard />
+        </div>
       </main>
 
       <BottomNavigation active="home" />
