@@ -62,7 +62,12 @@ const INSIGHT = {
 } as const;
 
 // Card text, all sized down and the Kural quote's weight reduced, per
-// direction ("reduce the size" / "reduce the weight of the kural").
+// direction ("reduce the size" / "reduce the weight of the kural"). The
+// quote itself renders in font-tamil-serif (Noto Serif Tamil, already
+// loaded in layout.tsx but previously unused) rather than the sans
+// face everything else in this section uses -- a literary serif for a
+// quoted classical couplet, and Unicode Tamil so it renders correctly
+// (unlike the legacy non-Unicode "Sai" fonts the founder tried first).
 const CARD_QUOTE = {
   fontSize: "15px",
   fontWeight: 500,
@@ -139,7 +144,7 @@ export function KuralKoorumAramSection() {
       </p>
 
       <div className="mt-6 rounded-2xl p-[18px]" style={{ background: CARD_BG }}>
-        <p className="font-tamil-sans" style={CARD_QUOTE}>
+        <p className="font-tamil-serif" style={CARD_QUOTE}>
           &ldquo;
           {mockKuralOfTheDay.kural_tamil.split("\n").map((line, i) => (
             <span key={i}>
