@@ -97,7 +97,7 @@ export function EditorialHero({
 
   return (
     <section
-      className="relative -mx-5 -mt-10 mb-2 flex min-h-[100svh] flex-col overflow-hidden px-7 pb-8 pt-5"
+      className="relative -mx-5 -mt-10 mb-2 flex min-h-[100svh] flex-col overflow-hidden rounded-b-[12px] px-7 pb-8 pt-5"
       style={{ background: TEAL }}
     >
       <div className="relative flex shrink-0 items-center gap-3.5">

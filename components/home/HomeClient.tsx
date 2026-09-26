@@ -1,27 +1,17 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { MapPin } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
-import { mockKuralOfTheDay } from "@/lib/mock-data";
-import { STAGE_LABELS, STAGE_ORDER } from "@/types";
-import { Card } from "@/components/shared/Card";
-import { Button } from "@/components/shared/Button";
-import { Badge } from "@/components/shared/Badge";
-import { SectionHeader } from "@/components/shared/SectionHeader";
 import { BottomNavigation } from "@/components/shared/BottomNavigation";
-import { EvidenceCard } from "@/components/shared/EvidenceCard";
-import { NotificationBell } from "@/components/shared/NotificationBell";
-import { JourneyTimeline } from "@/components/home/JourneyTimeline";
 import { EditorialHero } from "@/components/home/EditorialHero";
 import { onLivingFieldEngineReady } from "@/lib/living-field/engine-registry";
 import { notifyEvent } from "@/lib/ambient-language/ambient-language";
-import KuralScrollFormation from "@/components/home/KuralScrollFormation";
 import type { CurrentContributor } from "@/lib/contributor";
 import type { PublishedActSummary } from "@/lib/published-acts";
 
+// sharedAct and unreadNotificationCount are unused below while every
+// section besides EditorialHero is out of render; kept in the signature
+// since the caller still fetches and passes them for when those sections
+// return.
 export function HomeClient({
   contributor,
   sharedAct,
@@ -33,13 +23,6 @@ export function HomeClient({
   latestAct: PublishedActSummary | null;
   unreadNotificationCount: number;
 }) {
-  const router = useRouter();
-  const stageIndex = STAGE_ORDER.indexOf(contributor.currentStage);
-  const nextStageName = STAGE_ORDER[stageIndex + 1];
-  const nextStage = nextStageName ? STAGE_LABELS[nextStageName] : null;
-
-  const hasParticipatedThisMonth = contributor.hasParticipatedThisMonth;
-
   // Ambient Language Layer: fire "homeReady" exactly once per real mount.
   //
   // `firedRef` (not state -- this never needs to trigger a re-render) is
@@ -161,215 +144,19 @@ export function HomeClient({
     // shows through identically. This is the only line changed in this file.
     <div className="flex min-h-screen flex-col">
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 pb-28 pt-10">
-        {/* Sprint 5.2 design exploration -- Abyssale-inspired editorial hero,
-            added above the existing (unchanged) Hero below purely for live
-            review. See components/home/EditorialHero.tsx. */}
+        {/* All other Home sections (original Hero, Next Action, Recent
+            Impact, Shared Act, Opportunity, Kural Koorum Aram) are
+            temporarily removed while the page is rebuilt around this
+            hero -- founder direction, 2026-09-26. Not deleted from
+            history, just out of render for now; kuralSectionRef and the
+            Ambient Language Layer effects below are kept as-is (per
+            explicit instruction) even though the Kural section they
+            target isn't rendered, so they're inert until that section
+            comes back. */}
         <EditorialHero
           displayName={contributor.displayName}
           latestActId={latestAct?.id ?? null}
         />
-
-        {/* Hero */}
-        <section className="flex flex-col gap-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <PrayingHandsIcon
-                className="mt-0.5 shrink-0 text-[var(--color-primary)]"
-                style={{ height: "64px", width: "auto" }}
-              />
-              <div className="flex flex-col">
-                <h1 className="text-2xl font-medium leading-tight tracking-tight">
-                  <span className="font-tamil-sans font-medium">
-                    {"வணக்கம்"}
-                  </span>
-                  ,
-                  <br />
-                  {contributor.displayName}
-                </h1>
-                <p className="font-tamil-sans font-normal mt-1.5 text-sm text-[var(--color-muted-foreground)]">
-                  {"அறம் செய பழகு"}
-                </p>
-              </div>
-            </div>
-            <NotificationBell unreadCount={unreadNotificationCount} />
-          </div>
-          <div className="mt-4">
-            <JourneyTimeline currentStage={contributor.currentStage} />
-          </div>
-          <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">
-            You&apos;ve shown up for {contributor.continuityMonthCount} months in a row.
-            {nextStage ? ` Keep going to grow toward ${nextStage.en}.` : ""}
-          </p>
-          {/* CA-009 Hero Card's own locked requirements (Lifetime Acts,
-              View Journey CTA) -- the JourneyTimeline above already covers
-              Current Stage/Continuity richer than the spec's minimal
-              version, so this only adds what's still missing rather than
-              duplicating it in a separate compact Journey Snapshot section
-              further down the page (founder direction, 2026-09-16). */}
-          <div className="mt-1 flex items-center justify-between">
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              Lifetime Acts: <span className="font-medium text-[var(--color-foreground)]">{contributor.lifetimeParticipationCount}</span>
-            </p>
-            <Link href="/practice">
-              <Button variant="text">View Journey →</Button>
-            </Link>
-          </div>
-        </section>
-
-        {/* Next Action */}
-        <Card className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <p className="text-lg font-semibold leading-snug">
-              {hasParticipatedThisMonth
-                ? "You're continuing to show up."
-                : "Your next Act of Aram is waiting."}
-            </p>
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              {hasParticipatedThisMonth
-                ? "Your next opportunity to practice Aram will appear here soon."
-                : "Continue your journey by participating in an Act of Aram this month."}
-            </p>
-          </div>
-          <Button
-            className="w-full"
-            onClick={() => router.push("/participate/causes")}
-          >
-            Begin Your Next Act
-          </Button>
-        </Card>
-
-        {/* Recent Impact (CA-009 Section 3) -- CA-009's own spec note: "the
-            section title is 'Recent Impact' for comprehension; the card
-            itself may still label 'Act of Aram'" -- title corrected to
-            match (was "Your Latest Act of Aram"), card content unchanged.
-            Real now (lib/published-acts.ts's getMyLatestPublishedAct()) --
-            founder-directed override (2026-09-21): this is a personal-use-
-            case app, so this is the signed-in contributor's own most
-            recently published Act, not the org-wide latest. Was hardcoded
-            to lib/mock-data.ts's mockLatestAct; also fixes "View Act" never
-            having had a real href before. */}
-        <Card className="flex flex-col gap-4">
-          <SectionHeader title="Recent Impact" />
-          {latestAct ? (
-            <>
-              <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={latestAct.heroImageUrl as string}
-                  alt={latestAct.title}
-                  className="h-[260px] w-full rounded-[var(--radius-photo)] object-cover"
-                />
-                <span
-                  className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-white"
-                  style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-                >
-                  <MapPin size={12} />
-                  {latestAct.landmark ?? latestAct.organization}
-                  <span className="opacity-70">·</span>
-                  {latestAct.missionDate}
-                </span>
-              </div>
-              <p className="text-lg font-semibold leading-snug">{latestAct.title}</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge status="verified" label="Verified" />
-                <Badge status="verified" label="Executed" />
-                <Badge status="verified" label="Documented" />
-              </div>
-              <p className="text-sm text-[var(--color-foreground)]">{latestAct.description}</p>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[var(--color-muted-foreground)]">{latestAct.missionDate}</p>
-                <Link href={`/acts/${latestAct.id}`}>
-                  <Button variant="text">View Act →</Button>
-                </Link>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[var(--radius-card)] bg-[var(--color-skeleton)]">
-                <span className="text-sm text-[var(--color-muted-foreground)]">No image yet</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <p className="text-base font-medium">
-                  Your first verified Act of Aram will appear here.
-                </p>
-                <p className="text-sm text-[var(--color-muted-foreground)]">
-                  Once your first Act is completed, you&apos;ll see photos, impact details and
-                  verification here.
-                </p>
-              </div>
-              <Button variant="text" className="self-start">
-                Begin an Act of Aram
-              </Button>
-            </>
-          )}
-        </Card>
-
-        {/* Shared Act of Aram (CA-009 Section 4, conditional). Locked rule:
-            "Only shown if Shared Act exists" / "Hide section" otherwise --
-            real now (see lib/act-attribution.ts + getMySharedAct()): the
-            contributor's own most recent published Act that at least one
-            other contributor also participated in. sharedAct is already
-            null unless a real one exists, so this render is a bare
-            existence check, not a second filter. */}
-        {sharedAct && (
-          <section>
-            <SectionHeader title="Shared Act of Aram" />
-            <div className="mt-3">
-              <EvidenceCard
-                actId={sharedAct.id}
-                heroImage={sharedAct.heroImageUrl as string}
-                category={sharedAct.cause}
-                placeName={sharedAct.landmark ?? sharedAct.organization}
-                completedDate={sharedAct.missionDate}
-                headline={sharedAct.title}
-                supportingCopy={sharedAct.description}
-                isSharedAct
-                contributorCount={sharedAct.participatingContributorCount ?? undefined}
-              />
-            </div>
-          </section>
-        )}
-
-        {/* Opportunity for Aram (CA-009 Section 6). Awareness only, not
-            fundraising (locked rule). No Opportunity entity exists yet
-            (Opportunity Management is Milestone 4, Operations Foundation,
-            not built) -- same status as Recent Impact above before its own
-            entity ships, so this renders the locked empty state. */}
-        <Card className="flex flex-col gap-2">
-          <SectionHeader title="Opportunity for Aram" />
-          <p className="text-sm text-[var(--color-muted-foreground)]">
-            Verified opportunities will appear here.
-          </p>
-        </Card>
-
-        {/* Kural Koorum Aram -- heading, Kural Scroll Formation, and
-            reflection text, all now living here in full (supersedes
-            Sprint 04A Living Region entirely, founder-directed). The
-            heading + reflection text (core_principle, aram_for_today_body)
-            were previously duplicated inline on every single Act of Aram
-            detail page -- moved here completely, this section's one home,
-            rather than existing in two places. This wrapping div still
-            carries kuralSectionRef (unchanged -- the ambient
-            recognition-pulse IntersectionObserver above still needs a real
-            DOM target to watch), now spanning the whole section rather than
-            just the formation box. KuralScrollFormation itself is fully
-            isolated from lib/living-field/ (see its own file header for
-            why) -- it spawns and animates its own KKA-001 letters,
-            converging as the page scrolls toward this point, holding
-            briefly as real text, then dissolving back into ambient
-            scatter; the verse text lives only there, not repeated below. */}
-        <div
-          ref={kuralSectionRef}
-          className="-mx-5 flex flex-col gap-4 rounded-b-[12px] px-5 py-8"
-          style={{ background: "#0A363A" }}
-        >
-          <p className="font-tamil-sans font-medium text-sm text-white">குறள் கூறும் அறம்</p>
-          <KuralScrollFormation />
-          <p className="text-sm text-white/70">
-            {mockKuralOfTheDay.core_principle}
-          </p>
-          <p className="text-sm italic leading-relaxed text-white">{mockKuralOfTheDay.aram_for_today_body}</p>
-        </div>
       </main>
 
       <BottomNavigation active="home" />
