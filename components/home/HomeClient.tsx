@@ -358,13 +358,17 @@ export function HomeClient({
             converging as the page scrolls toward this point, holding
             briefly as real text, then dissolving back into ambient
             scatter; the verse text lives only there, not repeated below. */}
-        <div ref={kuralSectionRef} className="flex flex-col gap-4">
-          <p className="font-tamil-sans font-medium text-sm">குறள் கூறும் அறம்</p>
+        <div
+          ref={kuralSectionRef}
+          className="-mx-5 flex flex-col gap-4 rounded-b-[12px] px-5 py-8"
+          style={{ background: "#0A363A" }}
+        >
+          <p className="font-tamil-sans font-medium text-sm text-white">குறள் கூறும் அறம்</p>
           <KuralScrollFormation />
-          <p className="text-sm text-[var(--color-muted-foreground)]">
+          <p className="text-sm text-white/70">
             {mockKuralOfTheDay.core_principle}
           </p>
-          <p className="text-sm italic leading-relaxed">{mockKuralOfTheDay.aram_for_today_body}</p>
+          <p className="text-sm italic leading-relaxed text-white">{mockKuralOfTheDay.aram_for_today_body}</p>
         </div>
       </main>
 
