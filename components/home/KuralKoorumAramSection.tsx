@@ -1,7 +1,7 @@
 import { Inter } from "next/font/google";
 import { mockKuralOfTheDay } from "@/lib/mock-data";
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], display: "swap" });
 
 const TEXT = "#062023";
 const MUTED = "#788485";
@@ -19,26 +19,30 @@ const CARD_BG = "#EAF3F2";
  * family.
  */
 
-// Eyebrow. Same H3 base as the audit's h3 role, but letter-spacing
-// tightened by a further -2pt (audit's -0.4px -> -2.4px) per direction.
+// Eyebrow. Same H3 base as the audit's h3 role; letter-spacing was
+// tightened to -2.4px last pass, then eased back +1pt to -1.4px
+// (still tighter than the audit's -0.4px, but the -2.4px value
+// collapsed the word gaps into an unreadable run-on).
 const EYEBROW = {
   fontSize: "18px",
   fontWeight: 600,
   lineHeight: 1.2,
-  letterSpacing: "-2.4px",
+  letterSpacing: "-1.4px",
   color: TEXT,
 } as const;
 
-// Heading. Weight raised from the audit's 600 to the boldest Tamil
-// weight this app loads (800), size brought down from the audit's
-// literal 80px -- both per direction, and a smaller size only makes
-// the single-word overflow problem (see below) easier to avoid.
-// "திருக்குறள்" is one compound word with no space to wrap at, so it's
-// still a fluid clamp rather than a fixed size, scaled from the same
-// ~6.35px-of-width-per-px-of-font-size measurement as before.
+// Heading ("திருக்குறள்" -- Thirukkural). Weight raised again to 900,
+// the heaviest weight Noto Sans Tamil offers (app now loads it in
+// layout.tsx) -- 800 was already the heaviest available before this
+// pass. Size brought down from the audit's literal 80px, both per
+// direction, and a smaller size only makes the single-word overflow
+// problem (see below) easier to avoid. "திருக்குறள்" is one compound
+// word with no space to wrap at, so it's still a fluid clamp rather
+// than a fixed size, scaled from the same ~6.35px-of-width-per-px-of-
+// font-size measurement as before.
 const H1 = {
   fontSize: "clamp(28px, 9vw, 56px)",
-  fontWeight: 800,
+  fontWeight: 900,
   lineHeight: 1.1,
   letterSpacing: "-0.4px",
   color: TEXT,
@@ -52,10 +56,10 @@ const PARAGRAPH = {
   color: TEXT,
 } as const;
 
-// Insights. Same as PARAGRAPH but +100 weight per direction (400 -> 500).
+// Insights. +100 weight twice over two passes (400 -> 500 -> 600).
 const INSIGHT = {
   ...PARAGRAPH,
-  fontWeight: 500,
+  fontWeight: 600,
 } as const;
 
 // Card text, all sized down and the Kural quote's weight reduced, per
@@ -68,8 +72,9 @@ const CARD_QUOTE = {
   color: TEXT,
 } as const;
 
+// Base metadata size +2px extra over two passes (12px -> 14px).
 const LABEL = {
-  fontSize: "12px",
+  fontSize: "14px",
   fontWeight: 500,
   lineHeight: 1.5,
   letterSpacing: "-0.4px",
@@ -77,11 +82,17 @@ const LABEL = {
 
 // The " . " between name/number and between arathuppal/athikaram is a
 // divider, not a sentence period -- rendered as a middle dot (which
-// sits vertically centered on the line, unlike a period) at a heavier
-// weight than the label text around it, per direction. Label weight
-// itself ("the metadata weight") is left as it was.
+// sits vertically centered on the line, unlike a period). Both the
+// divider and the muted label text now match the bright label text's
+// own weight (600) per direction -- label weight itself ("the metadata
+// weight") stays at LABEL's base 500 otherwise.
 const DIVIDER = {
-  fontWeight: 700,
+  fontWeight: 600,
+  color: MUTED,
+} as const;
+
+const MUTED_TEXT = {
+  fontWeight: 600,
   color: MUTED,
 } as const;
 
@@ -101,7 +112,7 @@ export function KuralKoorumAramSection() {
       <div className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="h-6 w-6 shrink-0"
+          className="h-[28px] w-[28px] shrink-0"
           style={{
             backgroundColor: TEXT,
             WebkitMaskImage: "url(/home/kural-koorum-aram-icon.png)",
@@ -153,12 +164,12 @@ export function KuralKoorumAramSection() {
           <span className="font-tamil-sans" style={LABEL}>
             <span style={{ fontWeight: 600, color: TEXT }}>திருவள்ளுவர்</span>
             <span style={DIVIDER}> · </span>
-            <span style={{ color: MUTED }}>குறள் - 0001</span>
+            <span style={MUTED_TEXT}>குறள் - 0001</span>
           </span>
           <span className="font-tamil-sans block text-right" style={LABEL}>
-            <span style={{ color: MUTED }}>அறத்துப்பால்</span>
+            <span style={MUTED_TEXT}>அறத்துப்பால்</span>
             <span style={DIVIDER}> · </span>
-            <span style={{ fontWeight: 600, color: TEXT }}>அதிகாரம் -001</span>
+            <span style={{ fontWeight: 600, color: TEXT }}>அதிகாரம் - 001</span>
           </span>
         </div>
       </div>
