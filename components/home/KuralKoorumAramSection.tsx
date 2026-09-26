@@ -111,7 +111,7 @@ export function KuralKoorumAramSection() {
       <div className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="h-[32px] w-[32px] shrink-0"
+          className="h-[40px] w-[40px] shrink-0"
           style={{
             backgroundColor: TEXT,
             WebkitMaskImage: "url(/home/kural-koorum-aram-icon.png)",
