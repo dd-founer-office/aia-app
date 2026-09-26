@@ -148,14 +148,14 @@ export function EditorialHero({
         <button
           type="button"
           onClick={() => router.push("/participate/causes")}
-          className={`${inter.className} flex w-[163px] items-center justify-center rounded-[5px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
+          className={`${inter.className} flex w-[197px] items-center justify-center rounded-[5px] py-3 text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
           style={{ background: "rgba(104,255,173,.16)", color: MINT }}
         >
           Begin Your Next Act
         </button>
         <Link
           href={latestActId ? `/acts/${latestActId}` : "/acts"}
-          className={`${inter.className} flex w-[163px] items-center justify-center gap-2 rounded-[5px] p-[14px] text-[14px] font-medium leading-[1.5] tracking-[-0.4px]`}
+          className={`${inter.className} flex w-[197px] items-center justify-center gap-2 whitespace-nowrap rounded-[5px] p-[14px] text-[18px] font-medium leading-[1.5] tracking-[-0.4px]`}
           style={{ background: MINT, color: TEAL }}
         >
           See a Verified Act
@@ -163,7 +163,7 @@ export function EditorialHero({
             className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[4px]"
             style={{ background: TEAL }}
           >
-            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </span>
