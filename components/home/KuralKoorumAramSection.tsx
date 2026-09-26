@@ -1,7 +1,18 @@
+import localFont from "next/font/local";
 import { Inter } from "next/font/google";
 import { mockKuralOfTheDay } from "@/lib/mock-data";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], display: "swap" });
+
+// Same Calsans variable font EditorialHero already loads -- the audit's
+// h1/h2/h3 roles all name "Calsans" as their family. It has no Tamil
+// glyphs, which is why it was skipped for the old Tamil heading; now
+// that the heading is English copy, it applies directly.
+const calSans = localFont({
+  src: "../../app/fonts/CalSansVF.woff2",
+  weight: "400 700",
+  display: "swap",
+});
 
 const TEXT = "#062023";
 const MUTED = "#788485";
@@ -32,15 +43,19 @@ const EYEBROW = {
 } as const;
 
 // Heading. Was the Tamil word "திருக்குறள்" (Thirukkural); now English
-// copy, so it renders in Inter (like the rest of the section's English
-// text) instead of font-tamil-sans. Weight went 600 -> 800 -> 900 -> 800
-// over earlier passes on the Tamil heading; kept at 800 here. The fluid
-// clamp is no longer load-bearing for overflow (English wraps normally
-// at spaces, unlike the old single Tamil compound word), but stays for
-// the same responsive scaling the rest of the section uses.
+// copy, so it renders in Calsans (the audit's own h1/h2/h3 family)
+// instead of font-tamil-sans. Weight capped at 700 -- CalSansVF is a
+// variable font whose declared range is 400-700, so 700 is the
+// heaviest it actually offers (a step up from the previous pass's 800,
+// which only "worked" as a browser-synthesized fake bold on top of the
+// font's real 700 weight). Size stepped back up toward the audit's
+// original h1 spec (clamp max 56px -> 80px). The fluid clamp is no
+// longer load-bearing for overflow (English wraps normally at spaces,
+// unlike the old single Tamil compound word), but stays for the same
+// responsive scaling the rest of the section uses.
 const H1 = {
-  fontSize: "clamp(28px, 9vw, 56px)",
-  fontWeight: 800,
+  fontSize: "clamp(32px, 12vw, 80px)",
+  fontWeight: 700,
   lineHeight: 1.1,
   letterSpacing: "-0.4px",
   color: TEXT,
@@ -159,7 +174,7 @@ export function KuralKoorumAramSection() {
         </span>
       </div>
 
-      <h2 className={`${inter.className} mt-4`} style={H1}>
+      <h2 className={`${calSans.className} mt-4`} style={H1}>
         You think you&apos;re the story. You&apos;re the alphabet.
       </h2>
 
