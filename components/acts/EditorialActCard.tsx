@@ -28,31 +28,35 @@ const HALF_W = (FULL_W - HALF_GAP) / 2;
 // Height is the previous compositions' average row height (~141) plus 25%.
 const HERO_H = 176;
 
-const TILE = 70;
 const TILE_GAP = 10;
+const TILE_TOP = 4;
+const TILE_W = (HALF_W - TILE_GAP) / 2;
+// Solved so row 2 sits exactly half-cropped by HERO_H:
+// TILE_TOP + TILE_H + TILE_GAP + TILE_H/2 = HERO_H
+const TILE_H = (HERO_H - TILE_TOP - TILE_GAP) / 1.5;
 
 /**
- * The hero visual's photo grid: four equal-size tiles, laid out against the
- * HALF_W-wide slot the map's other half leaves free. The first three sit
- * fully inside that slot; the fourth is offset further right so it bleeds
- * past the card's own right edge and reads as only partially visible --
- * same photo size as the rest, just cropped by the frame, per the
- * reference. When an Act has no GPS coordinates the map is dropped and
- * this same grid is simply centered across the full visual width instead.
+ * The hero visual's photo grid: two rows of two equal, taller tiles against
+ * the HALF_W-wide slot the map's other half leaves free. Row 1 sits fully
+ * inside the hero card; row 2 is cropped exactly in half by the card's own
+ * bottom edge, so it reads as "more photos below" rather than a finished
+ * grid. When an Act has no GPS coordinates the map is dropped and this same
+ * grid is simply centered across the full visual width instead.
  */
 const PHOTO_TILES = [
-  { x: 0, y: 3, w: TILE, h: TILE },
-  { x: TILE + TILE_GAP, y: 3, w: TILE, h: TILE },
-  { x: 0, y: 3 + TILE + TILE_GAP, w: TILE, h: TILE },
-  { x: TILE + TILE_GAP + 20, y: 3 + TILE + TILE_GAP + 20, w: TILE, h: TILE },
+  { x: 0, y: TILE_TOP, w: TILE_W, h: TILE_H },
+  { x: TILE_W + TILE_GAP, y: TILE_TOP, w: TILE_W, h: TILE_H },
+  { x: 0, y: TILE_TOP + TILE_H + TILE_GAP, w: TILE_W, h: TILE_H },
+  { x: TILE_W + TILE_GAP, y: TILE_TOP + TILE_H + TILE_GAP, w: TILE_W, h: TILE_H },
 ];
 
 /**
  * The Acts Feed's editorial card. The visual area is its own "hero"
  * composition inside the card: a map filling the full left half, and a
- * grid of same-size photo tiles filling the right half -- one of them
- * cropped by the card's edge, so it's clear there's more evidence behind
- * it (per the approved Abyssale-reference direction:
+ * two-row grid of same-size photo tiles filling the right half -- the
+ * first row fully visible, the second cropped in half by the card's own
+ * bottom edge, so it's clear there's more evidence behind it (per the
+ * approved Abyssale-reference direction:
  * https://claude.ai/artifact/DVBoo7zNZXoXrc1WYgthAt). Straight into a
  * large punchy headline and a short description below -- no eyebrow, no
  * category label, no metadata row, no card border, no rounded corners on
