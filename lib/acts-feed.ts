@@ -13,6 +13,12 @@ export interface ActFeedItem {
   isSharedAct?: boolean;
   contributorCount?: number;
   sortDate: number;
+  // Real evidence photos (hero first) and GPS coordinates, for the
+  // editorial Acts Feed card's photo collage + map snapshot. See
+  // PublishedActFeedItem's own fields for how these are derived.
+  photoUrls: string[];
+  lat: number | null;
+  lng: number | null;
 }
 
 /**
@@ -47,6 +53,9 @@ export async function getMyActsFeed(): Promise<ActFeedItem[]> {
       isSharedAct: act.isSharedAct,
       contributorCount: act.contributorCount,
       sortDate: new Date(act.missionDateIso).getTime(),
+      photoUrls: act.photoUrls,
+      lat: act.lat,
+      lng: act.lng,
     }))
     .sort((a, b) => b.sortDate - a.sortDate);
 }

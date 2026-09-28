@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { EvidenceCard } from "@/components/shared/EvidenceCard";
+import { EditorialActCard } from "@/components/acts/EditorialActCard";
 import { Button } from "@/components/shared/Button";
 import { Chip } from "@/components/shared/Chip";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -40,17 +40,17 @@ export function ActsFeedClient({ featured, recentActs, sharedActs }: ActsFeedCli
         <section>
           <SectionHeader title="Featured Impact" />
           <div className="mt-3">
-            <EvidenceCard
+            <EditorialActCard
               actId={featured.id}
-              heroImage={featured.heroImage}
-              supportingImageCount={featured.supportingImageCount}
-              category={featured.category}
+              title={featured.headline}
+              description={featured.supportingCopy}
               placeName={featured.placeName}
-              completedDate={featured.completedDate}
-              headline={featured.headline}
-              supportingCopy={featured.supportingCopy}
+              photoUrls={featured.photoUrls}
+              lat={featured.lat}
+              lng={featured.lng}
               isSharedAct={featured.isSharedAct}
               contributorCount={featured.contributorCount}
+              variant={0}
             />
           </div>
         </section>
@@ -76,17 +76,17 @@ export function ActsFeedClient({ featured, recentActs, sharedActs }: ActsFeedCli
         <SectionHeader title="Recent Acts of Aram" />
         {visibleRecent.length > 0 ? (
           <div className="mt-3 flex flex-col gap-8">
-            {visibleRecent.map((act) => (
-              <EvidenceCard
+            {visibleRecent.map((act, i) => (
+              <EditorialActCard
                 key={act.id}
                 actId={act.id}
-                heroImage={act.heroImage}
-                supportingImageCount={act.supportingImageCount}
-                category={act.category}
+                title={act.headline}
+                description={act.supportingCopy}
                 placeName={act.placeName}
-                completedDate={act.completedDate}
-                headline={act.headline}
-                supportingCopy={act.supportingCopy}
+                photoUrls={act.photoUrls}
+                lat={act.lat}
+                lng={act.lng}
+                variant={i}
               />
             ))}
           </div>
@@ -114,19 +114,19 @@ export function ActsFeedClient({ featured, recentActs, sharedActs }: ActsFeedCli
         <section>
           <SectionHeader title="Shared Acts of Aram" />
           <div className="mt-3 flex flex-col gap-8">
-            {sharedActs.map((act) => (
-              <EvidenceCard
+            {sharedActs.map((act, i) => (
+              <EditorialActCard
                 key={act.id}
                 actId={act.id}
-                heroImage={act.heroImage}
-                supportingImageCount={act.supportingImageCount}
-                category={act.category}
+                title={act.headline}
+                description={act.supportingCopy}
                 placeName={act.placeName}
-                completedDate={act.completedDate}
-                headline={act.headline}
-                supportingCopy={act.supportingCopy}
+                photoUrls={act.photoUrls}
+                lat={act.lat}
+                lng={act.lng}
                 isSharedAct={act.isSharedAct}
                 contributorCount={act.contributorCount}
+                variant={i}
               />
             ))}
           </div>

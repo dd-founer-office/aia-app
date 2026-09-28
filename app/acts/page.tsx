@@ -47,20 +47,17 @@ export default async function ActsPage() {
   const recentActs = rest.filter((act) => !act.isSharedAct);
 
   return (
-    // NOTE: bg-[var(--color-background)] intentionally removed from this
-    // root wrapper -- body already carries this exact background color
-    // (globals.css), so this class was a redundant duplicate paint that
-    // silently hid the Living Field's ambient canvas. Same fix as
-    // app/page.tsx (Sprint 01 Foundation Completion). No other change.
-    <div className="flex min-h-screen flex-col">
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 pb-28 pt-10">
-        <div>
-          <h1 className="text-2xl font-semibold leading-tight tracking-tight">Acts of Aram</h1>
-          <p className="mt-1.5 text-sm text-[var(--color-muted-foreground)]">
-            Your verified acts of impact.
-          </p>
-        </div>
-
+    // Editorial redesign (2026-09-28, canvas-reviewed:
+    // https://claude.ai/artifact/DVBoo7zNZXoXrc1WYgthAt): the page's own
+    // "Acts of Aram" heading is dropped here -- the Acts themselves are
+    // meant to create the visual hierarchy, per the approved direction.
+    // Background is this page's own soft, warm tone (distinct from the
+    // app-wide mint-tinted --color-background) so the editorial cards read
+    // like the reference case-study layout rather than the standard app
+    // chrome; scoped to this page only, same pattern Home's redesigned
+    // sections already use for their own local palettes.
+    <div className="flex min-h-screen flex-col" style={{ background: "#F2EFE7" }}>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 pb-28 pt-7">
         {acts.length > 0 ? (
           <ActsFeedClient featured={featured ?? null} recentActs={recentActs} sharedActs={sharedActs} />
         ) : (

@@ -246,6 +246,15 @@ export interface PublishedActFeedItem {
   landmark: string | null;
   heroImageUrl: string | null;
   evidenceCount: number;
+  // Up to 5 real evidence photo URLs for this Act (hero first, then capture
+  // order) -- feeds the Acts Feed's editorial photo collage. Never padded
+  // with placeholders: shorter than 5 just means fewer real photos exist.
+  photoUrls: string[];
+  // First evidence row with real GPS coordinates, or null when none of this
+  // Act's evidence captured location -- the feed's map snapshot is omitted
+  // rather than guessed in that case.
+  lat: number | null;
+  lng: number | null;
   // Real now -- see lib/act-attribution.ts. isSharedAct is true only when
   // 2+ distinct contributors are attributed (locked rule: a single
   // contributor's own Act isn't "shared"), contributorCount is only ever
@@ -275,15 +284,23 @@ export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
 
   const { data: evidenceRows } = await supabase
     .from('evidence')
-    .select('id, mission_id, photo_url')
-    .in('mission_id', missionIds);
+    .select('id, mission_id, photo_url, gps_lat, gps_lng, capture_order')
+    .in('mission_id', missionIds)
+    .order('capture_order', { ascending: true });
 
   const publicationByMission = new Map((publications ?? []).map((p) => [p.mission_id as string, p]));
-  const evidenceCountByMission = new Map<string, number>();
+  const evidenceByMission = new Map<string, { id: string; photoUrl: string; lat: number | null; lng: number | null }[]>();
   const photoByEvidenceId = new Map<string, string>();
   for (const row of evidenceRows ?? []) {
     const key = row.mission_id as string;
-    evidenceCountByMission.set(key, (evidenceCountByMission.get(key) ?? 0) + 1);
+    const list = evidenceByMission.get(key) ?? [];
+    list.push({
+      id: row.id as string,
+      photoUrl: row.photo_url as string,
+      lat: (row.gps_lat as number | null) ?? null,
+      lng: (row.gps_lng as number | null) ?? null,
+    });
+    evidenceByMission.set(key, list);
     photoByEvidenceId.set(row.id as string, row.photo_url as string);
   }
 
@@ -299,6 +316,17 @@ export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
       : null;
 
     const contributorCount = contributorCounts.get(mission.id as string);
+    const evidenceList = evidenceByMission.get(mission.id as string) ?? [];
+
+    const photoUrls: string[] = [];
+    if (heroImageUrl) photoUrls.push(heroImageUrl);
+    for (const evidence of evidenceList) {
+      if (photoUrls.length >= 5) break;
+      if (evidence.photoUrl === heroImageUrl) continue;
+      photoUrls.push(evidence.photoUrl);
+    }
+
+    const withCoords = evidenceList.find((evidence) => evidence.lat != null && evidence.lng != null);
 
     items.push({
       id: mission.id as string,
@@ -310,7 +338,10 @@ export async function getPublishedActsFeed(): Promise<PublishedActFeedItem[]> {
       missionDateIso: mission.mission_date as string,
       landmark: publication.landmark as string | null,
       heroImageUrl,
-      evidenceCount: evidenceCountByMission.get(mission.id as string) ?? 0,
+      evidenceCount: evidenceList.length,
+      photoUrls,
+      lat: withCoords?.lat ?? null,
+      lng: withCoords?.lng ?? null,
       isSharedAct: contributorCount !== undefined && contributorCount > 1,
       contributorCount,
     });
