@@ -27,46 +27,18 @@ const IYAL_DARK_GREEN = "#1F3D2B";
 const IYAL_MID_GREEN = "#2F5B3E";
 const IYAL_MUTED_GREEN = "#5B7A63";
 const IYAL_ORANGE = "#E2963C";
-const TILE_RADIUS = 16;
+const TILE_RADIUS = 10;
+const TILE_GAP = 8;
 
-// The hero is a wide, cinematic window: a fixed aspect ratio close to
-// 1.65:1 (~200px tall on a ~330px-wide mobile card), full card width, so
-// it holds its shape at any card size.
-const LOGO_ZONE_W = "50%";
-
-// The collage panels are positioned directly against the hero itself
-// using hero-relative percentages that are allowed to go negative or
-// past 100 -- CSS resolves percentages arithmetically regardless of
-// whether the result lands outside the parent's own box, so a panel at
-// e.g. left:82% width:24% (right edge at 106%) simply renders 6% of its
-// own width past the hero's right edge, clipped by the hero's own
-// overflow:hidden. That's the whole mechanism: no separate oversized
-// "canvas" wrapper is needed, just panels sized and placed larger/
-// further than the visible frame. Three substantial photos -- one
-// dominant, one far-right vertical, one bottom horizontal -- plus one
-// small flat accent block, deliberately overlapping each other so nothing
-// reads as a tidy, evenly-spaced grid. Photos are real annadhanam (elder
-// meal-service) documentation -- actual evidence of a real Act, not
-// stock or generated imagery.
-interface PanelSpec {
-  src: string;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-  z: number;
-}
-
-const PANELS: PanelSpec[] = [
-  // Dominant: the main visual anchor, nearly the full hero height.
-  { src: "/mock/annadhanam-tray-1.jpg", left: 48, top: -2, width: 42, height: 96, z: 4 },
-  // Far-right vertical: bleeds past the hero's right edge.
-  { src: "/mock/annadhanam-hall.jpg", left: 82, top: 8, width: 24, height: 85, z: 1 },
-  // Bottom horizontal: peeks out from under the dominant photo, cropped by the hero's bottom edge.
-  { src: "/mock/annadhanam-trays.jpg", left: 58, top: 70, width: 39, height: 36, z: 2 },
-];
-
-const ACCENT_PANEL = { left: 68, top: -6, width: 10, height: 18, z: 5 };
+// A shallow editorial panel (per the Bagelstein/MyJobGlasses references),
+// not a tall photograph: ~1.65:1, landing around 195-210px tall on a
+// ~390px mobile card. Left ~46% is the quiet brand zone; right ~54% is a
+// clean, gapped image grid -- a large main photo, two small photos
+// stacked beside it, and a shorter full-width photo below -- every tile
+// fully contained within the hero's own bounds (no bleed past the
+// frame). Photos are real annadhanam (elder meal-service) documentation,
+// actual evidence of a real Act.
+const LOGO_ZONE_W = "46%";
 
 function IyalMark() {
   return (
@@ -84,17 +56,30 @@ function IyalMark() {
   );
 }
 
+function GridPhoto({ src, area }: { src: string; area: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className="h-full w-full object-cover"
+      style={{ gridArea: area, borderRadius: TILE_RADIUS }}
+    />
+  );
+}
+
 /**
  * The Acts Feed's editorial card. The hero visual is the Iyal Impact
- * Foundation brand treatment: a quiet logo zone filling the left half of
- * a fixed ~1.65:1-aspect panel, and three large, overlapping photo
- * panels sized and placed so they bleed past the panel's own right and
- * bottom edges -- a cropped window onto a larger collage, not a grid
- * sized to fit inside it. placeName/photoUrls/lat/lng are intentionally
- * unused here (this hero is a fixed brand visual, not derived from the
- * Act's own data) but stay in the prop type for caller compatibility.
- * Straight into a large punchy headline and a short description below --
- * no eyebrow, no category label, no metadata row.
+ * Foundation brand treatment: a quiet logo zone filling the left ~46% of
+ * a shallow, wide panel, and a structured CSS-grid image treatment
+ * filling the right ~54% -- one large main photo, two small photos
+ * stacked beside it, and a shorter full-width photo below. Every tile
+ * sits fully inside the hero's own bounds; only object-fit crops the
+ * photo content, never the tile itself. placeName/photoUrls/lat/lng are
+ * intentionally unused here (this hero is a fixed brand visual, not
+ * derived from the Act's own data) but stay in the prop type for caller
+ * compatibility. Straight into a large punchy headline and a short
+ * description below -- no eyebrow, no category label, no metadata row.
  */
 export function EditorialActCard({ actId, title, description }: EditorialActCardProps) {
   return (
@@ -104,13 +89,10 @@ export function EditorialActCard({ actId, title, description }: EditorialActCard
       style={{ padding: CARD_PADDING }}
     >
       <div
-        className="relative w-full overflow-hidden rounded-[20px]"
+        className="flex w-full overflow-hidden rounded-[20px]"
         style={{ aspectRatio: "1.65 / 1", background: IYAL_BG }}
       >
-        <div
-          className="absolute left-0 top-0 z-10 flex h-full items-center justify-center gap-3 px-4"
-          style={{ width: LOGO_ZONE_W, background: IYAL_BG }}
-        >
+        <div className="flex items-center justify-center gap-3 px-4" style={{ width: LOGO_ZONE_W }}>
           <IyalMark />
           <div className="flex flex-col">
             <span
@@ -128,37 +110,21 @@ export function EditorialActCard({ actId, title, description }: EditorialActCard
           </div>
         </div>
 
-        {PANELS.map((panel) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={panel.src}
-            src={panel.src}
-            alt=""
-            className="absolute object-cover"
-            style={{
-              left: `${panel.left}%`,
-              top: `${panel.top}%`,
-              width: `${panel.width}%`,
-              height: `${panel.height}%`,
-              borderRadius: TILE_RADIUS,
-              zIndex: panel.z,
-            }}
-          />
-        ))}
-
         <div
-          className="absolute flex overflow-hidden"
+          className="grid flex-1"
           style={{
-            left: `${ACCENT_PANEL.left}%`,
-            top: `${ACCENT_PANEL.top}%`,
-            width: `${ACCENT_PANEL.width}%`,
-            height: `${ACCENT_PANEL.height}%`,
-            borderRadius: TILE_RADIUS,
-            zIndex: ACCENT_PANEL.z,
+            gridTemplateAreas: `"main small1" "main small2" "bottom bottom"`,
+            gridTemplateColumns: "1.3fr 1fr",
+            gridTemplateRows: "1fr 1fr 0.6fr",
+            gap: TILE_GAP,
+            padding: TILE_GAP,
+            paddingLeft: 0,
           }}
         >
-          <div style={{ width: "44%", height: "100%", background: IYAL_ORANGE }} />
-          <div style={{ width: "56%", height: "100%", background: IYAL_DARK_GREEN }} />
+          <GridPhoto src="/mock/annadhanam-tray-1.jpg" area="main" />
+          <GridPhoto src="/mock/annadhanam-buffet.jpg" area="small1" />
+          <GridPhoto src="/mock/annadhanam-hall.jpg" area="small2" />
+          <GridPhoto src="/mock/annadhanam-trays.jpg" area="bottom" />
         </div>
       </div>
 
