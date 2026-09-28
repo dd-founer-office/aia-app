@@ -61,14 +61,13 @@ export function ActsFeedClient({ featured, sharedActs }: ActsFeedClientProps) {
               photoUrls={featured.photoUrls}
               lat={featured.lat}
               lng={featured.lng}
-              variant={0}
             />
           </div>
         </section>
       )}
 
       <div className="flex flex-col gap-8">
-        {MOCK_ACTS.map((act, i) => (
+        {MOCK_ACTS.map((act) => (
           <EditorialActCard
             key={act.id}
             actId={act.id}
@@ -78,7 +77,6 @@ export function ActsFeedClient({ featured, sharedActs }: ActsFeedClientProps) {
             photoUrls={act.photoUrls}
             lat={act.lat}
             lng={act.lng}
-            variant={i + 1}
           />
         ))}
       </div>
@@ -89,7 +87,7 @@ export function ActsFeedClient({ featured, sharedActs }: ActsFeedClientProps) {
         <section>
           <SectionHeader title="Shared Acts of Aram" />
           <div className="mt-3 flex flex-col gap-8">
-            {sharedActs.map((act, i) => (
+            {sharedActs.map((act) => (
               <EditorialActCard
                 key={act.id}
                 actId={act.id}
@@ -99,7 +97,6 @@ export function ActsFeedClient({ featured, sharedActs }: ActsFeedClientProps) {
                 photoUrls={act.photoUrls}
                 lat={act.lat}
                 lng={act.lng}
-                variant={i}
               />
             ))}
           </div>
