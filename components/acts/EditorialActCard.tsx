@@ -22,7 +22,9 @@ export interface EditorialActCardProps {
 
 const CARD_PADDING = 10;
 
-const IYAL_BG = "#eff4f2";
+// Matches app/acts/page.tsx's own page background exactly, so the hero
+// panel blends into the page rather than reading as its own tinted region.
+const IYAL_BG = "#F2EFE7";
 const IYAL_TEXT = "#173e35";
 const IYAL_ORANGE = "#d5904b";
 const IYAL_RULE = "rgba(23, 62, 53, 0.22)";
@@ -103,7 +105,7 @@ export function EditorialActCard({ actId, title, description }: EditorialActCard
   return (
     <Link
       href={`/acts/${actId}`}
-      className="block rounded-[12px] bg-transparent"
+      className="block rounded-[12px] bg-transparent transition-all duration-200 hover:bg-white hover:shadow-[0_2px_14px_rgba(43,42,38,0.08)] active:bg-white active:shadow-[0_8px_22px_rgba(43,42,38,0.14)]"
       style={{ padding: CARD_PADDING }}
     >
       <div
