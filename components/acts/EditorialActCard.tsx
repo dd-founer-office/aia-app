@@ -103,7 +103,7 @@ export function EditorialActCard({ actId, title, description }: EditorialActCard
   return (
     <Link
       href={`/acts/${actId}`}
-      className="block rounded-[12px] bg-white shadow-[0_2px_14px_rgba(43,42,38,0.08)] transition-shadow duration-200 active:shadow-[0_8px_22px_rgba(43,42,38,0.14)]"
+      className="block rounded-[12px] bg-transparent"
       style={{ padding: CARD_PADDING }}
     >
       <div
