@@ -26,58 +26,60 @@ export interface EditorialActCardProps {
 const PAGE_BG = "#F2EFE7";
 
 const CARD_PADDING = 10;
-// Height is fixed -- it doesn't need to track the card's width. Everything
-// horizontal below is percentage/calc-based instead of a fixed pixel
-// budget, so the composition actually fits the card on any phone width
-// (a fixed-width version bled past the card's right edge on narrower
-// screens once CARD_PADDING was subtracted from a viewport narrower than
-// the one it was tuned against).
 const HERO_H = 176;
 
-// Uniform 10px on every side of every tile: map-to-photos gap, the two
-// photo columns' gap, the gap above row 1, and the gap between the rows.
-const TILE_GAP = 10;
-const HALF_STYLE = `calc(50% - ${TILE_GAP / 2}px)`;
-const COL_STYLE = `calc(50% - ${TILE_GAP / 2}px)`;
+// Map takes the left third, photo grid the right two-thirds -- a wider,
+// more noticeable gap between them than between individual tiles, matching
+// the reference's clear separation between "identity" (badge) and
+// "evidence" (photos).
+const MAP_GAP = 14;
+const MAP_STYLE = `calc(33.333% - ${MAP_GAP / 2}px)`;
+const PHOTO_LEFT = `calc(33.333% + ${MAP_GAP / 2}px)`;
+const PHOTO_WIDTH = `calc(66.667% - ${MAP_GAP / 2}px)`;
 
+// Inside the photo area: a tight gap between tiles (much smaller than
+// MAP_GAP), an uneven 2x2 grid -- one dominant tile, two narrower
+// supporting tiles at the dominant's own width, and a fourth tile at the
+// bottom-right that's the SAME size as its row-mate but deliberately
+// widened so it bleeds past the photo area's own right edge, cropped by
+// the hero panel's overflow -- horizontally only, never vertically, so
+// its full height still reads, just not its full width. Percentages are
+// relative to the photo area's own (fluid) width, so the grid holds its
+// proportions at any card width; only the row heights are fixed pixels.
+const TILE_GAP = 6;
+const CROP_BLEED = 28;
+const DOMINANT_W = `calc(58% - ${TILE_GAP / 2}px)`;
+const NARROW_LEFT = `calc(58% + ${TILE_GAP / 2}px)`;
+const NARROW_W = `calc(42% - ${TILE_GAP / 2}px)`;
+const CROPPED_W = `calc(42% - ${TILE_GAP / 2}px + ${CROP_BLEED}px)`;
+
+const ROW1_H = 106;
 const ROW_GAP = TILE_GAP;
-const TILE_TOP = TILE_GAP;
-// Solved so row 2 is cropped to exactly 60% visible by HERO_H:
-// TILE_TOP + TILE_H + ROW_GAP + 0.6*TILE_H = HERO_H
-const TILE_H = (HERO_H - TILE_TOP - ROW_GAP) / 1.6;
-const ROW2_TOP = TILE_TOP + TILE_H + ROW_GAP;
+const ROW2_H = HERO_H - ROW1_H - ROW_GAP;
+const ROW2_TOP = ROW1_H + ROW_GAP;
 
-/**
- * The hero visual's photo grid: two rows of two equal, taller tiles filling
- * the half (or, with no map, the full width) the map's own half leaves
- * free, with a uniform 10px gap on every side of every tile. Row 1 sits
- * fully inside the hero card; row 2 is cropped to 60% visible by the
- * card's own bottom edge, so it reads as "more photos below" rather than a
- * finished grid. Column position/width are percentage-based so the grid
- * holds its proportions at any card width; only the vertical dimensions
- * are fixed pixels.
- */
 const PHOTO_TILES = [
-  { side: "left" as const, top: TILE_TOP, h: TILE_H },
-  { side: "right" as const, top: TILE_TOP, h: TILE_H },
-  { side: "left" as const, top: ROW2_TOP, h: TILE_H },
-  { side: "right" as const, top: ROW2_TOP, h: TILE_H },
+  { left: "0", top: 0, width: DOMINANT_W, height: ROW1_H },
+  { left: NARROW_LEFT, top: 0, width: NARROW_W, height: ROW1_H },
+  { left: "0", top: ROW2_TOP, width: NARROW_W, height: ROW2_H },
+  { left: NARROW_LEFT, top: ROW2_TOP, width: CROPPED_W, height: ROW2_H },
 ];
 
 /**
  * The Acts Feed's editorial card. The visual area is its own "hero"
- * composition inside the card: a map filling the full left half, and a
- * two-row grid of same-size photo tiles filling the right half -- the
- * first row fully visible, the second cropped in half by the card's own
- * bottom edge, so it's clear there's more evidence behind it (per the
- * approved Abyssale-reference direction:
+ * composition inside the card: a map filling the left third, and an
+ * uneven photo grid filling the right two-thirds -- one dominant tile,
+ * two supporting tiles at its own width, and a fourth tile cropped by the
+ * hero panel's own right edge (same height as its row-mate, just wider
+ * than the space left for it), so it's clear there's more evidence just
+ * out of frame (per the approved Abyssale-reference direction:
  * https://claude.ai/artifact/DVBoo7zNZXoXrc1WYgthAt). Straight into a
  * large punchy headline and a short description below -- no eyebrow, no
  * category label, no metadata row. The card itself is a white,
- * rounded-corner surface (per the reference); the hero visual sits on its
- * own rounded panel inside it, filled with the page's own background
- * color so the map/photos read as a distinct region rather than bleeding
- * into the white card.
+ * rounded-corner surface; the hero visual sits on its own rounded panel
+ * inside it, filled with the page's own background color so the
+ * map/photos read as a distinct region rather than bleeding into the
+ * white card.
  */
 export function EditorialActCard({
   actId,
@@ -89,8 +91,8 @@ export function EditorialActCard({
   lng,
 }: EditorialActCardProps) {
   const hasMap = lat != null && lng != null;
-  const photoHalfWidth = hasMap ? HALF_STYLE : "100%";
-  const photoHalfLeft = hasMap ? `calc(50% + ${TILE_GAP / 2}px)` : "0";
+  const photoAreaLeft = hasMap ? PHOTO_LEFT : "0";
+  const photoAreaWidth = hasMap ? PHOTO_WIDTH : "100%";
 
   const photos = PHOTO_TILES.slice(0, Math.min(photoUrls.length, PHOTO_TILES.length)).map((tile, i) => ({
     url: photoUrls[i],
@@ -107,13 +109,13 @@ export function EditorialActCard({
         {hasMap && (
           <div
             className="absolute left-0 top-0 shadow-[0_4px_12px_rgba(43,42,38,0.12)] [&_iframe]:rounded-none"
-            style={{ width: HALF_STYLE, height: HERO_H }}
+            style={{ width: MAP_STYLE, height: HERO_H }}
           >
             <MapEmbed lat={lat as number} lng={lng as number} locationLabel={placeName} compact heightClassName="h-full" />
           </div>
         )}
 
-        <div className="absolute top-0" style={{ left: photoHalfLeft, width: photoHalfWidth, height: HERO_H }}>
+        <div className="absolute top-0" style={{ left: photoAreaLeft, width: photoAreaWidth, height: HERO_H }}>
           {photos.map((photo) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -121,12 +123,7 @@ export function EditorialActCard({
               src={photo.url}
               alt=""
               className="absolute z-[2] rounded-[6px] object-cover"
-              style={{
-                [photo.side]: 0,
-                top: photo.top,
-                width: COL_STYLE,
-                height: photo.h,
-              }}
+              style={{ left: photo.left, top: photo.top, width: photo.width, height: photo.height }}
             />
           ))}
         </div>
