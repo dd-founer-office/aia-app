@@ -8,7 +8,7 @@ const calSans = localFont({
   display: "swap",
 });
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "700"], display: "swap" });
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "700", "800"], display: "swap" });
 
 export interface EditorialActCardProps {
   actId: string;
@@ -22,64 +22,82 @@ export interface EditorialActCardProps {
 
 const CARD_PADDING = 10;
 
-const IYAL_BG = "#EFF4F2";
-const IYAL_DARK_GREEN = "#1F3D2B";
-const IYAL_MID_GREEN = "#2F5B3E";
-const IYAL_MUTED_GREEN = "#5B7A63";
-const IYAL_ORANGE = "#E2963C";
-const TILE_RADIUS = 10;
+const IYAL_BG = "#eff4f2";
+const IYAL_TEXT = "#173e35";
+const IYAL_ORANGE = "#d5904b";
+const IYAL_RULE = "rgba(23, 62, 53, 0.22)";
+const TILE_RADIUS = 7;
+const TILE_W = 90;
+const TILE_H = 120;
 const TILE_GAP = 8;
+const ROW_GAP = 9;
 
-// A shallow editorial panel (per the Bagelstein/MyJobGlasses references),
-// not a tall photograph: ~1.65:1, landing around 195-210px tall on a
-// ~390px mobile card. Left ~46% is the quiet brand zone; right ~54% is a
-// clean, gapped image grid -- a large main photo, two small photos
-// stacked beside it, and a shorter full-width photo below -- every tile
-// fully contained within the hero's own bounds (no bleed past the
-// frame). Photos are real annadhanam (elder meal-service) documentation,
-// actual evidence of a real Act.
-const LOGO_ZONE_W = "46%";
+// Per the Featured Impact Card canvas design (canvas.json "Main.dc.html"):
+// a fixed 195px-tall hero, a quiet text-only wordmark filling the left
+// half, and two 90x120 photo columns on the right, each holding the
+// same 3 photos twice back to back so a translateY(-50%) loop (defined
+// in app/globals.css as editorial-scroll-up/-down) is seamless -- left
+// column scrolling up, right column scrolling down, opposite directions.
+// Photos are real annadhanam (elder meal-service) documentation.
+const LEFT_TILES = [
+  { cls: "top-photo", src: "/mock/annadhanam-buffet.jpg" },
+  { cls: "main-photo", src: "/mock/annadhanam-tray-1.jpg" },
+  { cls: "bottom-photo", src: "/mock/annadhanam-trays.jpg" },
+];
+const RIGHT_TILES = [
+  { cls: "top-photo", src: "/mock/annadhanam-trays.jpg" },
+  { cls: "secondary-photo", src: "/mock/annadhanam-hall.jpg" },
+  { cls: "bottom-photo", src: "/mock/annadhanam-buffet.jpg" },
+];
 
-function IyalMark() {
+const OBJECT_POSITION: Record<string, string> = {
+  "main-photo": "51% center",
+  "secondary-photo": "40% center",
+  "bottom-photo": "center 44%",
+};
+
+function PhotoColumn({ tiles, animation }: { tiles: typeof LEFT_TILES; animation: string }) {
+  const looped = [...tiles, ...tiles];
   return (
-    <svg width="37" height="37" viewBox="0 0 40 40" fill="none" aria-hidden>
-      <circle cx="20" cy="6" r="4" fill={IYAL_ORANGE} />
-      <path
-        d="M20 12C11 12 6 19 6 28C6 28 14 30 20 24C26 30 34 28 34 28C34 19 29 12 20 12Z"
-        fill={IYAL_MID_GREEN}
-      />
-      <path
-        d="M20 15C16 17 14 21 14 26C14 26 18 27 20 23C22 27 26 26 26 26C26 21 24 17 20 15Z"
-        fill={IYAL_DARK_GREEN}
-      />
-    </svg>
-  );
-}
-
-function GridPhoto({ src, area }: { src: string; area: string }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      className="h-full w-full object-cover"
-      style={{ gridArea: area, borderRadius: TILE_RADIUS }}
-    />
+    <div
+      className="flex flex-col"
+      style={{ width: TILE_W, flex: "0 0 auto", gap: ROW_GAP, animation: `${animation} 15s linear infinite` }}
+    >
+      {looped.map((tile, i) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={i}
+          src={tile.src}
+          alt=""
+          aria-hidden={i >= tiles.length}
+          className="object-cover"
+          style={{
+            width: TILE_W,
+            height: TILE_H,
+            flex: "0 0 auto",
+            borderRadius: TILE_RADIUS,
+            border: "1px solid rgba(255, 255, 255, 0.65)",
+            background: "#dbe7e2",
+            objectPosition: OBJECT_POSITION[tile.cls] ?? "center",
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
 /**
  * The Acts Feed's editorial card. The hero visual is the Iyal Impact
- * Foundation brand treatment: a quiet logo zone filling the left ~46% of
- * a shallow, wide panel, and a structured CSS-grid image treatment
- * filling the right ~54% -- one large main photo, two small photos
- * stacked beside it, and a shorter full-width photo below. Every tile
- * sits fully inside the hero's own bounds; only object-fit crops the
- * photo content, never the tile itself. placeName/photoUrls/lat/lng are
- * intentionally unused here (this hero is a fixed brand visual, not
- * derived from the Act's own data) but stay in the prop type for caller
- * compatibility. Straight into a large punchy headline and a short
- * description below -- no eyebrow, no category label, no metadata row.
+ * Foundation brand treatment, per the Featured Impact Card canvas
+ * design: a fixed 195px-tall panel, a quiet text-only "iyal." wordmark
+ * filling the left half, and two photo columns filling the right half
+ * that scroll continuously in opposite directions (left up, right
+ * down) -- each column holds its 3 photos twice back to back so the
+ * loop is seamless. placeName/photoUrls/lat/lng are intentionally
+ * unused here (this hero is a fixed brand visual, not derived from the
+ * Act's own data) but stay in the prop type for caller compatibility.
+ * Straight into a large punchy headline and a short description below
+ * -- no eyebrow, no category label, no metadata row.
  */
 export function EditorialActCard({ actId, title, description }: EditorialActCardProps) {
   return (
@@ -89,42 +107,27 @@ export function EditorialActCard({ actId, title, description }: EditorialActCard
       style={{ padding: CARD_PADDING }}
     >
       <div
-        className="flex w-full overflow-hidden rounded-[20px]"
-        style={{ aspectRatio: "1.65 / 1", background: IYAL_BG }}
+        className="flex w-full overflow-hidden rounded-[9px]"
+        style={{ height: 195, background: IYAL_BG }}
       >
-        <div className="flex items-center justify-center gap-3 px-4" style={{ width: LOGO_ZONE_W }}>
-          <IyalMark />
-          <div className="flex flex-col">
-            <span
-              className={`${inter.className} whitespace-nowrap`}
-              style={{ fontSize: 20, fontWeight: 700, color: IYAL_DARK_GREEN, lineHeight: 1.1 }}
-            >
-              iyal impact
+        <div className="flex items-center justify-center" style={{ width: "50%" }}>
+          <div className="flex flex-col items-start" style={{ width: 138, color: IYAL_TEXT }}>
+            <span className={`${inter.className}`} style={{ fontSize: 35, fontWeight: 800, letterSpacing: "-2.7px", lineHeight: 0.9 }}>
+              iyal<span style={{ color: IYAL_ORANGE }}>.</span>
             </span>
+            <span style={{ width: "100%", height: 1, margin: "8px 0 6px", background: IYAL_RULE }} />
             <span
-              className={`${inter.className} whitespace-nowrap`}
-              style={{ fontSize: 9, fontWeight: 600, letterSpacing: "2.1px", color: IYAL_MUTED_GREEN, marginTop: 4 }}
+              className={`${inter.className} whitespace-nowrap uppercase`}
+              style={{ fontSize: 9, fontWeight: 700, letterSpacing: "1.65px", lineHeight: 1.3 }}
             >
-              FOUNDATION
+              Impact Foundation
             </span>
           </div>
         </div>
 
-        <div
-          className="grid flex-1"
-          style={{
-            gridTemplateAreas: `"main small1" "main small2" "bottom bottom"`,
-            gridTemplateColumns: "1.3fr 1fr",
-            gridTemplateRows: "1fr 1fr 0.6fr",
-            gap: TILE_GAP,
-            padding: TILE_GAP,
-            paddingLeft: 0,
-          }}
-        >
-          <GridPhoto src="/mock/annadhanam-tray-1.jpg" area="main" />
-          <GridPhoto src="/mock/annadhanam-buffet.jpg" area="small1" />
-          <GridPhoto src="/mock/annadhanam-hall.jpg" area="small2" />
-          <GridPhoto src="/mock/annadhanam-trays.jpg" area="bottom" />
+        <div className="flex flex-1 items-center" style={{ gap: TILE_GAP, overflow: "visible" }}>
+          <PhotoColumn tiles={LEFT_TILES} animation="editorial-scroll-up" />
+          <PhotoColumn tiles={RIGHT_TILES} animation="editorial-scroll-down" />
         </div>
       </div>
 

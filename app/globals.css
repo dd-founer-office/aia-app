@@ -56,3 +56,17 @@ body {
 .font-tamil-serif {
   font-family: var(--font-tamil-serif), serif;
 }
+
+/* EditorialActCard's hero photo columns -- two columns of duplicated
+   tiles scrolling in opposite directions, per the Featured Impact Card
+   canvas design. translateY(-50%) moves by exactly one tile-set's own
+   height, so the loop is seamless regardless of tile size. */
+@keyframes editorial-scroll-up {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+@keyframes editorial-scroll-down {
+  from { transform: translateY(-50%); }
+  to { transform: translateY(0); }
+}
