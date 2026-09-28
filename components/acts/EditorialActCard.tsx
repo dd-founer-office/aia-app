@@ -25,7 +25,7 @@ export interface EditorialActCardProps {
 // filled with this so it reads as its own region inside the white card.
 const PAGE_BG = "#F2EFE7";
 
-const CARD_PADDING = 20;
+const CARD_PADDING = 8;
 // Height is fixed -- it doesn't need to track the card's width. Everything
 // horizontal below is percentage/calc-based instead of a fixed pixel
 // budget, so the composition actually fits the card on any phone width
@@ -34,17 +34,14 @@ const CARD_PADDING = 20;
 // the one it was tuned against).
 const HERO_H = 176;
 
-const HALF_GAP = 10;
-const HALF_STYLE = `calc(50% - ${HALF_GAP / 2}px)`;
+// Uniform 8px on every side of every tile: map-to-photos gap, the two
+// photo columns' gap, the gap above row 1, and the gap between the rows.
+const TILE_GAP = 8;
+const HALF_STYLE = `calc(50% - ${TILE_GAP / 2}px)`;
+const COL_STYLE = `calc(50% - ${TILE_GAP / 2}px)`;
 
-const COL_GAP = 10;
-const COL_STYLE = `calc(50% - ${COL_GAP / 2}px)`;
-
-// Deliberately much smaller than COL_GAP -- row 2 sits pulled up tight
-// against row 1, so the grid doesn't read as a uniform, matching-border
-// grid the way the two columns do.
-const ROW_GAP = 2;
-const TILE_TOP = 4;
+const ROW_GAP = TILE_GAP;
+const TILE_TOP = TILE_GAP;
 // Solved so row 2 is cropped to exactly 60% visible by HERO_H:
 // TILE_TOP + TILE_H + ROW_GAP + 0.6*TILE_H = HERO_H
 const TILE_H = (HERO_H - TILE_TOP - ROW_GAP) / 1.6;
@@ -53,11 +50,12 @@ const ROW2_TOP = TILE_TOP + TILE_H + ROW_GAP;
 /**
  * The hero visual's photo grid: two rows of two equal, taller tiles filling
  * the half (or, with no map, the full width) the map's own half leaves
- * free. Row 1 sits fully inside the hero card; row 2 is pulled up tight
- * against it and cropped to 60% visible by the card's own bottom edge, so
- * it reads as "more photos below" rather than a finished grid. Column
- * position/width are percentage-based so the grid holds its proportions at
- * any card width; only the vertical dimensions are fixed pixels.
+ * free, with a uniform 8px gap on every side of every tile. Row 1 sits
+ * fully inside the hero card; row 2 is cropped to 60% visible by the
+ * card's own bottom edge, so it reads as "more photos below" rather than a
+ * finished grid. Column position/width are percentage-based so the grid
+ * holds its proportions at any card width; only the vertical dimensions
+ * are fixed pixels.
  */
 const PHOTO_TILES = [
   { side: "left" as const, top: TILE_TOP, h: TILE_H },
@@ -93,7 +91,7 @@ export function EditorialActCard({
 }: EditorialActCardProps) {
   const hasMap = lat != null && lng != null;
   const photoHalfWidth = hasMap ? HALF_STYLE : "100%";
-  const photoHalfLeft = hasMap ? `calc(50% + ${HALF_GAP / 2}px)` : "0";
+  const photoHalfLeft = hasMap ? `calc(50% + ${TILE_GAP / 2}px)` : "0";
 
   const photos = PHOTO_TILES.slice(0, Math.min(photoUrls.length, PHOTO_TILES.length)).map((tile, i) => ({
     url: photoUrls[i],
