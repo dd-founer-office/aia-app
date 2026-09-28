@@ -25,7 +25,7 @@ export interface EditorialActCardProps {
 // filled with this so it reads as its own region inside the white card.
 const PAGE_BG = "#F2EFE7";
 
-const CARD_PADDING = 8;
+const CARD_PADDING = 10;
 // Height is fixed -- it doesn't need to track the card's width. Everything
 // horizontal below is percentage/calc-based instead of a fixed pixel
 // budget, so the composition actually fits the card on any phone width
@@ -34,9 +34,9 @@ const CARD_PADDING = 8;
 // the one it was tuned against).
 const HERO_H = 176;
 
-// Uniform 8px on every side of every tile: map-to-photos gap, the two
+// Uniform 10px on every side of every tile: map-to-photos gap, the two
 // photo columns' gap, the gap above row 1, and the gap between the rows.
-const TILE_GAP = 8;
+const TILE_GAP = 10;
 const HALF_STYLE = `calc(50% - ${TILE_GAP / 2}px)`;
 const COL_STYLE = `calc(50% - ${TILE_GAP / 2}px)`;
 
@@ -50,7 +50,7 @@ const ROW2_TOP = TILE_TOP + TILE_H + ROW_GAP;
 /**
  * The hero visual's photo grid: two rows of two equal, taller tiles filling
  * the half (or, with no map, the full width) the map's own half leaves
- * free, with a uniform 8px gap on every side of every tile. Row 1 sits
+ * free, with a uniform 10px gap on every side of every tile. Row 1 sits
  * fully inside the hero card; row 2 is cropped to 60% visible by the
  * card's own bottom edge, so it reads as "more photos below" rather than a
  * finished grid. Column position/width are percentage-based so the grid
@@ -75,10 +75,9 @@ const PHOTO_TILES = [
  * large punchy headline and a short description below -- no eyebrow, no
  * category label, no metadata row. The card itself is a white,
  * rounded-corner surface (per the reference); the hero visual sits on its
- * own panel inside it, filled with the page's own background color so the
- * map/photos read as a distinct region rather than bleeding into the
- * white card. Photo tiles carry a slight corner radius (the map does
- * not).
+ * own rounded panel inside it, filled with the page's own background
+ * color so the map/photos read as a distinct region rather than bleeding
+ * into the white card.
  */
 export function EditorialActCard({
   actId,
@@ -104,7 +103,7 @@ export function EditorialActCard({
       className="block rounded-[12px] bg-white shadow-[0_2px_14px_rgba(43,42,38,0.08)] transition-shadow duration-200 active:shadow-[0_8px_22px_rgba(43,42,38,0.14)]"
       style={{ padding: CARD_PADDING }}
     >
-      <div className="relative w-full overflow-hidden" style={{ height: HERO_H, background: PAGE_BG }}>
+      <div className="relative w-full overflow-hidden rounded-[6px]" style={{ height: HERO_H, background: PAGE_BG }}>
         {hasMap && (
           <div
             className="absolute left-0 top-0 shadow-[0_4px_12px_rgba(43,42,38,0.12)] [&_iframe]:rounded-none"
