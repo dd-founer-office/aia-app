@@ -1,7 +1,6 @@
 import Link from "next/link";
 import localFont from "next/font/local";
 import { Inter } from "next/font/google";
-import { MapEmbed } from "@/components/acts/living-trace/MapEmbed";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -9,7 +8,7 @@ const calSans = localFont({
   display: "swap",
 });
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "700"], display: "swap" });
 
 export interface EditorialActCardProps {
   actId: string;
@@ -21,129 +20,156 @@ export interface EditorialActCardProps {
   lng: number | null;
 }
 
-// Matches app/acts/page.tsx's own page background -- the hero panel is
-// filled with this so it reads as its own region inside the white card.
-const PAGE_BG = "#F2EFE7";
-
 const CARD_PADDING = 10;
 const HERO_H = 176;
 
-// Map takes the left third, photo grid the right two-thirds -- a wider,
-// more noticeable gap between them than between individual tiles, matching
-// the reference's clear separation between "identity" (badge) and
-// "evidence" (photos).
-const MAP_GAP = 14;
-const MAP_STYLE = `calc(33.333% - ${MAP_GAP / 2}px)`;
-const PHOTO_LEFT = `calc(33.333% + ${MAP_GAP / 2}px)`;
-const PHOTO_WIDTH = `calc(66.667% - ${MAP_GAP / 2}px)`;
+// Pale botanical mint -- the Iyal Impact reference's own background tone,
+// distinct from the app's page background, since this hero panel now
+// carries that reference's brand treatment literally (logo + palette),
+// not just its compositional language.
+const IYAL_BG = "#EAF2EC";
+const IYAL_DARK_GREEN = "#1F3D2B";
+const IYAL_MID_GREEN = "#2F5B3E";
+const IYAL_MUTED_GREEN = "#5B7A63";
+const IYAL_ORANGE = "#E2963C";
 
-// Inside the photo area: a tight gap between tiles (much smaller than
-// MAP_GAP), an uneven 2x2 grid -- one dominant tile, two narrower
-// supporting tiles at the dominant's own width, and a fourth tile at the
-// bottom-right that's the SAME size as its row-mate but deliberately
-// widened so it bleeds past the photo area's own right edge, cropped by
-// the hero panel's overflow -- horizontally only, never vertically, so
-// its full height still reads, just not its full width. Percentages are
-// relative to the photo area's own (fluid) width, so the grid holds its
-// proportions at any card width; only the row heights are fixed pixels.
-//
-// Per the Iyal Impact reference (soft, heavily-rounded collage tiles that
-// visibly bleed past the frame): the top row also bleeds past the panel's
-// own top edge, cropped the same way the bottom-right tile is cropped on
-// the right -- so the grid reads as a larger collage that's simply
-// continuing past the visible frame on more than one side.
+// Left = a large, quiet logo zone (~46% of the hero's width); right = an
+// oversized, staggered photo collage that fills the rest and bleeds past
+// the panel's own top, right and bottom edges -- the panel is a WINDOW
+// onto a larger collage, not a grid sized to fit inside it. Column widths
+// are percentages of the hero's own (fluid) width so the composition
+// holds its proportions at any card width; only row heights/offsets are
+// fixed pixels.
+const LOGO_ZONE_W = "46%";
+const COLLAGE_LEFT = "46%";
+const COL_GAP = 8;
+const COL_W = `calc(27% - ${COL_GAP / 2}px)`;
+const COL2_LEFT = `calc(73% + ${COL_GAP / 2}px)`;
+
 const TILE_GAP = 6;
-const CROP_BLEED = 28;
 const TOP_BLEED = 10;
+const BOTTOM_BLEED = 14;
+const RIGHT_BLEED = 22;
+const STAGGER = 16; // vertical offset between the two columns' bands
 const TILE_RADIUS = 16;
-const DOMINANT_W = `calc(58% - ${TILE_GAP / 2}px)`;
-const NARROW_LEFT = `calc(58% + ${TILE_GAP / 2}px)`;
-const NARROW_W = `calc(42% - ${TILE_GAP / 2}px)`;
-const CROPPED_W = `calc(42% - ${TILE_GAP / 2}px + ${CROP_BLEED}px)`;
 
-const ROW1_H = 106;
-const ROW_GAP = TILE_GAP;
-const ROW2_H = HERO_H - ROW1_H - ROW_GAP;
-const ROW2_TOP = ROW1_H + ROW_GAP;
+// Column 1: small accent tile (cropped top) -> dominant photo -> small
+// photo (cropped bottom). Column 2, staggered down by STAGGER: small
+// photo (cropped top) -> one tall dominant photo that bleeds past both
+// the hero's bottom AND right edges -- mirroring the reference's two
+// intentionally-cropped edges on its rightmost panel.
+const col1TileA = { top: -TOP_BLEED, height: 34 };
+const col1TileB = { top: col1TileA.top + col1TileA.height + TILE_GAP, height: 110 };
+const col1TileC = {
+  top: col1TileB.top + col1TileB.height + TILE_GAP,
+  height: HERO_H - (col1TileB.top + col1TileB.height + TILE_GAP) + BOTTOM_BLEED,
+};
 
-const PHOTO_TILES = [
-  { left: "0", top: -TOP_BLEED, width: DOMINANT_W, height: ROW1_H + TOP_BLEED },
-  { left: NARROW_LEFT, top: -TOP_BLEED, width: NARROW_W, height: ROW1_H + TOP_BLEED },
-  { left: "0", top: ROW2_TOP, width: NARROW_W, height: ROW2_H },
-  { left: NARROW_LEFT, top: ROW2_TOP, width: CROPPED_W, height: ROW2_H },
-];
+const col2TileD = { top: -TOP_BLEED + STAGGER, height: 34 };
+const col2TileE = {
+  top: col2TileD.top + col2TileD.height + TILE_GAP,
+  height: HERO_H - (col2TileD.top + col2TileD.height + TILE_GAP) + BOTTOM_BLEED,
+};
+
+function IyalMark() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 40 40" fill="none" aria-hidden>
+      <circle cx="20" cy="6" r="4" fill={IYAL_ORANGE} />
+      <path
+        d="M20 12C11 12 6 19 6 28C6 28 14 30 20 24C26 30 34 28 34 28C34 19 29 12 20 12Z"
+        fill={IYAL_MID_GREEN}
+      />
+      <path
+        d="M20 15C16 17 14 21 14 26C14 26 18 27 20 23C22 27 26 26 26 26C26 21 24 17 20 15Z"
+        fill={IYAL_DARK_GREEN}
+      />
+    </svg>
+  );
+}
 
 /**
- * The Acts Feed's editorial card. The visual area is its own "hero"
- * composition inside the card: a map filling the left third, and an
- * uneven photo grid filling the right two-thirds -- one dominant tile,
- * two supporting tiles at its own width, and a fourth tile cropped by the
- * hero panel's own right edge (same height as its row-mate, just wider
- * than the space left for it), so it's clear there's more evidence just
- * out of frame (per the approved Abyssale-reference direction:
- * https://claude.ai/artifact/DVBoo7zNZXoXrc1WYgthAt). The top row bleeds
- * past the panel's own top edge the same way, and every tile carries a
- * large, soft corner radius (per the Iyal Impact reference), so the
- * grid reads as a heavily-rounded photo collage continuing past the
- * visible frame on more than one side. Straight into a
- * large punchy headline and a short description below -- no eyebrow, no
- * category label, no metadata row. The card itself is a white,
- * rounded-corner surface; the hero visual sits on its own rounded panel
- * inside it, filled with the page's own background color so the
- * map/photos read as a distinct region rather than bleeding into the
- * white card.
+ * The Acts Feed's editorial card. The hero visual is now the literal Iyal
+ * Impact Foundation brand treatment (per direct reference, not just its
+ * style): a quiet logo zone filling the left ~46% of the panel, and an
+ * oversized, staggered photo collage filling the right side that bleeds
+ * past the panel's own top, right and bottom edges -- the panel reads as
+ * a cropped window onto a larger collage, not a grid sized to fit inside
+ * it. placeName/photoUrls/lat/lng are intentionally unused here (this
+ * hero is a fixed brand visual, not derived from the Act's own data) but
+ * stay in the prop type for caller compatibility. Straight into a large
+ * punchy headline and a short description below -- no eyebrow, no
+ * category label, no metadata row.
  */
-export function EditorialActCard({
-  actId,
-  title,
-  description,
-  placeName,
-  photoUrls,
-  lat,
-  lng,
-}: EditorialActCardProps) {
-  const hasMap = lat != null && lng != null;
-  const photoAreaLeft = hasMap ? PHOTO_LEFT : "0";
-  const photoAreaWidth = hasMap ? PHOTO_WIDTH : "100%";
-
-  const photos = PHOTO_TILES.slice(0, Math.min(photoUrls.length, PHOTO_TILES.length)).map((tile, i) => ({
-    url: photoUrls[i],
-    ...tile,
-  }));
-
+export function EditorialActCard({ actId, title, description }: EditorialActCardProps) {
   return (
     <Link
       href={`/acts/${actId}`}
       className="block rounded-[12px] bg-white shadow-[0_2px_14px_rgba(43,42,38,0.08)] transition-shadow duration-200 active:shadow-[0_8px_22px_rgba(43,42,38,0.14)]"
       style={{ padding: CARD_PADDING }}
     >
-      <div className="relative w-full overflow-hidden rounded-[20px]" style={{ height: HERO_H, background: PAGE_BG }}>
-        {hasMap && (
-          <div
-            className="absolute left-0 top-0 shadow-[0_4px_12px_rgba(43,42,38,0.12)] [&_iframe]:rounded-none"
-            style={{ width: MAP_STYLE, height: HERO_H }}
-          >
-            <MapEmbed lat={lat as number} lng={lng as number} locationLabel={placeName} compact heightClassName="h-full" />
+      <div className="relative w-full overflow-hidden rounded-[20px]" style={{ height: HERO_H, background: IYAL_BG }}>
+        <div
+          className="absolute left-0 top-0 flex items-center justify-center gap-2"
+          style={{ width: LOGO_ZONE_W, height: HERO_H }}
+        >
+          <IyalMark />
+          <div className="flex flex-col">
+            <span className={`${inter.className}`} style={{ fontSize: 15, fontWeight: 700, color: IYAL_DARK_GREEN, lineHeight: 1.1 }}>
+              iyal impact
+            </span>
+            <span
+              className={`${inter.className}`}
+              style={{ fontSize: 7, fontWeight: 600, letterSpacing: "1.6px", color: IYAL_MUTED_GREEN, marginTop: 3 }}
+            >
+              FOUNDATION
+            </span>
           </div>
-        )}
+        </div>
 
-        <div className="absolute top-0" style={{ left: photoAreaLeft, width: photoAreaWidth, height: HERO_H }}>
-          {photos.map((photo) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={photo.url}
-              src={photo.url}
-              alt=""
-              className="absolute z-[2] object-cover"
-              style={{
-                left: photo.left,
-                top: photo.top,
-                width: photo.width,
-                height: photo.height,
-                borderRadius: TILE_RADIUS,
-              }}
-            />
-          ))}
+        <div className="absolute top-0" style={{ left: COLLAGE_LEFT, width: "54%", height: HERO_H }}>
+          <div
+            className="absolute z-[2] flex overflow-hidden"
+            style={{ left: 0, top: col1TileA.top, width: COL_W, height: col1TileA.height, borderRadius: TILE_RADIUS }}
+          >
+            <div style={{ width: "44%", height: "100%", background: IYAL_ORANGE }} />
+            <div style={{ width: "56%", height: "100%", background: IYAL_DARK_GREEN }} />
+          </div>
+
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/mock/iyal-hands-soil.jpg"
+            alt=""
+            className="absolute z-[2] object-cover"
+            style={{ left: 0, top: col1TileB.top, width: COL_W, height: col1TileB.height, borderRadius: TILE_RADIUS }}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/mock/iyal-leaves.jpg"
+            alt=""
+            className="absolute z-[2] object-cover"
+            style={{ left: 0, top: col1TileC.top, width: COL_W, height: col1TileC.height, borderRadius: TILE_RADIUS }}
+          />
+
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/mock/iyal-leaf-dark.jpg"
+            alt=""
+            className="absolute z-[2] object-cover"
+            style={{ left: COL2_LEFT, top: col2TileD.top, width: COL_W, height: col2TileD.height, borderRadius: TILE_RADIUS }}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/mock/iyal-sapling.jpg"
+            alt=""
+            className="absolute z-[2] object-cover"
+            style={{
+              left: COL2_LEFT,
+              top: col2TileE.top,
+              width: `calc(${COL_W} + ${RIGHT_BLEED}px)`,
+              height: col2TileE.height,
+              borderRadius: TILE_RADIUS,
+            }}
+          />
         </div>
       </div>
 
