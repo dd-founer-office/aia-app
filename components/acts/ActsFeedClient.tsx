@@ -48,8 +48,6 @@ export function ActsFeedClient({ featured, recentActs, sharedActs }: ActsFeedCli
               photoUrls={featured.photoUrls}
               lat={featured.lat}
               lng={featured.lng}
-              isSharedAct={featured.isSharedAct}
-              contributorCount={featured.contributorCount}
               variant={0}
             />
           </div>
@@ -124,8 +122,6 @@ export function ActsFeedClient({ featured, recentActs, sharedActs }: ActsFeedCli
                 photoUrls={act.photoUrls}
                 lat={act.lat}
                 lng={act.lng}
-                isSharedAct={act.isSharedAct}
-                contributorCount={act.contributorCount}
                 variant={i}
               />
             ))}
