@@ -28,26 +28,30 @@ const HALF_W = (FULL_W - HALF_GAP) / 2;
 // Height is the previous compositions' average row height (~141) plus 25%.
 const HERO_H = 176;
 
-const TILE_GAP = 10;
+const COL_GAP = 10;
+// Deliberately smaller than COL_GAP -- row 2 sits closer to row 1 than the
+// two columns sit to each other, so the grid doesn't read as a uniform,
+// matching-border grid.
+const ROW_GAP = 6;
 const TILE_TOP = 4;
-const TILE_W = (HALF_W - TILE_GAP) / 2;
-// Solved so row 2 sits exactly half-cropped by HERO_H:
-// TILE_TOP + TILE_H + TILE_GAP + TILE_H/2 = HERO_H
-const TILE_H = (HERO_H - TILE_TOP - TILE_GAP) / 1.5;
+const TILE_W = (HALF_W - COL_GAP) / 2;
+// Solved so row 2 is cropped to exactly 60% visible by HERO_H:
+// TILE_TOP + TILE_H + ROW_GAP + 0.6*TILE_H = HERO_H
+const TILE_H = (HERO_H - TILE_TOP - ROW_GAP) / 1.6;
 
 /**
  * The hero visual's photo grid: two rows of two equal, taller tiles against
  * the HALF_W-wide slot the map's other half leaves free. Row 1 sits fully
- * inside the hero card; row 2 is cropped exactly in half by the card's own
+ * inside the hero card; row 2 is cropped to 60% visible by the card's own
  * bottom edge, so it reads as "more photos below" rather than a finished
  * grid. When an Act has no GPS coordinates the map is dropped and this same
  * grid is simply centered across the full visual width instead.
  */
 const PHOTO_TILES = [
   { x: 0, y: TILE_TOP, w: TILE_W, h: TILE_H },
-  { x: TILE_W + TILE_GAP, y: TILE_TOP, w: TILE_W, h: TILE_H },
-  { x: 0, y: TILE_TOP + TILE_H + TILE_GAP, w: TILE_W, h: TILE_H },
-  { x: TILE_W + TILE_GAP, y: TILE_TOP + TILE_H + TILE_GAP, w: TILE_W, h: TILE_H },
+  { x: TILE_W + COL_GAP, y: TILE_TOP, w: TILE_W, h: TILE_H },
+  { x: 0, y: TILE_TOP + TILE_H + ROW_GAP, w: TILE_W, h: TILE_H },
+  { x: TILE_W + COL_GAP, y: TILE_TOP + TILE_H + ROW_GAP, w: TILE_W, h: TILE_H },
 ];
 
 /**
@@ -59,9 +63,10 @@ const PHOTO_TILES = [
  * approved Abyssale-reference direction:
  * https://claude.ai/artifact/DVBoo7zNZXoXrc1WYgthAt). Straight into a
  * large punchy headline and a short description below -- no eyebrow, no
- * category label, no metadata row, no card border, no rounded corners on
- * the visual tiles. Default sits flush on the page's own background; the
- * only "selected" treatment is the surface turning plain white on press.
+ * category label, no metadata row, no card border. Photo tiles carry a
+ * slight corner radius (the map does not). Default sits flush on the
+ * page's own background; the only "selected" treatment is the surface
+ * turning plain white on press.
  */
 export function EditorialActCard({
   actId,
@@ -102,7 +107,7 @@ export function EditorialActCard({
             key={photo.url}
             src={photo.url}
             alt=""
-            className="absolute z-[2] object-cover"
+            className="absolute z-[2] rounded-[6px] object-cover"
             style={{ left: photo.x, top: photo.y, width: photo.w, height: photo.h }}
           />
         ))}
