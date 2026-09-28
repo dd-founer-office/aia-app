@@ -151,7 +151,7 @@ export function EditorialActCard({
           <img
             src={hiddenPhoto.url}
             alt=""
-            className="absolute z-[1] rounded-[10px] object-cover"
+            className="absolute z-[1] object-cover"
             style={{ left: hiddenPhoto.x, top: hiddenPhoto.y, width: hiddenPhoto.w, height: hiddenPhoto.h }}
           />
         )}
@@ -162,14 +162,14 @@ export function EditorialActCard({
             key={photo.url}
             src={photo.url}
             alt=""
-            className="absolute z-[2] rounded-[10px] object-cover"
+            className="absolute z-[2] object-cover"
             style={{ left: photo.x, top: photo.y, width: photo.w, height: photo.h }}
           />
         ))}
 
         {hasMap && (
           <div
-            className="absolute z-[3] overflow-hidden rounded-xl shadow-[0_4px_12px_rgba(43,42,38,0.12)]"
+            className="absolute z-[3] overflow-hidden shadow-[0_4px_12px_rgba(43,42,38,0.12)] [&_iframe]:rounded-none"
             style={{ left: mapX, top: 0, width: MAP_SIZE, height: MAP_SIZE }}
           >
             <MapEmbed lat={lat as number} lng={lng as number} locationLabel={placeName} compact heightClassName="h-full" />

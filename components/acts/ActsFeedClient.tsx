@@ -1,39 +1,52 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { EditorialActCard } from "@/components/acts/EditorialActCard";
 import { Button } from "@/components/shared/Button";
-import { Chip } from "@/components/shared/Chip";
 import { SectionHeader } from "@/components/shared/SectionHeader";
-import { CAUSES } from "@/types/participation";
 import type { ActFeedItem } from "@/lib/acts-feed";
-
-const PAGE_SIZE = 10;
-const CAUSE_FILTERS = ["All", ...CAUSES.map((cause) => cause.title)];
 
 export interface ActsFeedClientProps {
   featured: ActFeedItem | null;
-  recentActs: ActFeedItem[];
   sharedActs: ActFeedItem[];
 }
 
 /**
- * CA-010 Acts Feed's interactive half: Cause Filters (Section 2, applies
- * to Recent Acts only, per the locked section order) and Load More
- * pagination (Section 5, "max 10 initial, +10 per click, no infinite
- * scroll" -- locked). Featured Impact (Section 1) and Shared Acts of Aram
- * (Section 4) are both static, server-computed splits passed in as props.
+ * Temporary design-review filler (2026-09-28): most contributor accounts on
+ * this branch only have one real published Act, so the feed below Featured
+ * was empty. Two illustrative Acts, standing in until there's enough real
+ * data to fill the rhythm -- remove once the feed has real Recent Acts
+ * again. Photos are generated placeholder tiles (public/mock/), never real
+ * evidence.
  */
-export function ActsFeedClient({ featured, recentActs, sharedActs }: ActsFeedClientProps) {
-  const [selectedCause, setSelectedCause] = useState("All");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+const MOCK_ACTS = [
+  {
+    id: "mock-meal-shared",
+    headline: "A Meal Shared, A Need Met",
+    supportingCopy:
+      "Volunteers prepared and served warm meals through the afternoon, one plate handed over at a time.",
+    placeName: "Dubai, UAE",
+    photoUrls: ["/mock/meal-1.jpg", "/mock/meal-2.jpg", "/mock/meal-3.jpg"],
+    lat: 25.2048,
+    lng: 55.2708,
+  },
+  {
+    id: "mock-books-madurai",
+    headline: "Books Find Their Way to Madurai",
+    supportingCopy:
+      "A small classroom received fresh notebooks and a few extra hands to help children get back to their lessons.",
+    placeName: "Madurai, India",
+    photoUrls: ["/mock/books-1.jpg", "/mock/books-2.jpg", "/mock/books-3.jpg"],
+    lat: 9.9252,
+    lng: 78.1198,
+  },
+];
 
-  const filteredRecent =
-    selectedCause === "All" ? recentActs : recentActs.filter((act) => act.category === selectedCause);
-  const visibleRecent = filteredRecent.slice(0, visibleCount);
-  const hasMore = filteredRecent.length > visibleCount;
-
+/**
+ * CA-010 Acts Feed. Featured Impact (Section 1) and Shared Acts of Aram
+ * (Section 4) are static, server-computed splits passed in as props. Cause
+ * Filters and the Recent Acts list/Load More (Sections 2-3) are removed for
+ * now -- see MOCK_ACTS above.
+ */
+export function ActsFeedClient({ featured, sharedActs }: ActsFeedClientProps) {
   return (
     <>
       {featured && (
@@ -54,60 +67,24 @@ export function ActsFeedClient({ featured, recentActs, sharedActs }: ActsFeedCli
         </section>
       )}
 
-      <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
-        {CAUSE_FILTERS.map((cause) => (
-          <Chip
-            key={cause}
-            selected={selectedCause === cause}
-            onClick={() => {
-              setSelectedCause(cause);
-              setVisibleCount(PAGE_SIZE);
-            }}
-            className="shrink-0"
-          >
-            {cause}
-          </Chip>
+      <div className="flex flex-col gap-8">
+        {MOCK_ACTS.map((act, i) => (
+          <EditorialActCard
+            key={act.id}
+            actId={act.id}
+            title={act.headline}
+            description={act.supportingCopy}
+            placeName={act.placeName}
+            photoUrls={act.photoUrls}
+            lat={act.lat}
+            lng={act.lng}
+            variant={i + 1}
+          />
         ))}
       </div>
 
-      <section>
-        <SectionHeader title="Recent Acts of Aram" />
-        {visibleRecent.length > 0 ? (
-          <div className="mt-3 flex flex-col gap-8">
-            {visibleRecent.map((act, i) => (
-              <EditorialActCard
-                key={act.id}
-                actId={act.id}
-                title={act.headline}
-                description={act.supportingCopy}
-                placeName={act.placeName}
-                photoUrls={act.photoUrls}
-                lat={act.lat}
-                lng={act.lng}
-                variant={i}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">
-            No Acts of Aram for this cause yet.
-          </p>
-        )}
-        {hasMore && (
-          <Button
-            variant="secondary"
-            className="mt-6 self-center"
-            onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-          >
-            View More Acts
-          </Button>
-        )}
-      </section>
-
       {/* Shared Acts of Aram (CA-010 Section 4). Locked rule: "No Shared
-          Acts -- Hide section entirely." Not affected by the cause filter
-          above -- the locked spec pairs filters with the Recent Acts feed
-          specifically (Section 2 -> Section 3), not this section. */}
+          Acts -- Hide section entirely." */}
       {sharedActs.length > 0 && (
         <section>
           <SectionHeader title="Shared Acts of Aram" />

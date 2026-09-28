@@ -44,7 +44,6 @@ export default async function ActsPage() {
 
   const [featured, ...rest] = acts;
   const sharedActs = rest.filter((act) => act.isSharedAct);
-  const recentActs = rest.filter((act) => !act.isSharedAct);
 
   return (
     // Editorial redesign (2026-09-28, canvas-reviewed:
@@ -59,7 +58,7 @@ export default async function ActsPage() {
     <div className="flex min-h-screen flex-col" style={{ background: "#F2EFE7" }}>
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 pb-28 pt-7">
         {acts.length > 0 ? (
-          <ActsFeedClient featured={featured ?? null} recentActs={recentActs} sharedActs={sharedActs} />
+          <ActsFeedClient featured={featured ?? null} sharedActs={sharedActs} />
         ) : (
           <ActsEmptyState />
         )}
