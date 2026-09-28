@@ -46,8 +46,16 @@ const PHOTO_WIDTH = `calc(66.667% - ${MAP_GAP / 2}px)`;
 // its full height still reads, just not its full width. Percentages are
 // relative to the photo area's own (fluid) width, so the grid holds its
 // proportions at any card width; only the row heights are fixed pixels.
+//
+// Per the Iyal Impact reference (soft, heavily-rounded collage tiles that
+// visibly bleed past the frame): the top row also bleeds past the panel's
+// own top edge, cropped the same way the bottom-right tile is cropped on
+// the right -- so the grid reads as a larger collage that's simply
+// continuing past the visible frame on more than one side.
 const TILE_GAP = 6;
 const CROP_BLEED = 28;
+const TOP_BLEED = 10;
+const TILE_RADIUS = 16;
 const DOMINANT_W = `calc(58% - ${TILE_GAP / 2}px)`;
 const NARROW_LEFT = `calc(58% + ${TILE_GAP / 2}px)`;
 const NARROW_W = `calc(42% - ${TILE_GAP / 2}px)`;
@@ -59,8 +67,8 @@ const ROW2_H = HERO_H - ROW1_H - ROW_GAP;
 const ROW2_TOP = ROW1_H + ROW_GAP;
 
 const PHOTO_TILES = [
-  { left: "0", top: 0, width: DOMINANT_W, height: ROW1_H },
-  { left: NARROW_LEFT, top: 0, width: NARROW_W, height: ROW1_H },
+  { left: "0", top: -TOP_BLEED, width: DOMINANT_W, height: ROW1_H + TOP_BLEED },
+  { left: NARROW_LEFT, top: -TOP_BLEED, width: NARROW_W, height: ROW1_H + TOP_BLEED },
   { left: "0", top: ROW2_TOP, width: NARROW_W, height: ROW2_H },
   { left: NARROW_LEFT, top: ROW2_TOP, width: CROPPED_W, height: ROW2_H },
 ];
@@ -73,7 +81,11 @@ const PHOTO_TILES = [
  * hero panel's own right edge (same height as its row-mate, just wider
  * than the space left for it), so it's clear there's more evidence just
  * out of frame (per the approved Abyssale-reference direction:
- * https://claude.ai/artifact/DVBoo7zNZXoXrc1WYgthAt). Straight into a
+ * https://claude.ai/artifact/DVBoo7zNZXoXrc1WYgthAt). The top row bleeds
+ * past the panel's own top edge the same way, and every tile carries a
+ * large, soft corner radius (per the Iyal Impact reference), so the
+ * grid reads as a heavily-rounded photo collage continuing past the
+ * visible frame on more than one side. Straight into a
  * large punchy headline and a short description below -- no eyebrow, no
  * category label, no metadata row. The card itself is a white,
  * rounded-corner surface; the hero visual sits on its own rounded panel
@@ -105,7 +117,7 @@ export function EditorialActCard({
       className="block rounded-[12px] bg-white shadow-[0_2px_14px_rgba(43,42,38,0.08)] transition-shadow duration-200 active:shadow-[0_8px_22px_rgba(43,42,38,0.14)]"
       style={{ padding: CARD_PADDING }}
     >
-      <div className="relative w-full overflow-hidden rounded-[6px]" style={{ height: HERO_H, background: PAGE_BG }}>
+      <div className="relative w-full overflow-hidden rounded-[20px]" style={{ height: HERO_H, background: PAGE_BG }}>
         {hasMap && (
           <div
             className="absolute left-0 top-0 shadow-[0_4px_12px_rgba(43,42,38,0.12)] [&_iframe]:rounded-none"
@@ -122,8 +134,14 @@ export function EditorialActCard({
               key={photo.url}
               src={photo.url}
               alt=""
-              className="absolute z-[2] rounded-[6px] object-cover"
-              style={{ left: photo.left, top: photo.top, width: photo.width, height: photo.height }}
+              className="absolute z-[2] object-cover"
+              style={{
+                left: photo.left,
+                top: photo.top,
+                width: photo.width,
+                height: photo.height,
+                borderRadius: TILE_RADIUS,
+              }}
             />
           ))}
         </div>
