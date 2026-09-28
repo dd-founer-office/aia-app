@@ -26,36 +26,44 @@ export interface EditorialActCardProps {
 const PAGE_BG = "#F2EFE7";
 
 const CARD_PADDING = 20;
-const FULL_W = 310;
-const HALF_GAP = 10;
-const HALF_W = (FULL_W - HALF_GAP) / 2;
-// Height is the previous compositions' average row height (~141) plus 25%.
+// Height is fixed -- it doesn't need to track the card's width. Everything
+// horizontal below is percentage/calc-based instead of a fixed pixel
+// budget, so the composition actually fits the card on any phone width
+// (a fixed-width version bled past the card's right edge on narrower
+// screens once CARD_PADDING was subtracted from a viewport narrower than
+// the one it was tuned against).
 const HERO_H = 176;
 
+const HALF_GAP = 10;
+const HALF_STYLE = `calc(50% - ${HALF_GAP / 2}px)`;
+
 const COL_GAP = 10;
+const COL_STYLE = `calc(50% - ${COL_GAP / 2}px)`;
+
 // Deliberately much smaller than COL_GAP -- row 2 sits pulled up tight
 // against row 1, so the grid doesn't read as a uniform, matching-border
 // grid the way the two columns do.
 const ROW_GAP = 2;
 const TILE_TOP = 4;
-const TILE_W = (HALF_W - COL_GAP) / 2;
 // Solved so row 2 is cropped to exactly 60% visible by HERO_H:
 // TILE_TOP + TILE_H + ROW_GAP + 0.6*TILE_H = HERO_H
 const TILE_H = (HERO_H - TILE_TOP - ROW_GAP) / 1.6;
+const ROW2_TOP = TILE_TOP + TILE_H + ROW_GAP;
 
 /**
- * The hero visual's photo grid: two rows of two equal, taller tiles against
- * the HALF_W-wide slot the map's other half leaves free. Row 1 sits fully
- * inside the hero card; row 2 is cropped to 60% visible by the card's own
- * bottom edge, so it reads as "more photos below" rather than a finished
- * grid. When an Act has no GPS coordinates the map is dropped and this same
- * grid is simply centered across the full visual width instead.
+ * The hero visual's photo grid: two rows of two equal, taller tiles filling
+ * the half (or, with no map, the full width) the map's own half leaves
+ * free. Row 1 sits fully inside the hero card; row 2 is pulled up tight
+ * against it and cropped to 60% visible by the card's own bottom edge, so
+ * it reads as "more photos below" rather than a finished grid. Column
+ * position/width are percentage-based so the grid holds its proportions at
+ * any card width; only the vertical dimensions are fixed pixels.
  */
 const PHOTO_TILES = [
-  { x: 0, y: TILE_TOP, w: TILE_W, h: TILE_H },
-  { x: TILE_W + COL_GAP, y: TILE_TOP, w: TILE_W, h: TILE_H },
-  { x: 0, y: TILE_TOP + TILE_H + ROW_GAP, w: TILE_W, h: TILE_H },
-  { x: TILE_W + COL_GAP, y: TILE_TOP + TILE_H + ROW_GAP, w: TILE_W, h: TILE_H },
+  { side: "left" as const, top: TILE_TOP, h: TILE_H },
+  { side: "right" as const, top: TILE_TOP, h: TILE_H },
+  { side: "left" as const, top: ROW2_TOP, h: TILE_H },
+  { side: "right" as const, top: ROW2_TOP, h: TILE_H },
 ];
 
 /**
@@ -84,14 +92,12 @@ export function EditorialActCard({
   lng,
 }: EditorialActCardProps) {
   const hasMap = lat != null && lng != null;
-  const photoOriginX = hasMap ? HALF_W + HALF_GAP : (FULL_W - HALF_W) / 2;
+  const photoHalfWidth = hasMap ? HALF_STYLE : "100%";
+  const photoHalfLeft = hasMap ? `calc(50% + ${HALF_GAP / 2}px)` : "0";
 
   const photos = PHOTO_TILES.slice(0, Math.min(photoUrls.length, PHOTO_TILES.length)).map((tile, i) => ({
     url: photoUrls[i],
-    x: photoOriginX + tile.x,
-    y: tile.y,
-    w: tile.w,
-    h: tile.h,
+    ...tile,
   }));
 
   return (
@@ -100,23 +106,33 @@ export function EditorialActCard({
       className="block rounded-[20px] bg-white shadow-[0_2px_14px_rgba(43,42,38,0.08)] transition-shadow duration-200 active:shadow-[0_8px_22px_rgba(43,42,38,0.14)]"
       style={{ padding: CARD_PADDING }}
     >
-      <div className="relative overflow-hidden" style={{ width: FULL_W, height: HERO_H, background: PAGE_BG }}>
+      <div className="relative w-full overflow-hidden" style={{ height: HERO_H, background: PAGE_BG }}>
         {hasMap && (
-          <div className="absolute left-0 top-0 shadow-[0_4px_12px_rgba(43,42,38,0.12)] [&_iframe]:rounded-none" style={{ width: HALF_W, height: HERO_H }}>
+          <div
+            className="absolute left-0 top-0 shadow-[0_4px_12px_rgba(43,42,38,0.12)] [&_iframe]:rounded-none"
+            style={{ width: HALF_STYLE, height: HERO_H }}
+          >
             <MapEmbed lat={lat as number} lng={lng as number} locationLabel={placeName} compact heightClassName="h-full" />
           </div>
         )}
 
-        {photos.map((photo) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={photo.url}
-            src={photo.url}
-            alt=""
-            className="absolute z-[2] rounded-[6px] object-cover"
-            style={{ left: photo.x, top: photo.y, width: photo.w, height: photo.h }}
-          />
-        ))}
+        <div className="absolute top-0" style={{ left: photoHalfLeft, width: photoHalfWidth, height: HERO_H }}>
+          {photos.map((photo) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={photo.url}
+              src={photo.url}
+              alt=""
+              className="absolute z-[2] rounded-[6px] object-cover"
+              style={{
+                [photo.side]: 0,
+                top: photo.top,
+                width: COL_STYLE,
+                height: photo.h,
+              }}
+            />
+          ))}
+        </div>
       </div>
 
       <h2 className={`${calSans.className} m-0`} style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.12, letterSpacing: "-0.4px", color: "#221F1A", marginTop: 28 }}>
