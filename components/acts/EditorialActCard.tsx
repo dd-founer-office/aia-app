@@ -29,40 +29,25 @@ const IYAL_MUTED_GREEN = "#5B7A63";
 const IYAL_ORANGE = "#E2963C";
 const TILE_RADIUS = 16;
 
-// The hero is a wide, cinematic window (not a tall illustration): a fixed
-// 2:1 aspect ratio, full card width, so it holds its shape at any card
-// size instead of being tall enough to fit every tile.
+// The hero is a wide, cinematic window: a fixed aspect ratio close to
+// 1.65:1 (~200px tall on a ~330px-wide mobile card), full card width, so
+// it holds its shape at any card size.
 const LOGO_ZONE_W = "50%";
 
-// The collage is a virtual canvas MUCH larger than the visible hero --
-// 165% of the hero's width, 130% of its height -- positioned so it
-// overflows the hero's top, right and bottom edges. Every photo panel
-// below is positioned against this canvas, not the hero itself, so the
-// hero reads as a cropped window onto a larger collage rather than a
-// grid sized to fit inside it. All panel geometry is expressed first in
-// hero-relative percentages (matching how the reference's proportions
-// were measured), then converted to canvas-relative percentages via
-// toCanvasPct/toCanvasLen, since CSS percentages on an absolutely
-// positioned child resolve against its own containing block (the
-// canvas), not the hero.
-const CANVAS_LEFT = 45;
-const CANVAS_TOP = -15;
-const CANVAS_W = 165;
-const CANVAS_H = 130;
-
-function toCanvasLeft(heroPct: number) {
-  return `${((heroPct - CANVAS_LEFT) / CANVAS_W) * 100}%`;
-}
-function toCanvasTop(heroPct: number) {
-  return `${((heroPct - CANVAS_TOP) / CANVAS_H) * 100}%`;
-}
-function toCanvasWidth(heroPct: number) {
-  return `${(heroPct / CANVAS_W) * 100}%`;
-}
-function toCanvasHeight(heroPct: number) {
-  return `${(heroPct / CANVAS_H) * 100}%`;
-}
-
+// The collage panels are positioned directly against the hero itself
+// using hero-relative percentages that are allowed to go negative or
+// past 100 -- CSS resolves percentages arithmetically regardless of
+// whether the result lands outside the parent's own box, so a panel at
+// e.g. left:82% width:24% (right edge at 106%) simply renders 6% of its
+// own width past the hero's right edge, clipped by the hero's own
+// overflow:hidden. That's the whole mechanism: no separate oversized
+// "canvas" wrapper is needed, just panels sized and placed larger/
+// further than the visible frame. Three substantial photos -- one
+// dominant, one far-right vertical, one bottom horizontal -- plus one
+// small flat accent block, deliberately overlapping each other so nothing
+// reads as a tidy, evenly-spaced grid. Photos are real annadhanam (elder
+// meal-service) documentation -- actual evidence of a real Act, not
+// stock or generated imagery.
 interface PanelSpec {
   src: string;
   left: number;
@@ -72,22 +57,16 @@ interface PanelSpec {
   z: number;
 }
 
-// Five panels, sized and placed in hero-relative percent per the
-// reference's measured geometry: A is the dominant, largest, most
-// legible panel; B and C are pushed past the top/right edges so only
-// part of them shows; D sits mostly below the hero's bottom edge so
-// only its upper slice reads; E is a small flat accent block (not a
-// photo) for the "subtle earthy accent" detail. Photos are real
-// annadhanam (elder meal-service) documentation -- actual evidence of
-// a real Act, not stock or generated imagery.
 const PANELS: PanelSpec[] = [
-  { src: "/mock/annadhanam-tray-1.jpg", left: 50, top: -6, width: 27, height: 84, z: 4 },
-  { src: "/mock/annadhanam-buffet.jpg", left: 72, top: -10, width: 17, height: 40, z: 3 },
-  { src: "/mock/annadhanam-hall.jpg", left: 88, top: 15, width: 17, height: 75, z: 1 },
-  { src: "/mock/annadhanam-trays.jpg", left: 52, top: 76, width: 34, height: 44, z: 2 },
+  // Dominant: the main visual anchor, nearly the full hero height.
+  { src: "/mock/annadhanam-tray-1.jpg", left: 48, top: -2, width: 42, height: 96, z: 4 },
+  // Far-right vertical: bleeds past the hero's right edge.
+  { src: "/mock/annadhanam-hall.jpg", left: 82, top: 8, width: 24, height: 85, z: 1 },
+  // Bottom horizontal: peeks out from under the dominant photo, cropped by the hero's bottom edge.
+  { src: "/mock/annadhanam-trays.jpg", left: 58, top: 70, width: 39, height: 36, z: 2 },
 ];
 
-const ACCENT_PANEL = { left: 65, top: 82, width: 9, height: 24, z: 5 };
+const ACCENT_PANEL = { left: 68, top: -6, width: 10, height: 18, z: 5 };
 
 function IyalMark() {
   return (
@@ -108,16 +87,14 @@ function IyalMark() {
 /**
  * The Acts Feed's editorial card. The hero visual is the Iyal Impact
  * Foundation brand treatment: a quiet logo zone filling the left half of
- * a fixed 2:1-aspect panel, and a photo collage canvas -- sized 165% x
- * 130% of the panel itself -- positioned so it overflows the panel's
- * top, right and bottom edges. Individual panels are placed against
- * that oversized canvas (not the visible panel), so what's visible is a
- * cropped window onto a larger collage, never a grid that's been sized
- * to fit. placeName/photoUrls/lat/lng are intentionally unused here
- * (this hero is a fixed brand visual, not derived from the Act's own
- * data) but stay in the prop type for caller compatibility. Straight
- * into a large punchy headline and a short description below -- no
- * eyebrow, no category label, no metadata row.
+ * a fixed ~1.65:1-aspect panel, and three large, overlapping photo
+ * panels sized and placed so they bleed past the panel's own right and
+ * bottom edges -- a cropped window onto a larger collage, not a grid
+ * sized to fit inside it. placeName/photoUrls/lat/lng are intentionally
+ * unused here (this hero is a fixed brand visual, not derived from the
+ * Act's own data) but stay in the prop type for caller compatibility.
+ * Straight into a large punchy headline and a short description below --
+ * no eyebrow, no category label, no metadata row.
  */
 export function EditorialActCard({ actId, title, description }: EditorialActCardProps) {
   return (
@@ -128,7 +105,7 @@ export function EditorialActCard({ actId, title, description }: EditorialActCard
     >
       <div
         className="relative w-full overflow-hidden rounded-[20px]"
-        style={{ aspectRatio: "2 / 1", background: IYAL_BG }}
+        style={{ aspectRatio: "1.65 / 1", background: IYAL_BG }}
       >
         <div
           className="absolute left-0 top-0 z-10 flex h-full items-center justify-center gap-3 px-4"
@@ -151,42 +128,37 @@ export function EditorialActCard({ actId, title, description }: EditorialActCard
           </div>
         </div>
 
-        <div
-          className="absolute"
-          style={{ left: `${CANVAS_LEFT}%`, top: `${CANVAS_TOP}%`, width: `${CANVAS_W}%`, height: `${CANVAS_H}%` }}
-        >
-          {PANELS.map((panel) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={panel.src}
-              src={panel.src}
-              alt=""
-              className="absolute object-cover"
-              style={{
-                left: toCanvasLeft(panel.left),
-                top: toCanvasTop(panel.top),
-                width: toCanvasWidth(panel.width),
-                height: toCanvasHeight(panel.height),
-                borderRadius: TILE_RADIUS,
-                zIndex: panel.z,
-              }}
-            />
-          ))}
-
-          <div
-            className="absolute flex overflow-hidden"
+        {PANELS.map((panel) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={panel.src}
+            src={panel.src}
+            alt=""
+            className="absolute object-cover"
             style={{
-              left: toCanvasLeft(ACCENT_PANEL.left),
-              top: toCanvasTop(ACCENT_PANEL.top),
-              width: toCanvasWidth(ACCENT_PANEL.width),
-              height: toCanvasHeight(ACCENT_PANEL.height),
+              left: `${panel.left}%`,
+              top: `${panel.top}%`,
+              width: `${panel.width}%`,
+              height: `${panel.height}%`,
               borderRadius: TILE_RADIUS,
-              zIndex: ACCENT_PANEL.z,
+              zIndex: panel.z,
             }}
-          >
-            <div style={{ width: "44%", height: "100%", background: IYAL_ORANGE }} />
-            <div style={{ width: "56%", height: "100%", background: IYAL_DARK_GREEN }} />
-          </div>
+          />
+        ))}
+
+        <div
+          className="absolute flex overflow-hidden"
+          style={{
+            left: `${ACCENT_PANEL.left}%`,
+            top: `${ACCENT_PANEL.top}%`,
+            width: `${ACCENT_PANEL.width}%`,
+            height: `${ACCENT_PANEL.height}%`,
+            borderRadius: TILE_RADIUS,
+            zIndex: ACCENT_PANEL.z,
+          }}
+        >
+          <div style={{ width: "44%", height: "100%", background: IYAL_ORANGE }} />
+          <div style={{ width: "56%", height: "100%", background: IYAL_DARK_GREEN }} />
         </div>
       </div>
 
