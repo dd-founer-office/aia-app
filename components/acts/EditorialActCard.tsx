@@ -21,6 +21,10 @@ export interface EditorialActCardProps {
   lng: number | null;
 }
 
+// Matches app/acts/page.tsx's own page background -- the hero panel is
+// filled with this so it reads as its own region inside the white card.
+const PAGE_BG = "#F2EFE7";
+
 const CARD_PADDING = 20;
 const FULL_W = 310;
 const HALF_GAP = 10;
@@ -29,10 +33,10 @@ const HALF_W = (FULL_W - HALF_GAP) / 2;
 const HERO_H = 176;
 
 const COL_GAP = 10;
-// Deliberately smaller than COL_GAP -- row 2 sits closer to row 1 than the
-// two columns sit to each other, so the grid doesn't read as a uniform,
-// matching-border grid.
-const ROW_GAP = 6;
+// Deliberately much smaller than COL_GAP -- row 2 sits pulled up tight
+// against row 1, so the grid doesn't read as a uniform, matching-border
+// grid the way the two columns do.
+const ROW_GAP = 2;
 const TILE_TOP = 4;
 const TILE_W = (HALF_W - COL_GAP) / 2;
 // Solved so row 2 is cropped to exactly 60% visible by HERO_H:
@@ -63,10 +67,12 @@ const PHOTO_TILES = [
  * approved Abyssale-reference direction:
  * https://claude.ai/artifact/DVBoo7zNZXoXrc1WYgthAt). Straight into a
  * large punchy headline and a short description below -- no eyebrow, no
- * category label, no metadata row, no card border. Photo tiles carry a
- * slight corner radius (the map does not). Default sits flush on the
- * page's own background; the only "selected" treatment is the surface
- * turning plain white on press.
+ * category label, no metadata row. The card itself is a white,
+ * rounded-corner surface (per the reference); the hero visual sits on its
+ * own panel inside it, filled with the page's own background color so the
+ * map/photos read as a distinct region rather than bleeding into the
+ * white card. Photo tiles carry a slight corner radius (the map does
+ * not).
  */
 export function EditorialActCard({
   actId,
@@ -91,10 +97,10 @@ export function EditorialActCard({
   return (
     <Link
       href={`/acts/${actId}`}
-      className="block rounded-[20px] bg-transparent transition-colors duration-200 active:bg-white active:shadow-[0_16px_36px_rgba(43,42,38,0.10)]"
+      className="block rounded-[20px] bg-white shadow-[0_2px_14px_rgba(43,42,38,0.08)] transition-shadow duration-200 active:shadow-[0_8px_22px_rgba(43,42,38,0.14)]"
       style={{ padding: CARD_PADDING }}
     >
-      <div className="relative overflow-hidden" style={{ width: FULL_W, height: HERO_H }}>
+      <div className="relative overflow-hidden" style={{ width: FULL_W, height: HERO_H, background: PAGE_BG }}>
         {hasMap && (
           <div className="absolute left-0 top-0 shadow-[0_4px_12px_rgba(43,42,38,0.12)] [&_iframe]:rounded-none" style={{ width: HALF_W, height: HERO_H }}>
             <MapEmbed lat={lat as number} lng={lng as number} locationLabel={placeName} compact heightClassName="h-full" />
