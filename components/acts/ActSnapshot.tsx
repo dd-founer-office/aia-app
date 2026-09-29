@@ -25,20 +25,24 @@ interface BoxSpec {
   height: number;
 }
 
-const ICON_TOP_LEFT: BoxSpec = { left: 0, top: 0, width: 36.09, height: 29.69 };
+// Every stacked pair below (same left/width, one directly under the
+// other) sits edge-to-edge with zero space between: the top box's
+// height is extended down to exactly the bottom box's top, closing what
+// was a small gap in the reference's raw measurements. See
+// SnapshotIconBox/SnapshotDetailBox's roundedEdges -- the top box of
+// each pair rounds only its top corners and carries the shared border
+// on all four sides, the bottom box rounds only its bottom corners and
+// omits its own top border, so the seam between them reads as one line
+// rather than a doubled one.
+const ICON_TOP_LEFT: BoxSpec = { left: 0, top: 0, width: 36.09, height: 30.69 };
 const DETAIL_TOP_LEFT: BoxSpec = { left: 0, top: 30.69, width: 36.09, height: 30.13 };
 const ICON_TOP_MID: BoxSpec = { left: 41.09, top: 0, width: 29.34, height: 41.29 };
-// A/B stack flush -- A's height fills what used to be a gap down to B's
-// top, so the two sit edge-to-edge with zero space between them (see
-// SnapshotDetailBox's roundedEdges: A rounds only its top corners, B
-// only its bottom, and only B carries the shared border so the seam
-// reads as one line rather than a doubled one).
 const DETAIL_TOP_RIGHT_A: BoxSpec = { left: 70.78, top: 0, width: 28.99, height: 20.42 };
 const DETAIL_TOP_RIGHT_B: BoxSpec = { left: 70.78, top: 20.42, width: 28.99, height: 20.87 };
 const CENTER: BoxSpec = { left: 41.09, top: 45.76, width: 15.95, height: 14.84 };
-const DETAIL_RIGHT: BoxSpec = { left: 61.7, top: 45.76, width: 38.07, height: 24.55 };
+const DETAIL_RIGHT: BoxSpec = { left: 61.7, top: 45.76, width: 38.07, height: 25.78 };
 const ICON_BOTTOM_RIGHT: BoxSpec = { left: 61.7, top: 71.54, width: 38.07, height: 28.46 };
-const ICON_BOTTOM_WIDE: BoxSpec = { left: 0, top: 65.62, width: 56.81, height: 16.74 };
+const ICON_BOTTOM_WIDE: BoxSpec = { left: 0, top: 65.62, width: 56.81, height: 17.75 };
 const DETAIL_BOTTOM_WIDE: BoxSpec = { left: 0, top: 83.37, width: 56.81, height: 16.63 };
 
 function boxStyle(box: BoxSpec): CSSProperties {
@@ -51,11 +55,25 @@ function boxStyle(box: BoxSpec): CSSProperties {
   };
 }
 
-function SnapshotIconBox({ box }: { box: BoxSpec }) {
+type RoundedEdges = "all" | "top" | "bottom";
+
+function edgeRadiusClass(roundedEdges: RoundedEdges): string {
+  return roundedEdges === "top" ? "rounded-t-[16px]" : roundedEdges === "bottom" ? "rounded-b-[16px]" : "rounded-[16px]";
+}
+
+// "top" carries the shared border on all four sides (its own bottom
+// edge doubles as the seam line); "bottom" omits its top border so
+// that seam isn't drawn twice.
+function edgeBorderStyle(roundedEdges: RoundedEdges): CSSProperties {
+  const border = `1.5px solid ${MINT_BORDER}`;
+  return roundedEdges === "bottom" ? { borderLeft: border, borderRight: border, borderBottom: border } : { border };
+}
+
+function SnapshotIconBox({ box, roundedEdges = "all" }: { box: BoxSpec; roundedEdges?: RoundedEdges }) {
   return (
     <div
-      className="flex items-center justify-center rounded-[16px]"
-      style={{ ...boxStyle(box), border: `1.5px solid ${MINT_BORDER}` }}
+      className={`flex items-center justify-center ${edgeRadiusClass(roundedEdges)}`}
+      style={{ ...boxStyle(box), ...edgeBorderStyle(roundedEdges) }}
     >
       <ImageIcon size={32} strokeWidth={1.75} color={MINT_FILL} />
     </div>
@@ -78,22 +96,12 @@ function SnapshotDetailBox({
 }: {
   box: BoxSpec;
   children: ReactNode;
-  roundedEdges?: "all" | "top" | "bottom";
+  roundedEdges?: RoundedEdges;
 }) {
-  const radiusClass =
-    roundedEdges === "top" ? "rounded-t-[16px]" : roundedEdges === "bottom" ? "rounded-b-[16px]" : "rounded-[16px]";
-  const border = `1.5px solid ${MINT_BORDER}`;
-  // "top" carries the shared border on all four sides (its own bottom
-  // edge doubles as the seam line); "bottom" omits its top border so
-  // that seam isn't drawn twice.
-  const borderStyle: CSSProperties =
-    roundedEdges === "bottom"
-      ? { borderLeft: border, borderRight: border, borderBottom: border }
-      : { border };
   return (
     <div
-      className={`flex flex-col justify-center gap-2 ${radiusClass} px-4`}
-      style={{ ...boxStyle(box), ...borderStyle }}
+      className={`flex flex-col justify-center gap-2 ${edgeRadiusClass(roundedEdges)} px-4`}
+      style={{ ...boxStyle(box), ...edgeBorderStyle(roundedEdges) }}
     >
       {children}
     </div>
@@ -134,8 +142,8 @@ export function ActSnapshot() {
   return (
     <div className="px-5 pb-7 pt-1">
       <div className="relative mx-auto w-full" style={{ aspectRatio: "859 / 896" }}>
-        <SnapshotIconBox box={ICON_TOP_LEFT} />
-        <SnapshotDetailBox box={DETAIL_TOP_LEFT}>
+        <SnapshotIconBox box={ICON_TOP_LEFT} roundedEdges="top" />
+        <SnapshotDetailBox box={DETAIL_TOP_LEFT} roundedEdges="bottom">
           <Bar width="65%" />
           <Bar width="48%" />
           <div style={{ marginTop: 8 }}>
@@ -157,19 +165,19 @@ export function ActSnapshot() {
 
         <SnapshotCenter />
 
-        <SnapshotDetailBox box={DETAIL_RIGHT}>
+        <SnapshotDetailBox box={DETAIL_RIGHT} roundedEdges="top">
           <Bar width="92%" />
           <Bar width="55%" />
           <div style={{ marginTop: 8 }}>
             <Bar width="68%" bold />
           </div>
         </SnapshotDetailBox>
-        <SnapshotIconBox box={ICON_BOTTOM_RIGHT} />
+        <SnapshotIconBox box={ICON_BOTTOM_RIGHT} roundedEdges="bottom" />
 
-        <SnapshotIconBox box={ICON_BOTTOM_WIDE} />
+        <SnapshotIconBox box={ICON_BOTTOM_WIDE} roundedEdges="top" />
         <div
-          className="flex flex-row items-center justify-between gap-4 rounded-[16px] px-4"
-          style={{ ...boxStyle(DETAIL_BOTTOM_WIDE), border: `1.5px solid ${MINT_BORDER}` }}
+          className={`flex flex-row items-center justify-between gap-4 ${edgeRadiusClass("bottom")} px-4`}
+          style={{ ...boxStyle(DETAIL_BOTTOM_WIDE), ...edgeBorderStyle("bottom") }}
         >
           <div className="flex flex-col gap-2">
             <Bar width="140px" />
