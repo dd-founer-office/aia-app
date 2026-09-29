@@ -1,5 +1,8 @@
-import type { CSSProperties, ReactNode } from "react";
-import { Image as ImageIcon } from "lucide-react";
+import type { CSSProperties, ComponentType, ReactNode } from "react";
+import { Inter } from "next/font/google";
+import { Calendar, MapPin, BadgeCheck, Sprout } from "lucide-react";
+
+const inter = Inter({ subsets: ["latin"], weight: ["500", "600"], display: "swap" });
 
 // Reuses Home's EditorialHero teal/mint pair exactly (see ActDetailHero.tsx
 // for the same constants) -- the reference's three-tone look (dark teal
@@ -15,8 +18,7 @@ const MINT_FILL = "rgba(104, 255, 173, 0.62)";
 // bounding box 110,117 to 969,1013 -- 859x896) and expressed as
 // percentages of that content box, so the whole composition scales
 // together at any width via one aspect-ratio container. Every box below
-// is exactly where and how large it is in the reference; only the
-// placeholder content inside each is temporary.
+// is exactly where and how large it is in the reference.
 interface BoxSpec {
   left: number;
   top: number;
@@ -75,23 +77,35 @@ function edgeStyle(roundedEdges: RoundedEdges): CSSProperties {
   return { ...borderStyle, borderRadius: BOX_RADIUS };
 }
 
-function SnapshotIconBox({ box, roundedEdges = "all" }: { box: BoxSpec; roundedEdges?: RoundedEdges }) {
+type IconComponent = ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;
+
+function SnapshotIconBox({
+  box,
+  icon: Icon,
+  roundedEdges = "all",
+}: {
+  box: BoxSpec;
+  icon: IconComponent;
+  roundedEdges?: RoundedEdges;
+}) {
   return (
-    <div
-      className="flex items-center justify-center"
-      style={{ ...boxStyle(box), ...edgeStyle(roundedEdges) }}
-    >
-      <ImageIcon size={32} strokeWidth={1.75} color={MINT_FILL} />
+    <div className="flex items-center justify-center" style={{ ...boxStyle(box), ...edgeStyle(roundedEdges) }}>
+      <Icon size={32} strokeWidth={1.75} color={MINT_FILL} />
     </div>
   );
 }
 
-function Bar({ width, bold = false }: { width: string; bold?: boolean }) {
+// Abyssale-style pill: flat mint fill, dark-teal Inter text, fully rounded,
+// sized to its own content rather than a fixed width -- never a white-text
+// "card" or bar placeholder.
+function Pill({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="rounded-full"
-      style={{ width, height: bold ? 16 : 10, background: MINT_FILL, flexShrink: 0 }}
-    />
+    <span
+      className={`${inter.className} inline-flex w-fit items-center whitespace-nowrap rounded-full`}
+      style={{ background: MINT, color: TEAL, fontWeight: 600, fontSize: 11.5, lineHeight: 1.3, padding: "6px 14px" }}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -106,7 +120,7 @@ function SnapshotDetailBox({
 }) {
   return (
     <div
-      className="flex flex-col justify-center gap-2 px-4"
+      className="flex flex-col items-start justify-center gap-2 px-4"
       style={{ ...boxStyle(box), ...edgeStyle(roundedEdges) }}
     >
       {children}
@@ -129,15 +143,14 @@ function SnapshotCenter() {
 
 /**
  * Act Detail's Act Snapshot: a fixed, non-grid composition of four
- * quadrant groups (each an icon box and/or detail box) surrounding a
- * central AiA tile, reproducing the reference's exact measured geometry
- * -- box positions/sizes are percentages of one aspect-ratio container
- * (859:896, the reference's own content bounding box), so the whole
- * arrangement scales together rather than reflowing into an ordinary
- * card grid at any width. Teal/mint reuse ActDetailHero's exact tokens.
- * Placeholder icon (lucide's generic image glyph) and bar-shaped text
- * placeholders only -- the real date/location/partner/sapling-count
- * content and icons come in a later pass; this task locks the geometry.
+ * icon-card + pill-card pairs (Date, Location, Act, Verified Partner)
+ * surrounding a central AiA tile, reproducing the reference's exact
+ * measured geometry -- box positions/sizes are percentages of one
+ * aspect-ratio container (859:896, the reference's own content bounding
+ * box), so the whole arrangement scales together rather than reflowing
+ * into an ordinary card grid at any width. Teal/mint reuse ActDetailHero's
+ * exact tokens; pill text is Inter (Medium/SemiBold), never the page's
+ * editorial serif.
  *
  * No background/rounding/padding of its own -- ActDetailHero renders
  * this directly inside its own single continuous teal surface (photo ->
@@ -150,49 +163,35 @@ export function ActSnapshot() {
     // request to increase the collage's outer space by 50%.
     <div className="px-[30px] pb-[42px] pt-[6px]">
       <div className="relative mx-auto w-full" style={{ aspectRatio: "859 / 896" }}>
-        <SnapshotIconBox box={ICON_TOP_LEFT} roundedEdges="top" />
+        {/* Date */}
+        <SnapshotIconBox box={ICON_TOP_LEFT} icon={Calendar} roundedEdges="top" />
         <SnapshotDetailBox box={DETAIL_TOP_LEFT} roundedEdges="bottom">
-          <Bar width="65%" />
-          <Bar width="48%" />
-          <div style={{ marginTop: 8 }}>
-            <Bar width="55%" bold />
-          </div>
+          <Pill>28 September</Pill>
+          <Pill>Monday</Pill>
         </SnapshotDetailBox>
 
-        <SnapshotIconBox box={ICON_TOP_MID} />
-
+        {/* Location -- three pills */}
+        <SnapshotIconBox box={ICON_TOP_MID} icon={MapPin} />
         <SnapshotDetailBox box={DETAIL_TOP_RIGHT}>
-          <Bar width="92%" />
-          <Bar width="70%" />
-          <Bar width="88%" />
-          <Bar width="42%" />
-          <div style={{ marginTop: 8 }}>
-            <Bar width="68%" bold />
-          </div>
+          <Pill>Alangulam</Pill>
+          <Pill>Thanjavur</Pill>
+          <Pill>Tamil Nadu</Pill>
         </SnapshotDetailBox>
 
         <SnapshotCenter />
 
+        {/* Act */}
         <SnapshotDetailBox box={DETAIL_RIGHT} roundedEdges="top">
-          <Bar width="92%" />
-          <Bar width="55%" />
-          <div style={{ marginTop: 8 }}>
-            <Bar width="68%" bold />
-          </div>
+          <Pill>25 native</Pill>
+          <Pill>saplings</Pill>
         </SnapshotDetailBox>
-        <SnapshotIconBox box={ICON_BOTTOM_RIGHT} roundedEdges="bottom" />
+        <SnapshotIconBox box={ICON_BOTTOM_RIGHT} icon={Sprout} roundedEdges="bottom" />
 
-        <SnapshotIconBox box={ICON_BOTTOM_WIDE} roundedEdges="top" />
-        <div
-          className="flex flex-row items-center justify-between gap-4 px-4"
-          style={{ ...boxStyle(DETAIL_BOTTOM_WIDE), ...edgeStyle("bottom") }}
-        >
-          <div className="flex flex-col gap-2">
-            <Bar width="140px" />
-            <Bar width="170px" />
-          </div>
-          <Bar width="150px" bold />
-        </div>
+        {/* Verified Partner */}
+        <SnapshotIconBox box={ICON_BOTTOM_WIDE} icon={BadgeCheck} roundedEdges="top" />
+        <SnapshotDetailBox box={DETAIL_BOTTOM_WIDE} roundedEdges="bottom">
+          <Pill>Iyal Impact Foundation</Pill>
+        </SnapshotDetailBox>
       </div>
     </div>
   );
