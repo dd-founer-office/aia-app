@@ -23,6 +23,12 @@ import type { ActFeedItem } from "@/lib/acts-feed";
 // (globals.css), so this class was a redundant duplicate paint that
 // silently hid the Living Field's ambient canvas. Same fix as app/page.tsx
 // (Sprint 01 Foundation Completion). No other change.
+//
+// mx-auto max-w-md w-full added -- this was the one Act Detail path
+// missing the same mobile-width constraint Home, the Acts feed, and the
+// mock Acts' own ActDetailClient all already use, so a published Act was
+// stretching to full desktop width instead of the app's fixed mobile
+// column.
 export function PublishedActDetail({
   act,
   relatedActs,
@@ -34,7 +40,7 @@ export function PublishedActDetail({
   const hasStory = act.storySituation && act.storyAction && act.storyOutcome;
 
   return (
-    <div className="flex min-h-screen flex-col gap-5 px-5 pb-16 pt-6">
+    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-5 px-5 pb-16 pt-6">
       {/* Hero (CA-011 Section 1) + Act Snapshot (CA-011 Section 2) render as
           one continuous teal surface inside ActDetailHero -- see that
           file's own comment. Geometry-only pass for the snapshot collage;

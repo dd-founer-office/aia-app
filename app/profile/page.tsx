@@ -35,7 +35,7 @@ export default async function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen pb-32">
+      <div className="mx-auto min-h-screen w-full max-w-md pb-32">
         <header className="px-5 pb-2 pt-6">
           <h1 className="font-display text-2xl">Profile</h1>
         </header>
@@ -63,7 +63,12 @@ export default async function ProfilePage() {
     // (globals.css), so this class was a redundant duplicate paint that
     // silently hid the Living Field's ambient canvas. Same fix as
     // app/page.tsx (Sprint 01 Foundation Completion). No other change.
-    <div className="min-h-screen pb-32">
+    //
+    // mx-auto max-w-md w-full added -- Profile was the one screen missing
+    // the same mobile-width constraint Home/Acts/Act Detail all use, so
+    // it was stretching to full desktop width instead of the app's fixed
+    // mobile column.
+    <div className="mx-auto min-h-screen w-full max-w-md pb-32">
       <header className="px-5 pt-6 pb-2">
         <h1 className="font-display text-2xl">Profile</h1>
       </header>
