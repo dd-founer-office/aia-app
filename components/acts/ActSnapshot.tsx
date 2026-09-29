@@ -28,7 +28,12 @@ interface BoxSpec {
 const ICON_TOP_LEFT: BoxSpec = { left: 0, top: 0, width: 36.09, height: 29.69 };
 const DETAIL_TOP_LEFT: BoxSpec = { left: 0, top: 30.69, width: 36.09, height: 30.13 };
 const ICON_TOP_MID: BoxSpec = { left: 41.09, top: 0, width: 29.34, height: 41.29 };
-const DETAIL_TOP_RIGHT_A: BoxSpec = { left: 70.78, top: 0, width: 28.99, height: 19.31 };
+// A/B stack flush -- A's height fills what used to be a gap down to B's
+// top, so the two sit edge-to-edge with zero space between them (see
+// SnapshotDetailBox's roundedEdges: A rounds only its top corners, B
+// only its bottom, and only B carries the shared border so the seam
+// reads as one line rather than a doubled one).
+const DETAIL_TOP_RIGHT_A: BoxSpec = { left: 70.78, top: 0, width: 28.99, height: 20.42 };
 const DETAIL_TOP_RIGHT_B: BoxSpec = { left: 70.78, top: 20.42, width: 28.99, height: 20.87 };
 const CENTER: BoxSpec = { left: 41.09, top: 45.76, width: 15.95, height: 14.84 };
 const DETAIL_RIGHT: BoxSpec = { left: 61.7, top: 45.76, width: 38.07, height: 24.55 };
@@ -66,11 +71,29 @@ function Bar({ width, bold = false }: { width: string; bold?: boolean }) {
   );
 }
 
-function SnapshotDetailBox({ box, children }: { box: BoxSpec; children: ReactNode }) {
+function SnapshotDetailBox({
+  box,
+  children,
+  roundedEdges = "all",
+}: {
+  box: BoxSpec;
+  children: ReactNode;
+  roundedEdges?: "all" | "top" | "bottom";
+}) {
+  const radiusClass =
+    roundedEdges === "top" ? "rounded-t-[16px]" : roundedEdges === "bottom" ? "rounded-b-[16px]" : "rounded-[16px]";
+  const border = `1.5px solid ${MINT_BORDER}`;
+  // "top" carries the shared border on all four sides (its own bottom
+  // edge doubles as the seam line); "bottom" omits its top border so
+  // that seam isn't drawn twice.
+  const borderStyle: CSSProperties =
+    roundedEdges === "bottom"
+      ? { borderLeft: border, borderRight: border, borderBottom: border }
+      : { border };
   return (
     <div
-      className="flex flex-col justify-center gap-2 rounded-[16px] px-4"
-      style={{ ...boxStyle(box), border: `1.5px solid ${MINT_BORDER}` }}
+      className={`flex flex-col justify-center gap-2 ${radiusClass} px-4`}
+      style={{ ...boxStyle(box), ...borderStyle }}
     >
       {children}
     </div>
@@ -122,13 +145,13 @@ export function ActSnapshot() {
 
         <SnapshotIconBox box={ICON_TOP_MID} />
 
-        <SnapshotDetailBox box={DETAIL_TOP_RIGHT_A}>
+        <SnapshotDetailBox box={DETAIL_TOP_RIGHT_A} roundedEdges="top">
           <Bar width="92%" />
           <Bar width="70%" />
           <Bar width="88%" />
           <Bar width="42%" />
         </SnapshotDetailBox>
-        <SnapshotDetailBox box={DETAIL_TOP_RIGHT_B}>
+        <SnapshotDetailBox box={DETAIL_TOP_RIGHT_B} roundedEdges="bottom">
           <Bar width="68%" bold />
         </SnapshotDetailBox>
 
