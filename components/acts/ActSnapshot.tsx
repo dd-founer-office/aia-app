@@ -41,8 +41,10 @@ const ICON_TOP_MID: BoxSpec = { left: 41.09, top: 0, width: 29.34, height: 41.29
 // replaces what used to be two stacked square boxes here.
 const DETAIL_TOP_RIGHT: BoxSpec = { left: ICON_TOP_MID.left + ICON_TOP_MID.width, top: 0, width: 29.34, height: 41.29 };
 const CENTER: BoxSpec = { left: 41.09, top: 45.76, width: 15.95, height: 14.84 };
-const DETAIL_RIGHT: BoxSpec = { left: 61.7, top: 45.76, width: 38.07, height: 25.78 };
-const ICON_BOTTOM_RIGHT: BoxSpec = { left: 61.7, top: 71.54, width: 38.07, height: 28.46 };
+// Equal heights (was 25.78/28.46) -- split the pair's combined span
+// (45.76 to 100, unchanged) evenly so both boxes in this column match.
+const DETAIL_RIGHT: BoxSpec = { left: 61.7, top: 45.76, width: 38.07, height: 27.12 };
+const ICON_BOTTOM_RIGHT: BoxSpec = { left: 61.7, top: 72.88, width: 38.07, height: 27.12 };
 const ICON_BOTTOM_WIDE: BoxSpec = { left: 0, top: 65.62, width: 56.81, height: 17.75 };
 const DETAIL_BOTTOM_WIDE: BoxSpec = { left: 0, top: 83.37, width: 56.81, height: 16.63 };
 
@@ -144,7 +146,9 @@ function SnapshotCenter() {
  */
 export function ActSnapshot() {
   return (
-    <div className="px-5 pb-7 pt-1">
+    // Outer padding is 1.5x the original px-5/pb-7/pt-1 (20/28/4px), per
+    // request to increase the collage's outer space by 50%.
+    <div className="px-[30px] pb-[42px] pt-[6px]">
       <div className="relative mx-auto w-full" style={{ aspectRatio: "859 / 896" }}>
         <SnapshotIconBox box={ICON_TOP_LEFT} roundedEdges="top" />
         <SnapshotDetailBox box={DETAIL_TOP_LEFT} roundedEdges="bottom">
