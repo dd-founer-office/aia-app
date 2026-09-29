@@ -57,23 +57,34 @@ function boxStyle(box: BoxSpec): CSSProperties {
 
 type RoundedEdges = "all" | "top" | "bottom";
 
-function edgeRadiusClass(roundedEdges: RoundedEdges): string {
-  return roundedEdges === "top" ? "rounded-t-[16px]" : roundedEdges === "bottom" ? "rounded-b-[16px]" : "rounded-[16px]";
+// The outer 16px matches globals.css --radius-card; the joint (seam)
+// radius reuses EditorialActCard's own TILE_RADIUS (the Acts page's
+// scrolling photo tiles), so an attached pair's touching corners are
+// softened by that same 7px rather than left perfectly square.
+const OUTER_RADIUS = 16;
+const JOINT_RADIUS = 7;
+
+function edgeRadius(roundedEdges: RoundedEdges): string {
+  if (roundedEdges === "top") return `${OUTER_RADIUS}px ${OUTER_RADIUS}px ${JOINT_RADIUS}px ${JOINT_RADIUS}px`;
+  if (roundedEdges === "bottom") return `${JOINT_RADIUS}px ${JOINT_RADIUS}px ${OUTER_RADIUS}px ${OUTER_RADIUS}px`;
+  return `${OUTER_RADIUS}px`;
 }
 
 // "top" carries the shared border on all four sides (its own bottom
 // edge doubles as the seam line); "bottom" omits its top border so
 // that seam isn't drawn twice.
-function edgeBorderStyle(roundedEdges: RoundedEdges): CSSProperties {
+function edgeStyle(roundedEdges: RoundedEdges): CSSProperties {
   const border = `1.5px solid ${MINT_BORDER}`;
-  return roundedEdges === "bottom" ? { borderLeft: border, borderRight: border, borderBottom: border } : { border };
+  const borderStyle: CSSProperties =
+    roundedEdges === "bottom" ? { borderLeft: border, borderRight: border, borderBottom: border } : { border };
+  return { ...borderStyle, borderRadius: edgeRadius(roundedEdges) };
 }
 
 function SnapshotIconBox({ box, roundedEdges = "all" }: { box: BoxSpec; roundedEdges?: RoundedEdges }) {
   return (
     <div
-      className={`flex items-center justify-center ${edgeRadiusClass(roundedEdges)}`}
-      style={{ ...boxStyle(box), ...edgeBorderStyle(roundedEdges) }}
+      className="flex items-center justify-center"
+      style={{ ...boxStyle(box), ...edgeStyle(roundedEdges) }}
     >
       <ImageIcon size={32} strokeWidth={1.75} color={MINT_FILL} />
     </div>
@@ -100,8 +111,8 @@ function SnapshotDetailBox({
 }) {
   return (
     <div
-      className={`flex flex-col justify-center gap-2 ${edgeRadiusClass(roundedEdges)} px-4`}
-      style={{ ...boxStyle(box), ...edgeBorderStyle(roundedEdges) }}
+      className="flex flex-col justify-center gap-2 px-4"
+      style={{ ...boxStyle(box), ...edgeStyle(roundedEdges) }}
     >
       {children}
     </div>
@@ -176,8 +187,8 @@ export function ActSnapshot() {
 
         <SnapshotIconBox box={ICON_BOTTOM_WIDE} roundedEdges="top" />
         <div
-          className={`flex flex-row items-center justify-between gap-4 ${edgeRadiusClass("bottom")} px-4`}
-          style={{ ...boxStyle(DETAIL_BOTTOM_WIDE), ...edgeBorderStyle("bottom") }}
+          className="flex flex-row items-center justify-between gap-4 px-4"
+          style={{ ...boxStyle(DETAIL_BOTTOM_WIDE), ...edgeStyle("bottom") }}
         >
           <div className="flex flex-col gap-2">
             <Bar width="140px" />
