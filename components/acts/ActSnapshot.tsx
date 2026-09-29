@@ -95,14 +95,28 @@ function SnapshotIconBox({
   );
 }
 
-// Abyssale-style pill: flat mint fill, dark-teal Inter text, fully rounded,
-// sized to its own content rather than a fixed width -- never a white-text
-// "card" or bar placeholder.
-function Pill({ children }: { children: ReactNode }) {
+// Abyssale-style text bar: flat mint fill, dark-teal Inter text, a small
+// rectangular radius rather than a fully rounded pill/capsule, sized to
+// its own content -- never white text, never border-radius: 9999px. No
+// max-width clamp: a clamp here would shrink the bar's own background
+// below its text's natural width, leaving the tail of the text rendered
+// past the (now-narrower) mint fill -- invisible, since the text color
+// is the same dark teal as the card background behind it. Compact
+// font-size/padding below are sized instead so every bar's true content
+// width fits inside its card at the card's own fixed geometry.
+function TextBar({ children }: { children: ReactNode }) {
   return (
     <span
-      className={`${inter.className} inline-flex w-fit items-center whitespace-nowrap rounded-full`}
-      style={{ background: MINT, color: TEAL, fontWeight: 600, fontSize: 11.5, lineHeight: 1.3, padding: "6px 14px" }}
+      className={`${inter.className} inline-flex w-fit items-center whitespace-nowrap`}
+      style={{
+        background: MINT,
+        color: TEAL,
+        fontWeight: 600,
+        fontSize: 10,
+        lineHeight: 1.3,
+        padding: "5px 8px",
+        borderRadius: 4,
+      }}
     >
       {children}
     </span>
@@ -120,7 +134,7 @@ function SnapshotDetailBox({
 }) {
   return (
     <div
-      className="flex flex-col items-start justify-center gap-2 px-4"
+      className="flex flex-col items-start justify-center gap-2 px-3"
       style={{ ...boxStyle(box), ...edgeStyle(roundedEdges) }}
     >
       {children}
@@ -143,13 +157,13 @@ function SnapshotCenter() {
 
 /**
  * Act Detail's Act Snapshot: a fixed, non-grid composition of four
- * icon-card + pill-card pairs (Date, Location, Act, Verified Partner)
+ * icon-card + text-bar-card pairs (Date, Location, Act, Verified Partner)
  * surrounding a central AiA tile, reproducing the reference's exact
  * measured geometry -- box positions/sizes are percentages of one
  * aspect-ratio container (859:896, the reference's own content bounding
  * box), so the whole arrangement scales together rather than reflowing
  * into an ordinary card grid at any width. Teal/mint reuse ActDetailHero's
- * exact tokens; pill text is Inter (Medium/SemiBold), never the page's
+ * exact tokens; text-bar copy is Inter (Medium/SemiBold), never the page's
  * editorial serif.
  *
  * No background/rounding/padding of its own -- ActDetailHero renders
@@ -166,31 +180,30 @@ export function ActSnapshot() {
         {/* Date */}
         <SnapshotIconBox box={ICON_TOP_LEFT} icon={Calendar} roundedEdges="top" />
         <SnapshotDetailBox box={DETAIL_TOP_LEFT} roundedEdges="bottom">
-          <Pill>28 September</Pill>
-          <Pill>Monday</Pill>
+          <TextBar>28 September</TextBar>
+          <TextBar>Monday</TextBar>
         </SnapshotDetailBox>
 
-        {/* Location -- three pills */}
+        {/* Location -- exactly two bars */}
         <SnapshotIconBox box={ICON_TOP_MID} icon={MapPin} />
         <SnapshotDetailBox box={DETAIL_TOP_RIGHT}>
-          <Pill>Alangulam</Pill>
-          <Pill>Thanjavur</Pill>
-          <Pill>Tamil Nadu</Pill>
+          <TextBar>Alangulam</TextBar>
+          <TextBar>Thanjavur</TextBar>
         </SnapshotDetailBox>
 
         <SnapshotCenter />
 
         {/* Act */}
         <SnapshotDetailBox box={DETAIL_RIGHT} roundedEdges="top">
-          <Pill>25 native</Pill>
-          <Pill>saplings</Pill>
+          <TextBar>25 native</TextBar>
+          <TextBar>saplings</TextBar>
         </SnapshotDetailBox>
         <SnapshotIconBox box={ICON_BOTTOM_RIGHT} icon={Sprout} roundedEdges="bottom" />
 
         {/* Verified Partner */}
         <SnapshotIconBox box={ICON_BOTTOM_WIDE} icon={BadgeCheck} roundedEdges="top" />
         <SnapshotDetailBox box={DETAIL_BOTTOM_WIDE} roundedEdges="bottom">
-          <Pill>Iyal Impact Foundation</Pill>
+          <TextBar>Iyal Impact Foundation</TextBar>
         </SnapshotDetailBox>
       </div>
     </div>
