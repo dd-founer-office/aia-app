@@ -61,7 +61,7 @@ function boxStyle(box: BoxSpec): CSSProperties {
 // joint alike -- round by the same BOX_RADIUS regardless.
 type RoundedEdges = "all" | "top" | "bottom";
 
-const BOX_RADIUS = 8;
+const BOX_RADIUS = 12;
 
 // "top" carries the shared border on all four sides (its own bottom
 // edge doubles as the seam line); "bottom" omits its top border so
