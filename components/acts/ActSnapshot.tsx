@@ -11,7 +11,6 @@ const MINT = "#68FFAD";
 const MINT_BORDER = "rgba(104, 255, 173, 0.32)";
 const MINT_FILL = "rgba(104, 255, 173, 0.62)";
 
-// Box radius below (rounded-[16px]) matches globals.css --radius-card.
 // Geometry measured directly from the reference image (1080x1142; content
 // bounding box 110,117 to 969,1013 -- 859x896) and expressed as
 // percentages of that content box, so the whole composition scales
@@ -37,8 +36,10 @@ interface BoxSpec {
 const ICON_TOP_LEFT: BoxSpec = { left: 0, top: 0, width: 36.09, height: 30.69 };
 const DETAIL_TOP_LEFT: BoxSpec = { left: 0, top: 30.69, width: 36.09, height: 30.13 };
 const ICON_TOP_MID: BoxSpec = { left: 41.09, top: 0, width: 29.34, height: 41.29 };
-const DETAIL_TOP_RIGHT_A: BoxSpec = { left: 70.78, top: 0, width: 28.99, height: 20.42 };
-const DETAIL_TOP_RIGHT_B: BoxSpec = { left: 70.78, top: 20.42, width: 28.99, height: 20.87 };
+// Same width/height as ICON_TOP_MID (the "left side" vertical box it's
+// joined to), positioned flush against its right edge with zero gap --
+// replaces what used to be two stacked square boxes here.
+const DETAIL_TOP_RIGHT: BoxSpec = { left: ICON_TOP_MID.left + ICON_TOP_MID.width, top: 0, width: 29.34, height: 41.29 };
 const CENTER: BoxSpec = { left: 41.09, top: 45.76, width: 15.95, height: 14.84 };
 const DETAIL_RIGHT: BoxSpec = { left: 61.7, top: 45.76, width: 38.07, height: 25.78 };
 const ICON_BOTTOM_RIGHT: BoxSpec = { left: 61.7, top: 71.54, width: 38.07, height: 28.46 };
@@ -55,20 +56,15 @@ function boxStyle(box: BoxSpec): CSSProperties {
   };
 }
 
+// A "side" value marks which border a box in an attached pair omits (so
+// the shared seam isn't drawn twice); every box's corners -- outer and
+// joint alike -- round by the same BOX_RADIUS regardless.
 type RoundedEdges = "all" | "top" | "bottom";
 
-// The outer 16px matches globals.css --radius-card; the joint (seam)
-// radius reuses EditorialActCard's own TILE_RADIUS (the Acts page's
-// scrolling photo tiles), so an attached pair's touching corners are
-// softened by that same 7px rather than left perfectly square.
-const OUTER_RADIUS = 16;
-const JOINT_RADIUS = 7;
-
-function edgeRadius(roundedEdges: RoundedEdges): string {
-  if (roundedEdges === "top") return `${OUTER_RADIUS}px ${OUTER_RADIUS}px ${JOINT_RADIUS}px ${JOINT_RADIUS}px`;
-  if (roundedEdges === "bottom") return `${JOINT_RADIUS}px ${JOINT_RADIUS}px ${OUTER_RADIUS}px ${OUTER_RADIUS}px`;
-  return `${OUTER_RADIUS}px`;
-}
+// Reuses EditorialActCard's own TILE_RADIUS (the Acts page's scrolling
+// photo tiles) rather than the card radius (--radius-card, 16px) used
+// elsewhere on the page.
+const BOX_RADIUS = 7;
 
 // "top" carries the shared border on all four sides (its own bottom
 // edge doubles as the seam line); "bottom" omits its top border so
@@ -77,7 +73,7 @@ function edgeStyle(roundedEdges: RoundedEdges): CSSProperties {
   const border = `1.5px solid ${MINT_BORDER}`;
   const borderStyle: CSSProperties =
     roundedEdges === "bottom" ? { borderLeft: border, borderRight: border, borderBottom: border } : { border };
-  return { ...borderStyle, borderRadius: edgeRadius(roundedEdges) };
+  return { ...borderStyle, borderRadius: BOX_RADIUS };
 }
 
 function SnapshotIconBox({ box, roundedEdges = "all" }: { box: BoxSpec; roundedEdges?: RoundedEdges }) {
@@ -122,8 +118,8 @@ function SnapshotDetailBox({
 function SnapshotCenter() {
   return (
     <div
-      className="flex items-center justify-center rounded-[16px]"
-      style={{ ...boxStyle(CENTER), background: MINT, zIndex: 2 }}
+      className="flex items-center justify-center"
+      style={{ ...boxStyle(CENTER), background: MINT, borderRadius: BOX_RADIUS, zIndex: 2 }}
     >
       <span style={{ fontFamily: "var(--font-display), serif", fontWeight: 700, fontSize: "1.4em", color: TEAL }}>
         AiA
@@ -164,14 +160,14 @@ export function ActSnapshot() {
 
         <SnapshotIconBox box={ICON_TOP_MID} />
 
-        <SnapshotDetailBox box={DETAIL_TOP_RIGHT_A} roundedEdges="top">
+        <SnapshotDetailBox box={DETAIL_TOP_RIGHT}>
           <Bar width="92%" />
           <Bar width="70%" />
           <Bar width="88%" />
           <Bar width="42%" />
-        </SnapshotDetailBox>
-        <SnapshotDetailBox box={DETAIL_TOP_RIGHT_B} roundedEdges="bottom">
-          <Bar width="68%" bold />
+          <div style={{ marginTop: 8 }}>
+            <Bar width="68%" bold />
+          </div>
         </SnapshotDetailBox>
 
         <SnapshotCenter />
