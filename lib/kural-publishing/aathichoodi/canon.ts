@@ -195,7 +195,23 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   { episodeNumber: 13, tamilText: "அஃகம் சுருக்கேல்", simpleMeaning: "Do not shortchange grain (or goods) when trading.", transliteration: "Ahkam Surukkel", primaryTheme: "honesty", verified: true },
   { episodeNumber: 14, tamilText: "கண்டொன்று சொல்லேல்", simpleMeaning: "Do not say something different from what you actually saw.", transliteration: "Kandondru Sollel", primaryTheme: "honesty", verified: true },
   { episodeNumber: 15, tamilText: "ஙப் போல் வளை", simpleMeaning: "Bend like the letter 'nga' — stay connected to your own people.", transliteration: "Ngapol Valai", primaryTheme: "community", verified: true },
-  { episodeNumber: 16, tamilText: "சனி நீராடு", simpleMeaning: "Bathe in cool, refreshing water.", transliteration: "Sani Neeradu", primaryTheme: "self-control", verified: true },
+  { episodeNumber: 16, tamilText: "சனி நீராடு", simpleMeaning: "Bathe in cool, refreshing water.", transliteration: "Sani Neeradu", primaryTheme: "self-control", verified: true,
+    // Curated per founder report: uncurated, this episode composed entirely
+    // from the generic "self-control" pool (siblings fighting, anger,
+    // screen-time standoffs) -- thematically tagged correctly but with zero
+    // connection to the episode's own literal meaning (bathing in cool
+    // water), reading as made-up/unrelated content bolted onto the real
+    // line. Every field below is hand-authored around the actual meaning --
+    // a small, concrete bodily discipline -- instead of general anger/
+    // patience content, same fix pattern as episode 8's own curated block.
+    curated: {
+      hookOverride: "Does your child follow through on a hard morning routine, even when it's tempting to skip it?",
+      understanding: "Avvaiyar's wisdom here is simple: bathe in cool, refreshing water. It's a small, concrete discipline — doing something bracing and unglamorous, on purpose, because it's good for you, not because it's easy.",
+      familyAngle: "Your child would rather skip the shower and go straight to screen time this morning. Getting up and doing it anyway, without being nagged twice, is this Aathichoodi, in one ordinary morning.",
+      todayAction: "Notice one small daily discipline your child follows through on without complaint today, and name it: \"I saw you do that even though you didn't feel like it.\"",
+      childLesson: "Some good habits aren't fun in the moment — they're worth keeping anyway.",
+    },
+  },
   { episodeNumber: 17, tamilText: "ஞயம்பட உரை", simpleMeaning: "Speak so that your words bring sweetness to the listener.", transliteration: "Nyayampada Urai", primaryTheme: "speech", verified: true },
   { episodeNumber: 18, tamilText: "இடம்பட வீடு எடேல்", simpleMeaning: "Do not build a house larger than you need.", transliteration: "Idampada Veedu Edel", primaryTheme: "responsibility", verified: true },
   { episodeNumber: 19, tamilText: "இணக்கம் அறிந்து இணங்கு", simpleMeaning: "Know a person's true character before befriending them.", transliteration: "Inakkam Arindhu Inangu", primaryTheme: "community", verified: true },
