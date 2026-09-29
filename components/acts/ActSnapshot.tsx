@@ -61,10 +61,7 @@ function boxStyle(box: BoxSpec): CSSProperties {
 // joint alike -- round by the same BOX_RADIUS regardless.
 type RoundedEdges = "all" | "top" | "bottom";
 
-// Reuses EditorialActCard's own TILE_RADIUS (the Acts page's scrolling
-// photo tiles) rather than the card radius (--radius-card, 16px) used
-// elsewhere on the page.
-const BOX_RADIUS = 7;
+const BOX_RADIUS = 8;
 
 // "top" carries the shared border on all four sides (its own bottom
 // edge doubles as the seam line); "bottom" omits its top border so
