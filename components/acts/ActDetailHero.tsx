@@ -1,5 +1,6 @@
 import localFont from "next/font/local";
 import { Inter } from "next/font/google";
+import { ActSnapshot } from "@/components/acts/ActSnapshot";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -31,9 +32,15 @@ function ActHeroImage({ src, alt }: { src: string | null; alt: string }) {
   );
 }
 
-function ActHeroContent({ title, description }: { title: string; description: string }) {
+function ActHeroContent({ cause, title, description }: { cause: string; title: string; description: string }) {
   return (
-    <div className="flex flex-col gap-3 rounded-t-[12px] px-5 pb-8 pt-7" style={{ background: TEAL }}>
+    <div className="flex flex-col gap-3 px-5 pb-6 pt-7">
+      <span
+        className={`${inter.className} uppercase`}
+        style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "1.4px", color: "rgba(104, 255, 173, 0.68)" }}
+      >
+        {cause}
+      </span>
       <h1
         className={`${calSans.className} m-0`}
         style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.12, letterSpacing: "-0.4px", color: MINT }}
@@ -52,32 +59,37 @@ function ActHeroContent({ title, description }: { title: string; description: st
 
 /**
  * Act Detail's hero: a large, clean editorial photo -- no text or UI over
- * it -- followed immediately by a deep-teal content panel, reusing
- * Home's EditorialHero teal/mint pair and Acts' EditorialActCard's Cal
- * Sans/Inter treatment, per the founder direction that this page inherit
- * the current product's design system rather than invent its own.
- * Full-bleed to the true viewport edges (-mx-5 -mt-6 cancels the page
- * wrapper's own px-5/pt-6), with the teal panel's top corners rounded at
- * the same 12px radius EditorialHero uses for its own full-bleed teal
- * section -- the rounded notch reveals the page's own background behind
- * it, the same mechanism EditorialHero's rounded-b-[12px] already uses,
- * not a new card wrapped around the hero. Title and description only --
- * no eyebrow, no date/location/status chips, no CTA; those belong to the
- * Act Snapshot that follows this hero in a later pass.
+ * it -- followed immediately by ONE continuous deep-teal surface that
+ * carries the eyebrow/title/description AND the Act Snapshot collage
+ * with no seam between them (per founder direction: the whole thing
+ * should read as one editorial hero, not a hero card plus a separate
+ * snapshot card). Reuses Home's EditorialHero teal/mint pair and Acts'
+ * EditorialActCard's Cal Sans/Inter treatment. Full-bleed to the true
+ * viewport edges (-mx-5 -mt-6 cancels the page wrapper's own px-5/pt-6);
+ * the teal surface is rounded top AND bottom at the same 12px radius
+ * EditorialHero uses for its own full-bleed teal section -- top rounds
+ * against the photo above it, bottom closes the surface off before the
+ * page's inset (px-5) sections below, both revealing the page's own
+ * background in the notch rather than either edge being a new card.
  */
 export function ActDetailHero({
   heroImageUrl,
   title,
   description,
+  cause,
 }: {
   heroImageUrl: string | null;
   title: string;
   description: string;
+  cause: string;
 }) {
   return (
     <div className="-mx-5 -mt-6">
       <ActHeroImage src={heroImageUrl} alt={title} />
-      <ActHeroContent title={title} description={description} />
+      <div className="rounded-[12px]" style={{ background: TEAL }}>
+        <ActHeroContent cause={cause} title={title} description={description} />
+        <ActSnapshot />
+      </div>
     </div>
   );
 }

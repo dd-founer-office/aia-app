@@ -4,7 +4,6 @@ import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ActDetailHero } from "@/components/acts/ActDetailHero";
-import { ActSnapshot } from "@/components/acts/ActSnapshot";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
 
@@ -36,12 +35,17 @@ export function PublishedActDetail({
 
   return (
     <div className="flex min-h-screen flex-col gap-5 px-5 pb-16 pt-6">
-      <ActDetailHero heroImageUrl={act.heroImageUrl} title={act.title} description={act.description} />
-
-      {/* Act Snapshot (CA-011 Section 2) -- geometry-only pass per the
-          reference composition; real date/location/partner/sapling-count
-          content and icons replace the placeholder bars in a later pass. */}
-      <ActSnapshot />
+      {/* Hero (CA-011 Section 1) + Act Snapshot (CA-011 Section 2) render as
+          one continuous teal surface inside ActDetailHero -- see that
+          file's own comment. Geometry-only pass for the snapshot collage;
+          real date/location/partner/sapling-count content and icons
+          replace the placeholder bars in a later pass. */}
+      <ActDetailHero
+        heroImageUrl={act.heroImageUrl}
+        title={act.title}
+        description={act.description}
+        cause={act.cause}
+      />
 
       {/* Story (CA-011 Section 3) -- situation -> action -> outcome. Only
           rendered when Ops has filled in all three; otherwise this section

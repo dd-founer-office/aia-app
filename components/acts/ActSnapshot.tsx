@@ -97,15 +97,19 @@ function SnapshotCenter() {
  * -- box positions/sizes are percentages of one aspect-ratio container
  * (859:896, the reference's own content bounding box), so the whole
  * arrangement scales together rather than reflowing into an ordinary
- * card grid at any width. Teal/mint reuse ActDetailHero's exact tokens;
- * radius matches globals.css's --radius-card. Placeholder icon (lucide's
- * generic image glyph) and bar-shaped text placeholders only -- the real
- * date/location/partner/sapling-count content and icons come in a later
- * pass; this task locks the geometry.
+ * card grid at any width. Teal/mint reuse ActDetailHero's exact tokens.
+ * Placeholder icon (lucide's generic image glyph) and bar-shaped text
+ * placeholders only -- the real date/location/partner/sapling-count
+ * content and icons come in a later pass; this task locks the geometry.
+ *
+ * No background/rounding/padding of its own -- ActDetailHero renders
+ * this directly inside its own single continuous teal surface (photo ->
+ * eyebrow/title/description -> this collage -> close), so it must read
+ * as a continuation of that surface, not a second nested card.
  */
 export function ActSnapshot() {
   return (
-    <section className="rounded-[16px] px-4 py-6" style={{ background: TEAL }}>
+    <div className="px-5 pb-7 pt-1">
       <div className="relative mx-auto w-full" style={{ aspectRatio: "859 / 896" }}>
         <SnapshotIconBox box={ICON_TOP_LEFT} />
         <SnapshotDetailBox box={DETAIL_TOP_LEFT}>
@@ -151,6 +155,6 @@ export function ActSnapshot() {
           <Bar width="150px" bold />
         </div>
       </div>
-    </section>
+    </div>
   );
 }
