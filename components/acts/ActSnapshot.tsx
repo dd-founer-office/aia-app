@@ -69,7 +69,7 @@ const BOX_RADIUS = 12;
 // edge doubles as the seam line); "bottom" omits its top border so
 // that seam isn't drawn twice.
 function edgeStyle(roundedEdges: RoundedEdges): CSSProperties {
-  const border = `2.25px solid ${MINT_BORDER}`;
+  const border = `2px solid ${MINT_BORDER}`;
   const borderStyle: CSSProperties =
     roundedEdges === "bottom" ? { borderLeft: border, borderRight: border, borderBottom: border } : { border };
   return { ...borderStyle, borderRadius: BOX_RADIUS };
