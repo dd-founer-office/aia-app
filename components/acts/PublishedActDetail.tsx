@@ -4,6 +4,7 @@ import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ActDetailHero } from "@/components/acts/ActDetailHero";
+import { ActSnapshot } from "@/components/acts/ActSnapshot";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
 
@@ -37,38 +38,10 @@ export function PublishedActDetail({
     <div className="flex min-h-screen flex-col gap-5 px-5 pb-16 pt-6">
       <ActDetailHero heroImageUrl={act.heroImageUrl} title={act.title} description={act.description} />
 
-      {/* Impact Snapshot (CA-011 Section 2) -- max 4 data points: who
-          benefited, what happened, where, when. */}
-      <Card>
-        <dl className="flex flex-col gap-2 text-sm">
-          {act.beneficiaryCount !== null && (
-            <div className="flex items-center justify-between">
-              <dt className="text-[var(--color-muted-foreground)]">Beneficiaries</dt>
-              <dd className="text-[var(--color-foreground)]">{act.beneficiaryCount}</dd>
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <dt className="text-[var(--color-muted-foreground)]">Organization</dt>
-            <dd className="text-[var(--color-foreground)]">{act.organization}</dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="text-[var(--color-muted-foreground)]">Date</dt>
-            <dd className="text-[var(--color-foreground)]">{act.missionDate}</dd>
-          </div>
-          {act.landmark && (
-            <div className="flex items-center justify-between">
-              <dt className="text-[var(--color-muted-foreground)]">Location</dt>
-              <dd className="text-[var(--color-foreground)]">{act.landmark}</dd>
-            </div>
-          )}
-          {act.participatingContributorCount !== null && (
-            <div className="flex items-center justify-between">
-              <dt className="text-[var(--color-muted-foreground)]">Participating Contributors</dt>
-              <dd className="text-[var(--color-foreground)]">{act.participatingContributorCount}</dd>
-            </div>
-          )}
-        </dl>
-      </Card>
+      {/* Act Snapshot (CA-011 Section 2) -- geometry-only pass per the
+          reference composition; real date/location/partner/sapling-count
+          content and icons replace the placeholder bars in a later pass. */}
+      <ActSnapshot />
 
       {/* Story (CA-011 Section 3) -- situation -> action -> outcome. Only
           rendered when Ops has filled in all three; otherwise this section
