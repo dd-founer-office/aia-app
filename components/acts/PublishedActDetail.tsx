@@ -3,6 +3,7 @@ import { CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ActDetailHero } from "@/components/acts/ActDetailHero";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
 
@@ -34,23 +35,7 @@ export function PublishedActDetail({
 
   return (
     <div className="flex min-h-screen flex-col gap-5 px-5 pb-16 pt-6">
-      {act.heroImageUrl && (
-        <div
-          className="w-full overflow-hidden"
-          style={{ borderRadius: "var(--radius-card)", aspectRatio: "4 / 3" }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={act.heroImageUrl} alt={act.title} className="h-full w-full object-cover" />
-        </div>
-      )}
-
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-          {act.cause}
-        </span>
-        <h1 className="font-display text-xl text-[var(--color-foreground)]">{act.title}</h1>
-        <p className="text-sm text-[var(--color-muted-foreground)]">{act.description}</p>
-      </div>
+      <ActDetailHero heroImageUrl={act.heroImageUrl} title={act.title} description={act.description} />
 
       {/* Impact Snapshot (CA-011 Section 2) -- max 4 data points: who
           benefited, what happened, where, when. */}
