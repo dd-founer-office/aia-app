@@ -73,9 +73,10 @@ function PlayButton({ onClick }: { onClick: () => void }) {
  * canvas exactly.
  *
  * The video/poster are the real uploaded tree-planting recording -- no
- * generated thumbnail. The quote below is illustrative copy standing in
- * for the verified transcript (no speech-to-text is available in this
- * build) -- swap in the real transcribed words once confirmed.
+ * generated thumbnail. The quote below is the real Tamil blessing given
+ * by its speakers, attributed to them directly (Inmates, Annai Aravindar
+ * Karunai Illam) rather than the Tree Planting Team placeholder credit
+ * used before this content was supplied.
  */
 export function ActTestimonial() {
   const videoRef = useRef<FullscreenVideoElement>(null);
@@ -185,18 +186,20 @@ export function ActTestimonial() {
           "stack intelligently on narrow mobile" allowance. */}
       <div className="flex w-full flex-col items-start gap-5 text-left sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2.5">
-          {/* Illustrative copy standing in for the verified transcript --
-              no speech-to-text is available in this build. Swap in the
-              real transcribed words (and the real speaker credit, if
-              different) once confirmed. */}
-          <p className={`${inter.className} m-0 text-[17px] font-bold leading-[1.4]`} style={{ color: TEAL }}>
-            &ldquo;Seeing the saplings go into the ground with our own hands &mdash; that&rsquo;s when it stopped being
-            someone else&rsquo;s project and became ours.&rdquo;
+          {/* Real quote, in the speakers' own words -- Tamil, so it's set
+              in the app's existing Noto Sans Tamil (--font-tamil-sans,
+              loaded globally in app/layout.tsx), not Inter, which has no
+              Tamil glyphs to shape it correctly. */}
+          <p
+            className="m-0 text-[17px] font-bold leading-[1.5]"
+            style={{ color: TEAL, fontFamily: "var(--font-tamil-sans)" }}
+          >
+            &ldquo;வாழ்வில் எல்லா நலமும் வளமும் பெற்று பல்லாண்டு காலம் வாழவேண்டும்&rdquo;
           </p>
           <p className={`${inter.className} m-0 mt-1 text-[12px] font-semibold`} style={{ color: TEAL }}>
-            Tree Planting Team
+            Inmates
             <span className={`${inter.className} block font-normal`} style={{ color: "rgba(10, 54, 58, 0.55)" }}>
-              Iyal Impact Foundation
+              Annai Aravindar Karunai Illam
             </span>
           </p>
         </div>
