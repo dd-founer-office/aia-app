@@ -4,6 +4,7 @@ import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ActDetailHero } from "@/components/acts/ActDetailHero";
+import { ActTestimonial } from "@/components/acts/ActTestimonial";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
 
@@ -52,6 +53,13 @@ export function PublishedActDetail({
         description={act.description}
         cause={act.cause}
       />
+
+      {/* "They Say It Better" (CA-011 Living Moment) -- the real
+          tree-planting video + quote, immediately after the hero/snapshot
+          on the page's own light background (a new section, not a
+          continuation of the hero's dark canvas). See ActTestimonial's
+          own comment for why the quote is a marked placeholder. */}
+      <ActTestimonial />
 
       {/* Story (CA-011 Section 3) -- situation -> action -> outcome. Only
           rendered when Ops has filled in all three; otherwise this section
