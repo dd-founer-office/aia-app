@@ -5,6 +5,7 @@ import { Button } from "@/components/shared/Button";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ActDetailHero } from "@/components/acts/ActDetailHero";
 import { ActTestimonial } from "@/components/acts/ActTestimonial";
+import { ActTheAct } from "@/components/acts/ActTheAct";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
 
@@ -60,6 +61,12 @@ export function PublishedActDetail({
           continuation of the hero's dark canvas). See ActTestimonial's
           own comment for why the quote is a marked placeholder. */}
       <ActTestimonial />
+
+      {/* "The Act" (CA-011 visual story) -- the Act's own real photographs,
+          told as 2-4 selectable moments (data-driven, never padded out to
+          a fixed count). No date/location/partner/quantity here -- that's
+          Act Snapshot's job; this section is about what happened. */}
+      <ActTheAct />
 
       {/* Story (CA-011 Section 3) -- situation -> action -> outcome. Only
           rendered when Ops has filled in all three; otherwise this section
