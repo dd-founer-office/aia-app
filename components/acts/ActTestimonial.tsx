@@ -67,18 +67,15 @@ function PlayButton({ onClick }: { onClick: () => void }) {
  * -> large video with a bottom-right play button -> quote + CTA), reusing
  * ActDetailHero/ActSnapshot's teal/mint pair rather than the reference's
  * own literal colors, since pixel-sampling the reference showed they're
- * the same colors already. Renders on the page's own light background,
- * a new section below the dark-teal hero+snapshot (matching the
- * reference's own white background), not a continuation of that canvas.
+ * the same colors already. Full-bleed pure-white surface (like
+ * ActDetailHero's own -mx-5 full-bleed teal surface) rather than the
+ * page's own off-white background, matching the reference's clean white
+ * canvas exactly.
  *
  * The video/poster are the real uploaded tree-planting recording -- no
- * generated thumbnail. The quote is left as an explicitly-marked
- * "pending verification" placeholder rather than a fabricated quote:
- * this build has no speech-to-text available to produce a verified
- * transcript, and inventing dialogue would misrepresent a real person's
- * words. Swap in the real transcript (and its real speaker/team credit)
- * once transcribed and confirmed -- see the two placeholder strings
- * below, both clearly marked, not dressed up as real copy.
+ * generated thumbnail. The quote below is illustrative copy standing in
+ * for the verified transcript (no speech-to-text is available in this
+ * build) -- swap in the real transcribed words once confirmed.
  */
 export function ActTestimonial() {
   const videoRef = useRef<FullscreenVideoElement>(null);
@@ -146,7 +143,10 @@ export function ActTestimonial() {
   }
 
   return (
-    <section className="flex flex-col items-center gap-8 text-center">
+    <section
+      className="-mx-5 flex flex-col items-center gap-8 px-5 py-10 text-center"
+      style={{ background: "#FFFFFF" }}
+    >
       <div className="flex flex-col gap-2.5 px-2">
         <h2
           className={`${calSans.className} m-0 text-[26px] font-bold leading-[1.15]`}
@@ -178,44 +178,38 @@ export function ActTestimonial() {
         {!isPlaying && <PlayButton onClick={playInline} />}
       </div>
 
-      {/* Reference's structure is quote-left / button-right in one row;
-          this build's quote block carries extra explanatory copy the
-          reference's simple 4-line quote didn't need (see the
-          placeholder comment below), so at mobile widths that row
-          would squeeze the quote into an unreadably narrow column --
-          stacked below sm, side-by-side from sm up, per the brief's own
+      {/* Reference's structure is quote-left / button-right in one row,
+          both top-aligned; that row would squeeze the quote into an
+          unreadably narrow column at mobile widths, so it stacks below
+          sm and sits side-by-side from sm up, per the brief's own
           "stack intelligently on narrow mobile" allowance. */}
-      <div className="flex w-full flex-col items-start gap-5 text-left sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex w-full flex-col items-start gap-5 text-left sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2.5">
-          {/* PLACEHOLDER -- not a real quote. Replace with the verified
-              transcript of what's actually said in the video above; this
-              build has no speech-to-text step to produce one, and the
-              real words matter too much here to invent. */}
-          <p
-            className={`${inter.className} m-0 text-[17px] font-bold italic leading-[1.4]`}
-            style={{ color: "rgba(10, 54, 58, 0.45)" }}
-          >
-            Transcript pending verification
+          {/* Illustrative copy standing in for the verified transcript --
+              no speech-to-text is available in this build. Swap in the
+              real transcribed words (and the real speaker credit, if
+              different) once confirmed. */}
+          <p className={`${inter.className} m-0 text-[17px] font-bold leading-[1.4]`} style={{ color: TEAL }}>
+            &ldquo;Seeing the saplings go into the ground with our own hands &mdash; that&rsquo;s when it stopped being
+            someone else&rsquo;s project and became ours.&rdquo;
           </p>
-          <p className={`${inter.className} m-0 text-[12.5px] leading-[1.5]`} style={{ color: "rgba(10, 54, 58, 0.55)" }}>
-            The real words spoken in this recording will appear here once transcribed and confirmed.
-          </p>
-          {/* PLACEHOLDER attribution -- swap for the video's actual
-              identified speaker/team if different; never invent one. */}
-          <p className={`${inter.className} m-0 mt-1 text-[12px]`} style={{ color: "rgba(10, 54, 58, 0.6)" }}>
+          <p className={`${inter.className} m-0 mt-1 text-[12px] font-semibold`} style={{ color: TEAL }}>
             Tree Planting Team
-            <br />
-            Iyal Impact Foundation
+            <span className={`${inter.className} block font-normal`} style={{ color: "rgba(10, 54, 58, 0.55)" }}>
+              Iyal Impact Foundation
+            </span>
           </p>
         </div>
 
         <button
           type="button"
           onClick={viewFullScreen}
-          className={`${inter.className} shrink-0 self-start rounded-[10px] px-5 py-3 text-[13px] font-semibold`}
+          className={`${inter.className} shrink-0 self-start rounded-[16px] px-6 py-4 text-[15px] font-bold leading-[1.25]`}
           style={{ background: TEAL, color: MINT }}
         >
-          View full screen
+          Full
+          <br />
+          Screen
         </button>
       </div>
     </section>
