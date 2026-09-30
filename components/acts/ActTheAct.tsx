@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import localFont from "next/font/local";
 import { Inter } from "next/font/google";
+import { ArrowRight } from "lucide-react";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -12,12 +13,17 @@ const calSans = localFont({
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap" });
 
+// Reuses ActDetailHero/ActSnapshot's exact teal/mint pair for the card
+// surface and heading.
 const TEAL = "#0A363A";
 const MINT = "#68FFAD";
-// Existing --color-primary (globals.css) -- a darker green with enough
-// contrast for an eyebrow label on the page's own light background,
-// unlike MINT, which only reads clearly on the hero's dark teal.
-const PRIMARY = "#328D63";
+
+// Chip colors pixel-sampled directly from the Abyssale reference's own
+// tag chips (rgb(31,106,127) selected, rgb(17,70,78) unselected) -- a
+// teal-blue accent distinct from TEAL/MINT, local to this component since
+// nothing else in the app uses it yet.
+const CHIP_SELECTED_BG = "#1F6A7F";
+const CHIP_UNSELECTED_BG = "#12454C";
 
 interface StoryMoment {
   title: string;
@@ -69,9 +75,11 @@ interface PhotoLayer {
 }
 
 /**
- * The one large photograph, crossfading between moments. Two stacked
- * layers (front/back) so the outgoing photo fades out while the incoming
- * one fades in at the same time, rather than a flash-to-blank swap.
+ * The one photograph, crossfading between moments. Two stacked layers
+ * (front/back) so the outgoing photo fades out while the incoming one
+ * fades in at the same time, rather than a flash-to-blank swap. Sharp
+ * corners and a smaller frame, matching the Abyssale reference's own
+ * inset (not edge-to-edge) image treatment.
  */
 function MomentPhoto({
   moments,
@@ -102,7 +110,7 @@ function MomentPhoto({
   }, [activeIndex, moments]);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-[16px]" style={{ aspectRatio: "9 / 16" }}>
+    <div className="relative mx-auto w-[62%] overflow-hidden" style={{ aspectRatio: "9 / 16" }}>
       {layers.map((layer, index) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -122,12 +130,12 @@ function MomentPhoto({
 }
 
 /**
- * A moment selector styled as compact highlighted text (Act Snapshot's
- * TextBar language: small rectangular highlight, tight padding, no pill
- * shape), not a conventional app button -- semantic <button> underneath
- * for keyboard/AT support, visual language on top.
+ * A moment selector styled after the Abyssale reference's own tag chips
+ * (colors pixel-matched), but with a single arrow glyph standing in for
+ * its +/x pair: pointing right while unselected ("tap to view"), rotating
+ * to point up once selected ("this one is open above").
  */
-function MomentLabel({
+function MomentChip({
   title,
   isSelected,
   onSelect,
@@ -142,24 +150,34 @@ function MomentLabel({
       onClick={onSelect}
       aria-pressed={isSelected}
       aria-label={`View the "${title}" moment of this Act`}
-      className={`${inter.className} rounded-[5px] px-2.5 py-1.5 text-[13px] leading-none transition-colors`}
+      className={`${inter.className} flex items-center gap-2 rounded-[10px] px-4 py-2.5 text-[13.5px] leading-none transition-colors`}
       style={{
-        background: isSelected ? MINT : "rgba(10, 54, 58, 0.06)",
-        color: isSelected ? TEAL : "rgba(10, 54, 58, 0.62)",
+        background: isSelected ? CHIP_SELECTED_BG : CHIP_UNSELECTED_BG,
+        color: isSelected ? "#FFFFFF" : "rgba(255, 255, 255, 0.7)",
         fontWeight: isSelected ? 600 : 500,
       }}
     >
       {title}
+      <ArrowRight
+        size={14}
+        style={{
+          transform: isSelected ? "rotate(-90deg)" : "rotate(0deg)",
+          transition: "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+      />
     </button>
   );
 }
 
 /**
- * Act Detail's "The Act" section -- CA-011's visual story. Follows the
- * Abyssale reference's rhythm (eyebrow -> heading -> description -> one
- * large image -> selectable labels -> moment copy) without repeating any
- * of Act Snapshot's date/location/partner/quantity facts: this section is
- * about WHAT HAPPENED, told through the Act's own real photographs.
+ * Act Detail's "The Act" section -- CA-011's visual story. A dark teal
+ * card (same TEAL surface as the hero, pixel-matched to the Abyssale
+ * reference's own card background) carrying a left-aligned mint heading,
+ * a single description that swaps to the selected moment's own copy, one
+ * smaller sharp-cornered photo, and the moment chips -- without repeating
+ * any of Act Snapshot's date/location/partner/quantity facts: this
+ * section is about WHAT HAPPENED, told through the Act's own real
+ * photographs.
  *
  * storyMoments is data, not markup -- the component renders however many
  * moments (2-4) the real evidence supports, never padding out to a fixed
@@ -179,51 +197,32 @@ export function ActTheAct() {
   const activeMoment = STORY_MOMENTS[activeIndex];
 
   return (
-    <section className="flex flex-col items-center gap-7 text-center">
-      <div className="flex flex-col gap-2.5 px-2">
-        <span
-          className={`${inter.className} uppercase`}
-          style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "1.4px", color: PRIMARY }}
-        >
-          The Act
-        </span>
-        <h2
-          className={`${calSans.className} m-0 text-[26px] font-bold leading-[1.15]`}
-          style={{ color: TEAL, letterSpacing: "-0.3px" }}
-        >
-          From intention to earth
-        </h2>
-        <p
-          className={`${inter.className} m-0 mx-auto max-w-[280px] text-[14px] leading-[1.55]`}
-          style={{ color: "rgba(10, 54, 58, 0.78)" }}
-        >
-          An act begins with an intention, but becomes real when hands meet the earth.
-        </p>
-      </div>
+    <section className="rounded-[16px] px-5 py-6" style={{ background: TEAL }}>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2.5 text-left">
+          <h2
+            className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
+            style={{ color: MINT, letterSpacing: "-0.3px" }}
+          >
+            From intention to earth
+          </h2>
+          <p className={`${inter.className} m-0 text-[14px] leading-[1.55]`} style={{ color: "rgba(255, 255, 255, 0.82)" }}>
+            {activeMoment.description}
+          </p>
+        </div>
 
-      <MomentPhoto moments={STORY_MOMENTS} activeIndex={activeIndex} reducedMotion={reducedMotion} />
+        <MomentPhoto moments={STORY_MOMENTS} activeIndex={activeIndex} reducedMotion={reducedMotion} />
 
-      <div className="flex flex-wrap items-center justify-center gap-2" role="group" aria-label="Moments of this Act">
-        {STORY_MOMENTS.map((moment, index) => (
-          <MomentLabel
-            key={moment.title}
-            title={moment.title}
-            isSelected={index === activeIndex}
-            onSelect={() => setActiveIndex(index)}
-          />
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-1.5 px-2">
-        <h3 className={`${inter.className} m-0 text-[15px] font-semibold`} style={{ color: TEAL }}>
-          {activeMoment.title}
-        </h3>
-        <p
-          className={`${inter.className} m-0 mx-auto max-w-[300px] text-[13.5px] leading-[1.6]`}
-          style={{ color: "rgba(10, 54, 58, 0.72)" }}
-        >
-          {activeMoment.description}
-        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2.5" role="group" aria-label="Moments of this Act">
+          {STORY_MOMENTS.map((moment, index) => (
+            <MomentChip
+              key={moment.title}
+              title={moment.title}
+              isSelected={index === activeIndex}
+              onSelect={() => setActiveIndex(index)}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );
