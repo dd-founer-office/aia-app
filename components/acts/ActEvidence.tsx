@@ -101,13 +101,12 @@ function SidePhoto({ src, href }: { src: string; href: string }) {
 
 /**
  * Three real photographs, asymmetric -- the center one (the featured
- * evidence moment) is wider AND taller than the sides (4:5 portrait vs.
- * their 1:1 square -- a genuine shape difference, not just a size bump),
- * hanging LOWER than them (top-aligned row; the taller center simply
- * extends further down) with a slightly stronger soft shadow; the side
- * photographs stay square, sit higher/quieter, with a lighter shadow of
- * their own. Matches the Abyssale reference's own layered, editorial
- * three-photo composition rather than three equal gallery cards.
+ * evidence moment) ~10% larger than the other two, hanging LOWER than
+ * them (top-aligned row; the taller center simply extends further down)
+ * with a slightly stronger soft shadow; the side photographs are
+ * smaller, sit higher/quieter, with a lighter shadow of their own.
+ * Matches the Abyssale reference's own layered three-photo composition
+ * rather than three equal gallery cards.
  */
 function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) {
   if (photos.length === 0) return null;
@@ -123,7 +122,7 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
         aria-label="View this photograph in the full Evidence Viewer"
         className="relative z-10 overflow-hidden rounded-[6px]"
         style={{
-          aspectRatio: "4 / 5",
+          aspectRatio: "1 / 1",
           flex: "0 1 34%",
           boxShadow: "0 16px 32px rgba(10, 54, 58, 0.14)",
         }}
@@ -144,9 +143,7 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
  * in the app's own light-mint background color (--color-background)
  * behind the whole composition rather than a visible box. A centered
  * heading/description matching ActTestimonial's exact typography (no
- * eyebrow label) sits close above the photo composition (gap-6, same
- * rhythm as everything below it, not a wider gap that reads as
- * arbitrary), three real capture photos in an asymmetric featured
+ * eyebrow label), three real capture photos in an asymmetric featured
  * composition, then three WHEN/WHERE/WHO records
  * built from the exact same per-photo trace data the full Living Trace
  * Viewer (/acts/[id]/evidence) renders -- never a separate, divergent
@@ -189,7 +186,7 @@ export function ActEvidence({
 
   return (
     <section
-      className="relative -mx-5 flex flex-col items-center gap-6 overflow-hidden px-5 py-10 text-center"
+      className="relative -mx-5 flex flex-col items-center gap-8 overflow-hidden px-5 py-10 text-center"
       style={{ background: "#FFFFFF" }}
     >
       {/* Soft atmospheric glow behind the whole composition -- a single
