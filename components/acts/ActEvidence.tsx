@@ -17,12 +17,10 @@ const TEAL = "#0A363A";
 // Existing --color-primary (globals.css) -- the icon/accent color on the
 // reference's own white cards, reused here rather than a one-off green.
 const PRIMARY = "#328D63";
-// Existing --color-badge-verified-bg (globals.css) -- the pale mint icon
-// badge behind the reference's own step icons.
-const ICON_BADGE_BG = "#E6F2EC";
-// AiA's bright mint accent (ActDetailHero/ActSnapshot/ActTheAct), used
-// here at very low opacity for the section's soft atmospheric glow.
-const MINT = "#68FFAD";
+// Existing --color-background (globals.css) -- the app's own very-light
+// mint page background, reused here for the icon badges AND (at low
+// opacity) for the section's soft atmospheric glow.
+const APP_BG = "#EFF4F2";
 
 function MomentArrow() {
   return (
@@ -38,7 +36,7 @@ function RecordIconBadge({ icon }: { icon: ReactNode }) {
   return (
     <div
       className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px]"
-      style={{ background: ICON_BADGE_BG }}
+      style={{ background: APP_BG }}
     >
       {icon}
     </div>
@@ -139,12 +137,12 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
 /**
  * Act Detail's "The Evidence" section -- CA-011's documentary record.
  * Full-bleed surface (-mx-5, like ActTestimonial's own full-bleed
- * section) in the app's established very-light mint page background
- * (--color-background), with a single soft radial mint glow behind the
- * whole composition rather than a visible box -- not pure white. A
- * centered heading/description matching ActTestimonial's exact
- * typography (no eyebrow label), three real capture photos in an
- * asymmetric featured composition, then three WHEN/WHERE/WHO records
+ * section) on a pure-white background, with a single soft radial glow
+ * in the app's own light-mint background color (--color-background)
+ * behind the whole composition rather than a visible box. A centered
+ * heading/description matching ActTestimonial's exact typography (no
+ * eyebrow label), three real capture photos in an asymmetric featured
+ * composition, then three WHEN/WHERE/WHO records
  * built from the exact same per-photo trace data the full Living Trace
  * Viewer (/acts/[id]/evidence) renders -- never a separate, divergent
  * fetch. Every value here is either real evidence data or omitted
@@ -187,17 +185,19 @@ export function ActEvidence({
   return (
     <section
       className="relative -mx-5 flex flex-col items-center gap-8 overflow-hidden px-5 py-10 text-center"
-      style={{ background: "var(--color-background)" }}
+      style={{ background: "#FFFFFF" }}
     >
       {/* Soft atmospheric glow behind the whole composition -- a single
-          diffused radial wash, not a visible box, low enough opacity to
-          read as depth rather than decoration. */}
+          diffused radial wash in the app's own light-mint background
+          color, sitting on top of the pure-white section, not a visible
+          box, low enough opacity to read as depth rather than
+          decoration. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           zIndex: 0,
-          background: `radial-gradient(62% 55% at 50% 32%, ${MINT}29 0%, ${MINT}12 45%, ${MINT}00 72%)`,
+          background: `radial-gradient(62% 55% at 50% 32%, ${APP_BG}CC 0%, ${APP_BG}66 45%, ${APP_BG}00 72%)`,
         }}
       />
 
