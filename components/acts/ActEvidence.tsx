@@ -114,7 +114,7 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
   const [center, left, right] = photos;
 
   return (
-    <div className="flex items-start justify-center gap-2.5">
+    <div className="flex items-start justify-center gap-4 px-5">
       {left && <SidePhoto src={left} href={href} />}
 
       <Link
