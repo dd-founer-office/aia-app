@@ -35,7 +35,7 @@ function MomentArrow() {
 function RecordIconBadge({ icon }: { icon: ReactNode }) {
   return (
     <div
-      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px]"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px]"
       style={{ background: APP_BG }}
     >
       {icon}
@@ -46,9 +46,11 @@ function RecordIconBadge({ icon }: { icon: ReactNode }) {
 /**
  * One editorial record, styled after the Abyssale reference's own
  * "When this happens / Do this action" cards: a rounded-square icon
- * badge beside a quiet muted-gray label, with the record's real value
- * carried in bold dark text underneath -- not the small green-caps
- * eyebrow treatment used elsewhere on this page.
+ * badge beside a quiet sentence-case label ending in "...", with the
+ * record's real value carried in bold dark text underneath. Narrower
+ * than the section's full content width and centered (w-[88%] mx-auto)
+ * so it reads as a compact editorial record rather than an edge-to-edge
+ * panel, matching the reference's own proportions.
  */
 function EvidenceRecord({
   icon,
@@ -61,7 +63,7 @@ function EvidenceRecord({
 }) {
   return (
     <div
-      className="flex items-start gap-4 rounded-[20px] border p-5 text-left"
+      className="mx-auto flex w-[88%] items-start gap-3.5 rounded-[20px] border px-5 py-4 text-left"
       style={{
         borderColor: "var(--color-border)",
         background: "var(--color-card)",
@@ -70,7 +72,7 @@ function EvidenceRecord({
     >
       <RecordIconBadge icon={icon} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className={`${inter.className} uppercase`} style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: "0.6px", color: "var(--color-muted-foreground)" }}>
+        <span className={`${inter.className}`} style={{ fontSize: 12.5, fontWeight: 500, color: "var(--color-muted-foreground)" }}>
           {label}
         </span>
         {children}
@@ -221,7 +223,7 @@ export function ActEvidence({
 
         <MomentArrow />
 
-        <EvidenceRecord icon={<Calendar size={20} color={PRIMARY} />} label="When It Happened">
+        <EvidenceRecord icon={<Calendar size={20} color={PRIMARY} />} label="When it happened ...">
           {earliest.captureDateLong && earliest.captureTimeWithOffset ? (
             <div className="flex flex-col gap-0.5">
               <p className={`${inter.className} m-0 text-[17px] font-bold`} style={{ color: "var(--color-foreground)" }}>
@@ -243,7 +245,7 @@ export function ActEvidence({
 
         <MomentArrow />
 
-        <EvidenceRecord icon={<MapPin size={20} color={PRIMARY} />} label="Where It Happened">
+        <EvidenceRecord icon={<MapPin size={20} color={PRIMARY} />} label="Where it happened ...">
           <div className="flex flex-col gap-2.5">
             {landmarkPrimary ? (
               <div className="flex flex-col gap-0.5">
@@ -286,7 +288,7 @@ export function ActEvidence({
 
         <MomentArrow />
 
-        <EvidenceRecord icon={<User size={20} color={PRIMARY} />} label="Who Captured It">
+        <EvidenceRecord icon={<User size={20} color={PRIMARY} />} label="Who captured it ...">
           <div className="flex flex-col gap-0.5">
             <p className={`${inter.className} m-0 text-[17px] font-bold`} style={{ color: "var(--color-foreground)" }}>
               {earliest.capturedBy}
