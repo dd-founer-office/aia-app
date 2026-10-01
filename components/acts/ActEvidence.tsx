@@ -14,104 +14,98 @@ const calSans = localFont({
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap" });
 
 const TEAL = "#0A363A";
-// Existing --color-primary (globals.css) -- reused here for the eyebrow,
-// same choice ActTheAct made for a label that needs to read on the page's
-// own light background rather than a dark teal surface.
+// Existing --color-primary (globals.css) -- the icon/accent color on the
+// reference's own white cards, reused here rather than a one-off green.
 const PRIMARY = "#328D63";
+// Existing --color-badge-verified-bg (globals.css) -- the pale mint icon
+// badge behind the reference's own step icons.
+const ICON_BADGE_BG = "#E6F2EC";
 
 function MomentArrow() {
   return (
     <div className="flex items-center justify-center" aria-hidden="true">
-      <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: TEAL }}>
-        <ChevronDown size={16} color="#FFFFFF" />
+      <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: TEAL }}>
+        <ChevronDown size={18} color="#FFFFFF" />
       </div>
     </div>
   );
 }
 
+function RecordIconBadge({ icon }: { icon: ReactNode }) {
+  return (
+    <div
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px]"
+      style={{ background: ICON_BADGE_BG }}
+    >
+      {icon}
+    </div>
+  );
+}
+
+/**
+ * One editorial record, styled after the Abyssale reference's own
+ * "When this happens / Do this action" cards: a rounded-square icon
+ * badge beside a quiet muted-gray label, with the record's real value
+ * carried in bold dark text underneath -- not the small green-caps
+ * eyebrow treatment used elsewhere on this page.
+ */
 function EvidenceRecord({
   icon,
-  eyebrow,
+  label,
   children,
 }: {
-  icon?: ReactNode;
-  eyebrow: string;
+  icon: ReactNode;
+  label: string;
   children: ReactNode;
 }) {
   return (
     <div
-      className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-5"
+      className="flex items-start gap-4 rounded-[20px] border p-5 text-left"
+      style={{ borderColor: "var(--color-border)", background: "var(--color-card)" }}
     >
-      <div className="flex items-center gap-2">
-        {icon}
-        <span
-          className={`${inter.className} uppercase`}
-          style={{ fontSize: 11, fontWeight: 700, letterSpacing: "1.2px", color: PRIMARY }}
-        >
-          {eyebrow}
+      <RecordIconBadge icon={icon} />
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span className={`${inter.className} uppercase`} style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: "0.6px", color: "var(--color-muted-foreground)" }}>
+          {label}
         </span>
+        {children}
       </div>
-      {children}
     </div>
   );
 }
 
-function EvidencePhotoCluster({ photos, href }: { photos: string[]; href: string }) {
+/**
+ * Three real photographs in one equal row -- same simple side-by-side
+ * arrangement as the reference's own three ad examples, not a layered
+ * collage.
+ */
+function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) {
   if (photos.length === 0) return null;
 
-  const [first, second, third] = photos;
-
   return (
-    <div className="relative">
-      <Link
-        href={href}
-        aria-label="View this photograph in the full Evidence Viewer"
-        className="block overflow-hidden rounded-[var(--radius-photo)]"
-        style={{ aspectRatio: "4 / 3" }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={first} alt="" className="h-full w-full object-cover" />
-      </Link>
-
-      {(second || third) && (
-        <div className="relative z-10 -mt-10 flex gap-3 px-4">
-          {second && (
-            <Link
-              href={href}
-              aria-label="View this photograph in the full Evidence Viewer"
-              className="flex-1 overflow-hidden rounded-[var(--radius-photo)]"
-              style={{
-                aspectRatio: "4 / 5",
-                boxShadow: "0 10px 24px rgba(10, 54, 58, 0.16)",
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={second} alt="" className="h-full w-full object-cover" />
-            </Link>
-          )}
-          {third && (
-            <Link
-              href={href}
-              aria-label="View this photograph in the full Evidence Viewer"
-              className="mt-5 flex-1 overflow-hidden rounded-[var(--radius-photo)]"
-              style={{
-                aspectRatio: "4 / 5",
-                boxShadow: "0 10px 24px rgba(10, 54, 58, 0.16)",
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={third} alt="" className="h-full w-full object-cover" />
-            </Link>
-          )}
-        </div>
-      )}
+    <div className="grid grid-cols-3 gap-2.5">
+      {photos.map((photo) => (
+        <Link
+          key={photo}
+          href={href}
+          aria-label="View this photograph in the full Evidence Viewer"
+          className="overflow-hidden rounded-[14px]"
+          style={{ aspectRatio: "1 / 1" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo} alt="" className="h-full w-full object-cover" />
+        </Link>
+      ))}
     </div>
   );
 }
 
 /**
  * Act Detail's "The Evidence" section -- CA-011's documentary record.
- * Real capture photos first, then three editorial WHEN/WHERE/WHO records
+ * Full-bleed pure-white surface (same -mx-5 treatment as ActTestimonial's
+ * own white section, not the page's off-white background), a centered
+ * eyebrow/heading/description matching that section's exact typography,
+ * three real capture photos in a row, then three WHEN/WHERE/WHO records
  * built from the exact same per-photo trace data the full Living Trace
  * Viewer (/acts/[id]/evidence) renders -- never a separate, divergent
  * fetch. Every value here is either real evidence data or omitted
@@ -152,8 +146,8 @@ export function ActEvidence({
   const landmarkSecondary = landmarkRest.join(", ");
 
   return (
-    <section className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2.5">
+    <section className="-mx-5 flex flex-col items-center gap-8 px-5 py-10 text-center" style={{ background: "#FFFFFF" }}>
+      <div className="flex flex-col gap-2.5 px-2">
         <span
           className={`${inter.className} uppercase`}
           style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "1.4px", color: PRIMARY }}
@@ -166,107 +160,100 @@ export function ActEvidence({
         >
           Every moment leaves a trace.
         </h2>
-        <p className={`${inter.className} m-0 text-[14px] leading-[1.55]`} style={{ color: "rgba(10, 54, 58, 0.72)" }}>
+        <p
+          className={`${inter.className} m-0 mx-auto max-w-[280px] text-[14px] leading-[1.55]`}
+          style={{ color: "rgba(10, 54, 58, 0.78)" }}
+        >
           The Act was documented as it happened.
         </p>
       </div>
 
-      <EvidencePhotoCluster photos={photos} href={evidenceHref} />
+      <div className="flex w-full flex-col items-stretch gap-6">
+        <EvidencePhotoRow photos={photos} href={evidenceHref} />
 
-      <MomentArrow />
+        <MomentArrow />
 
-      <EvidenceRecord icon={<Calendar size={16} color={PRIMARY} />} eyebrow="When It Happened">
-        {earliest.captureDateLong && earliest.captureTimeWithOffset ? (
-          <div className="flex flex-col gap-0.5">
-            <p className={`${inter.className} m-0 text-[15px] font-semibold`} style={{ color: TEAL }}>
-              {earliest.captureDateLong}
-            </p>
-            <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "rgba(10, 54, 58, 0.65)" }}>
-              {earliest.captureTimeWithOffset}
-            </p>
-          </div>
-        ) : (
-          // Genuinely missing on the stored evidence row -- never
-          // reconstructed. See lib/published-acts.ts's captureDateLong/
-          // captureTimeWithOffset comment.
-          <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "rgba(10, 54, 58, 0.5)" }}>
-            Capture time unavailable
-          </p>
-        )}
-      </EvidenceRecord>
-
-      <MomentArrow />
-
-      <EvidenceRecord icon={<MapPin size={16} color={PRIMARY} />} eyebrow="Where It Happened">
-        <div className="flex flex-col gap-2.5">
-          {landmarkPrimary ? (
+        <EvidenceRecord icon={<Calendar size={20} color={PRIMARY} />} label="When It Happened">
+          {earliest.captureDateLong && earliest.captureTimeWithOffset ? (
             <div className="flex flex-col gap-0.5">
-              <p className={`${inter.className} m-0 text-[15px] font-semibold`} style={{ color: TEAL }}>
-                {landmarkPrimary}
+              <p className={`${inter.className} m-0 text-[17px] font-bold`} style={{ color: "var(--color-foreground)" }}>
+                {earliest.captureDateLong}
               </p>
-              {landmarkSecondary && (
-                <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "rgba(10, 54, 58, 0.65)" }}>
-                  {landmarkSecondary}
-                </p>
-              )}
+              <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
+                {earliest.captureTimeWithOffset}
+              </p>
             </div>
           ) : (
-            <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "rgba(10, 54, 58, 0.5)" }}>
-              Location unavailable
+            // Genuinely missing on the stored evidence row -- never
+            // reconstructed. See lib/published-acts.ts's captureDateLong/
+            // captureTimeWithOffset comment.
+            <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
+              Capture time unavailable
             </p>
           )}
+        </EvidenceRecord>
 
-          {hasCoords && (
-            <p className={`${inter.className} m-0 text-[12.5px] leading-[1.6]`} style={{ color: "rgba(10, 54, 58, 0.55)" }}>
-              Lat {earliest.trust.lat!.toFixed(6)}°
-              <br />
-              Long {earliest.trust.lng!.toFixed(6)}°
-            </p>
-          )}
+        <MomentArrow />
 
-          {mapsUrl && (
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${inter.className} text-[13px] font-semibold`}
-              style={{ color: PRIMARY }}
-            >
-              View on map &rarr;
-            </a>
-          )}
-        </div>
-      </EvidenceRecord>
+        <EvidenceRecord icon={<MapPin size={20} color={PRIMARY} />} label="Where It Happened">
+          <div className="flex flex-col gap-2.5">
+            {landmarkPrimary ? (
+              <div className="flex flex-col gap-0.5">
+                <p className={`${inter.className} m-0 text-[17px] font-bold`} style={{ color: "var(--color-foreground)" }}>
+                  {landmarkPrimary}
+                </p>
+                {landmarkSecondary && (
+                  <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
+                    {landmarkSecondary}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
+                Location unavailable
+              </p>
+            )}
 
-      <MomentArrow />
+            {hasCoords && (
+              <p className={`${inter.className} m-0 text-[12.5px] leading-[1.6]`} style={{ color: "var(--color-muted-foreground)" }}>
+                Lat {earliest.trust.lat!.toFixed(6)}°
+                <br />
+                Long {earliest.trust.lng!.toFixed(6)}°
+              </p>
+            )}
 
-      <EvidenceRecord eyebrow="Who Captured It">
-        <div className="flex items-center gap-3">
-          {/* No profile photo field exists on the mission record -- a
-              neutral icon badge, never a fabricated or generic stock
-              face, stands in for it. */}
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-            style={{ background: "rgba(10, 54, 58, 0.08)" }}
-          >
-            <User size={18} color={PRIMARY} />
+            {mapsUrl && (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${inter.className} text-[13px] font-semibold`}
+                style={{ color: PRIMARY }}
+              >
+                View on map &rarr;
+              </a>
+            )}
           </div>
+        </EvidenceRecord>
+
+        <MomentArrow />
+
+        <EvidenceRecord icon={<User size={20} color={PRIMARY} />} label="Who Captured It">
           <div className="flex flex-col gap-0.5">
-            <p className={`${inter.className} m-0 text-[15px] font-semibold`} style={{ color: TEAL }}>
+            <p className={`${inter.className} m-0 text-[17px] font-bold`} style={{ color: "var(--color-foreground)" }}>
               {earliest.capturedBy}
             </p>
             {/* No role/title field exists on the mission record -- omitted
-                rather than invented (brief's own rule: never show a role
-                that isn't on file). */}
-            <p className={`${inter.className} m-0 text-[13px]`} style={{ color: "rgba(10, 54, 58, 0.65)" }}>
+                rather than invented. */}
+            <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
               {organization}
             </p>
-            <p className={`${inter.className} m-0 text-[12px]`} style={{ color: "rgba(10, 54, 58, 0.5)" }}>
+            <p className={`${inter.className} m-0 text-[12px]`} style={{ color: "var(--color-muted-foreground)" }}>
               By AiA Mission Camera
             </p>
           </div>
-        </div>
-      </EvidenceRecord>
+        </EvidenceRecord>
+      </div>
     </section>
   );
 }
