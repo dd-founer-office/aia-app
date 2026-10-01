@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getActById } from "@/lib/mock-data";
-import { getPublishedActSummary } from "@/lib/published-acts";
+import { getPublishedActSummary, getPublishedActTrace } from "@/lib/published-acts";
 import { getMyActsFeed } from "@/lib/acts-feed";
 import { getMyLinkedPublishedMissionIds } from "@/lib/act-attribution";
 import { ActDetailClient } from "@/components/acts/ActDetailClient";
@@ -37,5 +37,13 @@ export default async function ActDetailPage({
     .filter((item) => item.id !== id && item.category === publishedAct.cause)
     .slice(0, 4);
 
-  return <PublishedActDetail act={publishedAct} id={id} relatedActs={relatedActs} />;
+  // CA-011 Section 4 (The Evidence): the same real per-photo capture
+  // records the full Living Trace Viewer uses (/acts/[id]/evidence) --
+  // not a separate fetch/shape, so "WHEN/WHERE/WHO" can never drift from
+  // what that viewer itself shows.
+  const evidence = await getPublishedActTrace(id);
+
+  return (
+    <PublishedActDetail act={publishedAct} id={id} relatedActs={relatedActs} evidence={evidence} />
+  );
 }

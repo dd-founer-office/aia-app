@@ -297,7 +297,11 @@ function PublicationPanel({ item, onDone }: { item: PublicationQueueItem; onDone
           </div>
           <div className="border-t border-[var(--color-border)]">
             <p className="p-5 pb-2 text-xs font-medium text-[var(--color-muted-foreground)]">Act Detail page</p>
-            <PublishedActDetail act={previewSummary} id={item.executionId} relatedActs={[]} />
+            {/* The Evidence section needs real per-photo capture records
+                (getPublishedActTrace), which only exist once this mission
+                is actually published -- this preview renders before that,
+                so it correctly shows no Evidence section yet. */}
+            <PublishedActDetail act={previewSummary} id={item.executionId} relatedActs={[]} evidence={[]} />
           </div>
         </Card>
       </section>

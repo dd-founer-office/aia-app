@@ -41,6 +41,42 @@ function formatFullDateTime(iso: string, timeZone: string | null): string {
     return new Date(iso).toUTCString();
   }
 }
+// The Evidence section's "WHEN IT HAPPENED" record wants the date and
+// time+offset as two separately-styled lines (not one combined string
+// like formatFullDateTime above) and needs seconds-level precision since
+// this is evidence, not a casual display date. Same source columns
+// (capture_time, capture_timezone), just formatted for that hierarchy.
+function formatEvidenceDateLong(iso: string, timeZone: string | null): string {
+  const tz = timeZone ?? 'UTC';
+  try {
+    return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: tz }).format(
+      new Date(iso)
+    );
+  } catch {
+    return new Date(iso).toUTCString();
+  }
+}
+
+function formatEvidenceTimeWithOffset(iso: string, timeZone: string | null): string {
+  const tz = timeZone ?? 'UTC';
+  const date = new Date(iso);
+  try {
+    const time = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+      timeZone: tz,
+    }).format(date);
+    const offset = new Intl.DateTimeFormat('en-US', { timeZoneName: 'shortOffset', timeZone: tz })
+      .formatToParts(date)
+      .find((part) => part.type === 'timeZoneName')?.value;
+    return offset ? `${time} ${offset}` : time;
+  } catch {
+    return date.toISOString();
+  }
+}
+
 function prettifyReviewerName(raw: string): string {
   if (!raw.includes('@')) return raw; // already a real display name
   const local = raw.split('@')[0];
@@ -215,6 +251,11 @@ export async function getPublishedActTrace(missionId: string): Promise<EvidenceT
       placeName: (row.place_name as string | null) ?? undefined,
       plusCode: (row.plus_code as string | null) ?? undefined,
       captureDateTimeFull: formatFullDateTime(row.capture_time as string, row.capture_timezone as string | null),
+      captureDateLong: formatEvidenceDateLong(row.capture_time as string, row.capture_timezone as string | null),
+      captureTimeWithOffset: formatEvidenceTimeWithOffset(
+        row.capture_time as string,
+        row.capture_timezone as string | null
+      ),
       momentTitle: moment?.moment_title ?? 'Evidence Captured',
       narrative: moment?.narrative ?? '',
       captureDate: formatDisplayDate(row.capture_time as string),

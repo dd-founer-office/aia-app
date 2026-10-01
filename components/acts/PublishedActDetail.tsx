@@ -6,8 +6,10 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ActDetailHero } from "@/components/acts/ActDetailHero";
 import { ActTestimonial } from "@/components/acts/ActTestimonial";
 import { ActTheAct } from "@/components/acts/ActTheAct";
+import { ActEvidence } from "@/components/acts/ActEvidence";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
+import type { EvidenceTraceItem } from "@/components/acts/living-trace/types";
 
 // Act Detail render for real (Supabase-backed) published missions. Was
 // deliberately minimal (no story/verification/documents) because Mission
@@ -34,10 +36,12 @@ import type { ActFeedItem } from "@/lib/acts-feed";
 export function PublishedActDetail({
   act,
   relatedActs,
+  evidence,
 }: {
   act: PublishedActSummary;
   id: string;
   relatedActs: ActFeedItem[];
+  evidence: EvidenceTraceItem[];
 }) {
   const hasStory = act.storySituation && act.storyAction && act.storyOutcome;
 
@@ -67,6 +71,13 @@ export function PublishedActDetail({
           a fixed count). No date/location/partner/quantity here -- that's
           Act Snapshot's job; this section is about what happened. */}
       <ActTheAct />
+
+      {/* "The Evidence" (CA-011 visual story, part 2) -- real capture
+          photos plus the same per-photo WHEN/WHERE/WHO records the full
+          Living Trace Viewer (/acts/[id]/evidence) uses, so nothing here
+          can drift from what that viewer itself shows. Renders nothing
+          when this Act has no evidence rows yet. */}
+      <ActEvidence actId={act.id} organization={act.organization} evidence={evidence} />
 
       {/* Story (CA-011 Section 3) -- situation -> action -> outcome. Only
           rendered when Ops has filled in all three; otherwise this section
