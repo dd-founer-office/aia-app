@@ -213,7 +213,20 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
     },
   },
   { episodeNumber: 17, tamilText: "ஞயம்பட உரை", simpleMeaning: "Speak so that your words bring sweetness to the listener.", transliteration: "Nyayampada Urai", primaryTheme: "speech", verified: true },
-  { episodeNumber: 18, tamilText: "இடம்பட வீடு எடேல்", simpleMeaning: "Do not build a house larger than you need.", transliteration: "Idampada Veedu Edel", primaryTheme: "responsibility", verified: true },
+  { episodeNumber: 18, tamilText: "இடம்பட வீடு எடேல்", simpleMeaning: "Do not build a house larger than you need.", transliteration: "Idampada Veedu Edel", primaryTheme: "responsibility", verified: true,
+    // Curated per founder report: uncurated, this episode pulled from the
+    // generic "responsibility" pool (finishing chores, keeping promises) --
+    // nothing to do with the actual line, which is about not wanting more
+    // than you need. Every field below is written plainly and tied to the
+    // real meaning instead, same fix pattern as episodes 8 and 16.
+    curated: {
+      hookOverride: "Does your child know when \"enough\" is actually enough?",
+      understanding: "Avvaiyar's wisdom here is simple: don't build a house bigger than you need. It isn't only about houses. It's about not wanting more just because you can get more.",
+      familyAngle: "Your child wants a bigger room, or a second toy just like the one they already have. Stopping to ask \"do I really need this?\" before asking for it is what this line is really about.",
+      todayAction: "Before buying or asking for something today, ask together: \"Do we need this, or do we just want it?\"",
+      childLesson: "More isn't always better. Sometimes enough is better.",
+    },
+  },
   { episodeNumber: 19, tamilText: "இணக்கம் அறிந்து இணங்கு", simpleMeaning: "Know a person's true character before befriending them.", transliteration: "Inakkam Arindhu Inangu", primaryTheme: "community", verified: true },
   { episodeNumber: 20, tamilText: "தந்தை தாய்ப் பேண்", simpleMeaning: "Care for and protect your father and mother.", transliteration: "Thandhai Thaai Pen", primaryTheme: "family", verified: true,
     curated: {
