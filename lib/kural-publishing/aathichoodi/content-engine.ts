@@ -138,7 +138,7 @@ export function composeEpisode(
     : selectChildLesson(theme, episodeNumber, history.recentChildLessonIds);
   const aiaConnection = curated?.aiaConnection
     ? { id: matchAiaConnectionId(curated.aiaConnection) ?? "curated", text: curated.aiaConnection }
-    : selectAiaConnection(episodeNumber, history.recentAiaConnectionIds);
+    : selectAiaConnection(theme, episodeNumber, history.recentAiaConnectionIds);
   const understanding = curated?.understanding
     ? { text: curated.understanding, openerId: "curated", reframingId: "curated" }
     : composeUnderstanding(

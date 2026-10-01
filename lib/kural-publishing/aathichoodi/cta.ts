@@ -38,15 +38,15 @@ export interface CtaConfig {
 }
 
 export const CTA_TYPES: readonly CtaConfig[] = [
-  { id: "SAVE", label: "Save", copyTemplate: "Save this one — you'll want to teach it again." },
-  { id: "SHARE", label: "Share", copyTemplate: "Share this with a parent who'd want to see it." },
-  { id: "COMMENT", label: "Comment", copyTemplate: "Tell us in the comments how your family lives this out." },
-  { id: "TRY_TODAY", label: "Try Today", copyTemplate: "Try today's small action with your child before the day ends." },
-  { id: "PARENT_REFLECTION", label: "Parent Reflection", copyTemplate: "A question worth sitting with tonight, parent to parent." },
-  { id: "AIA_PARTICIPATION", label: "AiA Participation", copyTemplate: "Turn this value into action with Aram in Action." },
-  { id: "DISTANT_DEVOTION", label: "Distant Devotion", copyTemplate: "Carry this value forward through Distant Devotion." },
-  { id: "STORY_TESTIMONIAL", label: "Story / Testimonial", copyTemplate: "Has your family lived this one? We'd love to hear it." },
-  { id: "SOFT_ENQUIRY", label: "Soft Enquiry", copyTemplate: "Curious how this connects to Aram in Action? Ask us." },
+  { id: "SAVE", label: "Save", copyTemplate: "Save this now — you'll want it the next time this comes up at home." },
+  { id: "SHARE", label: "Share", copyTemplate: "Send this to one parent right now who needs to see it today." },
+  { id: "COMMENT", label: "Comment", copyTemplate: "Comment below: how will your family live this out this week?" },
+  { id: "TRY_TODAY", label: "Try Today", copyTemplate: "Don't just read it — try today's action with your child before bedtime." },
+  { id: "PARENT_REFLECTION", label: "Parent Reflection", copyTemplate: "Sit with this tonight, then talk about it with your child tomorrow." },
+  { id: "AIA_PARTICIPATION", label: "AiA Participation", copyTemplate: "Take the next step — turn this value into action with Aram in Action." },
+  { id: "DISTANT_DEVOTION", label: "Distant Devotion", copyTemplate: "Carry this value forward today through Distant Devotion." },
+  { id: "STORY_TESTIMONIAL", label: "Story / Testimonial", copyTemplate: "Tell us how your family has lived this — your story could help another parent." },
+  { id: "SOFT_ENQUIRY", label: "Soft Enquiry", copyTemplate: "Want to bring this into your family's routine? Ask us how." },
 ];
 
 export function ctaConfig(id: CtaTypeId): CtaConfig {
@@ -54,19 +54,22 @@ export function ctaConfig(id: CtaTypeId): CtaConfig {
 }
 
 /** Generic (always-available) CTA pool, rotated by theme + anti-repetition
- *  history when no curated override and no registry match apply. */
+ *  history when no curated override and no registry match apply. Each
+ *  theme now lists 5 relevant types (was 3) so more real variety cycles
+ *  through before anything repeats, on top of the stronger, more directly
+ *  action-driving copy in CTA_TYPES above. */
 const GENERIC_CTA_BY_THEME: Record<ThemeId, readonly CtaTypeId[]> = {
-  character: ["PARENT_REFLECTION", "SAVE", "COMMENT"],
-  "self-control": ["TRY_TODAY", "PARENT_REFLECTION", "SAVE"],
-  generosity: ["TRY_TODAY", "AIA_PARTICIPATION", "SHARE"],
-  family: ["PARENT_REFLECTION", "STORY_TESTIMONIAL", "SHARE"],
-  gratitude: ["PARENT_REFLECTION", "COMMENT", "SHARE"],
-  responsibility: ["TRY_TODAY", "SAVE", "COMMENT"],
-  community: ["SHARE", "COMMENT", "SAVE"],
-  devotion: ["SOFT_ENQUIRY", "PARENT_REFLECTION", "SAVE"],
-  speech: ["TRY_TODAY", "PARENT_REFLECTION", "SAVE"],
-  education: ["SAVE", "SHARE", "TRY_TODAY"],
-  honesty: ["PARENT_REFLECTION", "COMMENT", "SAVE"],
+  character: ["PARENT_REFLECTION", "SAVE", "COMMENT", "TRY_TODAY", "SHARE"],
+  "self-control": ["TRY_TODAY", "PARENT_REFLECTION", "SAVE", "COMMENT", "SHARE"],
+  generosity: ["TRY_TODAY", "AIA_PARTICIPATION", "SHARE", "COMMENT", "SAVE"],
+  family: ["PARENT_REFLECTION", "STORY_TESTIMONIAL", "SHARE", "TRY_TODAY", "SAVE"],
+  gratitude: ["PARENT_REFLECTION", "COMMENT", "SHARE", "TRY_TODAY", "SAVE"],
+  responsibility: ["TRY_TODAY", "SAVE", "COMMENT", "PARENT_REFLECTION", "SHARE"],
+  community: ["SHARE", "COMMENT", "SAVE", "TRY_TODAY", "PARENT_REFLECTION"],
+  devotion: ["SOFT_ENQUIRY", "PARENT_REFLECTION", "SAVE", "TRY_TODAY", "COMMENT"],
+  speech: ["TRY_TODAY", "PARENT_REFLECTION", "SAVE", "COMMENT", "SHARE"],
+  education: ["SAVE", "SHARE", "TRY_TODAY", "COMMENT", "PARENT_REFLECTION"],
+  honesty: ["PARENT_REFLECTION", "COMMENT", "SAVE", "TRY_TODAY", "SHARE"],
 };
 
 export interface CtaSelection {
