@@ -74,28 +74,52 @@ function EvidenceRecord({
   );
 }
 
+function SidePhoto({ src, href }: { src: string; href: string }) {
+  return (
+    <Link
+      href={href}
+      aria-label="View this photograph in the full Evidence Viewer"
+      className="mt-5 overflow-hidden rounded-[14px]"
+      style={{ aspectRatio: "1 / 1", flex: "0 1 29%" }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" className="h-full w-full object-cover" />
+    </Link>
+  );
+}
+
 /**
- * Three real photographs in one equal row -- same simple side-by-side
- * arrangement as the reference's own three ad examples, not a layered
- * collage.
+ * Three real photographs, asymmetric -- the center one (the featured
+ * evidence moment) ~15% larger and raised above the other two, with a
+ * soft elevation shadow; the side photographs are smaller, sit slightly
+ * lower, and carry no shadow, reading as quieter supporting frames.
+ * Matches the Abyssale reference's own layered three-photo composition
+ * rather than three equal gallery cards.
  */
 function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) {
   if (photos.length === 0) return null;
 
+  const [center, left, right] = photos;
+
   return (
-    <div className="grid grid-cols-3 gap-2.5">
-      {photos.map((photo) => (
-        <Link
-          key={photo}
-          href={href}
-          aria-label="View this photograph in the full Evidence Viewer"
-          className="overflow-hidden rounded-[14px]"
-          style={{ aspectRatio: "1 / 1" }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo} alt="" className="h-full w-full object-cover" />
-        </Link>
-      ))}
+    <div className="flex items-end justify-center gap-2.5">
+      {left && <SidePhoto src={left} href={href} />}
+
+      <Link
+        href={href}
+        aria-label="View this photograph in the full Evidence Viewer"
+        className="relative z-10 overflow-hidden rounded-[16px]"
+        style={{
+          aspectRatio: "1 / 1",
+          flex: "0 1 38%",
+          boxShadow: "0 14px 28px rgba(10, 54, 58, 0.2)",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={center} alt="" className="h-full w-full object-cover" />
+      </Link>
+
+      {right && <SidePhoto src={right} href={href} />}
     </div>
   );
 }
@@ -104,8 +128,9 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
  * Act Detail's "The Evidence" section -- CA-011's documentary record.
  * Full-bleed pure-white surface (same -mx-5 treatment as ActTestimonial's
  * own white section, not the page's off-white background), a centered
- * eyebrow/heading/description matching that section's exact typography,
- * three real capture photos in a row, then three WHEN/WHERE/WHO records
+ * heading/description matching that section's exact typography (no
+ * eyebrow label), three real capture photos in an asymmetric featured
+ * composition, then three WHEN/WHERE/WHO records
  * built from the exact same per-photo trace data the full Living Trace
  * Viewer (/acts/[id]/evidence) renders -- never a separate, divergent
  * fetch. Every value here is either real evidence data or omitted
@@ -148,12 +173,6 @@ export function ActEvidence({
   return (
     <section className="-mx-5 flex flex-col items-center gap-8 px-5 py-10 text-center" style={{ background: "#FFFFFF" }}>
       <div className="flex flex-col gap-2.5 px-2">
-        <span
-          className={`${inter.className} uppercase`}
-          style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "1.4px", color: PRIMARY }}
-        >
-          The Evidence
-        </span>
         <h2
           className={`${calSans.className} m-0 text-[26px] font-bold leading-[1.15]`}
           style={{ color: TEAL, letterSpacing: "-0.3px" }}
