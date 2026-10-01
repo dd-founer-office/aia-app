@@ -20,6 +20,9 @@ const PRIMARY = "#328D63";
 // Existing --color-badge-verified-bg (globals.css) -- the pale mint icon
 // badge behind the reference's own step icons.
 const ICON_BADGE_BG = "#E6F2EC";
+// AiA's bright mint accent (ActDetailHero/ActSnapshot/ActTheAct), used
+// here at very low opacity for the section's soft atmospheric glow.
+const MINT = "#68FFAD";
 
 function MomentArrow() {
   return (
@@ -61,7 +64,11 @@ function EvidenceRecord({
   return (
     <div
       className="flex items-start gap-4 rounded-[20px] border p-5 text-left"
-      style={{ borderColor: "var(--color-border)", background: "var(--color-card)" }}
+      style={{
+        borderColor: "var(--color-border)",
+        background: "var(--color-card)",
+        boxShadow: "0 12px 32px rgba(10, 54, 58, 0.06)",
+      }}
     >
       <RecordIconBadge icon={icon} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -79,8 +86,12 @@ function SidePhoto({ src, href }: { src: string; href: string }) {
     <Link
       href={href}
       aria-label="View this photograph in the full Evidence Viewer"
-      className="mt-5 overflow-hidden rounded-[14px]"
-      style={{ aspectRatio: "1 / 1", flex: "0 1 29%" }}
+      className="overflow-hidden rounded-[6px]"
+      style={{
+        aspectRatio: "1 / 1",
+        flex: "0 1 31%",
+        boxShadow: "0 6px 16px rgba(10, 54, 58, 0.08)",
+      }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt="" className="h-full w-full object-cover" />
@@ -90,9 +101,10 @@ function SidePhoto({ src, href }: { src: string; href: string }) {
 
 /**
  * Three real photographs, asymmetric -- the center one (the featured
- * evidence moment) ~15% larger and raised above the other two, with a
- * soft elevation shadow; the side photographs are smaller, sit slightly
- * lower, and carry no shadow, reading as quieter supporting frames.
+ * evidence moment) ~10% larger than the other two, hanging LOWER than
+ * them (top-aligned row; the taller center simply extends further down)
+ * with a slightly stronger soft shadow; the side photographs are
+ * smaller, sit higher/quieter, with a lighter shadow of their own.
  * Matches the Abyssale reference's own layered three-photo composition
  * rather than three equal gallery cards.
  */
@@ -102,17 +114,17 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
   const [center, left, right] = photos;
 
   return (
-    <div className="flex items-end justify-center gap-2.5">
+    <div className="flex items-start justify-center gap-2.5">
       {left && <SidePhoto src={left} href={href} />}
 
       <Link
         href={href}
         aria-label="View this photograph in the full Evidence Viewer"
-        className="relative z-10 overflow-hidden rounded-[16px]"
+        className="relative z-10 overflow-hidden rounded-[6px]"
         style={{
           aspectRatio: "1 / 1",
-          flex: "0 1 38%",
-          boxShadow: "0 14px 28px rgba(10, 54, 58, 0.2)",
+          flex: "0 1 34%",
+          boxShadow: "0 16px 32px rgba(10, 54, 58, 0.14)",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -126,11 +138,13 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
 
 /**
  * Act Detail's "The Evidence" section -- CA-011's documentary record.
- * Full-bleed pure-white surface (same -mx-5 treatment as ActTestimonial's
- * own white section, not the page's off-white background), a centered
- * heading/description matching that section's exact typography (no
- * eyebrow label), three real capture photos in an asymmetric featured
- * composition, then three WHEN/WHERE/WHO records
+ * Full-bleed surface (-mx-5, like ActTestimonial's own full-bleed
+ * section) in the app's established very-light mint page background
+ * (--color-background), with a single soft radial mint glow behind the
+ * whole composition rather than a visible box -- not pure white. A
+ * centered heading/description matching ActTestimonial's exact
+ * typography (no eyebrow label), three real capture photos in an
+ * asymmetric featured composition, then three WHEN/WHERE/WHO records
  * built from the exact same per-photo trace data the full Living Trace
  * Viewer (/acts/[id]/evidence) renders -- never a separate, divergent
  * fetch. Every value here is either real evidence data or omitted
@@ -171,8 +185,23 @@ export function ActEvidence({
   const landmarkSecondary = landmarkRest.join(", ");
 
   return (
-    <section className="-mx-5 flex flex-col items-center gap-8 px-5 py-10 text-center" style={{ background: "#FFFFFF" }}>
-      <div className="flex flex-col gap-2.5 px-2">
+    <section
+      className="relative -mx-5 flex flex-col items-center gap-8 overflow-hidden px-5 py-10 text-center"
+      style={{ background: "var(--color-background)" }}
+    >
+      {/* Soft atmospheric glow behind the whole composition -- a single
+          diffused radial wash, not a visible box, low enough opacity to
+          read as depth rather than decoration. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          zIndex: 0,
+          background: `radial-gradient(62% 55% at 50% 32%, ${MINT}29 0%, ${MINT}12 45%, ${MINT}00 72%)`,
+        }}
+      />
+
+      <div className="relative flex flex-col gap-2.5 px-2" style={{ zIndex: 1 }}>
         <h2
           className={`${calSans.className} m-0 text-[26px] font-bold leading-[1.15]`}
           style={{ color: TEAL, letterSpacing: "-0.3px" }}
@@ -187,7 +216,7 @@ export function ActEvidence({
         </p>
       </div>
 
-      <div className="flex w-full flex-col items-stretch gap-6">
+      <div className="relative flex w-full flex-col items-stretch gap-6" style={{ zIndex: 1 }}>
         <EvidencePhotoRow photos={photos} href={evidenceHref} />
 
         <MomentArrow />
