@@ -88,8 +88,9 @@ function SidePhoto({ src, href }: { src: string; href: string }) {
       aria-label="View this photograph in the full Evidence Viewer"
       className="overflow-hidden rounded-[6px]"
       style={{
-        aspectRatio: "1 / 1",
-        flex: "0 1 31.82%",
+        width: 105,
+        height: 105,
+        flex: "0 0 105px",
         boxShadow: "0 6px 16px rgba(10, 54, 58, 0.08)",
       }}
     >
@@ -122,8 +123,9 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
         aria-label="View this photograph in the full Evidence Viewer"
         className="relative z-10 overflow-hidden rounded-[6px]"
         style={{
-          aspectRatio: "1 / 1",
-          flex: "0 1 36.36%",
+          width: 120,
+          height: 120,
+          flex: "0 0 120px",
           boxShadow: "0 16px 32px rgba(10, 54, 58, 0.14)",
         }}
       >
