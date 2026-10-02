@@ -89,7 +89,7 @@ function SidePhoto({ src, href }: { src: string; href: string }) {
       className="overflow-hidden rounded-[6px]"
       style={{
         aspectRatio: "1 / 1",
-        flex: "0 1 31%",
+        flex: "0 1 31.82%",
         boxShadow: "0 6px 16px rgba(10, 54, 58, 0.08)",
       }}
     >
@@ -114,7 +114,7 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
   const [center, left, right] = photos;
 
   return (
-    <div className="flex items-start justify-center gap-4 px-9">
+    <div className="flex items-start justify-center gap-[22px] px-9">
       {left && <SidePhoto src={left} href={href} />}
 
       <Link
@@ -123,7 +123,7 @@ function EvidencePhotoRow({ photos, href }: { photos: string[]; href: string }) 
         className="relative z-10 overflow-hidden rounded-[6px]"
         style={{
           aspectRatio: "1 / 1",
-          flex: "0 1 34%",
+          flex: "0 1 36.36%",
           boxShadow: "0 16px 32px rgba(10, 54, 58, 0.14)",
         }}
       >
