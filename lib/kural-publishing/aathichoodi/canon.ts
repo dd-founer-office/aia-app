@@ -227,7 +227,16 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       childLesson: "More isn't always better. Sometimes enough is better.",
     },
   },
-  { episodeNumber: 19, tamilText: "இணக்கம் அறிந்து இணங்கு", simpleMeaning: "Know a person's true character before befriending them.", transliteration: "Inakkam Arindhu Inangu", primaryTheme: "community", verified: true },
+  { episodeNumber: 19, tamilText: "இணக்கம் அறிந்து இணங்கு", simpleMeaning: "Know a person's true character before befriending them.", transliteration: "Inakkam Arindhu Inangu", primaryTheme: "community", verified: true,
+    curated: {
+      hookOverride: "Does your child know how to tell who's a good friend before getting close to them?",
+      understanding: "Avvaiyar's wisdom here is simple: know someone well before you get close to them. Friendship should come after you understand who someone really is, not before.",
+      familyAngle: "Your child wants to be close friends with someone new, right away. Taking a little time to notice how that person actually treats others, before trusting them completely, is this Aathichoodi in real life.",
+      todayAction: "Ask your child today: \"What have you noticed about how your new friend treats other people?\"",
+      childLesson: "Get to know someone first. Closeness should come after you understand who they really are, not before.",
+      aiaConnection: "Knowing someone's true character before trusting them is one thing — Aram in Action helps your child practice that kind of discernment, not just hear about it.",
+    },
+  },
   { episodeNumber: 20, tamilText: "தந்தை தாய்ப் பேண்", simpleMeaning: "Care for and protect your father and mother.", transliteration: "Thandhai Thaai Pen", primaryTheme: "family", verified: true,
     curated: {
       familyAngle: "The quiet, unglamorous work of checking in on aging parents, or simply thanking them, often gets crowded out by a busy week.",
