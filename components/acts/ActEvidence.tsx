@@ -73,7 +73,7 @@ function EvidenceRecord({
     >
       <RecordIconBadge icon={icon} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className={`${inter.className}`} style={{ fontSize: 12.5, fontWeight: 500, color: "var(--color-muted-foreground)" }}>
+        <span className={`${inter.className}`} style={{ fontSize: 9, fontWeight: 500, color: "var(--color-muted-foreground)" }}>
           {label}
         </span>
         {children}
@@ -219,7 +219,7 @@ export function ActEvidence({
         </p>
       </div>
 
-      <div className="relative flex w-full flex-col items-stretch gap-6" style={{ zIndex: 1 }}>
+      <div className="relative flex w-full flex-col items-stretch gap-[14px]" style={{ zIndex: 1 }}>
         <EvidencePhotoRow photos={photos} href={evidenceHref} />
 
         <MomentArrow />
@@ -227,7 +227,7 @@ export function ActEvidence({
         <EvidenceRecord icon={<Calendar size={20} color={PRIMARY} />} label="When it happened ...">
           {earliest.captureDateLong && earliest.captureTimeWithOffset ? (
             <div className="flex flex-col gap-0.5">
-              <p className={`${inter.className} m-0 text-[17px] font-bold`} style={{ color: "var(--color-foreground)" }}>
+              <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
                 {earliest.captureDateLong}
               </p>
               <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
@@ -250,7 +250,7 @@ export function ActEvidence({
           <div className="flex flex-col gap-2.5">
             {landmarkPrimary ? (
               <div className="flex flex-col gap-0.5">
-                <p className={`${inter.className} m-0 text-[17px] font-bold`} style={{ color: "var(--color-foreground)" }}>
+                <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
                   {landmarkPrimary}
                 </p>
                 {landmarkSecondary && (
@@ -291,7 +291,7 @@ export function ActEvidence({
 
         <EvidenceRecord icon={<User size={20} color={PRIMARY} />} label="Who captured it ...">
           <div className="flex flex-col gap-0.5">
-            <p className={`${inter.className} m-0 text-[17px] font-bold`} style={{ color: "var(--color-foreground)" }}>
+            <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
               {earliest.capturedBy}
             </p>
             {/* No role/title field exists on the mission record -- omitted
