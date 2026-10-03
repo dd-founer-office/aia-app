@@ -64,10 +64,14 @@ function EvidenceRecord({
 }) {
   return (
     <div
-      className="mx-auto flex w-[59%] items-start gap-3.5 rounded-[20px] border px-5 py-4 text-left"
+      className="mx-auto flex w-[59%] items-start gap-3.5 rounded-[12px] px-5 py-4 text-left"
       style={{
-        borderColor: "var(--color-border)",
-        background: "var(--color-card)",
+        // Tinted with the same APP_BG mint used for the section's own
+        // background glow (rather than opaque var(--color-card) + a hard
+        // border) so the card reads as emerging from that color wash --
+        // a little more opaque than the glow's own strongest stop so text
+        // stays legible.
+        background: `${APP_BG}D9`,
         boxShadow: "0 12px 32px rgba(10, 54, 58, 0.06)",
       }}
     >
