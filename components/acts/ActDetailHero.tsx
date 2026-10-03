@@ -19,12 +19,12 @@ const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900
 const TEAL = "#0A363A";
 const MINT = "#68FFAD";
 
-function ActHeroImage({ src, alt }: { src: string | null; alt: string }) {
+function ActHeroImage({ src, alt, objectPosition }: { src: string | null; alt: string; objectPosition: string }) {
   return (
     <div className="w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={alt} className="h-full w-full object-cover" />
+        <img src={src} alt={alt} className="h-full w-full object-cover" style={{ objectPosition }} />
       ) : (
         // Existing (previously unused) fallback token, --color-photo-placeholder.
         <div className="h-full w-full" style={{ background: "var(--color-photo-placeholder)" }} />
@@ -33,18 +33,33 @@ function ActHeroImage({ src, alt }: { src: string | null; alt: string }) {
   );
 }
 
-function ActHeroContent({ cause, title, description }: { cause: string; title: string; description: string }) {
+function ActHeroContent({
+  cause,
+  title,
+  description,
+  showEyebrow,
+}: {
+  cause: string;
+  title: string;
+  description: string;
+  showEyebrow: boolean;
+}) {
   return (
     <div className="flex flex-col gap-3 px-5 pb-6 pt-7">
-      <span
-        className={`${inter.className} uppercase`}
-        style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "1.4px", color: "rgba(104, 255, 173, 0.68)" }}
-      >
-        {cause}
-      </span>
+      {showEyebrow && (
+        <span
+          className={`${inter.className} uppercase`}
+          style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "1.4px", color: "rgba(104, 255, 173, 0.68)" }}
+        >
+          {cause}
+        </span>
+      )}
       <h1
         className={`${calSans.className} m-0`}
-        style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.12, letterSpacing: "-0.4px", color: MINT }}
+        // whiteSpace: pre-line -- lets a title carry an embedded "\n" to
+        // force a specific two-line break (used by the Annadhanam Act's
+        // exact headline); plain text without a "\n" is unaffected.
+        style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.12, letterSpacing: "-0.4px", color: MINT, whiteSpace: "pre-line" }}
       >
         {title}
       </h1>
@@ -74,22 +89,31 @@ function ActHeroContent({ cause, title, description }: { cause: string; title: s
  * background in the notch rather than either edge being a new card.
  */
 export function ActDetailHero({
+  actId,
   heroImageUrl,
   title,
   description,
   cause,
+  showEyebrow = true,
+  imageObjectPosition = "center",
 }: {
+  actId: string;
   heroImageUrl: string | null;
   title: string;
   description: string;
   cause: string;
+  // Both default to the existing behavior -- every Act besides the one
+  // caller that sets them explicitly (PublishedActDetail, for Annadhanam
+  // for Elders) renders exactly as before.
+  showEyebrow?: boolean;
+  imageObjectPosition?: string;
 }) {
   return (
     <div className="-mx-5 -mt-6">
-      <ActHeroImage src={heroImageUrl} alt={title} />
+      <ActHeroImage src={heroImageUrl} alt={title} objectPosition={imageObjectPosition} />
       <div className="rounded-[12px]" style={{ background: TEAL }}>
-        <ActHeroContent cause={cause} title={title} description={description} />
-        <ActSnapshot />
+        <ActHeroContent cause={cause} title={title} description={description} showEyebrow={showEyebrow} />
+        <ActSnapshot actId={actId} />
       </div>
     </div>
   );

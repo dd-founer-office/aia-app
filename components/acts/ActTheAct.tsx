@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import localFont from "next/font/local";
 import { ArrowRight } from "lucide-react";
+import { ANNADHANAM_ELDERS_ACT_ID } from "@/lib/act-content-overrides";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -54,6 +55,30 @@ const STORY_MOMENTS: StoryMoment[] = [
     title: "Together",
     image: "/mock/tree-planting-together.jpg",
     description: "A member of the community ties the guard in place, making sure this young tree is looked after.",
+  },
+];
+
+// Annadhanam for Elders' own three real photographs -- the single
+// supporting line the founder supplied is reused for all three states
+// (no distinct per-moment copy was given, so none is invented).
+const ANNADHANAM_HEADING = "Where Care Becomes a Meal";
+const ANNADHANAM_DESCRIPTION =
+  "A simple intention became a meal prepared with care, served with dignity, and shared with our elders.";
+const ANNADHANAM_STORY_MOMENTS: StoryMoment[] = [
+  {
+    title: "Prepared.",
+    image: "/mock/annadhanam-prepared.jpg",
+    description: ANNADHANAM_DESCRIPTION,
+  },
+  {
+    title: "Served.",
+    image: "/mock/annadhanam-served-woman.jpg",
+    description: ANNADHANAM_DESCRIPTION,
+  },
+  {
+    title: "Shared.",
+    image: "/mock/annadhanam-shared.jpg",
+    description: ANNADHANAM_DESCRIPTION,
   },
 ];
 
@@ -185,7 +210,11 @@ function MomentChip({
  * count. See the STORY_MOMENTS comment above for why this Act only has
  * three (no "Prepare" photo exists), not the full four.
  */
-export function ActTheAct() {
+export function ActTheAct({ actId }: { actId: string }) {
+  const isAnnadhanamElders = actId === ANNADHANAM_ELDERS_ACT_ID;
+  const storyMoments = isAnnadhanamElders ? ANNADHANAM_STORY_MOMENTS : STORY_MOMENTS;
+  const heading = isAnnadhanamElders ? ANNADHANAM_HEADING : "From intention to earth";
+
   const reducedMotion = useSyncExternalStore(
     subscribeToReducedMotionChanges,
     readReducedMotionOnClient,
@@ -193,9 +222,9 @@ export function ActTheAct() {
   );
   const [activeIndex, setActiveIndex] = useState(0);
 
-  if (STORY_MOMENTS.length === 0) return null;
+  if (storyMoments.length === 0) return null;
 
-  const activeMoment = STORY_MOMENTS[activeIndex];
+  const activeMoment = storyMoments[activeIndex];
 
   return (
     <section className="rounded-[16px] px-5 py-6" style={{ background: TEAL }}>
@@ -205,17 +234,17 @@ export function ActTheAct() {
             className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
             style={{ color: MINT, letterSpacing: "-0.3px" }}
           >
-            From intention to earth
+            {heading}
           </h2>
           <p className={`${inter.className} m-0 text-[14px] leading-[1.55]`} style={{ color: "rgba(255, 255, 255, 0.82)" }}>
             {activeMoment.description}
           </p>
         </div>
 
-        <MomentPhoto moments={STORY_MOMENTS} activeIndex={activeIndex} reducedMotion={reducedMotion} />
+        <MomentPhoto moments={storyMoments} activeIndex={activeIndex} reducedMotion={reducedMotion} />
 
         <div className="flex flex-wrap items-center justify-center gap-2.5" role="group" aria-label="Moments of this Act">
-          {STORY_MOMENTS.map((moment, index) => (
+          {storyMoments.map((moment, index) => (
             <MomentChip
               key={moment.title}
               title={moment.title}

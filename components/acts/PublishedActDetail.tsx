@@ -10,6 +10,7 @@ import { ActEvidence } from "@/components/acts/ActEvidence";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
 import type { EvidenceTraceItem } from "@/components/acts/living-trace/types";
+import { ANNADHANAM_ELDERS_ACT_ID } from "@/lib/act-content-overrides";
 
 // Act Detail render for real (Supabase-backed) published missions. Was
 // deliberately minimal (no story/verification/documents) because Mission
@@ -44,19 +45,35 @@ export function PublishedActDetail({
   evidence: EvidenceTraceItem[];
 }) {
   const hasStory = act.storySituation && act.storyAction && act.storyOutcome;
+  // Narrow, id-scoped overrides for the Annadhanam for Elders Act -- see
+  // lib/act-content-overrides.ts. Every other Act renders exactly as
+  // before: eyebrow shown, default hero crop, Verification Summary
+  // shown, page background unchanged.
+  const isAnnadhanamElders = act.id === ANNADHANAM_ELDERS_ACT_ID;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-5 px-5 pb-16 pt-6">
+    <div
+      className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-5 px-5 pb-16 pt-6"
+      style={isAnnadhanamElders ? { background: "#FFFFFF" } : undefined}
+    >
       {/* Hero (CA-011 Section 1) + Act Snapshot (CA-011 Section 2) render as
           one continuous teal surface inside ActDetailHero -- see that
           file's own comment. Geometry-only pass for the snapshot collage;
           real date/location/partner/sapling-count content and icons
           replace the placeholder bars in a later pass. */}
       <ActDetailHero
+        actId={act.id}
         heroImageUrl={act.heroImageUrl}
         title={act.title}
         description={act.description}
         cause={act.cause}
+        showEyebrow={!isAnnadhanamElders}
+        // The real hero photo for this Act is a wide hall shot; inside the
+        // standard 4:5 portrait hero container a centered crop lands on
+        // the empty center aisle, so the crop is pulled to the right
+        // edge, where the nearest elder (facing camera, meal in hand)
+        // stays fully in frame.
+        imageObjectPosition={isAnnadhanamElders ? "96% center" : "center"}
       />
 
       {/* "They Say It Better" (CA-011 Living Moment) -- the real
@@ -70,7 +87,7 @@ export function PublishedActDetail({
           told as 2-4 selectable moments (data-driven, never padded out to
           a fixed count). No date/location/partner/quantity here -- that's
           Act Snapshot's job; this section is about what happened. */}
-      <ActTheAct />
+      <ActTheAct actId={act.id} />
 
       {/* "The Evidence" (CA-011 visual story, part 2) -- real capture
           photos plus the same per-photo WHEN/WHERE/WHO records the full
@@ -98,20 +115,23 @@ export function PublishedActDetail({
           only ever returns missions with status='published', and reaching
           that status is itself AiA's process guarantee (Impact Assurance,
           locked) -- so these four checks are always true here, not
-          per-item tracked flags. */}
-      <section>
-        <SectionHeader title="Verification Summary" />
-        <Card className="mt-3 flex flex-col gap-2.5">
-          {["Opportunity Verified", "Execution Completed", "Documentation Approved", "Published"].map(
-            (label) => (
-              <div key={label} className="flex items-center gap-2 text-sm text-[var(--color-foreground)]">
-                <CheckCircle2 size={16} className="shrink-0 text-[var(--color-primary)]" />
-                {label}
-              </div>
-            )
-          )}
-        </Card>
-      </section>
+          per-item tracked flags. Omitted entirely for Annadhanam for
+          Elders per the founder's explicit request for this Act. */}
+      {!isAnnadhanamElders && (
+        <section>
+          <SectionHeader title="Verification Summary" />
+          <Card className="mt-3 flex flex-col gap-2.5">
+            {["Opportunity Verified", "Execution Completed", "Documentation Approved", "Published"].map(
+              (label) => (
+                <div key={label} className="flex items-center gap-2 text-sm text-[var(--color-foreground)]">
+                  <CheckCircle2 size={16} className="shrink-0 text-[var(--color-primary)]" />
+                  {label}
+                </div>
+              )
+            )}
+          </Card>
+        </section>
+      )}
 
       <Link href={`/acts/${act.id}/evidence`}>
         <Button variant="primary" className="w-full">

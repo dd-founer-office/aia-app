@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 import localFont from "next/font/local";
-import { Calendar, MapPin, BadgeCheck, Sprout } from "lucide-react";
+import { Calendar, MapPin, BadgeCheck, Sprout, UtensilsCrossed } from "lucide-react";
+import { ANNADHANAM_ELDERS_ACT_ID } from "@/lib/act-content-overrides";
 
 // Self-hosted rather than next/font/google -- see app/layout.tsx's comment
 // for why (intermittent Vercel build failure fetching from Google Fonts).
@@ -285,7 +286,8 @@ function SnapshotCenter({ motion }: { motion: Motion }) {
  * eyebrow/title/description -> this collage -> close), so it must read
  * as a continuation of that surface, not a second nested card.
  */
-export function ActSnapshot() {
+export function ActSnapshot({ actId }: { actId: string }) {
+  const isAnnadhanamElders = actId === ANNADHANAM_ELDERS_ACT_ID;
   const containerRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useSyncExternalStore(
     subscribeToReducedMotionChanges,
@@ -346,21 +348,40 @@ export function ActSnapshot() {
         {/* Location -- three lines */}
         <SnapshotIconBox box={ICON_TOP_MID} icon={MapPin} motion={pairMotion(1, LOCATION_ICON_SWAP)} />
         <SnapshotDetailBox box={DETAIL_TOP_RIGHT} motion={pairMotion(1, LOCATION_TEXT_SWAP)}>
-          <TextBar>Alangulam</TextBar>
-          <TextBar>Thanjavur</TextBar>
-          <TextBar>Tamil Nadu</TextBar>
+          {isAnnadhanamElders ? (
+            <>
+              <TextBar>Sreenivasanallur</TextBar>
+              <TextBar>Kumbakonam</TextBar>
+              <TextBar>Thanjavur</TextBar>
+            </>
+          ) : (
+            <>
+              <TextBar>Alangulam</TextBar>
+              <TextBar>Thanjavur</TextBar>
+              <TextBar>Tamil Nadu</TextBar>
+            </>
+          )}
         </SnapshotDetailBox>
 
         <SnapshotCenter motion={centerMotion} />
 
-        {/* Act / Impact -- "25 native saplings" stays on one line, "planted" centered beneath */}
+        {/* Act / Impact -- first line stays on one line, second line centered beneath */}
         <SnapshotDetailBox box={DETAIL_RIGHT} roundedEdges="top" align="center" motion={pairMotion(2, ACT_TEXT_SWAP)}>
-          <TextBar>25 native saplings</TextBar>
-          <TextBar>planted</TextBar>
+          {isAnnadhanamElders ? (
+            <>
+              <TextBar>45 elders</TextBar>
+              <TextBar>served with care</TextBar>
+            </>
+          ) : (
+            <>
+              <TextBar>25 native saplings</TextBar>
+              <TextBar>planted</TextBar>
+            </>
+          )}
         </SnapshotDetailBox>
         <SnapshotIconBox
           box={ICON_BOTTOM_RIGHT}
-          icon={Sprout}
+          icon={isAnnadhanamElders ? UtensilsCrossed : Sprout}
           roundedEdges="bottom"
           motion={pairMotion(2, ACT_ICON_SWAP)}
         />
@@ -373,7 +394,7 @@ export function ActSnapshot() {
           motion={pairMotion(3, PARTNER_ICON_SWAP)}
         />
         <SnapshotDetailBox box={DETAIL_BOTTOM_WIDE} roundedEdges="bottom" motion={pairMotion(3, PARTNER_TEXT_SWAP)}>
-          <TextBar>Iyal Impact Foundation</TextBar>
+          <TextBar>{isAnnadhanamElders ? "Annai Aravindhar Karunai Illam" : "Iyal Impact Foundation"}</TextBar>
         </SnapshotDetailBox>
       </div>
     </div>
