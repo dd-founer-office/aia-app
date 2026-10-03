@@ -230,7 +230,7 @@ export function ActEvidence({
               <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
                 {earliest.captureDateLong}
               </p>
-              <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
+              <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
                 {earliest.captureTimeWithOffset}
               </p>
             </div>
@@ -238,7 +238,7 @@ export function ActEvidence({
             // Genuinely missing on the stored evidence row -- never
             // reconstructed. See lib/published-acts.ts's captureDateLong/
             // captureTimeWithOffset comment.
-            <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
+            <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
               Capture time unavailable
             </p>
           )}
@@ -254,19 +254,19 @@ export function ActEvidence({
                   {landmarkPrimary}
                 </p>
                 {landmarkSecondary && (
-                  <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
+                  <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
                     {landmarkSecondary}
                   </p>
                 )}
               </div>
             ) : (
-              <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
+              <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
                 Location unavailable
               </p>
             )}
 
             {hasCoords && (
-              <p className={`${inter.className} m-0 text-[12.5px] leading-[1.6]`} style={{ color: "var(--color-muted-foreground)" }}>
+              <p className={`${inter.className} m-0 text-[9px] leading-[1.6]`} style={{ color: "var(--color-muted-foreground)" }}>
                 Lat {earliest.trust.lat!.toFixed(6)}°
                 <br />
                 Long {earliest.trust.lng!.toFixed(6)}°
@@ -278,7 +278,7 @@ export function ActEvidence({
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${inter.className} text-[13px] font-semibold`}
+                className={`${inter.className} text-[9px] font-semibold`}
                 style={{ color: PRIMARY }}
               >
                 View on map &rarr;
@@ -296,10 +296,10 @@ export function ActEvidence({
             </p>
             {/* No role/title field exists on the mission record -- omitted
                 rather than invented. */}
-            <p className={`${inter.className} m-0 text-[13.5px]`} style={{ color: "var(--color-muted-foreground)" }}>
+            <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
               {organization}
             </p>
-            <p className={`${inter.className} m-0 text-[12px]`} style={{ color: "var(--color-muted-foreground)" }}>
+            <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
               By AiA Mission Camera
             </p>
           </div>
