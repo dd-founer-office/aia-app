@@ -72,7 +72,7 @@ function EvidenceRecord({
       }}
     >
       <RecordIconBadge icon={icon} />
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className={`${inter.className}`} style={{ fontSize: 9, fontWeight: 500, color: "var(--color-muted-foreground)" }}>
           {label}
         </span>
@@ -178,13 +178,6 @@ export function ActEvidence({
     ? `https://www.google.com/maps/search/?api=1&query=${earliest.trust.lat},${earliest.trust.lng}`
     : null;
 
-  // "Alangulam, Thanjavur, Tamil Nadu" -> primary "Alangulam", secondary
-  // "Thanjavur, Tamil Nadu" -- same comma-split convention ActSnapshot
-  // already uses for this same landmark string.
-  const landmarkParts = earliest.landmark?.split(",").map((part) => part.trim()).filter(Boolean) ?? [];
-  const [landmarkPrimary, ...landmarkRest] = landmarkParts;
-  const landmarkSecondary = landmarkRest.join(", ");
-
   return (
     <section
       className="relative -mx-5 flex flex-col items-center gap-8 overflow-hidden px-5 py-10 text-center"
@@ -226,14 +219,14 @@ export function ActEvidence({
 
         <EvidenceRecord icon={<Calendar size={20} color={PRIMARY} />} label="When it happened ...">
           {earliest.captureDateLong && earliest.captureTimeWithOffset ? (
-            <div className="flex flex-col gap-0.5">
+            <>
               <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
                 {earliest.captureDateLong}
               </p>
               <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
                 {earliest.captureTimeWithOffset}
               </p>
-            </div>
+            </>
           ) : (
             // Genuinely missing on the stored evidence row -- never
             // reconstructed. See lib/published-acts.ts's captureDateLong/
@@ -247,62 +240,36 @@ export function ActEvidence({
         <MomentArrow />
 
         <EvidenceRecord icon={<MapPin size={20} color={PRIMARY} />} label="Where it happened ...">
-          <div className="flex flex-col gap-2.5">
-            {landmarkPrimary ? (
-              <div className="flex flex-col gap-0.5">
-                <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
-                  {landmarkPrimary}
-                </p>
-                {landmarkSecondary && (
-                  <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
-                    {landmarkSecondary}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
-                Location unavailable
-              </p>
-            )}
-
-            {hasCoords && (
-              <p className={`${inter.className} m-0 text-[9px] leading-[1.6]`} style={{ color: "var(--color-muted-foreground)" }}>
-                Lat {earliest.trust.lat!.toFixed(6)}°
-                <br />
-                Long {earliest.trust.lng!.toFixed(6)}°
-              </p>
-            )}
-
-            {mapsUrl && (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${inter.className} text-[9px] font-semibold`}
-                style={{ color: PRIMARY }}
-              >
-                View on map &rarr;
-              </a>
-            )}
-          </div>
+          <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
+            {earliest.landmark ?? "Location unavailable"}
+          </p>
+          {hasCoords && (
+            // The coordinates themselves are the map link -- keeps this
+            // record to exactly 3 lines (eyebrow/body/metadata) instead of
+            // a separate "View on map" line.
+            <a
+              href={mapsUrl!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${inter.className} m-0 text-[9px]`}
+              style={{ color: PRIMARY }}
+            >
+              Lat {earliest.trust.lat!.toFixed(4)}° Long {earliest.trust.lng!.toFixed(4)}°
+            </a>
+          )}
         </EvidenceRecord>
 
         <MomentArrow />
 
         <EvidenceRecord icon={<User size={20} color={PRIMARY} />} label="Who captured it ...">
-          <div className="flex flex-col gap-0.5">
-            <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
-              {earliest.capturedBy}
-            </p>
-            {/* No role/title field exists on the mission record -- omitted
-                rather than invented. */}
-            <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
-              {organization}
-            </p>
-            <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
-              By AiA Mission Camera
-            </p>
-          </div>
+          <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
+            {earliest.capturedBy}
+          </p>
+          {/* No role/title field exists on the mission record -- omitted
+              rather than invented. */}
+          <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
+            {organization}
+          </p>
         </EvidenceRecord>
       </div>
     </section>
