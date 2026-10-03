@@ -66,12 +66,7 @@ function EvidenceRecord({
     <div
       className="mx-auto flex w-[59%] items-start gap-3.5 rounded-[12px] px-5 py-4 text-left"
       style={{
-        // Tinted with the same APP_BG mint used for the section's own
-        // background glow (rather than opaque var(--color-card) + a hard
-        // border) so the card reads as emerging from that color wash --
-        // a little more opaque than the glow's own strongest stop so text
-        // stays legible.
-        background: `${APP_BG}D9`,
+        background: "var(--color-card)",
         boxShadow: "0 12px 32px rgba(10, 54, 58, 0.06)",
       }}
     >
@@ -197,7 +192,7 @@ export function ActEvidence({
         className="pointer-events-none absolute inset-0"
         style={{
           zIndex: 0,
-          background: `radial-gradient(62% 55% at 50% 32%, ${APP_BG}CC 0%, ${APP_BG}66 45%, ${APP_BG}00 72%)`,
+          background: `radial-gradient(62% 55% at 50% 32%, ${APP_BG}D9 0%, ${APP_BG}66 45%, ${APP_BG}00 72%)`,
         }}
       />
 
