@@ -253,7 +253,7 @@ export function ActEvidence({
               className={`${inter.className} m-0 text-[9px]`}
               style={{ color: PRIMARY }}
             >
-              Lat {earliest.trust.lat!.toFixed(4)}° Long {earliest.trust.lng!.toFixed(4)}°
+              {earliest.trust.lat!.toFixed(4)}, {earliest.trust.lng!.toFixed(4)}
             </a>
           )}
         </EvidenceRecord>

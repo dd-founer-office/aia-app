@@ -49,7 +49,9 @@ function formatFullDateTime(iso: string, timeZone: string | null): string {
 function formatEvidenceDateLong(iso: string, timeZone: string | null): string {
   const tz = timeZone ?? 'UTC';
   try {
-    return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: tz }).format(
+    // Short month ("28 Sep 2026" not "28 September 2026") -- keeps this on
+    // one line inside the narrow Evidence card instead of wrapping.
+    return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: tz }).format(
       new Date(iso)
     );
   } catch {
