@@ -25,8 +25,8 @@ const APP_BG = "#EFF4F2";
 function MomentArrow() {
   return (
     <div className="flex items-center justify-center" aria-hidden="true">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: TEAL }}>
-        <ChevronDown size={18} color="#FFFFFF" />
+      <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full" style={{ background: TEAL }}>
+        <ChevronDown size={12} color="#FFFFFF" />
       </div>
     </div>
   );
@@ -63,7 +63,7 @@ function EvidenceRecord({
 }) {
   return (
     <div
-      className="mx-auto flex w-[88%] items-start gap-3.5 rounded-[20px] border px-5 py-4 text-left"
+      className="mx-auto flex w-[59%] items-start gap-3.5 rounded-[20px] border px-5 py-4 text-left"
       style={{
         borderColor: "var(--color-border)",
         background: "var(--color-card)",
