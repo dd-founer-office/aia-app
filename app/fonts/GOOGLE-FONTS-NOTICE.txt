@@ -1,0 +1,21 @@
+The following font files in this directory are vendored copies of fonts
+normally served by Google Fonts, fetched once and self-hosted via
+next/font/local instead of next/font/google. This avoids an intermittent
+Vercel/Turbopack build failure fetching font files from Google's servers
+at build time ("Module not found: Can't resolve
+'@vercel/turbopack-next/internal/font/google/font'") -- see app/layout.tsx.
+
+All of them are licensed under the SIL Open Font License, Version 1.1
+(see CalSans-OFL.txt in this directory for the full license text, which
+applies identically to each font below). Each file is the unmodified
+binary Google Fonts itself serves for that family; only the file has been
+downloaded ahead of time rather than fetched during every build.
+
+  InterVF.woff2          Inter             https://fonts.google.com/specimen/Inter
+  DMSansVF.woff2         DM Sans           https://fonts.google.com/specimen/DM+Sans
+  DMSerifDisplay.woff2   DM Serif Display  https://fonts.google.com/specimen/DM+Serif+Display
+  NotoSansTamilVF.woff2  Noto Sans Tamil   https://fonts.google.com/noto/specimen/Noto+Sans+Tamil
+  NotoSerifTamilVF.woff2 Noto Serif Tamil  https://fonts.google.com/noto/specimen/Noto+Serif+Tamil
+  NotoSansBrahmi.woff2   Noto Sans Brahmi  https://fonts.google.com/noto/specimen/Noto+Sans+Brahmi
+  NotoSerifVF.woff2      Noto Serif        https://fonts.google.com/specimen/Noto+Serif
+  CaveatVF.woff2         Caveat            https://fonts.google.com/specimen/Caveat

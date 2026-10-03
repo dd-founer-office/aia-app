@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
-import { Inter } from "next/font/google";
 import { Calendar, MapPin, ChevronDown, User } from "lucide-react";
 import type { EvidenceTraceItem } from "@/components/acts/living-trace/types";
 
@@ -11,7 +10,9 @@ const calSans = localFont({
   display: "swap",
 });
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap" });
+// Self-hosted rather than next/font/google -- see app/layout.tsx's comment
+// for why (intermittent Vercel build failure fetching from Google Fonts).
+const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
 
 const TEAL = "#0A363A";
 // Existing --color-primary (globals.css) -- the icon/accent color on the

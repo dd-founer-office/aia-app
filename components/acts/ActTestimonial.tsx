@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import localFont from "next/font/local";
-import { Inter } from "next/font/google";
 import { Play } from "lucide-react";
 
 const calSans = localFont({
@@ -11,7 +10,9 @@ const calSans = localFont({
   display: "swap",
 });
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "700"], display: "swap" });
+// Self-hosted rather than next/font/google -- see app/layout.tsx's comment
+// for why (intermittent Vercel build failure fetching from Google Fonts).
+const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
 
 // Reuses ActDetailHero/ActSnapshot's exact teal/mint pair -- pixel-sampled
 // directly from the Abyssale reference screenshot (its button background

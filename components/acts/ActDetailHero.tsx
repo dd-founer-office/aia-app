@@ -1,5 +1,4 @@
 import localFont from "next/font/local";
-import { Inter } from "next/font/google";
 import { ActSnapshot } from "@/components/acts/ActSnapshot";
 
 const calSans = localFont({
@@ -8,7 +7,9 @@ const calSans = localFont({
   display: "swap",
 });
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
+// Self-hosted rather than next/font/google -- see app/layout.tsx's comment
+// for why (intermittent Vercel build failure fetching from Google Fonts).
+const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
 
 // Reuses Home's EditorialHero teal/mint pair exactly (components/home/
 // EditorialHero.tsx) -- these two colors aren't in globals.css's LOCKED

@@ -1,8 +1,9 @@
 import localFont from "next/font/local";
-import { Inter } from "next/font/google";
 import { mockKuralOfTheDay } from "@/lib/mock-data";
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], display: "swap" });
+// Self-hosted rather than next/font/google -- see app/layout.tsx's comment
+// for why (intermittent Vercel build failure fetching from Google Fonts).
+const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
 
 // Same Calsans variable font EditorialHero already loads -- the audit's
 // h1/h2/h3 roles all name "Calsans" as their family. It has no Tamil

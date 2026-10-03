@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Inter } from "next/font/google";
 import "./partner.css";
 
 // Cal Sans is OFL-1.1 licensed (see app/fonts/CalSans-OFL.txt), vendored
@@ -15,9 +14,11 @@ const calSans = localFont({
   display: "swap",
 });
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+// Self-hosted rather than next/font/google -- see app/layout.tsx's comment
+// for why (intermittent Vercel build failure fetching from Google Fonts).
+const inter = localFont({
+  src: "../fonts/InterVF.woff2",
+  weight: "100 900",
   variable: "--font-inter",
   display: "swap",
 });

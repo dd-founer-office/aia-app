@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ComponentType, ReactNode } from "react";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { Calendar, MapPin, BadgeCheck, Sprout } from "lucide-react";
 
-const inter = Inter({ subsets: ["latin"], weight: ["500", "600"], display: "swap" });
+// Self-hosted rather than next/font/google -- see app/layout.tsx's comment
+// for why (intermittent Vercel build failure fetching from Google Fonts).
+const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
 
 // Reuses Home's EditorialHero teal/mint pair exactly (see ActDetailHero.tsx
 // for the same constants) -- the reference's three-tone look (dark teal

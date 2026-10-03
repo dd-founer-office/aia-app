@@ -1,6 +1,7 @@
 /**
  * AiA Design Tokens — Typography (font families only)
- * Source: app/layout.tsx next/font/google configuration.
+ * Source: app/layout.tsx next/font/local configuration (self-hosted
+ * Google Fonts -- see that file's comment for why).
  *
  * NOTE: this file intentionally does NOT define a size/weight scale yet.
  * The Visual Constitution says "keep the current typography exactly as

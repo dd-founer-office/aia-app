@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import localFont from "next/font/local";
-import { Caveat, Inter } from "next/font/google";
 import { PrayingHandsIcon } from "@/components/home/icons/PrayingHandsIcon";
 
 /**
@@ -21,9 +20,11 @@ const calSans = localFont({
   display: "swap",
 });
 
-const caveat = Caveat({ subsets: ["latin"], weight: ["700"], display: "swap" });
+// Self-hosted rather than next/font/google -- see app/layout.tsx's comment
+// for why (intermittent Vercel build failure fetching from Google Fonts).
+const caveat = localFont({ src: "../../app/fonts/CaveatVF.woff2", weight: "400 700", display: "swap" });
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
+const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
 
 const TEAL = "#0A363A";
 const MINT = "#68FFAD";
