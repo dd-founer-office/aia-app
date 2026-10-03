@@ -7,10 +7,16 @@ import { ActDetailHero } from "@/components/acts/ActDetailHero";
 import { ActTestimonial } from "@/components/acts/ActTestimonial";
 import { ActTheAct } from "@/components/acts/ActTheAct";
 import { ActEvidence } from "@/components/acts/ActEvidence";
+import { ContributionImpactRecord } from "@/components/acts/ContributionImpactRecord";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
 import type { EvidenceTraceItem } from "@/components/acts/living-trace/types";
-import { ANNADHANAM_ELDERS_ACT_ID, ANNADHANAM_ELDERS_HERO, ANNADHANAM_ELDERS_EVIDENCE } from "@/lib/act-content-overrides";
+import {
+  ANNADHANAM_ELDERS_ACT_ID,
+  ANNADHANAM_ELDERS_HERO,
+  ANNADHANAM_ELDERS_EVIDENCE,
+  ANNADHANAM_ELDERS_IMPACT_RECORD,
+} from "@/lib/act-content-overrides";
 
 // Act Detail render for real (Supabase-backed) published missions. Was
 // deliberately minimal (no story/verification/documents) because Mission
@@ -137,11 +143,21 @@ export function PublishedActDetail({
         </section>
       )}
 
-      <Link href={`/acts/${act.id}/evidence`}>
-        <Button variant="primary" className="w-full">
-          View Living Trace
-        </Button>
-      </Link>
+      {/* Contribution Impact Record -- the page's final accountability
+          layer, replacing "View Living Trace" with an in-place accordion
+          (see ContributionImpactRecord.tsx). Only rendered where real
+          contribution/allocation/impact/verification ids exist (currently
+          just this one Act); every other Act keeps its original "View
+          Living Trace" link rather than showing invented record ids. */}
+      {isAnnadhanamElders ? (
+        <ContributionImpactRecord data={ANNADHANAM_ELDERS_IMPACT_RECORD} />
+      ) : (
+        <Link href={`/acts/${act.id}/evidence`}>
+          <Button variant="primary" className="w-full">
+            View Living Trace
+          </Button>
+        </Link>
+      )}
 
       {/* Related Acts (CA-011 Section 8) -- same cause preferred, newest
           first, hidden entirely when none exist. */}

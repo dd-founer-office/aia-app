@@ -1,4 +1,5 @@
 import type { EvidenceTraceItem } from "@/components/acts/living-trace/types";
+import type { ContributionImpactRecordData } from "@/components/acts/ContributionImpactRecord";
 
 /**
  * Narrow, id-scoped FRONTEND-ONLY content override for one real, already-
@@ -171,3 +172,32 @@ export const ANNADHANAM_ELDERS_EVIDENCE: EvidenceTraceItem[] = [
     },
   },
 ];
+
+// Contribution Impact Record data for this Act -- frontend-only, same as
+// the rest of this file. No Contribution/Allocation/Impact/Verification
+// routes exist yet, so every id intentionally has no href (see
+// ImpactRecordEntry's own comment in ContributionImpactRecord.tsx);
+// nothing here is a fabricated backend record, just the display values
+// and ids the founder specified.
+export const ANNADHANAM_ELDERS_IMPACT_RECORD: ContributionImpactRecordData = {
+  contribution: {
+    dataLabel: "Source",
+    dataValue: "Monthly Aram",
+    recordId: "DD-C-00281",
+  },
+  allocation: {
+    dataLabel: "Recipient",
+    dataValue: "Annai Aravindhar Karunai Illam",
+    recordId: "AL-ANN-00281",
+  },
+  impact: {
+    dataLabel: "Outcome",
+    dataValue: "45 elders served",
+    recordId: "IM-ANN-00281",
+  },
+  verification: {
+    dataLabel: "Status",
+    dataValue: "Verified",
+    recordId: "VR-ANN-00281",
+  },
+};
