@@ -71,7 +71,7 @@ function EvidenceRecord({
       }}
     >
       <RecordIconBadge icon={icon} />
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className={`${inter.className}`} style={{ fontSize: 9, fontWeight: 500, color: "var(--color-muted-foreground)" }}>
           {label}
         </span>
