@@ -10,7 +10,7 @@ import { ActEvidence } from "@/components/acts/ActEvidence";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
 import type { EvidenceTraceItem } from "@/components/acts/living-trace/types";
-import { ANNADHANAM_ELDERS_ACT_ID } from "@/lib/act-content-overrides";
+import { ANNADHANAM_ELDERS_ACT_ID, ANNADHANAM_ELDERS_HERO, ANNADHANAM_ELDERS_EVIDENCE } from "@/lib/act-content-overrides";
 
 // Act Detail render for real (Supabase-backed) published missions. Was
 // deliberately minimal (no story/verification/documents) because Mission
@@ -63,9 +63,9 @@ export function PublishedActDetail({
           replace the placeholder bars in a later pass. */}
       <ActDetailHero
         actId={act.id}
-        heroImageUrl={act.heroImageUrl}
-        title={act.title}
-        description={act.description}
+        heroImageUrl={isAnnadhanamElders ? ANNADHANAM_ELDERS_HERO.heroImageUrl : act.heroImageUrl}
+        title={isAnnadhanamElders ? ANNADHANAM_ELDERS_HERO.title : act.title}
+        description={isAnnadhanamElders ? ANNADHANAM_ELDERS_HERO.description : act.description}
         cause={act.cause}
         showEyebrow={!isAnnadhanamElders}
         // The real hero photo for this Act is a wide hall shot; inside the
@@ -94,7 +94,11 @@ export function PublishedActDetail({
           Living Trace Viewer (/acts/[id]/evidence) uses, so nothing here
           can drift from what that viewer itself shows. Renders nothing
           when this Act has no evidence rows yet. */}
-      <ActEvidence actId={act.id} organization={act.organization} evidence={evidence} />
+      <ActEvidence
+        actId={act.id}
+        organization={isAnnadhanamElders ? ANNADHANAM_ELDERS_HERO.organization : act.organization}
+        evidence={isAnnadhanamElders ? ANNADHANAM_ELDERS_EVIDENCE : evidence}
+      />
 
       {/* Story (CA-011 Section 3) -- situation -> action -> outcome. Only
           rendered when Ops has filled in all three; otherwise this section
