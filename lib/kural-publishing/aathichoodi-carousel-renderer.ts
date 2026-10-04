@@ -71,6 +71,11 @@ export interface CarouselColors {
    *  idea as the logo badge above, independent of background/textPrimary. */
   eyebrowBadgeBackground: string;
   eyebrowBadgeText: string;
+  /** Slide 1's big Tamil heading specifically -- locked to pure white in
+   *  dark mode per explicit founder correction (distinct from textPrimary's
+   *  cream, which other dark-mode body text keeps); reverse mode keeps the
+   *  same colour as textPrimary there, unchanged. */
+  slide0HeroText: string;
 }
 
 export interface CarouselLayout {
@@ -338,6 +343,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     logoBadgeText: "#0A363A",
     eyebrowBadgeBackground: "#1D5D51",
     eyebrowBadgeText: "#68FFAD",
+    slide0HeroText: "#FFFFFF",
   },
   layout: {
     marginX: 0.093,
@@ -415,6 +421,7 @@ export const INVERTED_COLORS: CarouselColors = {
   logoBadgeText: "#68FFAD",
   eyebrowBadgeBackground: "#0A363A",
   eyebrowBadgeText: "#68FFAD",
+  slide0HeroText: "#0A363A",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -927,13 +934,14 @@ function drawSlide0Stop(
   const taglineEmphasis = emphasisFor(emphases, "slide0.tagline");
 
   // The Tamil line is the hero -- dramatically the largest element on the
-  // slide, in the dominant cream tone (not green -- green-on-dark-green
-  // would fail contrast). May reduce toward heroMinSize (never below) only
+  // slide, in pure white in dark mode (its own locked colour, independent
+  // of textPrimary -- see CarouselColors.slide0HeroText) per explicit
+  // founder correction. May reduce toward heroMinSize (never below) only
   // if a specific episode's line genuinely doesn't fit. Uses the same Noto
   // Sans Tamil family as the Kural Koorum Aram cover (tamilFont), not the
   // serif Tamil face, for typographic consistency across the app.
   ctx.textAlign = "left";
-  if (draw) ctx.fillStyle = style.colors.textPrimary;
+  if (draw) ctx.fillStyle = style.colors.slide0HeroText;
   const hero = fitText(
     ctx,
     episode.tamilText,
