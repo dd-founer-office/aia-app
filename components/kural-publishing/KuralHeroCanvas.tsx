@@ -200,11 +200,10 @@ function resolveAllFonts() {
     tamilSerifFont: resolveFont("--font-tamil-serif", TAMIL_SERIF_FALLBACK),
     serifFont: resolveFont("--font-serif", SERIF_FALLBACK),
     brahmiFont: resolveFont("--font-brahmi", BRAHMI_FALLBACK),
-    // DM Serif Display -- the app's own designated display serif (see
-    // app/layout.tsx's --font-display), used only for the Aathichoodi
-    // Carousel's Slide 5 editorial statement, per explicit founder
-    // direction allowing "a very restrained serif...for a major closing
-    // statement only." Already loaded app-wide; no new font added.
+    // DM Serif Display -- resolved for backward compatibility, but no
+    // longer consumed by any template: the Aathichoodi Carousel (its only
+    // past user, for Slide 5's editorial statement) now uses Cal Sans
+    // there instead, per the carousel's locked typography correction.
     displayFont: resolveFont("--font-display", DISPLAY_FALLBACK),
     // Distant Devotion — 6-Second Story only. See CAL_SANS_FALLBACK's doc
     // comment above for why --font-cal-sans isn't a real Cal Sans file yet.
@@ -289,9 +288,8 @@ export default function KuralHeroCanvas({
           slideIndex,
           tamilSerifFont: fonts.tamilSerifFont,
           tamilFont: fonts.tamilFont,
-          serifFont: fonts.serifFont,
-          sansFont: fonts.sansFont,
-          displayFont: fonts.displayFont,
+          interFont: fonts.interFont,
+          calSansFont: fonts.calSansFont,
           logoImage: logoImage ?? null,
           familyImage: familyImage ?? null,
           brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
