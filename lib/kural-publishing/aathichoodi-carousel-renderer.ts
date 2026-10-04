@@ -349,7 +349,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     eyebrowBadgeBackground: "#1D5D51",
     eyebrowBadgeText: "#68FFAD",
     slide0HeroText: "#FFFFFF",
-    slide0TaglineText: "#95A8AA",
+    slide0TaglineText: "#788485",
   },
   layout: {
     marginX: 0.093,
@@ -428,7 +428,7 @@ export const INVERTED_COLORS: CarouselColors = {
   eyebrowBadgeBackground: "#0A363A",
   eyebrowBadgeText: "#68FFAD",
   slide0HeroText: "#0A363A",
-  slide0TaglineText: "#95A8AA",
+  slide0TaglineText: "#788485",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
