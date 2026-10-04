@@ -322,7 +322,10 @@ export const DEFAULT_STYLE: CarouselStyle = {
     backgroundDeep: "#0A363A",
     textPrimary: "#F6F1E3",
     textSecondary: "#A9C4B1",
-    accent: "#4FAE7C",
+    // Section headings' colour -- now the locked mint, same value in both
+    // modes (not inverted, per explicit direction), since this field is
+    // the section headings' only remaining consumer.
+    accent: "#68FFAD",
     panelFill: "rgba(255, 255, 255, 0.07)",
     panelBorder: "rgba(255, 255, 255, 0.12)",
     badgeRing: "rgba(255, 255, 255, 0.16)",
@@ -388,16 +391,16 @@ export const DEFAULT_STYLE: CarouselStyle = {
  *  deliberate second look, not an accessibility mistake. Selected per
  *  episode via the founder's manual toggle (RenderCarouselSlideOptions'
  *  design.invertColors), so alternating episodes can checkerboard
- *  light/dark on an Instagram grid. The accent green is left as-is -- it
- *  already has enough contrast against both fields. panelFill/panelBorder/
- *  badgeRing are the dark teal ink at low opacity, same derivation as
- *  before, just re-based on the new ink colour. */
+ *  light/dark on an Instagram grid. accent (section headings) stays the
+ *  same locked mint as DEFAULT_STYLE, not inverted -- explicit direction.
+ *  panelFill/panelBorder/badgeRing are the dark teal ink at low opacity,
+ *  same derivation as before, just re-based on the new ink colour. */
 export const INVERTED_COLORS: CarouselColors = {
   background: "#FFFFFF",
   backgroundDeep: "#FFFFFF",
   textPrimary: "#0A363A",
   textSecondary: "rgba(10, 54, 58, 0.65)",
-  accent: "#3C8F62",
+  accent: "#68FFAD",
   panelFill: "rgba(10, 54, 58, 0.06)",
   panelBorder: "rgba(10, 54, 58, 0.14)",
   badgeRing: "rgba(10, 54, 58, 0.18)",
