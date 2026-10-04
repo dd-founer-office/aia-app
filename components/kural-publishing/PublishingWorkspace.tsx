@@ -58,9 +58,21 @@ import KuralHeroCanvas, {
   renderAssetForExport,
   renderAathichoodiCarouselAssetForExport,
   renderDistantDevotionCarouselAssetForExport,
+  renderDistantDevotion6SecAssetForExport,
   type AssetFormat,
   type AssetContent,
 } from "./KuralHeroCanvas";
+import {
+  SIX_SECOND_PILLARS,
+  SIX_SECOND_PILLAR_LABELS,
+  SIX_SECOND_PILLAR_DAY,
+  type SixSecondPillar,
+  type SixSecondStory,
+} from "@/lib/kural-publishing/distant-devotion-6sec-types";
+import {
+  loadSixSecondStory,
+  saveSixSecondStory,
+} from "@/lib/kural-publishing/distant-devotion-6sec-store";
 import { DD_SLIDE_LABELS } from "@/lib/kural-publishing/distant-devotion-renderer";
 import type {
   WorldId,
@@ -316,6 +328,10 @@ function buildDistantDevotionCarouselFilename(
   return `distant-devotion-${slugify(asset.metadata.world)}-slide${slideIndex + 1}-${format.id}.png`;
 }
 
+function buildSixSecondFilename(story: SixSecondStory, format: AssetFormat): string {
+  return `distant-devotion-6sec-${slugify(story.pillar)}-${slugify(story.topic || "story")}-${format.id}.png`;
+}
+
 interface GeneratedAsset {
   formatId: string;
   label: string;
@@ -563,10 +579,19 @@ export default function PublishingWorkspace() {
   const [ddShowIntelligence, setDdShowIntelligence] = useState(false);
   const [ddLogoImage, setDdLogoImage] = useState<HTMLImageElement | null>(null);
 
+  // Distant Devotion — 6-Second Story state. Isolated to its own block and
+  // its own localStorage key (distant-devotion-6sec-store.ts) -- unrelated
+  // to, and never touching, ddWorld/ddBriefText/etc. above or any other
+  // content type's state. No FLP lens, no safety/citation fields -- see
+  // distant-devotion-6sec-types.ts's doc comment for why.
+  const [sixSecondStory, setSixSecondStory] = useState<SixSecondStory>(() => loadSixSecondStory());
+  const [loadedSixSecondImage, setLoadedSixSecondImage] = useState<{ src: string; img: HTMLImageElement } | null>(null);
+
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
   const isSeriesType = contentTypeId === "aathichoodi-series";
   const isDistantDevotion = contentTypeId === "distant-devotion";
+  const isSixSecond = contentTypeId === "distant-devotion-6sec";
   const effectiveTemplate: TemplateId = isSeriesType
     ? seriesFormat === "static"
       ? "aathichoodi"
@@ -599,9 +624,11 @@ export default function PublishingWorkspace() {
       : displayEpisode ?? (composeEpisode(1, EMPTY_HISTORY)?.episode as ComposedEpisode)
     : isDistantDevotion
       ? ddParsedAsset ?? DEFAULT_DD_COMPOSED_ASSET
-      : template === "kka"
-        ? kuralContent
-        : aathichoodiContent;
+      : isSixSecond
+        ? sixSecondStory
+        : template === "kka"
+          ? kuralContent
+          : aathichoodiContent;
 
   // Derived-state resets, computed during render rather than in an effect --
   // see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
@@ -734,6 +761,12 @@ export default function PublishingWorkspace() {
     if (composedEpisode) saveFamilyImage(composedEpisode.episodeNumber, familyImageDataUrl);
   }, [familyImageDataUrl, composedEpisode]);
 
+  // Six-Second Story's own persistence -- its own key, independent of
+  // every other content type's state above.
+  useEffect(() => {
+    saveSixSecondStory(sixSecondStory);
+  }, [sixSecondStory]);
+
   // Loads familyImageDataUrl into an actual <img> so the canvas can
   // drawImage() it -- same "new Image(); img.onload = ..." pattern as the
   // KKA/AiA logo images above. loadedFamilyImage remembers which src it
@@ -756,6 +789,27 @@ export default function PublishingWorkspace() {
   }, [familyImageDataUrl]);
   const familyImageElement =
     familyImageDataUrl && loadedFamilyImage?.src === familyImageDataUrl ? loadedFamilyImage.img : null;
+
+  // Same pattern as familyImage above, for Six-Second Story's own hero
+  // photo -- entirely separate state, never shared with the Aathichoodi
+  // Carousel's photo.
+  useEffect(() => {
+    const src = sixSecondStory.visualDataUrl;
+    if (!src) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) setLoadedSixSecondImage({ src, img });
+    };
+    img.src = src;
+    return () => {
+      cancelled = true;
+    };
+  }, [sixSecondStory.visualDataUrl]);
+  const sixSecondImageElement =
+    sixSecondStory.visualDataUrl && loadedSixSecondImage?.src === sixSecondStory.visualDataUrl
+      ? loadedSixSecondImage.img
+      : null;
 
   const carouselDesign = useMemo(
     () => buildDesignOverrides(styleOverrides, textOverrides, positionOverrides, emphasisOverrides, invertColors),
@@ -1344,6 +1398,7 @@ export default function PublishingWorkspace() {
     if (formats.length === 0) return;
     if (isSeriesType && !composedEpisode) return;
     if (isDistantDevotion && !ddParsedAsset) return;
+    if (isSixSecond && !sixSecondStory.visualDataUrl) return;
 
     setGeneration((g) => g + 1);
     setIsGenerating(true);
@@ -1392,6 +1447,23 @@ export default function PublishingWorkspace() {
             });
           }
         }
+      } else if (isSixSecond) {
+        for (const format of formats) {
+          const blob = await renderDistantDevotion6SecAssetForExport(
+            sixSecondStory,
+            sixSecondImageElement,
+            format
+          );
+          if (!blob) continue;
+          results.push({
+            formatId: format.id,
+            label: format.label,
+            width: format.width,
+            height: format.height,
+            url: URL.createObjectURL(blob),
+            filename: buildSixSecondFilename(sixSecondStory, format),
+          });
+        }
       } else {
         for (const format of formats) {
           const blob = await renderAssetForExport(
@@ -1434,6 +1506,9 @@ export default function PublishingWorkspace() {
     isDistantDevotion,
     ddParsedAsset,
     ddLogoImage,
+    isSixSecond,
+    sixSecondStory,
+    sixSecondImageElement,
     effectiveTemplate,
     template,
     content,
@@ -1573,6 +1648,27 @@ export default function PublishingWorkspace() {
 
   const handleRemoveFamilyImage = useCallback(() => {
     setFamilyImageDataUrl(null);
+  }, []);
+
+  const handleSixSecondFieldChange = useCallback(
+    <K extends keyof SixSecondStory>(key: K, value: SixSecondStory[K]) => {
+      setSixSecondStory((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
+
+  const handleSixSecondImageUpload = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setSixSecondStory((prev) => ({ ...prev, visualDataUrl: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleRemoveSixSecondImage = useCallback(() => {
+    setSixSecondStory((prev) => ({ ...prev, visualDataUrl: null }));
   }, []);
 
   // The prompt reflects whatever's CURRENTLY on Slide 3 -- the founder's
@@ -2254,6 +2350,133 @@ export default function PublishingWorkspace() {
             </div>
           )}
         </div>
+        ) : isSixSecond ? (
+        <div className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Pillar · publishes {SIX_SECOND_PILLAR_DAY[sixSecondStory.pillar]}
+            </span>
+            <select
+              value={sixSecondStory.pillar}
+              onChange={(e) => handleSixSecondFieldChange("pillar", e.target.value as SixSecondPillar)}
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            >
+              {SIX_SECOND_PILLARS.map((p) => (
+                <option key={p} value={p}>{SIX_SECOND_PILLAR_LABELS[p]}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Topic (editorial note, not shown on the asset)
+            </span>
+            <input
+              type="text"
+              value={sixSecondStory.topic}
+              onChange={(e) => handleSixSecondFieldChange("topic", e.target.value)}
+              placeholder="e.g. Kolam"
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">Line 1</span>
+            <textarea
+              value={sixSecondStory.line1}
+              onChange={(e) => handleSixSecondFieldChange("line1", e.target.value)}
+              rows={2}
+              placeholder="She didn't call it heritage."
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">Line 2</span>
+            <textarea
+              value={sixSecondStory.line2}
+              onChange={(e) => handleSixSecondFieldChange("line2", e.target.value)}
+              rows={2}
+              placeholder="She just kept doing it."
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
+
+          <div className="flex flex-col gap-1.5 rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+            <span className="text-xs font-medium text-[var(--color-foreground)]">
+              Photograph {sixSecondStory.visualDataUrl ? "" : "(required — the photo is the hero)"}
+            </span>
+            {sixSecondStory.visualDataUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- a data URL preview thumbnail, not an optimizable remote asset
+              <img
+                src={sixSecondStory.visualDataUrl}
+                alt="6-Second Story photo preview"
+                className="h-28 w-full rounded border border-[var(--color-border)] object-cover"
+              />
+            )}
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer rounded border border-[var(--color-border)] px-2 py-1 text-[11px] text-[var(--color-foreground)]">
+                {sixSecondStory.visualDataUrl ? "Replace photo" : "Upload photo"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleSixSecondImageUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {sixSecondStory.visualDataUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveSixSecondImage}
+                  className="text-[11px] font-medium text-[var(--color-muted-foreground)]"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Photo credit (optional — shown only if filled in)
+            </span>
+            <input
+              type="text"
+              value={sixSecondStory.visualCredit}
+              onChange={(e) => handleSixSecondFieldChange("visualCredit", e.target.value)}
+              placeholder="e.g. Family archive"
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Caption (optional — the social caption text, not shown on the image)
+            </span>
+            <textarea
+              value={sixSecondStory.captionText}
+              onChange={(e) => handleSixSecondFieldChange("captionText", e.target.value)}
+              rows={3}
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">Status</span>
+            <select
+              value={sixSecondStory.status}
+              onChange={(e) => handleSixSecondFieldChange("status", e.target.value as SixSecondStory["status"])}
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            >
+              <option value="DRAFT">Draft</option>
+              <option value="READY">Ready</option>
+            </select>
+          </label>
+        </div>
         ) : (
         <div className="flex flex-col gap-4">
           {template === "kka"
@@ -2365,7 +2588,7 @@ export default function PublishingWorkspace() {
           <button
             type="button"
             onClick={handleGenerateSelected}
-            disabled={isGenerating || selectedFormats.length === 0 || (isDistantDevotion && !ddParsedAsset)}
+            disabled={isGenerating || selectedFormats.length === 0 || (isDistantDevotion && !ddParsedAsset) || (isSixSecond && !sixSecondStory.visualDataUrl)}
             className="rounded-[var(--radius-button)] bg-[var(--color-primary)] px-5 py-3 text-sm font-medium text-[var(--color-primary-foreground)] disabled:opacity-50"
           >
             {isGenerating ? "Generating…" : "Generate Selected Assets"}
@@ -2460,7 +2683,13 @@ export default function PublishingWorkspace() {
             content={content}
             generation={generation}
             logoImage={activeLogoImage}
-            familyImage={effectiveTemplate === "aathichoodi-carousel" ? familyImageElement : undefined}
+            familyImage={
+              effectiveTemplate === "aathichoodi-carousel"
+                ? familyImageElement
+                : effectiveTemplate === "distant-devotion-6sec"
+                  ? sixSecondImageElement
+                  : undefined
+            }
             format={previewFormat}
             slideIndex={activeSlideIndex}
             carouselDesign={effectiveTemplate === "aathichoodi-carousel" ? carouselDesign : undefined}

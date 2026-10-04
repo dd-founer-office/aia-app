@@ -6,6 +6,14 @@ Source of truth: AiA-Design-System-v1-LOCKED.md + Notion "Visual Constitution v1
 All values below are final, approved decisions — not provisional.
 */
 :root {
+  /* Distant Devotion — 6-Second Story headline font. No licensed Cal Sans
+     file exists in this repo yet, so this is aliased to Inter (also newly
+     loaded, see app/layout.tsx) rather than silently falling back to the
+     old DM Serif Display system -- flagged explicitly, not a quiet swap.
+     Once a real Cal Sans font file is added via next/font/local, point
+     this one line at its CSS variable; no renderer code needs to change. */
+  --font-cal-sans: var(--font-inter);
+
   --color-background: #EFF4F2;
   --color-card: #FFFFFF;
   --color-border: #DCE2DF;

@@ -51,7 +51,12 @@ import {
   renderDistantDevotionCarouselSlideForExport,
   DD_CAROUSEL_SLIDE_COUNT,
 } from "@/lib/kural-publishing/distant-devotion-renderer";
+import {
+  renderDistantDevotion6Sec,
+  renderDistantDevotion6SecForExport,
+} from "@/lib/kural-publishing/distant-devotion-6sec-renderer";
 import type { DdComposedAsset } from "@/lib/kural-publishing/distant-devotion/types";
+import type { SixSecondStory } from "@/lib/kural-publishing/distant-devotion-6sec-types";
 import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
 import type { ComposedEpisode } from "@/lib/kural-publishing/aathichoodi/content-engine";
 
@@ -62,7 +67,8 @@ export type AssetContent =
   | KuralPublishingContent
   | AathichoodiContent
   | ComposedEpisode
-  | DdComposedAsset;
+  | DdComposedAsset
+  | SixSecondStory;
 
 export { DD_CAROUSEL_SLIDE_COUNT };
 
@@ -100,6 +106,12 @@ export const ASSET_FORMATS: readonly AssetFormat[] = [
   { id: "facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "distant-devotion", "distant-devotion-carousel"] },
   { id: "aathichoodi-post", label: "Aathichoodi Post", width: 1080, height: 1080, branding: false, templates: ["aathichoodi"] },
   { id: "distant-devotion-single", label: "Distant Devotion (Single Image)", width: 1080, height: 1080, branding: false, templates: ["distant-devotion"] },
+  // Distant Devotion — 6-Second Story's own dedicated format. Reuses the
+  // exact dimensions already defined above for Instagram Story/WhatsApp
+  // Status (no new aspect-ratio math needed) but as its own entry, scoped
+  // only to this template, per the brief's "create a dedicated format
+  // entry... do not alter existing format definitions unnecessarily."
+  { id: "distant-devotion-6sec-story", label: "Distant Devotion — 6-Second Story (9:16)", width: 1080, height: 1920, branding: true, templates: ["distant-devotion-6sec"] },
 ];
 
 /** Formats available for a given template, "KKA Cover"/original landscape
@@ -143,6 +155,12 @@ export const DISTANT_DEVOTION_LOGO_PATH = "/brand/distant-devotion-logo.png";
 export const DD_BRANDING_WORDMARK = "Distant Devotion";
 export const DD_BRANDING_HANDLE = "distant_devotion";
 
+/** 6-Second Story's own brand signature text -- locked copy from the brief,
+ *  kept separate from DD_BRANDING_WORDMARK/HANDLE above since this format's
+ *  renderer draws a wordmark + tagline pair, not a wordmark + @handle. */
+export const DD6SEC_BRANDING_WORDMARK = "DISTANT DEVOTION™";
+export const DD6SEC_BRANDING_TAGLINE = "Connecting Hearts & Roots";
+
 const TAMIL_FALLBACK =
   "'Noto Sans Tamil','Nirmala UI','Tamil Sangam MN','Tamil MN',sans-serif";
 const SANS_FALLBACK =
@@ -150,6 +168,13 @@ const SANS_FALLBACK =
 const TAMIL_SERIF_FALLBACK = "'Noto Serif Tamil','Tamil Sangam MN','Tamil MN',serif";
 const SERIF_FALLBACK = "Georgia,'Times New Roman',serif";
 const DISPLAY_FALLBACK = "Georgia,'Times New Roman',serif";
+// Distant Devotion — 6-Second Story's locked typography (Cal Sans / Inter).
+// --font-cal-sans is aliased to Inter in app/globals.css until a licensed
+// Cal Sans file exists -- see distant-devotion-6sec-renderer.ts's doc
+// comment. These fallback chains are deliberately plain system sans-serif,
+// never DM Serif Display.
+const CAL_SANS_FALLBACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+const INTER_FALLBACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 // No safe cross-platform fallback exists for Brahmi -- if the web font
 // hasn't loaded, glyphs render as tofu/boxes on most systems. Known, accepted
 // limitation (see lib/living-field/glyphs.ts), KKA template only.
@@ -176,6 +201,10 @@ function resolveAllFonts() {
     // direction allowing "a very restrained serif...for a major closing
     // statement only." Already loaded app-wide; no new font added.
     displayFont: resolveFont("--font-display", DISPLAY_FALLBACK),
+    // Distant Devotion — 6-Second Story only. See CAL_SANS_FALLBACK's doc
+    // comment above for why --font-cal-sans isn't a real Cal Sans file yet.
+    calSansFont: resolveFont("--font-cal-sans", CAL_SANS_FALLBACK),
+    interFont: resolveFont("--font-inter", INTER_FALLBACK),
   };
 }
 
@@ -187,10 +216,13 @@ interface KuralHeroCanvasProps {
   generation: number;
   /** Optional canonical KKA logo, once available. */
   logoImage?: HTMLImageElement | null;
-  /** aathichoodi-carousel template only, Slide 3 (Family Situation) only:
-   *  an optional founder-supplied photo, loaded from the per-episode
-   *  upload in the workspace sidebar. Ignored by every other template
-   *  and slide. */
+  /** aathichoodi-carousel template (Slide 3, Family Situation) and
+   *  distant-devotion-6sec template (its full-bleed hero photo): an
+   *  optional user-supplied photo, loaded from the relevant upload control
+   *  in the workspace sidebar. The two templates' uploads are backed by
+   *  completely separate state/persistence in PublishingWorkspace -- this
+   *  prop is just a generic "photo for templates that use one" slot.
+   *  Ignored by every other template. */
   familyImage?: HTMLImageElement | null;
   /** INTERNAL, development-only. Live-preview only, KKA template only.
    *  Defaults to false. */
@@ -286,6 +318,18 @@ export default function KuralHeroCanvas({
           logoImage: logoImage ?? null,
           brandingWordmark: branding ? DD_BRANDING_WORDMARK : undefined,
           brandingHandle: branding ? DD_BRANDING_HANDLE : undefined,
+        });
+      } else if (template === "distant-devotion-6sec") {
+        renderDistantDevotion6Sec(ctx, {
+          width,
+          height,
+          story: content as SixSecondStory,
+          calSansFont: fonts.calSansFont,
+          interFont: fonts.interFont,
+          tamilFont: fonts.tamilFont,
+          visualImage: familyImage ?? null,
+          brandingWordmark: branding ? DD6SEC_BRANDING_WORDMARK : undefined,
+          brandingTagline: branding ? DD6SEC_BRANDING_TAGLINE : undefined,
         });
       } else {
         renderAathichoodi(ctx, {
@@ -419,6 +463,29 @@ export async function renderAssetForExport(
     format.branding ? BRANDING_WORDMARK : undefined,
     format.branding ? BRANDING_HANDLE : undefined
   );
+}
+
+/** Distant Devotion — 6-Second Story export counterpart. Its own dedicated
+ *  function rather than a branch in the generic renderAssetForExport above,
+ *  same reasoning as the carousel export helpers below: it needs an extra
+ *  param (the uploaded photo) the generic signature doesn't carry. */
+export async function renderDistantDevotion6SecAssetForExport(
+  story: SixSecondStory,
+  visualImage: HTMLImageElement | null,
+  format: AssetFormat
+): Promise<Blob | null> {
+  const fonts = resolveAllFonts();
+  return renderDistantDevotion6SecForExport({
+    width: format.width,
+    height: format.height,
+    story,
+    calSansFont: fonts.calSansFont,
+    interFont: fonts.interFont,
+    tamilFont: fonts.tamilFont,
+    visualImage,
+    brandingWordmark: format.branding ? DD6SEC_BRANDING_WORDMARK : undefined,
+    brandingTagline: format.branding ? DD6SEC_BRANDING_TAGLINE : undefined,
+  });
 }
 
 /** Distant Devotion carousel export counterpart, same pattern as

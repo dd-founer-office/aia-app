@@ -38,6 +38,15 @@
  * by the workspace exactly like isSeriesType/seriesFormat does for the
  * Daily Series. AiA and KKA's own templates/content types are unchanged by
  * its addition -- this is strictly additive.
+ *
+ * "distant-devotion-6sec" is a FOURTH, independent content system, sibling
+ * to "distant-devotion" rather than a mode of it -- its own minimal data
+ * model (distant-devotion-6sec-types.ts, no FLP/safety machinery), its own
+ * renderer (distant-devotion-6sec-renderer.ts, full-bleed photo + two text
+ * beats, the locked Bright Orange/Heritage Red/Soft Background/White
+ * palette, not DD's terracotta card look), and its own localStorage key
+ * (distant-devotion-6sec-store.ts). Nothing about the existing
+ * "distant-devotion"/"distant-devotion-carousel" templates changes.
  */
 
 export type TemplateId =
@@ -45,7 +54,8 @@ export type TemplateId =
   | "aathichoodi"
   | "aathichoodi-carousel"
   | "distant-devotion"
-  | "distant-devotion-carousel";
+  | "distant-devotion-carousel"
+  | "distant-devotion-6sec";
 
 export type ContentTypeId =
   | "aathichoodi"
@@ -55,7 +65,8 @@ export type ContentTypeId =
   | "tamil-learning"
   | "announcement"
   | "custom"
-  | "distant-devotion";
+  | "distant-devotion"
+  | "distant-devotion-6sec";
 
 export interface ContentTypeConfig {
   id: ContentTypeId;
@@ -77,6 +88,7 @@ export const CONTENT_TYPES: readonly ContentTypeConfig[] = [
   { id: "announcement", label: "Announcement", template: "aathichoodi" },
   { id: "custom", label: "Custom", template: "aathichoodi" },
   { id: "distant-devotion", label: "Distant Devotion", template: "distant-devotion-carousel" },
+  { id: "distant-devotion-6sec", label: "Distant Devotion — 6-Second Story", template: "distant-devotion-6sec" },
 ];
 
 export function getContentType(id: ContentTypeId): ContentTypeConfig {
