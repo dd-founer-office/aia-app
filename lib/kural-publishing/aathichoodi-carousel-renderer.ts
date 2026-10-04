@@ -67,6 +67,10 @@ export interface CarouselColors {
    *  the slide's field colour is"). */
   logoBadgeBackground: string;
   logoBadgeText: string;
+  /** The header eyebrow's own fill/text -- same "deliberate badge accent"
+   *  idea as the logo badge above, independent of background/textPrimary. */
+  eyebrowBadgeBackground: string;
+  eyebrowBadgeText: string;
 }
 
 export interface CarouselLayout {
@@ -79,8 +83,6 @@ export interface CarouselLayout {
   verticalBalanceBias: number;
   /** px @ 1080-wide canvas. */
   eyebrowSize: number;
-  /** Fraction of the short accent rules' length, relative to width. */
-  dividerLength: number;
   bodyLineHeight: number;
 }
 
@@ -310,41 +312,6 @@ function pushHotspot(
   });
 }
 
-/** Draws one of the muted divider rules used between sections throughout
- *  the carousel, and registers it as its own draggable hotspot (a bare
- *  line has ~0 height, so the hotspot gets generous fixed padding rather
- *  than the font-size-based padding pushHotspot uses for text). Same
- *  thickness formula as the header's own accent rule (the "top divider")
- *  and the surrounding body text's colour, rather than the barely-visible
- *  translucent panel-border tone -- and a bit longer, so it reads clearly
- *  against the dark background instead of disappearing into it. */
-function drawDivider(
-  ctx: CanvasRenderingContext2D,
-  style: CarouselStyle,
-  frame: Frame,
-  width: number,
-  y: number,
-  draw: boolean,
-  positions: CarouselPositions | undefined,
-  id: string,
-  hotspots?: CarouselHotspot[]
-): void {
-  const { dx, dy } = posFor(positions, id);
-  const lineLength = width * style.layout.dividerLength * 1.3;
-  if (draw) {
-    ctx.strokeStyle = style.colors.textSecondary;
-    ctx.lineWidth = Math.max(1.5, width * 0.003);
-    ctx.beginPath();
-    ctx.moveTo(frame.contentX + dx, y + dy);
-    ctx.lineTo(frame.contentX + dx + lineLength, y + dy);
-    ctx.stroke();
-    if (hotspots) {
-      const pad = Math.max(14, width * 0.015);
-      hotspots.push({ id, x: frame.contentX + dx, y: y + dy - pad, width: Math.max(lineLength, width * 0.12), height: pad * 2 });
-    }
-  }
-}
-
 /** The founder-approved baseline as of the last locked visual pass -- flat
  *  dark teal background (#0A363A, top and bottom both, per the latest
  *  colour correction), cream text, green accent, exact px sizes.
@@ -361,13 +328,14 @@ export const DEFAULT_STYLE: CarouselStyle = {
     badgeRing: "rgba(255, 255, 255, 0.16)",
     logoBadgeBackground: "#68FFAD",
     logoBadgeText: "#0A363A",
+    eyebrowBadgeBackground: "#1D5D51",
+    eyebrowBadgeText: "#68FFAD",
   },
   layout: {
     marginX: 0.093,
     marginY: 0.075,
     verticalBalanceBias: 0.12,
     eyebrowSize: 22,
-    dividerLength: 0.07,
     bodyLineHeight: 1.5,
   },
   slide0: {
@@ -435,6 +403,8 @@ export const INVERTED_COLORS: CarouselColors = {
   badgeRing: "rgba(10, 54, 58, 0.18)",
   logoBadgeBackground: "#0A363A",
   logoBadgeText: "#68FFAD",
+  eyebrowBadgeBackground: "#0A363A",
+  eyebrowBadgeText: "#68FFAD",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -660,17 +630,25 @@ function sectionHeadingFor(style: CarouselStyle, slideIndex: number): { text: st
  *  both computeFrame (to know exactly where the header ends, so content
  *  never overlaps a slide's section heading) and drawHeader (to actually
  *  draw it) -- computed once, never duplicated/drifted between the two. No
- *  episode number or page indicator -- just the "AATHICHOODI" eyebrow, a
- *  thin accent rule, and the slide's own section heading. */
+ *  episode number or page indicator -- just the "AATHICHOODI" eyebrow
+ *  (a tight pill/button, not plain text -- see drawHeader) and the slide's
+ *  own section heading. No divider line any more, per the locked design
+ *  correction. */
 function headerMetrics(style: CarouselStyle, width: number, height: number, slideIndex: number) {
   const marginX = Math.round(width * style.layout.marginX);
   const marginY = Math.round(height * style.layout.marginY);
   const eyebrow = px(style.layout.eyebrowSize, width);
   const { text: headingText, size: headingSizeBase } = sectionHeadingFor(style, slideIndex);
   const heading = px(headingSizeBase, width);
-  const dividerY = marginY + eyebrow * 1.5;
+  // The eyebrow badge's own vertical footprint -- tight padding, per the
+  // locked correction ("reduce the space around the text keep it tight").
+  // Shared with drawHeader so the badge's actual drawn height and the
+  // space reserved for it can never drift apart.
+  const eyebrowPadY = eyebrow * 0.42;
+  const badgeH = eyebrow + eyebrowPadY * 2;
+  const badgeBottom = marginY + badgeH;
   const hasHeading = Boolean(headingText);
-  const headingY = dividerY + heading * 1.7;
+  const headingY = badgeBottom + heading * 1.3;
   // A manual "\n" in the heading (typed via the in-canvas editor) forces a
   // second line -- headerBottom (and therefore where the slide's own
   // content starts) grows to match, so a two-line heading never overlaps
@@ -679,8 +657,22 @@ function headerMetrics(style: CarouselStyle, width: number, height: number, slid
   const headingLines = headingText ? headingText.split("\n") : [];
   const headingLineHeight = heading * 1.3;
   const headingBlockExtra = headingLines.length > 1 ? (headingLines.length - 1) * headingLineHeight : 0;
-  const headerBottom = hasHeading ? headingY + headingBlockExtra + heading * 0.6 : dividerY + heading * 0.6;
-  return { marginX, marginY, eyebrow, heading, headingText, headingLines, headingLineHeight, dividerY, hasHeading, headingY, headerBottom };
+  const headerBottom = hasHeading ? headingY + headingBlockExtra + heading * 0.6 : badgeBottom + heading * 0.6;
+  return {
+    marginX,
+    marginY,
+    eyebrow,
+    eyebrowPadY,
+    badgeH,
+    badgeBottom,
+    heading,
+    headingText,
+    headingLines,
+    headingLineHeight,
+    hasHeading,
+    headingY,
+    headerBottom,
+  };
 }
 
 function computeFrame(style: CarouselStyle, width: number, height: number, slideIndex: number): Frame {
@@ -707,7 +699,7 @@ function drawHeader(
   emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[]
 ): void {
-  const { eyebrow, heading, headingText, headingLines, headingLineHeight, dividerY, headingY } = headerMetrics(
+  const { eyebrow, badgeH, heading, headingText, headingLines, headingLineHeight, headingY } = headerMetrics(
     style,
     width,
     height,
@@ -716,19 +708,34 @@ function drawHeader(
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
 
+  // Eyebrow is a tight button/pill, not plain text -- per the locked design
+  // correction. No divider line beneath it any more.
   try {
-    ctx.letterSpacing = `${Math.round(px(3.5, width))}px`;
+    ctx.letterSpacing = `${Math.round(px(2, width))}px`;
   } catch {
     /* Canvas2D letterSpacing unsupported -- default tracking is fine */
   }
 
   const eyebrowOffset = posFor(positions, "header.eyebrow");
   const eyebrowEmphasis = emphasisFor(emphases, "header.eyebrow");
-  ctx.fillStyle = style.colors.textPrimary;
+  const eyebrowText = "AATHICHOODI";
   ctx.font = `${styleFor(false, eyebrowEmphasis)} ${weightFor(700, eyebrowEmphasis)} ${Math.round(eyebrow)}px ${calSansFont}`;
-  const eyebrowY = frame.marginY + eyebrow;
-  ctx.fillText("AATHICHOODI", frame.contentX + eyebrowOffset.dx, eyebrowY + eyebrowOffset.dy);
-  pushHotspot(hotspots, "header.eyebrow", frame.contentX, frame.contentW, eyebrowY, eyebrowY, eyebrow, eyebrowOffset);
+  const eyebrowPadX = eyebrow * 0.65;
+  const eyebrowTextWidth = ctx.measureText(eyebrowText).width;
+  const badgeW = eyebrowTextWidth + eyebrowPadX * 2;
+  const badgeX = frame.contentX + eyebrowOffset.dx;
+  const badgeY = frame.marginY + eyebrowOffset.dy;
+  const badgeRadius = px(6, width);
+
+  ctx.fillStyle = style.colors.eyebrowBadgeBackground;
+  ctx.beginPath();
+  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeRadius);
+  ctx.fill();
+
+  ctx.fillStyle = style.colors.eyebrowBadgeText;
+  ctx.textBaseline = "middle";
+  ctx.fillText(eyebrowText, badgeX + eyebrowPadX, badgeY + badgeH / 2 + eyebrow * 0.03);
+  ctx.textBaseline = "alphabetic";
 
   try {
     ctx.letterSpacing = "0px";
@@ -736,25 +743,8 @@ function drawHeader(
     /* no-op */
   }
 
-  // Short green accent rule under the eyebrow -- drawn via drawDivider so
-  // it's its own draggable element too, but in the accent color rather
-  // than the muted divider color the helper defaults to.
-  const dividerOffset = posFor(positions, "header.divider");
-  ctx.strokeStyle = style.colors.accent;
-  ctx.lineWidth = Math.max(1.5, width * 0.003);
-  ctx.beginPath();
-  ctx.moveTo(frame.contentX + dividerOffset.dx, dividerY + dividerOffset.dy);
-  ctx.lineTo(frame.contentX + dividerOffset.dx + width * style.layout.dividerLength, dividerY + dividerOffset.dy);
-  ctx.stroke();
   if (hotspots) {
-    const pad = Math.max(14, width * 0.015);
-    hotspots.push({
-      id: "header.divider",
-      x: frame.contentX + dividerOffset.dx,
-      y: dividerY + dividerOffset.dy - pad,
-      width: Math.max(width * style.layout.dividerLength, width * 0.12),
-      height: pad * 2,
-    });
+    hotspots.push({ id: "header.eyebrow", x: badgeX, y: badgeY, width: badgeW, height: badgeH });
   }
 
   if (headingText) {
@@ -950,12 +940,10 @@ function drawSlide0Stop(
   }
   pushHotspot(hotspots, "slide0.hero", frame.contentX, frame.contentW, heroFirst, cursorY, hero.size, heroOffset);
 
-  // Thin divider between the Aathichoodi and the hook question, matching
-  // the reference -- same muted-line treatment used between sections on
-  // Slides 2 and 5.
-  cursorY += hero.lineHeight * 0.35;
-  drawDivider(ctx, style, frame, width, cursorY, draw, positions, "slide0.divider", hotspots);
-  cursorY += hero.lineHeight * 0.35;
+  // Gap between the Aathichoodi and the hook question -- no divider line
+  // any more, per the locked design correction; the whitespace itself
+  // carries the separation.
+  cursorY += hero.lineHeight * 0.7;
 
   if (draw) ctx.fillStyle = style.colors.textPrimary;
   const hookSize = px(style.slide0.hookSize, width);
@@ -1084,15 +1072,14 @@ function drawSlide1Understand(
   cursorY += transliteration * 2.0;
   const meaningEmphasis = emphasisFor(emphases, "slide1.meaning");
   if (draw) ctx.fillStyle = style.colors.textSecondary;
-  ctx.font = `${styleFor(true, meaningEmphasis)} ${weightFor(400, meaningEmphasis)} ${Math.round(meaning)}px ${interFont}`;
+  ctx.font = `${styleFor(false, meaningEmphasis)} ${weightFor(400, meaningEmphasis)} ${Math.round(meaning)}px ${interFont}`;
   const meaningOffset = posFor(positions, "slide1.meaning");
   if (draw) ctx.fillText(episode.simpleMeaning, frame.contentX + meaningOffset.dx, cursorY + meaningOffset.dy);
   pushHotspot(hotspots, "slide1.meaning", frame.contentX, frame.contentW, cursorY, cursorY, meaning, meaningOffset);
 
-  cursorY += meaning * 2.2;
-  drawDivider(ctx, style, frame, width, cursorY, draw, positions, "slide1.divider", hotspots);
-
-  cursorY += meaning * 2.2;
+  // No divider line any more, per the locked design correction -- the gap
+  // itself carries the separation before the editorial paragraphs below.
+  cursorY += meaning * 3.6;
   return drawEditorialParagraphs(
     ctx,
     style,
@@ -1397,9 +1384,9 @@ function drawSlide4Carry(
     pushHotspot(hotspots, supportId, frame.contentX, frame.contentW, firstBaseline, cursorY, supportSize, supportOffset);
   }
 
-  cursorY += frame.contentW * 0.11;
-  drawDivider(ctx, style, frame, width, cursorY, draw, positions, "slide4.divider", hotspots);
-  cursorY += frame.contentW * 0.09;
+  // No divider line any more, per the locked design correction -- the gap
+  // itself carries the separation before the CTA below.
+  cursorY += frame.contentW * 0.2;
 
   if (episode.distantDevotionConnection) {
     const connectionId = "slide4.connection";

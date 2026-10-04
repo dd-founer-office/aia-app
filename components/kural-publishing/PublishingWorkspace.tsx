@@ -1958,7 +1958,6 @@ export default function PublishingWorkspace() {
                     <NumField label="Margin Y (fraction)" value={resolvedStyle.layout.marginY} step={0.005} onChange={(v) => patchLayout("marginY", v)} />
                     <NumField label="Vertical balance (0=top, 0.5=center)" value={resolvedStyle.layout.verticalBalanceBias} step={0.01} onChange={(v) => patchLayout("verticalBalanceBias", v)} />
                     <NumField label="Eyebrow size (px)" value={resolvedStyle.layout.eyebrowSize} onChange={(v) => patchLayout("eyebrowSize", v)} />
-                    <NumField label="Divider length (fraction)" value={resolvedStyle.layout.dividerLength} step={0.005} onChange={(v) => patchLayout("dividerLength", v)} />
                     <NumField label="Body line-height" value={resolvedStyle.layout.bodyLineHeight} step={0.01} onChange={(v) => patchLayout("bodyLineHeight", v)} />
                   </fieldset>
 
