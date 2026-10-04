@@ -81,6 +81,14 @@ export interface CarouselColors {
    *  textSecondary, which other slides' muted text keeps and which still
    *  differs by mode). */
   slide0TaglineText: string;
+  /** Plain (non-badge, non-section-heading) Cal Sans text -- Slide 1's
+   *  hook/question and Slide 5's lead statement. Pure white in dark mode
+   *  per explicit founder correction; reverse mode keeps the same colour
+   *  as textPrimary there, unchanged. Deliberately does NOT cover the
+   *  eyebrow pill, the logo badge, or the section headings (WHAT DOES
+   *  THIS MEAN? / etc.) -- those stay their own locked colours (mint
+   *  accent / badge text) per explicit founder direction. */
+  calSansText: string;
 }
 
 export interface CarouselLayout {
@@ -350,6 +358,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     eyebrowBadgeText: "#68FFAD",
     slide0HeroText: "#FFFFFF",
     slide0TaglineText: "#788485",
+    calSansText: "#FFFFFF",
   },
   layout: {
     marginX: 0.093,
@@ -429,6 +438,7 @@ export const INVERTED_COLORS: CarouselColors = {
   eyebrowBadgeText: "#68FFAD",
   slide0HeroText: "#0A363A",
   slide0TaglineText: "#788485",
+  calSansText: "#0A363A",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -745,7 +755,7 @@ function drawHeader(
   const eyebrowOffset = posFor(positions, "header.eyebrow");
   const eyebrowEmphasis = emphasisFor(emphases, "header.eyebrow");
   const eyebrowText = "AATHICHOODI";
-  ctx.font = `${styleFor(false, eyebrowEmphasis)} ${weightFor(700, eyebrowEmphasis)} ${Math.round(eyebrow)}px ${calSansFont}`;
+  ctx.font = `${styleFor(false, eyebrowEmphasis)} ${weightFor(600, eyebrowEmphasis)} ${Math.round(eyebrow)}px ${calSansFont}`;
   const eyebrowPadX = eyebrow * 0.65;
   const eyebrowTextWidth = ctx.measureText(eyebrowText).width;
   const badgeW = eyebrowTextWidth + eyebrowPadX * 2;
@@ -783,7 +793,7 @@ function drawHeader(
     } catch {
       /* no-op */
     }
-    ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(700, headingEmphasis)} ${Math.round(heading)}px ${calSansFont}`;
+    ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(heading)}px ${calSansFont}`;
     let headingCursorY = headingY;
     let headingFirst = 0;
     for (const line of headingLines) {
@@ -837,7 +847,7 @@ function drawCircularBadge(
   ctx.fillStyle = colors.logoBadgeText;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `700 ${Math.round(radius * 0.95)}px ${calSansFont}`;
+  ctx.font = `600 ${Math.round(radius * 0.95)}px ${calSansFont}`;
   ctx.fillText("AiA", cx, cy + radius * 0.04);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
@@ -972,7 +982,7 @@ function drawSlide0Stop(
   // carries the separation.
   cursorY += hero.lineHeight * 0.7;
 
-  if (draw) ctx.fillStyle = style.colors.textPrimary;
+  if (draw) ctx.fillStyle = style.colors.calSansText;
   const hookSize = px(style.slide0.hookSize, width);
   ctx.font = `${styleFor(false, hookEmphasis)} ${weightFor(600, hookEmphasis)} ${Math.round(hookSize)}px ${calSansFont}`;
   const hookLines = wrapText(ctx, episode.hook, frame.contentW);
@@ -1385,8 +1395,8 @@ function drawSlide4Carry(
   const heroSize = px(leadEmphasis.size ?? style.slide4.heroSize, width);
 
   ctx.textAlign = "left";
-  if (draw) ctx.fillStyle = style.colors.textPrimary;
-  ctx.font = `${styleFor(false, leadEmphasis)} ${weightFor(700, leadEmphasis)} ${Math.round(heroSize)}px ${calSansFont}`;
+  if (draw) ctx.fillStyle = style.colors.calSansText;
+  ctx.font = `${styleFor(false, leadEmphasis)} ${weightFor(600, leadEmphasis)} ${Math.round(heroSize)}px ${calSansFont}`;
   const leadLines = wrapText(ctx, lead, frame.contentW);
   const leadLineHeight = heroSize * 1.22;
   for (const line of leadLines) {
