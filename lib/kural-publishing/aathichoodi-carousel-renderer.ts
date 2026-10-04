@@ -163,7 +163,11 @@ export interface CarouselStyle {
 }
 
 export interface CarouselStyleOverrides {
-  colors?: Partial<CarouselColors>;
+  // No colors field, deliberately -- per explicit founder direction, the
+  // palette (DEFAULT_STYLE.colors / INVERTED_COLORS) is locked and no
+  // longer independently overridable. resolveStyle below always uses the
+  // base palette for the selected mode; a stale colour override a browser
+  // saved before this change is silently ignored, not merged in.
   layout?: Partial<CarouselLayout>;
   slide0?: Partial<Slide0Style>;
   slide1?: Partial<Slide1Style>;
@@ -416,7 +420,9 @@ export const INVERTED_COLORS: CarouselColors = {
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
   const baseColors = invertColors ? INVERTED_COLORS : DEFAULT_STYLE.colors;
   return {
-    colors: { ...baseColors, ...overrides?.colors },
+    // Always the locked base palette -- colors are no longer overridable,
+    // see CarouselStyleOverrides' own doc comment.
+    colors: baseColors,
     layout: { ...DEFAULT_STYLE.layout, ...overrides?.layout },
     slide0: { ...DEFAULT_STYLE.slide0, ...overrides?.slide0 },
     slide1: { ...DEFAULT_STYLE.slide1, ...overrides?.slide1 },

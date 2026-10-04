@@ -130,7 +130,6 @@ import {
   splitQuotedAction,
   type CarouselStyleOverrides,
   type CarouselTextOverrides,
-  type CarouselColors,
   type CarouselLayout,
   type Slide0Style,
   type Slide1Style,
@@ -363,50 +362,6 @@ function NumField({
         step={step}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-20 rounded border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-right text-[11px] text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
-      />
-    </label>
-  );
-}
-
-function ColorField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-foreground)]">
-      <span className="text-[var(--color-muted-foreground)]">{label}</span>
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-6 w-10 cursor-pointer rounded border border-[var(--color-border)] bg-transparent p-0"
-      />
-    </label>
-  );
-}
-
-function TextColorField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-foreground)]">
-      <span className="text-[var(--color-muted-foreground)]">{label}</span>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-32 rounded border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-[10px] text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
       />
     </label>
   );
@@ -817,9 +772,6 @@ export default function PublishingWorkspace() {
   );
   const resolvedStyle = useMemo(() => resolveStyle(styleOverrides, invertColors), [styleOverrides, invertColors]);
 
-  const patchColor = useCallback((key: keyof CarouselColors, value: string) => {
-    setStyleOverrides((prev) => ({ ...prev, colors: { ...prev.colors, [key]: value } }));
-  }, []);
   const patchLayout = useCallback((key: keyof CarouselLayout, value: number) => {
     setStyleOverrides((prev) => ({ ...prev, layout: { ...prev.layout, [key]: value } }));
   }, []);
@@ -1936,19 +1888,10 @@ export default function PublishingWorkspace() {
                     </p>
                   </div>
 
-                  <fieldset className="flex flex-col gap-1.5">
-                    <legend className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                      Global — Colors
-                    </legend>
-                    <ColorField label="Background (top)" value={resolvedStyle.colors.background} onChange={(v) => patchColor("background", v)} />
-                    <ColorField label="Background (bottom)" value={resolvedStyle.colors.backgroundDeep} onChange={(v) => patchColor("backgroundDeep", v)} />
-                    <ColorField label="Text — primary" value={resolvedStyle.colors.textPrimary} onChange={(v) => patchColor("textPrimary", v)} />
-                    <ColorField label="Text — secondary" value={resolvedStyle.colors.textSecondary} onChange={(v) => patchColor("textSecondary", v)} />
-                    <ColorField label="Accent (green)" value={resolvedStyle.colors.accent} onChange={(v) => patchColor("accent", v)} />
-                    <TextColorField label="Panel fill (rgba)" value={resolvedStyle.colors.panelFill} onChange={(v) => patchColor("panelFill", v)} />
-                    <TextColorField label="Panel border (rgba)" value={resolvedStyle.colors.panelBorder} onChange={(v) => patchColor("panelBorder", v)} />
-                    <TextColorField label="Badge ring (rgba)" value={resolvedStyle.colors.badgeRing} onChange={(v) => patchColor("badgeRing", v)} />
-                  </fieldset>
+                  {/* Colors are locked (see resolveStyle in aathichoodi-carousel-
+                      renderer.ts) -- no manual colour override fields any
+                      more, per explicit founder direction. "Invert colors"
+                      above still switches between the two locked palettes. */}
 
                   <fieldset className="flex flex-col gap-1.5">
                     <legend className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
