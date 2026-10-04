@@ -47,10 +47,14 @@ export const SIX_SECOND_PILLAR_DAY: Record<SixSecondPillar, string> = {
 export interface SixSecondStory {
   pillar: SixSecondPillar;
   /** Editorial/organizational note (e.g. "Kolam") -- not rendered on the
-   *  asset itself. The renderer supports exactly two on-image text beats
-   *  (line1/line2), per the locked format; topic is metadata for whoever
-   *  is managing the content calendar. */
+   *  asset itself. Topic is metadata for whoever is managing the content
+   *  calendar. */
   topic: string;
+  /** The CURIOSITY phase's (1.5–3.0s) word track, shown one at a time,
+   *  right -> left, e.g. ["THINGS", "PAATI", "NEVER", "EXPLAINED"]. Not a
+   *  fixed count -- the renderer scrolls through however many words are
+   *  given, evenly across the 1.5s window. */
+  hookWords: string[];
   line1: string;
   line2: string;
   /** Data URL of the uploaded photograph, same representation as the
@@ -69,11 +73,14 @@ export interface SixSecondStory {
   status: "DRAFT" | "READY";
 }
 
+/** Locked content for the first published story (the format's reference
+ *  example) -- a woman drawing a kolam, per the final specification. */
 export const DEFAULT_SIX_SECOND_STORY: SixSecondStory = {
   pillar: "CULTURE",
-  topic: "",
-  line1: "",
-  line2: "",
+  topic: "Kolam",
+  hookWords: ["THINGS", "PAATI", "NEVER", "EXPLAINED"],
+  line1: "She didn't call it heritage.",
+  line2: "She just kept doing it.",
   visualDataUrl: null,
   visualCredit: "",
   captionText: "",

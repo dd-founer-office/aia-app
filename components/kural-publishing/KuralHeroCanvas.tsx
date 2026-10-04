@@ -54,6 +54,7 @@ import {
 import {
   renderDistantDevotion6Sec,
   renderDistantDevotion6SecForExport,
+  SIX_SECOND_EXPORT_FRAME,
 } from "@/lib/kural-publishing/distant-devotion-6sec-renderer";
 import type { DdComposedAsset } from "@/lib/kural-publishing/distant-devotion/types";
 import type { SixSecondStory } from "@/lib/kural-publishing/distant-devotion-6sec-types";
@@ -157,7 +158,11 @@ export const DD_BRANDING_HANDLE = "distant_devotion";
 
 /** 6-Second Story's own brand signature text -- locked copy from the brief,
  *  kept separate from DD_BRANDING_WORDMARK/HANDLE above since this format's
- *  renderer draws a wordmark + tagline pair, not a wordmark + @handle. */
+ *  renderer draws a wordmark + tagline pair, not a wordmark + @handle.
+ *  Currently unused: the locked 4-phase spec defers the signature's
+ *  position ("we will define its position separately later"), so neither
+ *  the live preview nor PNG export passes these in yet. Left defined here,
+ *  not deleted, for when that's specified. */
 export const DD6SEC_BRANDING_WORDMARK = "DISTANT DEVOTION™";
 export const DD6SEC_BRANDING_TAGLINE = "Connecting Hearts & Roots";
 
@@ -320,17 +325,11 @@ export default function KuralHeroCanvas({
           brandingHandle: branding ? DD_BRANDING_HANDLE : undefined,
         });
       } else if (template === "distant-devotion-6sec") {
-        renderDistantDevotion6Sec(ctx, {
-          width,
-          height,
-          story: content as SixSecondStory,
-          calSansFont: fonts.calSansFont,
-          interFont: fonts.interFont,
-          tamilFont: fonts.tamilFont,
-          visualImage: familyImage ?? null,
-          brandingWordmark: branding ? DD6SEC_BRANDING_WORDMARK : undefined,
-          brandingTagline: branding ? DD6SEC_BRANDING_TAGLINE : undefined,
-        });
+        // No-op here -- this template animates (MOMENT -> CURIOSITY ->
+        // INSIGHT -> FEELING over a 6-second loop), so it's owned entirely
+        // by the dedicated requestAnimationFrame effect below, not this
+        // single-paint-then-stop effect every other template uses.
+        return;
       } else {
         renderAathichoodi(ctx, {
           width,
@@ -364,6 +363,49 @@ export default function KuralHeroCanvas({
       cancelled = true;
     };
   }, [template, content, generation, logoImage, familyImage, debugFormationLogic, width, height, branding, slideIndex, carouselDesign, onCarouselHotspots]);
+
+  // distant-devotion-6sec only: a real requestAnimationFrame loop driving
+  // the MOMENT -> CURIOSITY -> INSIGHT -> FEELING sequence, looping every
+  // 6 seconds for a continuous live preview. Completely separate from the
+  // single-paint effect above -- every other template is untouched by this
+  // effect (it no-ops immediately for them) and this effect never runs the
+  // static paint() function above. PNG export never reads this loop's
+  // output; it always renders its own fresh canvas at a fixed frame (see
+  // renderDistantDevotion6SecAssetForExport below).
+  useEffect(() => {
+    if (template !== "distant-devotion-6sec") return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let rafId = 0;
+    let cancelled = false;
+    const startedAt = performance.now();
+
+    const tick = (): void => {
+      if (cancelled) return;
+      const fonts = resolveAllFonts();
+      const elapsedSeconds = (performance.now() - startedAt) / 1000;
+      renderDistantDevotion6Sec(ctx, {
+        width,
+        height,
+        story: content as SixSecondStory,
+        calSansFont: fonts.calSansFont,
+        interFont: fonts.interFont,
+        tamilFont: fonts.tamilFont,
+        visualImage: familyImage ?? null,
+        elapsedSeconds,
+      });
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
+  }, [template, content, familyImage, width, height, generation]);
 
   return (
     <canvas
@@ -475,6 +517,10 @@ export async function renderDistantDevotion6SecAssetForExport(
   format: AssetFormat
 ): Promise<Blob | null> {
   const fonts = resolveAllFonts();
+  // No video export exists in this app, so a static PNG has to pick one
+  // moment -- SIX_SECOND_EXPORT_FRAME is the held FEELING state (both
+  // story lines visible, hook long gone). Brand signature intentionally
+  // omitted for now -- see distant-devotion-6sec-renderer.ts's doc comment.
   return renderDistantDevotion6SecForExport({
     width: format.width,
     height: format.height,
@@ -483,8 +529,7 @@ export async function renderDistantDevotion6SecAssetForExport(
     interFont: fonts.interFont,
     tamilFont: fonts.tamilFont,
     visualImage,
-    brandingWordmark: format.branding ? DD6SEC_BRANDING_WORDMARK : undefined,
-    brandingTagline: format.branding ? DD6SEC_BRANDING_TAGLINE : undefined,
+    elapsedSeconds: SIX_SECOND_EXPORT_FRAME,
   });
 }
 

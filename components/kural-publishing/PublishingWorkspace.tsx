@@ -2381,6 +2381,24 @@ export default function PublishingWorkspace() {
           </label>
 
           <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Hook words — one per line, shown right → left during 1.5–3.0s
+            </span>
+            <textarea
+              value={sixSecondStory.hookWords.join("\n")}
+              onChange={(e) =>
+                handleSixSecondFieldChange(
+                  "hookWords",
+                  e.target.value.split("\n").map((w) => w.trim()).filter(Boolean)
+                )
+              }
+              rows={4}
+              placeholder={"THINGS\nPAATI\nNEVER\nEXPLAINED"}
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-[var(--color-muted-foreground)]">Line 1</span>
             <textarea
               value={sixSecondStory.line1}
@@ -2442,7 +2460,7 @@ export default function PublishingWorkspace() {
 
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
-              Photo credit (optional — shown only if filled in)
+              Photo credit (optional — not shown on the asset yet, saved for when credit placement is defined)
             </span>
             <input
               type="text"
