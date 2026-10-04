@@ -76,6 +76,11 @@ export interface CarouselColors {
    *  cream, which other dark-mode body text keeps); reverse mode keeps the
    *  same colour as textPrimary there, unchanged. */
   slide0HeroText: string;
+  /** Slide 1's closing tagline specifically -- one locked colour in BOTH
+   *  dark and light mode per explicit founder correction (distinct from
+   *  textSecondary, which other slides' muted text keeps and which still
+   *  differs by mode). */
+  slide0TaglineText: string;
 }
 
 export interface CarouselLayout {
@@ -344,6 +349,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     eyebrowBadgeBackground: "#1D5D51",
     eyebrowBadgeText: "#68FFAD",
     slide0HeroText: "#FFFFFF",
+    slide0TaglineText: "#95A8AA",
   },
   layout: {
     marginX: 0.093,
@@ -422,6 +428,7 @@ export const INVERTED_COLORS: CarouselColors = {
   eyebrowBadgeBackground: "#0A363A",
   eyebrowBadgeText: "#68FFAD",
   slide0HeroText: "#0A363A",
+  slide0TaglineText: "#95A8AA",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -980,9 +987,11 @@ function drawSlide0Stop(
 
   // Closing tagline -- per-episode generated content now (episode.tagline,
   // see taglines.ts), muted, two explicit lines ("\n" forces the break
-  // rather than word-wrapping).
+  // rather than word-wrapping). Its own locked colour (slide0TaglineText),
+  // same in both dark and light mode, per explicit founder correction --
+  // not textSecondary, which other slides' muted text still varies by mode.
   cursorY += hookSize * 0.9;
-  if (draw) ctx.fillStyle = style.colors.textSecondary;
+  if (draw) ctx.fillStyle = style.colors.slide0TaglineText;
   const taglineSize = px(style.slide0.taglineSize, width);
   ctx.font = `${styleFor(false, taglineEmphasis)} ${weightFor(400, taglineEmphasis)} ${Math.round(taglineSize)}px ${interFont}`;
   const taglineLines = episode.tagline.split("\n").filter(Boolean);
