@@ -106,6 +106,12 @@ export interface CarouselColors {
    *  before); reverse mode keeps the same colour as calSansText there,
    *  unchanged. */
   slide0HookText: string;
+  /** Slide 1's own "AATHICHOODI" eyebrow text specifically -- white in
+   *  both modes, per explicit founder direction (overrides
+   *  eyebrowBadgeText, which every other slide's eyebrow still uses).
+   *  Slide 1 has no eyebrow pill background any more (see drawHeader),
+   *  so this is read directly against the dark panel/canvas behind it. */
+  slide0EyebrowText: string;
   /** Slide 4's action-icon card (a hand-drawn lightbulb, replacing the
    *  earlier quote mark) -- a small solid rounded-square badge above the
    *  question text. White in light mode / dark teal in dark mode, i.e.
@@ -389,6 +395,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     slide0TaglineText: "#788485",
     calSansText: "#FFFFFF",
     slide0HookText: "#68FFAD",
+    slide0EyebrowText: "#FFFFFF",
     slide3IconCardBackground: "#0A363A",
     slide3IconColor: "#68FFAD",
   },
@@ -480,6 +487,7 @@ export const INVERTED_COLORS: CarouselColors = {
   // founder direction -- distinct from dark mode's mint/left-aligned
   // treatment, which is unchanged.
   slide0HookText: "#000000",
+  slide0EyebrowText: "#FFFFFF",
   slide3IconCardBackground: "#FFFFFF",
   slide3IconColor: "#0A363A",
 };
@@ -794,11 +802,11 @@ function drawHeader(
   ctx.textAlign = "left";
 
   // Eyebrow is a tight button/pill, not plain text -- per the locked design
-  // correction. No divider line beneath it any more. Slide 1 drops just
-  // the pill background per explicit founder direction (the "AATHICHOODI"
-  // text itself stays, same position/colour as every other slide); its
-  // mint text colour still reads fine directly on the dark panel/dark
-  // canvas behind it there, so no colour change is needed.
+  // correction. No divider line beneath it any more. Slide 1 drops the
+  // pill background per explicit founder direction (the "AATHICHOODI"
+  // text itself stays, same position as every other slide) and its text
+  // is white there (slide0EyebrowText), not the mint every other slide's
+  // eyebrow badge text uses -- a further explicit founder correction.
   {
     try {
       ctx.letterSpacing = `${Math.round(px(2, width))}px`;
@@ -824,7 +832,7 @@ function drawHeader(
       ctx.fill();
     }
 
-    ctx.fillStyle = style.colors.eyebrowBadgeText;
+    ctx.fillStyle = slideIndex === 0 ? style.colors.slide0EyebrowText : style.colors.eyebrowBadgeText;
     ctx.textBaseline = "middle";
     ctx.fillText(eyebrowText, badgeX + eyebrowPadX, badgeY + badgeH / 2 + eyebrow * 0.03);
     ctx.textBaseline = "alphabetic";
@@ -1014,15 +1022,21 @@ function drawSlide0HeroPanel(ctx: CanvasRenderingContext2D, style: CarouselStyle
 /** Marquee-style "selection" highlight for the hero's last word (see
  *  drawSlide0Stop below) -- a faint mint-tinted rectangle with four small
  *  solid mint squares straddling its corners, per the attached reference
- *  image. No connecting border lines, no rounded corners -- measured
- *  directly off that reference (box-fill alpha, corner-square size as a
- *  fraction of box height, and padding all fit the reference's
- *  proportions). `baseline` is the word's own text baseline; `left` is
- *  its left edge. Must be called before the word itself is drawn, so the
- *  box sits behind the glyphs. */
+ *  image. No connecting border lines, no rounded corners. `baseline` is
+ *  the word's own text baseline; `left` is its left edge. Must be called
+ *  before the word itself is drawn, so the box sits behind the glyphs.
+ *
+ *  The top padding is taller than the reference image's Latin-text
+ *  original called for, per explicit founder correction -- Tamil vowel
+ *  signs (e.g. the ெ mark in செய்) sit above the consonant's own
+ *  cap-height and were getting clipped by the box's top edge at the
+ *  reference's proportions. Side padding and corner-square size were
+ *  both reduced the same way (founder correction over the first pass),
+ *  so none of these four numbers are the reference's original measured
+ *  values any more. */
 function drawHeroWordHighlight(ctx: CanvasRenderingContext2D, accent: string, left: number, baseline: number, wordWidth: number, fontSize: number): void {
-  const padX = fontSize * 0.28;
-  const top = baseline - fontSize * 0.78;
+  const padX = fontSize * 0.12;
+  const top = baseline - fontSize * 1.35;
   const bottom = baseline + fontSize * 0.32;
   const boxX = left - padX;
   const boxW = wordWidth + padX * 2;
@@ -1031,7 +1045,7 @@ function drawHeroWordHighlight(ctx: CanvasRenderingContext2D, accent: string, le
   ctx.fillStyle = hexToRgba(accent, 0.1);
   ctx.fillRect(boxX, top, boxW, boxH);
 
-  const markSize = boxH * 0.2;
+  const markSize = fontSize * 0.14;
   ctx.fillStyle = accent;
   for (const [cx, cy] of [
     [boxX, top],
