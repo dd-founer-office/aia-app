@@ -154,6 +154,8 @@ import {
   saveInvertColors,
   loadFamilyImage,
   saveFamilyImage,
+  loadCardsLocked,
+  saveCardsLocked,
   buildDesignOverrides,
 } from "@/lib/kural-publishing/aathichoodi-carousel-design-store";
 import { buildFamilyImagePrompt } from "@/lib/kural-publishing/aathichoodi/family-image-prompt";
@@ -164,6 +166,10 @@ import {
   formatFlagsForReview,
   type FlaggedEpisode,
 } from "@/lib/kural-publishing/aathichoodi/flags-store";
+
+// Slide 2's three card-background hotspots -- see cardsLocked's own
+// comment for why these specifically can be frozen against drag/resize.
+const LOCKABLE_CARD_IDS = new Set(["slide1.outerCard", "slide1.greenCard", "slide1.blackCard"]);
 
 type ContentField = keyof KuralPublishingContent;
 
@@ -347,19 +353,22 @@ function NumField({
   value,
   onChange,
   step = 1,
+  disabled = false,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
   step?: number;
+  disabled?: boolean;
 }) {
   return (
-    <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-foreground)]">
+    <label className={`flex items-center justify-between gap-2 text-[11px] text-[var(--color-foreground)] ${disabled ? "opacity-50" : ""}`}>
       <span className="text-[var(--color-muted-foreground)]">{label}</span>
       <input
         type="number"
         value={value}
         step={step}
+        disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-20 rounded border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-right text-[11px] text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
       />
@@ -511,6 +520,11 @@ export default function PublishingWorkspace() {
   // an actual <img> so the canvas can drawImage() it -- see the loader
   // effect below, same pattern as the logo image effects.
   const [familyImageDataUrl, setFamilyImageDataUrl] = useState<string | null>(() => loadFamilyImage(1));
+  // Slide 2's three nested cards (outer/green/black) -- once their
+  // sizes/positions are right, this freezes them against further
+  // click-drag so they can't be nudged by accident. Shared across
+  // episodes, like style/positions themselves.
+  const [cardsLocked, setCardsLocked] = useState<boolean>(() => loadCardsLocked());
 
   // Distant Devotion state. Isolated to its own block, same as the Daily
   // Series' state above -- unaffected by, and not affecting, any other
@@ -715,6 +729,9 @@ export default function PublishingWorkspace() {
   useEffect(() => {
     if (composedEpisode) saveFamilyImage(composedEpisode.episodeNumber, familyImageDataUrl);
   }, [familyImageDataUrl, composedEpisode]);
+  useEffect(() => {
+    saveCardsLocked(cardsLocked);
+  }, [cardsLocked]);
 
   // Six-Second Story's own persistence -- its own key, independent of
   // every other content type's state above.
@@ -1183,10 +1200,10 @@ export default function PublishingWorkspace() {
   // popover: size steppers plus Bold/Italic toggles for this hotspot,
   // wired to patchEmphasis by the hotspot's own id. Present on every
   // hotspot -- style toggles are independent of content editing.
-  const renderStyleToolbar = (config: HotspotConfig) => (
+  const renderStyleToolbar = (config: HotspotConfig, locked = false) => (
     <div className="flex flex-wrap items-center gap-2">
       {config.sizeFields.map((f) => (
-        <NumField key={f.label} label={f.label} value={f.value} onChange={f.onChange} />
+        <NumField key={f.label} label={f.label} value={f.value} onChange={f.onChange} disabled={locked} />
       ))}
       <div className="ml-auto flex gap-1">
         <button
@@ -1274,6 +1291,12 @@ export default function PublishingWorkspace() {
 
   const handleHotspotPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>, hotspotId: string) => {
+      // Locked cards can still be clicked to select (so their current
+      // margins stay visible in the popover) -- just never dragged. Not
+      // setting up dragStateRef here means handleHotspotPointerMove is a
+      // no-op and handleHotspotPointerUp's `!drag?.moved` check still
+      // treats the eventual pointerup as a plain click.
+      if (cardsLocked && LOCKABLE_CARD_IDS.has(hotspotId)) return;
       const container = previewContainerRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
@@ -1297,7 +1320,7 @@ export default function PublishingWorkspace() {
       };
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [positionOverrides, previewFormat.width, previewFormat.height, hotspots]
+    [positionOverrides, previewFormat.width, previewFormat.height, hotspots, cardsLocked]
   );
 
   const handleHotspotPointerMove = useCallback(
@@ -1566,18 +1589,29 @@ export default function PublishingWorkspace() {
     // the small floating popover with just size steppers, positioned
     // below the element.
     const belowPct = ((h.y + h.height) / previewFormat.height) * 100;
+    const isLockedCard = cardsLocked && LOCKABLE_CARD_IDS.has(h.id);
     return (
       <div
         className="absolute left-2 right-2 z-10 rounded-[var(--radius-photo)] border border-[var(--color-primary)] bg-[var(--color-card)] p-3 shadow-lg"
         style={{ top: `calc(${belowPct}% + 6px)` }}
       >
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-[var(--color-foreground)]">{config.label}</span>
-          <button type="button" onClick={() => setActiveHotspotId(null)} className="text-xs text-[var(--color-muted-foreground)]">
-            ✕
-          </button>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold text-[var(--color-foreground)]">
+            {isLockedCard ? "🔒 " : ""}
+            {config.label}
+          </span>
+          <div className="flex items-center gap-2">
+            {isLockedCard && (
+              <button type="button" onClick={() => setCardsLocked(false)} className="text-xs text-[var(--color-primary)] underline">
+                Unlock
+              </button>
+            )}
+            <button type="button" onClick={() => setActiveHotspotId(null)} className="text-xs text-[var(--color-muted-foreground)]">
+              ✕
+            </button>
+          </div>
         </div>
-        {renderStyleToolbar(config)}
+        {renderStyleToolbar(config, isLockedCard)}
       </div>
     );
   };
@@ -2212,15 +2246,16 @@ export default function PublishingWorkspace() {
                       <NumField label="Transliteration size (px)" value={resolvedStyle.slide1.transliterationSize} onChange={(v) => patchSlide1("transliterationSize", v)} />
                       <NumField label="Meaning size (px)" value={resolvedStyle.slide1.meaningSize} onChange={(v) => patchSlide1("meaningSize", v)} />
                       <NumField label="Body size (px)" value={resolvedStyle.slide1.bodySize} onChange={(v) => patchSlide1("bodySize", v)} />
-                      <NumField label="Outer card margin X (px)" value={resolvedStyle.slide1.outerCardMarginX} onChange={(v) => patchSlide1("outerCardMarginX", v)} />
-                      <NumField label="Outer card margin top (px)" value={resolvedStyle.slide1.outerCardMarginTop} onChange={(v) => patchSlide1("outerCardMarginTop", v)} />
-                      <NumField label="Outer card margin bottom (px)" value={resolvedStyle.slide1.outerCardMarginBottom} onChange={(v) => patchSlide1("outerCardMarginBottom", v)} />
-                      <NumField label="Teal card margin X (px)" value={resolvedStyle.slide1.greenCardMarginX} onChange={(v) => patchSlide1("greenCardMarginX", v)} />
-                      <NumField label="Teal card margin top (px)" value={resolvedStyle.slide1.greenCardMarginTop} onChange={(v) => patchSlide1("greenCardMarginTop", v)} />
-                      <NumField label="Teal card margin bottom (px)" value={resolvedStyle.slide1.greenCardMarginBottom} onChange={(v) => patchSlide1("greenCardMarginBottom", v)} />
-                      <NumField label="Black card margin X (px)" value={resolvedStyle.slide1.blackCardMarginX} onChange={(v) => patchSlide1("blackCardMarginX", v)} />
-                      <NumField label="Black card margin top (px)" value={resolvedStyle.slide1.blackCardMarginTop} onChange={(v) => patchSlide1("blackCardMarginTop", v)} />
-                      <NumField label="Black card margin bottom (px)" value={resolvedStyle.slide1.blackCardMarginBottom} onChange={(v) => patchSlide1("blackCardMarginBottom", v)} />
+                      <CheckField label="🔒 Lock card sizes & positions" checked={cardsLocked} onChange={setCardsLocked} />
+                      <NumField label="Outer card margin X (px)" value={resolvedStyle.slide1.outerCardMarginX} onChange={(v) => patchSlide1("outerCardMarginX", v)} disabled={cardsLocked} />
+                      <NumField label="Outer card margin top (px)" value={resolvedStyle.slide1.outerCardMarginTop} onChange={(v) => patchSlide1("outerCardMarginTop", v)} disabled={cardsLocked} />
+                      <NumField label="Outer card margin bottom (px)" value={resolvedStyle.slide1.outerCardMarginBottom} onChange={(v) => patchSlide1("outerCardMarginBottom", v)} disabled={cardsLocked} />
+                      <NumField label="Teal card margin X (px)" value={resolvedStyle.slide1.greenCardMarginX} onChange={(v) => patchSlide1("greenCardMarginX", v)} disabled={cardsLocked} />
+                      <NumField label="Teal card margin top (px)" value={resolvedStyle.slide1.greenCardMarginTop} onChange={(v) => patchSlide1("greenCardMarginTop", v)} disabled={cardsLocked} />
+                      <NumField label="Teal card margin bottom (px)" value={resolvedStyle.slide1.greenCardMarginBottom} onChange={(v) => patchSlide1("greenCardMarginBottom", v)} disabled={cardsLocked} />
+                      <NumField label="Black card margin X (px)" value={resolvedStyle.slide1.blackCardMarginX} onChange={(v) => patchSlide1("blackCardMarginX", v)} disabled={cardsLocked} />
+                      <NumField label="Black card margin top (px)" value={resolvedStyle.slide1.blackCardMarginTop} onChange={(v) => patchSlide1("blackCardMarginTop", v)} disabled={cardsLocked} />
+                      <NumField label="Black card margin bottom (px)" value={resolvedStyle.slide1.blackCardMarginBottom} onChange={(v) => patchSlide1("blackCardMarginBottom", v)} disabled={cardsLocked} />
                       <TextAreaField
                         label="Explanation text override"
                         value={textOverrides.slide1?.understanding ?? ""}
@@ -2943,19 +2978,20 @@ export default function PublishingWorkspace() {
                 // the inline textarea below takes its place at the exact
                 // same position while editing.
                 if (active && getHotspotConfig(h.id)?.onTextChange) return null;
+                const locked = cardsLocked && LOCKABLE_CARD_IDS.has(h.id);
                 return (
                   <div
                     key={h.id}
                     role="button"
                     tabIndex={0}
-                    title="Drag to move, click to edit"
+                    title={locked ? "Locked -- click to view, unlock to move/resize" : "Drag to move, click to edit"}
                     onPointerDown={(e) => handleHotspotPointerDown(e, h.id)}
                     onPointerMove={handleHotspotPointerMove}
                     onPointerUp={(e) => handleHotspotPointerUp(e, h.id)}
                     className={`absolute touch-none select-none rounded-sm border-2 transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 ${
                       active ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10" : "border-transparent"
                     }`}
-                    style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, height: `${hPct}%`, cursor: "grab" }}
+                    style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, height: `${hPct}%`, cursor: locked ? "default" : "grab" }}
                     aria-label={`Move or edit ${h.id}`}
                   />
                 );
@@ -2994,6 +3030,7 @@ export default function PublishingWorkspace() {
             activeHotspot &&
             activeHotspotConfig &&
             activeHotspotConfig.sizeFields.length > 0 &&
+            !(cardsLocked && LOCKABLE_CARD_IDS.has(activeHotspot.id)) &&
             (() => {
               const left = activeHotspot.x;
               const right = activeHotspot.x + activeHotspot.width;

@@ -404,6 +404,55 @@ function styleFor(defaultItalic: boolean, emphasis: CarouselTextEmphasis): strin
   return (emphasis.italic ?? defaultItalic) ? "italic" : "normal";
 }
 
+/** Safety net for Slide 1's nested-card margins (drawSlide1Understand) --
+ *  these come straight from editable style fields (click-drag resize AND
+ *  the sidebar's free-typed NumField, which has no min/max of its own), so
+ *  an extreme value can otherwise collapse a card's content area to zero
+ *  or negative. That doesn't just look wrong: a non-positive wrap width
+ *  makes the text-layout helpers produce zero lines, so pushHotspot never
+ *  fires and the text silently disappears instead of just rendering
+ *  oddly -- same for the icon badge if the green card around it collapses
+ *  first. Clamps a single symmetric inset (applied to both sides of
+ *  `available`) so the remaining space never drops below the ABSOLUTE
+ *  `minSize` (already in canvas px, same scale as `available`/`inset` --
+ *  pass it through px() at the call site) -- an absolute floor, not a
+ *  fraction of `available`, since a fraction compounds badly across 3
+ *  nested levels: if a parent card already got clamped down near its own
+ *  floor, "15% of that" for the next level in is nowhere near enough. */
+function clampInset(inset: number, available: number, minSize: number): number {
+  const maxInset = Math.max(0, (available - minSize) / 2);
+  return Math.min(Math.max(0, inset), maxInset);
+}
+
+/** Same safety net as clampInset, for an asymmetric top+bottom (or
+ *  left+right) pair -- scales both down together, preserving whichever
+ *  side was set larger, instead of clamping each independently and
+ *  quietly erasing the designed asymmetry (e.g. the green card's
+ *  deliberately bigger top margin for the icon badge). */
+function clampInsetPair(a: number, b: number, available: number, minSize: number): [number, number] {
+  const clampedA = Math.max(0, a);
+  const clampedB = Math.max(0, b);
+  const maxSum = Math.max(0, available - minSize);
+  const sum = clampedA + clampedB;
+  if (sum <= maxSum || sum <= 0) return [clampedA, clampedB];
+  const scale = maxSum / sum;
+  return [clampedA * scale, clampedB * scale];
+}
+
+// Reference px (1080-scale, same as every other size field) -- the
+// absolute floors clampInset/clampInsetPair enforce at each of Slide 1's
+// 3 nesting levels. Each level's floor needs enough headroom for the next
+// one in to actually reach ITS OWN floor (the clamp can only shrink a
+// margin down to zero, never grow the parent to make room) -- so these
+// decrease outer->green->black, with black's two floors sized for what
+// actually has to fit inside: ~220px of fixed preamble (Tamil reference +
+// transliteration + "WHAT DOES THIS MEAN?" pill) before the first line of
+// body text even starts.
+const MIN_OUTER_CARD_SIZE = 500;
+const MIN_GREEN_CARD_SIZE = 450;
+const MIN_BLACK_CARD_W = 200;
+const MIN_BLACK_CARD_H = 400;
+
 /** Appends a hotspot spanning from the first to the last drawn line's
  *  baseline (a generous, forgiving click target, not pixel-exact) --
  *  padded above/below using the line's own font size as a proxy for
@@ -1459,9 +1508,13 @@ function drawSlide1Understand(
   // drew behind this (same margins, same frame.contentBottom clamp) --
   // recomputed here rather than threaded through, since it's cheap and
   // keeps this function self-contained.
-  const outerMarginX = px(style.slide1.outerCardMarginX, width);
-  const outerMarginTop = px(style.slide1.outerCardMarginTop, width);
-  const outerMarginBottom = px(style.slide1.outerCardMarginBottom, width);
+  const outerMarginX = clampInset(px(style.slide1.outerCardMarginX, width), width, px(MIN_OUTER_CARD_SIZE, width));
+  const [outerMarginTop, outerMarginBottom] = clampInsetPair(
+    px(style.slide1.outerCardMarginTop, width),
+    px(style.slide1.outerCardMarginBottom, width),
+    canvasHeight,
+    px(MIN_OUTER_CARD_SIZE, width)
+  );
   const outerBottom = Math.min(canvasHeight - outerMarginBottom, frame.contentBottom);
 
   // Gap between the pale outer card and the dark teal "green" card --
@@ -1474,9 +1527,15 @@ function drawSlide1Understand(
   // the green card's actual top -- and so its height -- expands past
   // that minimum whenever the pill + badge need more space than it
   // provides.
-  const greenMarginX = px(style.slide1.greenCardMarginX, width);
-  const greenMarginTop = px(style.slide1.greenCardMarginTop, width);
-  const greenMarginBottom = px(style.slide1.greenCardMarginBottom, width);
+  const outerCardW = width - outerMarginX * 2;
+  const outerCardH = outerBottom - outerMarginTop;
+  const greenMarginX = clampInset(px(style.slide1.greenCardMarginX, width), outerCardW, px(MIN_GREEN_CARD_SIZE, width));
+  const [greenMarginTop, greenMarginBottom] = clampInsetPair(
+    px(style.slide1.greenCardMarginTop, width),
+    px(style.slide1.greenCardMarginBottom, width),
+    outerCardH,
+    px(MIN_GREEN_CARD_SIZE, width)
+  );
   const greenX = outerMarginX + greenMarginX;
   const greenW = width - outerMarginX * 2 - greenMarginX * 2;
   const greenBottom = outerBottom - greenMarginBottom;
@@ -1490,7 +1549,12 @@ function drawSlide1Understand(
   const badgeY = eyebrowBadgeBottom + badgePad + badgeOffset.dy;
 
   const greenTop = Math.max(outerMarginTop + greenMarginTop, badgeY + badgeSize + badgePad);
-  const greenH = greenBottom - greenTop;
+  // The pair clamp above bounds greenMarginTop/Bottom themselves, but
+  // greenTop can still get pushed down past greenBottom by the badge-room
+  // override just above -- a final floor so the card (and the text inside
+  // it) never collapses to a sliver no matter how tall the header/badge
+  // stack turns out to be.
+  const greenH = Math.max(px(MIN_GREEN_CARD_SIZE, width), greenBottom - greenTop);
   const greenRadius = px(24, width);
   // Like every other draggable element, the card's own drag offset only
   // nudges where ITS rectangle is drawn/hit-tested -- it never feeds back
@@ -1528,13 +1592,21 @@ function drawSlide1Understand(
   // all four sides by default, per explicit founder direction (up from
   // the previous round's 30px) -- independently adjustable per side, same
   // as the outer/green cards above.
-  const blackMarginX = px(style.slide1.blackCardMarginX, width);
-  const blackMarginTop = px(style.slide1.blackCardMarginTop, width);
-  const blackMarginBottom = px(style.slide1.blackCardMarginBottom, width);
+  const blackMarginX = clampInset(px(style.slide1.blackCardMarginX, width), greenW, px(MIN_BLACK_CARD_W, width));
+  // Clamped against greenH (not the raw greenBottom - greenTop) so the
+  // black card gets a sane minimum area even in the edge case where the
+  // badge-room override above already ate most of the green card's own
+  // height -- see greenH's own comment.
+  const [blackMarginTop, blackMarginBottom] = clampInsetPair(
+    px(style.slide1.blackCardMarginTop, width),
+    px(style.slide1.blackCardMarginBottom, width),
+    greenH,
+    px(MIN_BLACK_CARD_H, width)
+  );
   const blackX = greenX + blackMarginX;
   const blackW = greenW - blackMarginX * 2;
   const blackTop = greenTop + blackMarginTop;
-  const blackBottom = greenBottom - blackMarginBottom;
+  const blackBottom = greenTop + greenH - blackMarginBottom;
   const blackRadius = px(16, width);
   // Same visual-only-nudge convention as the green card above -- the
   // text drawn inside still anchors to the unoffset blackX/blackTop.
@@ -2180,9 +2252,13 @@ export function renderAathichoodiCarouselSlide(
     // well past it.
     ctx.fillStyle = style.colors.slide1PageBackground;
     ctx.fillRect(0, 0, width, height);
-    const outerMarginX = px(style.slide1.outerCardMarginX, width);
-    const outerMarginTop = px(style.slide1.outerCardMarginTop, width);
-    const outerMarginBottom = px(style.slide1.outerCardMarginBottom, width);
+    const outerMarginX = clampInset(px(style.slide1.outerCardMarginX, width), width, px(MIN_OUTER_CARD_SIZE, width));
+    const [outerMarginTop, outerMarginBottom] = clampInsetPair(
+      px(style.slide1.outerCardMarginTop, width),
+      px(style.slide1.outerCardMarginBottom, width),
+      height,
+      px(MIN_OUTER_CARD_SIZE, width)
+    );
     const outerBottom = Math.min(height - outerMarginBottom, frame.contentBottom);
     // Visual-only nudge, same convention as every other draggable
     // hotspot -- the green/black cards nested on top still anchor to the
