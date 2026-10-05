@@ -59,7 +59,6 @@ export interface CarouselColors {
   textSecondary: string;
   accent: string;
   panelFill: string;
-  panelBorder: string;
   badgeRing: string;
   /** The footer logo badge's own fill/text -- independent of
    *  background/textPrimary above, per explicit founder direction (the
@@ -342,15 +341,14 @@ export const DEFAULT_STYLE: CarouselStyle = {
   colors: {
     background: "#0A363A",
     backgroundDeep: "#0A363A",
-    textPrimary: "#F6F1E3",
+    textPrimary: "#FFFFFF",
     textSecondary: "#A9C4B1",
     // Section headings' colour -- the locked mint in this (dark/green)
     // mode specifically; reverse mode keeps its own darker green instead
     // (see INVERTED_COLORS). This field is the section headings' only
     // remaining consumer.
     accent: "#68FFAD",
-    panelFill: "rgba(255, 255, 255, 0.07)",
-    panelBorder: "rgba(255, 255, 255, 0.12)",
+    panelFill: "#1D5D51",
     badgeRing: "rgba(255, 255, 255, 0.16)",
     logoBadgeBackground: "#68FFAD",
     logoBadgeText: "#0A363A",
@@ -419,20 +417,19 @@ export const DEFAULT_STYLE: CarouselStyle = {
  *  deliberate second look, not an accessibility mistake. Selected per
  *  episode via the founder's manual toggle (RenderCarouselSlideOptions'
  *  design.invertColors), so alternating episodes can checkerboard
- *  light/dark on an Instagram grid. accent (section headings) is its own
- *  green here, NOT the DEFAULT_STYLE mint -- mint-on-white read as too
- *  low-contrast, per explicit founder feedback after seeing it live, so
- *  reverse mode keeps this darker green instead. panelFill/panelBorder/
- *  badgeRing are the dark teal ink at low opacity, same derivation as
- *  before, just re-based on the new ink colour. */
+ *  light/dark on an Instagram grid. accent (section headings) is TEMPORARILY
+ *  set to the same mint as DEFAULT_STYLE, per explicit founder direction --
+ *  a prior round had moved it to a darker green for contrast reasons, but
+ *  that's being revisited; this is a placeholder pending a final call, not
+ *  a locked decision. badgeRing is the dark teal ink at low opacity, same
+ *  derivation as before, just re-based on the new ink colour. */
 export const INVERTED_COLORS: CarouselColors = {
   background: "#FFFFFF",
   backgroundDeep: "#FFFFFF",
   textPrimary: "#0A363A",
   textSecondary: "rgba(10, 54, 58, 0.65)",
-  accent: "#3C8F62",
-  panelFill: "rgba(10, 54, 58, 0.06)",
-  panelBorder: "rgba(10, 54, 58, 0.14)",
+  accent: "#68FFAD",
+  panelFill: "#F6F1E3",
   badgeRing: "rgba(10, 54, 58, 0.18)",
   logoBadgeBackground: "#0A363A",
   logoBadgeText: "#68FFAD",
@@ -1308,13 +1305,12 @@ function drawSlide3Action(
   const qx = frame.contentX + qOffset.dx;
 
   if (draw) {
+    // No border stroke any more, per the locked design correction -- the
+    // panel is now a solid fill only.
     ctx.fillStyle = style.colors.panelFill;
-    ctx.strokeStyle = style.colors.panelBorder;
-    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(qx, panelY + qOffset.dy, frame.contentW, panelH, frame.contentW * style.slide3.panelRadius);
     ctx.fill();
-    ctx.stroke();
 
     if (style.slide3.showQuoteMark) {
       ctx.fillStyle = style.colors.textSecondary;
