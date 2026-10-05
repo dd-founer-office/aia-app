@@ -875,6 +875,16 @@ export default function PublishingWorkspace() {
      *  this bigger" regardless of which direction the underlying number
      *  has to move to get there. */
     invert?: boolean;
+    /** Ties this field to one side of the box instead of the uniform
+     *  center-distance scale every field uses by default -- "x" responds
+     *  to the left/right edge handles and corners (either side, since a
+     *  symmetric side margin is one shared number), "top"/"bottom" each
+     *  respond only to their own edge handle and the two adjacent
+     *  corners. A field with no axis (a plain font/icon "Size") keeps the
+     *  old corner-only, distance-from-center behavior and never responds
+     *  to edge handles -- those only render at all when at least one of
+     *  the hotspot's fields declares an axis (see the edge-handle JSX). */
+    axis?: "x" | "top" | "bottom";
   }
   interface HotspotConfig {
     label: string;
@@ -1018,24 +1028,28 @@ export default function PublishingWorkspace() {
           return {
             label: "Outer card",
             sizeFields: [
-              { label: "Side margin", value: resolvedStyle.slide1.outerCardMarginX, invert: true, onChange: (v) => patchSlide1("outerCardMarginX", v) },
-              { label: "Top margin", value: resolvedStyle.slide1.outerCardMarginTop, invert: true, onChange: (v) => patchSlide1("outerCardMarginTop", v) },
-              { label: "Bottom margin", value: resolvedStyle.slide1.outerCardMarginBottom, invert: true, onChange: (v) => patchSlide1("outerCardMarginBottom", v) },
+              { label: "Side margin", value: resolvedStyle.slide1.outerCardMarginX, invert: true, axis: "x", onChange: (v) => patchSlide1("outerCardMarginX", v) },
+              { label: "Top margin", value: resolvedStyle.slide1.outerCardMarginTop, invert: true, axis: "top", onChange: (v) => patchSlide1("outerCardMarginTop", v) },
+              { label: "Bottom margin", value: resolvedStyle.slide1.outerCardMarginBottom, invert: true, axis: "bottom", onChange: (v) => patchSlide1("outerCardMarginBottom", v) },
             ],
           };
         case "slide1.greenCard":
           return {
             label: "Teal card",
             sizeFields: [
-              { label: "Side margin", value: resolvedStyle.slide1.greenCardMarginX, invert: true, onChange: (v) => patchSlide1("greenCardMarginX", v) },
-              { label: "Top margin", value: resolvedStyle.slide1.greenCardMarginTop, invert: true, onChange: (v) => patchSlide1("greenCardMarginTop", v) },
-              { label: "Bottom margin", value: resolvedStyle.slide1.greenCardMarginBottom, invert: true, onChange: (v) => patchSlide1("greenCardMarginBottom", v) },
+              { label: "Side margin", value: resolvedStyle.slide1.greenCardMarginX, invert: true, axis: "x", onChange: (v) => patchSlide1("greenCardMarginX", v) },
+              { label: "Top margin", value: resolvedStyle.slide1.greenCardMarginTop, invert: true, axis: "top", onChange: (v) => patchSlide1("greenCardMarginTop", v) },
+              { label: "Bottom margin", value: resolvedStyle.slide1.greenCardMarginBottom, invert: true, axis: "bottom", onChange: (v) => patchSlide1("greenCardMarginBottom", v) },
             ],
           };
         case "slide1.blackCard":
           return {
             label: "Black card",
-            sizeFields: [{ label: "Margin", value: resolvedStyle.slide1.blackCardMargin, invert: true, onChange: (v) => patchSlide1("blackCardMargin", v) }],
+            sizeFields: [
+              { label: "Side margin", value: resolvedStyle.slide1.blackCardMarginX, invert: true, axis: "x", onChange: (v) => patchSlide1("blackCardMarginX", v) },
+              { label: "Top margin", value: resolvedStyle.slide1.blackCardMarginTop, invert: true, axis: "top", onChange: (v) => patchSlide1("blackCardMarginTop", v) },
+              { label: "Bottom margin", value: resolvedStyle.slide1.blackCardMarginBottom, invert: true, axis: "bottom", onChange: (v) => patchSlide1("blackCardMarginBottom", v) },
+            ],
           };
         // "before"/"after" both fall back to the same shared
         // slide3.bodySize style field, so each needs its own size override
@@ -1350,15 +1364,19 @@ export default function PublishingWorkspace() {
     [setActiveHotspotId]
   );
 
-  // Canva-style corner-handle resize: dragging any of the active hotspot's
-  // 4 corners scales every one of its sizeFields together, by the ratio
-  // between the pointer's current and starting distance from the box's
-  // own centre. Scaling from the centre (not the opposite corner) is the
-  // only model that makes sense here -- these boxes aren't freely
-  // positioned/sized rectangles, their width/height is just whatever the
-  // text/icon naturally renders at a given font/icon size, so there's no
-  // "opposite corner" to anchor; the box simply reflows around its centre
-  // on the next repaint once the size field(s) change.
+  // Canva-style resize: 4 corner handles plus, for hotspots with at least
+  // one axis-tagged sizeField (the card margins -- see HotspotSizeField's
+  // `axis`), 4 edge-midpoint handles too. Every handle scales by the ratio
+  // between the pointer's current and starting distance from the box's own
+  // centre -- there's no "opposite corner/edge" to anchor against, since
+  // these boxes aren't freely positioned/sized rectangles, so the box
+  // simply reflows around its centre on the next repaint once the size
+  // field(s) change. A field with no `axis` (plain font/icon "Size") always
+  // uses the uniform centre-distance ratio, unchanged from every handle. An
+  // axis-tagged field instead uses the ratio projected onto just its own
+  // side, and only when the handle being dragged actually touches that
+  // side (dirX/dirY, read off the handle's own data attributes below) --
+  // dragging the bottom edge must not also grow the top margin.
   // Only plain data in the ref -- NOT the sizeFields' own onChange
   // callbacks. Those close over component state/props and would go stale
   // the moment anything they depend on changes mid-drag (e.g. switching
@@ -1370,6 +1388,10 @@ export default function PublishingWorkspace() {
     centerX: number;
     centerY: number;
     startDist: number;
+    startPointerX: number;
+    startPointerY: number;
+    dirX: number;
+    dirY: number;
     scaleX: number;
     scaleY: number;
     initialValues: number[];
@@ -1399,6 +1421,10 @@ export default function PublishingWorkspace() {
         centerX,
         centerY,
         startDist: Math.max(1, Math.hypot(pointerX - centerX, pointerY - centerY)),
+        startPointerX: pointerX,
+        startPointerY: pointerY,
+        dirX: Number(e.currentTarget.dataset.dirX ?? 0),
+        dirY: Number(e.currentTarget.dataset.dirY ?? 0),
         scaleX,
         scaleY,
         initialValues: sizeFields.map((f) => f.value),
@@ -1418,11 +1444,25 @@ export default function PublishingWorkspace() {
       const pointerX = (e.clientX - rect.left) * resize.scaleX;
       const pointerY = (e.clientY - rect.top) * resize.scaleY;
       const dist = Math.max(1, Math.hypot(pointerX - resize.centerX, pointerY - resize.centerY));
-      const scale = dist / resize.startDist;
+      const uniformScale = dist / resize.startDist;
+      // Projects the pointer's position onto one side of the box (dir is
+      // -1 for left/top, +1 for right/bottom), clamped so dragging back
+      // past the centre can't flip the sign and reverse the field's
+      // direction of travel.
+      const sideScale = (dir: number, centerCoord: number, startCoord: number, curCoord: number) => {
+        if (dir === 0) return 1;
+        const startSide = Math.max(1, dir * (startCoord - centerCoord));
+        const curSide = Math.max(1, dir * (curCoord - centerCoord));
+        return curSide / startSide;
+      };
+      const xScale = sideScale(resize.dirX, resize.centerX, resize.startPointerX, pointerX);
+      const topScale = resize.dirY === -1 ? sideScale(-1, resize.centerY, resize.startPointerY, pointerY) : 1;
+      const bottomScale = resize.dirY === 1 ? sideScale(1, resize.centerY, resize.startPointerY, pointerY) : 1;
       const sizeFields = getHotspotConfig(resize.hotspotId)?.sizeFields ?? [];
       sizeFields.forEach((field, i) => {
         const initial = resize.initialValues[i];
         if (initial === undefined) return;
+        const scale = field.axis === "x" ? xScale : field.axis === "top" ? topScale : field.axis === "bottom" ? bottomScale : uniformScale;
         const next = field.invert ? initial / scale : initial * scale;
         field.onChange(Math.round(Math.min(300, Math.max(6, next))));
       });
@@ -2178,7 +2218,9 @@ export default function PublishingWorkspace() {
                       <NumField label="Teal card margin X (px)" value={resolvedStyle.slide1.greenCardMarginX} onChange={(v) => patchSlide1("greenCardMarginX", v)} />
                       <NumField label="Teal card margin top (px)" value={resolvedStyle.slide1.greenCardMarginTop} onChange={(v) => patchSlide1("greenCardMarginTop", v)} />
                       <NumField label="Teal card margin bottom (px)" value={resolvedStyle.slide1.greenCardMarginBottom} onChange={(v) => patchSlide1("greenCardMarginBottom", v)} />
-                      <NumField label="Black card margin (px)" value={resolvedStyle.slide1.blackCardMargin} onChange={(v) => patchSlide1("blackCardMargin", v)} />
+                      <NumField label="Black card margin X (px)" value={resolvedStyle.slide1.blackCardMarginX} onChange={(v) => patchSlide1("blackCardMarginX", v)} />
+                      <NumField label="Black card margin top (px)" value={resolvedStyle.slide1.blackCardMarginTop} onChange={(v) => patchSlide1("blackCardMarginTop", v)} />
+                      <NumField label="Black card margin bottom (px)" value={resolvedStyle.slide1.blackCardMarginBottom} onChange={(v) => patchSlide1("blackCardMarginBottom", v)} />
                       <TextAreaField
                         label="Explanation text override"
                         value={textOverrides.slide1?.understanding ?? ""}
@@ -2938,33 +2980,62 @@ export default function PublishingWorkspace() {
               ))}
             </div>
           )}
-          {/* Canva-style corner resize handles for the active hotspot.
+          {/* Canva-style resize handles for the active hotspot -- 4 corners
+              always, plus 4 edge midpoints when at least one of its
+              sizeFields is tied to a single side (see HotspotSizeField's
+              `axis`), e.g. the card margins, so each side can be dragged
+              independently instead of only uniformly via a corner.
               handleResizePointerDown takes no arguments -- it reads the
-              target hotspot id off the DOM via e.currentTarget.dataset
-              instead -- so no render-time value ever needs to be passed
-              into a ref-reading callback through a wrapper closure here. */}
+              target hotspot id (and this handle's own dirX/dirY) off the
+              DOM via e.currentTarget.dataset instead -- so no render-time
+              value ever needs to be passed into a ref-reading callback
+              through a wrapper closure here. */}
           {effectiveTemplate === "aathichoodi-carousel" &&
             activeHotspot &&
             activeHotspotConfig &&
             activeHotspotConfig.sizeFields.length > 0 &&
-            [
-              { x: activeHotspot.x, y: activeHotspot.y, cursor: "nwse-resize" },
-              { x: activeHotspot.x + activeHotspot.width, y: activeHotspot.y, cursor: "nesw-resize" },
-              { x: activeHotspot.x, y: activeHotspot.y + activeHotspot.height, cursor: "nesw-resize" },
-              { x: activeHotspot.x + activeHotspot.width, y: activeHotspot.y + activeHotspot.height, cursor: "nwse-resize" },
-            ].map((c, i) => (
-              <div
-                key={i}
-                data-hotspot-id={activeHotspot.id}
-                title="Drag to resize"
-                onPointerDown={handleResizePointerDown}
-                onPointerMove={handleResizePointerMove}
-                onPointerUp={handleResizePointerUp}
-                className="absolute z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-[var(--color-primary)] bg-white shadow"
-                style={{ left: `${(c.x / previewFormat.width) * 100}%`, top: `${(c.y / previewFormat.height) * 100}%`, cursor: c.cursor }}
-                aria-label={`Resize ${activeHotspot.id}`}
-              />
-            ))}
+            (() => {
+              const left = activeHotspot.x;
+              const right = activeHotspot.x + activeHotspot.width;
+              const top = activeHotspot.y;
+              const bottom = activeHotspot.y + activeHotspot.height;
+              const midX = activeHotspot.x + activeHotspot.width / 2;
+              const midY = activeHotspot.y + activeHotspot.height / 2;
+              const hasEdgeAxis = activeHotspotConfig.sizeFields.some((f) => f.axis);
+              const corners = [
+                { x: left, y: top, cursor: "nwse-resize", dirX: -1, dirY: -1, edge: false },
+                { x: right, y: top, cursor: "nesw-resize", dirX: 1, dirY: -1, edge: false },
+                { x: left, y: bottom, cursor: "nesw-resize", dirX: -1, dirY: 1, edge: false },
+                { x: right, y: bottom, cursor: "nwse-resize", dirX: 1, dirY: 1, edge: false },
+              ];
+              const edges = hasEdgeAxis
+                ? [
+                    { x: left, y: midY, cursor: "ew-resize", dirX: -1, dirY: 0, edge: true },
+                    { x: right, y: midY, cursor: "ew-resize", dirX: 1, dirY: 0, edge: true },
+                    { x: midX, y: top, cursor: "ns-resize", dirX: 0, dirY: -1, edge: true },
+                    { x: midX, y: bottom, cursor: "ns-resize", dirX: 0, dirY: 1, edge: true },
+                  ]
+                : [];
+              return [...corners, ...edges].map((c, i) => (
+                <div
+                  key={i}
+                  data-hotspot-id={activeHotspot.id}
+                  data-dir-x={c.dirX}
+                  data-dir-y={c.dirY}
+                  title="Drag to resize"
+                  onPointerDown={handleResizePointerDown}
+                  onPointerMove={handleResizePointerMove}
+                  onPointerUp={handleResizePointerUp}
+                  className={
+                    c.edge
+                      ? "absolute z-20 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 touch-none rounded-sm border-2 border-[var(--color-primary)] bg-white shadow"
+                      : "absolute z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-[var(--color-primary)] bg-white shadow"
+                  }
+                  style={{ left: `${(c.x / previewFormat.width) * 100}%`, top: `${(c.y / previewFormat.height) * 100}%`, cursor: c.cursor }}
+                  aria-label={`Resize ${activeHotspot.id}`}
+                />
+              ));
+            })()}
           {effectiveTemplate === "aathichoodi-carousel" && activeHotspotId && renderActiveHotspotPanel()}
         </div>
         {effectiveTemplate === "aathichoodi-carousel" && (

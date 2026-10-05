@@ -216,7 +216,9 @@ export interface Slide1Style {
   greenCardMarginX: number;
   greenCardMarginTop: number;
   greenCardMarginBottom: number;
-  blackCardMargin: number;
+  blackCardMarginX: number;
+  blackCardMarginTop: number;
+  blackCardMarginBottom: number;
 }
 export interface Slide2Style {
   sectionHeadingText: string;
@@ -498,7 +500,9 @@ export const DEFAULT_STYLE: CarouselStyle = {
     greenCardMarginX: 30,
     greenCardMarginTop: 80,
     greenCardMarginBottom: 30,
-    blackCardMargin: 80,
+    blackCardMarginX: 80,
+    blackCardMarginTop: 80,
+    blackCardMarginBottom: 80,
   },
   slide2: {
     sectionHeadingText: "IT HAPPENS AT HOME",
@@ -1521,13 +1525,16 @@ function drawSlide1Understand(
   pushHotspot(hotspots, "slide1.icon", badgeX, badgeSize, badgeY, badgeY + badgeSize, badgeSize, ZERO_OFFSET);
 
   // Gap between the green card and the innermost black card -- 80px on
-  // all four sides, per explicit founder direction (up from the
-  // previous round's 30px).
-  const blackMargin = px(style.slide1.blackCardMargin, width);
-  const blackX = greenX + blackMargin;
-  const blackW = greenW - blackMargin * 2;
-  const blackTop = greenTop + blackMargin;
-  const blackBottom = greenBottom - blackMargin;
+  // all four sides by default, per explicit founder direction (up from
+  // the previous round's 30px) -- independently adjustable per side, same
+  // as the outer/green cards above.
+  const blackMarginX = px(style.slide1.blackCardMarginX, width);
+  const blackMarginTop = px(style.slide1.blackCardMarginTop, width);
+  const blackMarginBottom = px(style.slide1.blackCardMarginBottom, width);
+  const blackX = greenX + blackMarginX;
+  const blackW = greenW - blackMarginX * 2;
+  const blackTop = greenTop + blackMarginTop;
+  const blackBottom = greenBottom - blackMarginBottom;
   const blackRadius = px(16, width);
   // Same visual-only-nudge convention as the green card above -- the
   // text drawn inside still anchors to the unoffset blackX/blackTop.
