@@ -203,6 +203,20 @@ export interface Slide1Style {
   transliterationSize: number;
   meaningSize: number;
   bodySize: number;
+  /** Insets (reference px, same scale as every other size field here) for
+   *  the three nested cards drawSlide1Understand/renderAathichoodiCarouselSlide
+   *  draw -- see the "Outer card bounds"/"Gap between..." comments at each
+   *  card's draw site for what each one measures. Click-and-drag resize
+   *  (PublishingWorkspace.tsx's slide1.outerCard/greenCard/blackCard
+   *  hotspots) shrinks a margin as its card is dragged bigger, so these
+   *  are the one case where a hotspot's sizeField is declared `invert`. */
+  outerCardMarginX: number;
+  outerCardMarginTop: number;
+  outerCardMarginBottom: number;
+  greenCardMarginX: number;
+  greenCardMarginTop: number;
+  greenCardMarginBottom: number;
+  blackCardMargin: number;
 }
 export interface Slide2Style {
   sectionHeadingText: string;
@@ -478,6 +492,13 @@ export const DEFAULT_STYLE: CarouselStyle = {
     // design correction, now that this line is set in Cal Sans.
     meaningSize: 32,
     bodySize: 29,
+    outerCardMarginX: 17,
+    outerCardMarginTop: 60,
+    outerCardMarginBottom: 60,
+    greenCardMarginX: 30,
+    greenCardMarginTop: 80,
+    greenCardMarginBottom: 30,
+    blackCardMargin: 80,
   },
   slide2: {
     sectionHeadingText: "IT HAPPENS AT HOME",
@@ -1434,9 +1455,9 @@ function drawSlide1Understand(
   // drew behind this (same margins, same frame.contentBottom clamp) --
   // recomputed here rather than threaded through, since it's cheap and
   // keeps this function self-contained.
-  const outerMarginX = px(17, width);
-  const outerMarginTop = px(60, width);
-  const outerMarginBottom = px(60, width);
+  const outerMarginX = px(style.slide1.outerCardMarginX, width);
+  const outerMarginTop = px(style.slide1.outerCardMarginTop, width);
+  const outerMarginBottom = px(style.slide1.outerCardMarginBottom, width);
   const outerBottom = Math.min(canvasHeight - outerMarginBottom, frame.contentBottom);
 
   // Gap between the pale outer card and the dark teal "green" card --
@@ -1449,9 +1470,9 @@ function drawSlide1Understand(
   // the green card's actual top -- and so its height -- expands past
   // that minimum whenever the pill + badge need more space than it
   // provides.
-  const greenMarginX = px(30, width);
-  const greenMarginTop = px(80, width);
-  const greenMarginBottom = px(30, width);
+  const greenMarginX = px(style.slide1.greenCardMarginX, width);
+  const greenMarginTop = px(style.slide1.greenCardMarginTop, width);
+  const greenMarginBottom = px(style.slide1.greenCardMarginBottom, width);
   const greenX = outerMarginX + greenMarginX;
   const greenW = width - outerMarginX * 2 - greenMarginX * 2;
   const greenBottom = outerBottom - greenMarginBottom;
@@ -1467,10 +1488,16 @@ function drawSlide1Understand(
   const greenTop = Math.max(outerMarginTop + greenMarginTop, badgeY + badgeSize + badgePad);
   const greenH = greenBottom - greenTop;
   const greenRadius = px(24, width);
+  // Like every other draggable element, the card's own drag offset only
+  // nudges where ITS rectangle is drawn/hit-tested -- it never feeds back
+  // into the layout math above, so the badge/black-card/text positions
+  // computed from greenX/greenTop stay put even if the green card's own
+  // background is dragged away from them.
+  const greenCardOffset = posFor(positions, "slide1.greenCard");
   if (draw) {
     ctx.fillStyle = style.colors.slide1GreenCardBackground;
     ctx.beginPath();
-    ctx.roundRect(greenX, greenTop, greenW, greenH, greenRadius);
+    ctx.roundRect(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy, greenW, greenH, greenRadius);
     ctx.fill();
     ctx.fillStyle = style.colors.slide1IconBadgeBackground;
     ctx.beginPath();
@@ -1478,22 +1505,47 @@ function drawSlide1Understand(
     ctx.fill();
     drawPronunciationIcon(ctx, badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize * 0.68, style.colors.slide1IconBadgeIconColor);
   }
+  // Pushed before the icon/text hotspots below (not after) so they render
+  // later in the overlay's DOM order and so stay on top for clicking --
+  // this card's hotspot is a big background rect that would otherwise
+  // swallow clicks meant for the smaller elements sitting on top of it.
+  if (hotspots) {
+    hotspots.push({
+      id: "slide1.greenCard",
+      x: greenX + greenCardOffset.dx,
+      y: greenTop + greenCardOffset.dy,
+      width: greenW,
+      height: greenH,
+    });
+  }
   pushHotspot(hotspots, "slide1.icon", badgeX, badgeSize, badgeY, badgeY + badgeSize, badgeSize, ZERO_OFFSET);
 
   // Gap between the green card and the innermost black card -- 80px on
   // all four sides, per explicit founder direction (up from the
   // previous round's 30px).
-  const blackMargin = px(80, width);
+  const blackMargin = px(style.slide1.blackCardMargin, width);
   const blackX = greenX + blackMargin;
   const blackW = greenW - blackMargin * 2;
   const blackTop = greenTop + blackMargin;
   const blackBottom = greenBottom - blackMargin;
   const blackRadius = px(16, width);
+  // Same visual-only-nudge convention as the green card above -- the
+  // text drawn inside still anchors to the unoffset blackX/blackTop.
+  const blackCardOffset = posFor(positions, "slide1.blackCard");
   if (draw) {
     ctx.fillStyle = style.colors.slide1CardBackground;
     ctx.beginPath();
-    ctx.roundRect(blackX, blackTop, blackW, blackBottom - blackTop, blackRadius);
+    ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackBottom - blackTop, blackRadius);
     ctx.fill();
+  }
+  if (hotspots) {
+    hotspots.push({
+      id: "slide1.blackCard",
+      x: blackX + blackCardOffset.dx,
+      y: blackTop + blackCardOffset.dy,
+      width: blackW,
+      height: blackBottom - blackTop,
+    });
   }
 
   const padX = blackW * 0.08;
@@ -2121,14 +2173,31 @@ export function renderAathichoodiCarouselSlide(
     // well past it.
     ctx.fillStyle = style.colors.slide1PageBackground;
     ctx.fillRect(0, 0, width, height);
-    const outerMarginX = px(17, width);
-    const outerMarginTop = px(60, width);
-    const outerMarginBottom = px(60, width);
+    const outerMarginX = px(style.slide1.outerCardMarginX, width);
+    const outerMarginTop = px(style.slide1.outerCardMarginTop, width);
+    const outerMarginBottom = px(style.slide1.outerCardMarginBottom, width);
     const outerBottom = Math.min(height - outerMarginBottom, frame.contentBottom);
+    // Visual-only nudge, same convention as every other draggable
+    // hotspot -- the green/black cards nested on top still anchor to the
+    // unoffset margins (recomputed independently in drawSlide1Understand).
+    const outerCardOffset = posFor(positions, "slide1.outerCard");
     ctx.fillStyle = style.colors.slide1OuterCardBackground;
     ctx.beginPath();
-    ctx.roundRect(outerMarginX, outerMarginTop, width - outerMarginX * 2, outerBottom - outerMarginTop, px(32, width));
+    ctx.roundRect(
+      outerMarginX + outerCardOffset.dx,
+      outerMarginTop + outerCardOffset.dy,
+      width - outerMarginX * 2,
+      outerBottom - outerMarginTop,
+      px(32, width)
+    );
     ctx.fill();
+    hotspots.push({
+      id: "slide1.outerCard",
+      x: outerMarginX + outerCardOffset.dx,
+      y: outerMarginTop + outerCardOffset.dy,
+      width: width - outerMarginX * 2,
+      height: outerBottom - outerMarginTop,
+    });
   }
   if (slideIndex === 2 && opts.familyImage) {
     drawSlide2BackgroundPhoto(ctx, style, width, height, opts.familyImage);

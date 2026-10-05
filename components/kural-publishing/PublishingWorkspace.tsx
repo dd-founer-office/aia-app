@@ -867,6 +867,14 @@ export default function PublishingWorkspace() {
     label: string;
     value: number;
     onChange: (v: number) => void;
+    /** Set for a field where growing the drawn element means SHRINKING
+     *  this value -- a card's margin, not a font/icon size. The corner
+     *  resize handles (handleResizePointerMove) multiply by the pointer's
+     *  distance-from-center ratio by default; an inverted field divides
+     *  by it instead, so dragging a corner outward still reads as "make
+     *  this bigger" regardless of which direction the underlying number
+     *  has to move to get there. */
+    invert?: boolean;
   }
   interface HotspotConfig {
     label: string;
@@ -1001,6 +1009,33 @@ export default function PublishingWorkspace() {
             sizeFields: [{ label: "Size", value: resolvedStyle.slide1.bodySize, onChange: (v) => patchSlide1("bodySize", v) }],
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide1.bodySize,
+          };
+        // The three nested cards (pale outer, teal/green, black) -- size
+        // fields here are the card's own insets, not a font/icon size, so
+        // each is `invert`: dragging a corner handle outward should make
+        // the card bigger, which means SHRINKING its margin.
+        case "slide1.outerCard":
+          return {
+            label: "Outer card",
+            sizeFields: [
+              { label: "Side margin", value: resolvedStyle.slide1.outerCardMarginX, invert: true, onChange: (v) => patchSlide1("outerCardMarginX", v) },
+              { label: "Top margin", value: resolvedStyle.slide1.outerCardMarginTop, invert: true, onChange: (v) => patchSlide1("outerCardMarginTop", v) },
+              { label: "Bottom margin", value: resolvedStyle.slide1.outerCardMarginBottom, invert: true, onChange: (v) => patchSlide1("outerCardMarginBottom", v) },
+            ],
+          };
+        case "slide1.greenCard":
+          return {
+            label: "Teal card",
+            sizeFields: [
+              { label: "Side margin", value: resolvedStyle.slide1.greenCardMarginX, invert: true, onChange: (v) => patchSlide1("greenCardMarginX", v) },
+              { label: "Top margin", value: resolvedStyle.slide1.greenCardMarginTop, invert: true, onChange: (v) => patchSlide1("greenCardMarginTop", v) },
+              { label: "Bottom margin", value: resolvedStyle.slide1.greenCardMarginBottom, invert: true, onChange: (v) => patchSlide1("greenCardMarginBottom", v) },
+            ],
+          };
+        case "slide1.blackCard":
+          return {
+            label: "Black card",
+            sizeFields: [{ label: "Margin", value: resolvedStyle.slide1.blackCardMargin, invert: true, onChange: (v) => patchSlide1("blackCardMargin", v) }],
           };
         // "before"/"after" both fall back to the same shared
         // slide3.bodySize style field, so each needs its own size override
@@ -1388,7 +1423,8 @@ export default function PublishingWorkspace() {
       sizeFields.forEach((field, i) => {
         const initial = resize.initialValues[i];
         if (initial === undefined) return;
-        field.onChange(Math.round(Math.min(300, Math.max(6, initial * scale))));
+        const next = field.invert ? initial / scale : initial * scale;
+        field.onChange(Math.round(Math.min(300, Math.max(6, next))));
       });
     },
     [getHotspotConfig]
@@ -2136,6 +2172,13 @@ export default function PublishingWorkspace() {
                       <NumField label="Transliteration size (px)" value={resolvedStyle.slide1.transliterationSize} onChange={(v) => patchSlide1("transliterationSize", v)} />
                       <NumField label="Meaning size (px)" value={resolvedStyle.slide1.meaningSize} onChange={(v) => patchSlide1("meaningSize", v)} />
                       <NumField label="Body size (px)" value={resolvedStyle.slide1.bodySize} onChange={(v) => patchSlide1("bodySize", v)} />
+                      <NumField label="Outer card margin X (px)" value={resolvedStyle.slide1.outerCardMarginX} onChange={(v) => patchSlide1("outerCardMarginX", v)} />
+                      <NumField label="Outer card margin top (px)" value={resolvedStyle.slide1.outerCardMarginTop} onChange={(v) => patchSlide1("outerCardMarginTop", v)} />
+                      <NumField label="Outer card margin bottom (px)" value={resolvedStyle.slide1.outerCardMarginBottom} onChange={(v) => patchSlide1("outerCardMarginBottom", v)} />
+                      <NumField label="Teal card margin X (px)" value={resolvedStyle.slide1.greenCardMarginX} onChange={(v) => patchSlide1("greenCardMarginX", v)} />
+                      <NumField label="Teal card margin top (px)" value={resolvedStyle.slide1.greenCardMarginTop} onChange={(v) => patchSlide1("greenCardMarginTop", v)} />
+                      <NumField label="Teal card margin bottom (px)" value={resolvedStyle.slide1.greenCardMarginBottom} onChange={(v) => patchSlide1("greenCardMarginBottom", v)} />
+                      <NumField label="Black card margin (px)" value={resolvedStyle.slide1.blackCardMargin} onChange={(v) => patchSlide1("blackCardMargin", v)} />
                       <TextAreaField
                         label="Explanation text override"
                         value={textOverrides.slide1?.understanding ?? ""}
