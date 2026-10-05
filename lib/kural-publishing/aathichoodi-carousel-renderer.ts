@@ -1414,6 +1414,7 @@ function drawSlide1Understand(
   style: CarouselStyle,
   frame: Frame,
   width: number,
+  canvasHeight: number,
   episode: ComposedEpisode,
   tamilFont: string,
   interFont: string,
@@ -1430,34 +1431,42 @@ function drawSlide1Understand(
   const tamilRef = px(style.slide1.tamilRefSize, width);
 
   // Outer card bounds mirror exactly what renderAathichoodiCarouselSlide
-  // drew behind this (same outerMargin, same frame.contentBottom-anchored
-  // bottom edge) -- recomputed here rather than threaded through, since
-  // it's cheap and keeps this function self-contained.
-  const outerMargin = px(10, width);
-  const outerBottom = frame.contentBottom;
+  // drew behind this (same margins, same frame.contentBottom clamp) --
+  // recomputed here rather than threaded through, since it's cheap and
+  // keeps this function self-contained.
+  const outerMarginX = px(17, width);
+  const outerMarginTop = px(60, width);
+  const outerMarginBottom = px(60, width);
+  const outerBottom = Math.min(canvasHeight - outerMarginBottom, frame.contentBottom);
 
-  const greenMargin = px(10, width);
-  const greenX = outerMargin + greenMargin;
-  const greenW = width - outerMargin * 2 - greenMargin * 2;
-  const greenBottom = outerBottom - greenMargin;
-  const greenRadius = px(24, width);
+  // Gap between the pale outer card and the dark teal "green" card --
+  // asymmetric per explicit founder direction (more room on top, for the
+  // icon badge, than the sides/bottom). greenMarginTop (80px) is a
+  // *minimum*, not fixed: the AATHICHOODI eyebrow pill above it
+  // (headerMetrics.badgeBottom) already sits lower than
+  // outerMarginTop + greenMarginTop on most formats, which would
+  // otherwise leave no room at all for the icon badge between them, so
+  // the green card's actual top -- and so its height -- expands past
+  // that minimum whenever the pill + badge need more space than it
+  // provides.
+  const greenMarginX = px(30, width);
+  const greenMarginTop = px(80, width);
+  const greenMarginBottom = px(30, width);
+  const greenX = outerMarginX + greenMarginX;
+  const greenW = width - outerMarginX * 2 - greenMarginX * 2;
+  const greenBottom = outerBottom - greenMarginBottom;
 
-  // Pronunciation icon -- its own small white badge above the green
-  // card, left-aligned to its edge, per the reference image's icon
-  // treatment (not centred inside the black card any more). Anchored at
-  // frame.contentTop (right below the AATHICHOODI eyebrow); the green
-  // card's own top -- and so its height -- is derived from the badge's
-  // bottom edge, rather than a fixed "half page" fraction, so the black
-  // card inside it always gets whatever room the content actually needs
-  // instead of overflowing when a fixed fraction leaves too little.
-  const badgeSize = px(110, width);
-  const badgeGap = px(18, width);
-  const badgeRadius = px(22, width);
+  const badgeSize = px(64, width);
+  const badgeRadius = badgeSize * 0.2;
+  const badgePad = px(12, width);
   const badgeOffset = posFor(positions, "slide1.icon");
   const badgeX = greenX + badgeOffset.dx;
-  const badgeY = frame.contentTop + badgeOffset.dy;
-  const greenTop = frame.contentTop + badgeSize + badgeGap;
+  const eyebrowBadgeBottom = headerMetrics(style, width, canvasHeight, 1).badgeBottom;
+  const badgeY = eyebrowBadgeBottom + badgePad + badgeOffset.dy;
+
+  const greenTop = Math.max(outerMarginTop + greenMarginTop, badgeY + badgeSize + badgePad);
   const greenH = greenBottom - greenTop;
+  const greenRadius = px(24, width);
   if (draw) {
     ctx.fillStyle = style.colors.slide1GreenCardBackground;
     ctx.beginPath();
@@ -1471,7 +1480,10 @@ function drawSlide1Understand(
   }
   pushHotspot(hotspots, "slide1.icon", badgeX, badgeSize, badgeY, badgeY + badgeSize, badgeSize, ZERO_OFFSET);
 
-  const blackMargin = px(30, width);
+  // Gap between the green card and the innermost black card -- 80px on
+  // all four sides, per explicit founder direction (up from the
+  // previous round's 30px).
+  const blackMargin = px(80, width);
   const blackX = greenX + blackMargin;
   const blackW = greenW - blackMargin * 2;
   const blackTop = greenTop + blackMargin;
@@ -2036,7 +2048,7 @@ function layoutSlide(
         Boolean(invertColors)
       );
     case 1:
-      return drawSlide1Understand(ctx, style, frame, width, episode, tamilFont, interFont, calSansFont, startY, draw, positions, emphases, hotspots);
+      return drawSlide1Understand(ctx, style, frame, width, canvasHeight, episode, tamilFont, interFont, calSansFont, startY, draw, positions, emphases, hotspots);
     case 2:
       return drawSlide2Family(
         ctx,
@@ -2103,15 +2115,19 @@ export function renderAathichoodiCarouselSlide(
     // outer of Slide 2's three nested cards (drawSlide1Understand draws
     // the other two) sits on top of this. See
     // CarouselColors.slide1PageBackground/slide1OuterCardBackground. Its
-    // bottom edge stops at frame.contentBottom, not the canvas edge, so
-    // it never covers the footer lockup every slide still draws below
-    // that line.
+    // bottom edge is clamped to frame.contentBottom so it never covers
+    // the footer lockup every slide still draws below that line, even
+    // though the 60px bottom margin alone would, on most formats, land
+    // well past it.
     ctx.fillStyle = style.colors.slide1PageBackground;
     ctx.fillRect(0, 0, width, height);
-    const outerMargin = px(10, width);
+    const outerMarginX = px(17, width);
+    const outerMarginTop = px(60, width);
+    const outerMarginBottom = px(60, width);
+    const outerBottom = Math.min(height - outerMarginBottom, frame.contentBottom);
     ctx.fillStyle = style.colors.slide1OuterCardBackground;
     ctx.beginPath();
-    ctx.roundRect(outerMargin, outerMargin, width - outerMargin * 2, frame.contentBottom - outerMargin, px(32, width));
+    ctx.roundRect(outerMarginX, outerMarginTop, width - outerMarginX * 2, outerBottom - outerMarginTop, px(32, width));
     ctx.fill();
   }
   if (slideIndex === 2 && opts.familyImage) {
