@@ -122,16 +122,28 @@ export interface CarouselColors {
    *  teal in light mode, mint in dark mode. */
   slide3IconColor: string;
   /** Slide 2's full-bleed page background (replacing the usual dark
-   *  gradient/white field there) -- a cream "page" the slide's black card
-   *  sits on, per explicit founder direction and the attached reference
-   *  image. Currently the same in both modes (the founder's own plan is
-   *  to design a separate "reversed colour" version of this slide later,
-   *  not yet specified -- this field is a placeholder for that pass, not
-   *  a locked decision that both modes look identical forever). */
+   *  gradient/white field there) -- plain white, per explicit founder
+   *  direction and the attached reference image (a nested-card UI
+   *  screenshot). Currently the same in both modes (the founder's own
+   *  plan is to design a separate "reversed colour" version of this
+   *  slide later, not yet specified -- this field is a placeholder for
+   *  that pass, not a locked decision that both modes look identical
+   *  forever); the same caveat applies to every other slide1* colour
+   *  below. */
   slide1PageBackground: string;
-  /** The card itself -- a large rounded black panel holding all of
-   *  Slide 2's content, inset within slide1PageBackground. Same
-   *  not-yet-mode-split caveat as slide1PageBackground above. */
+  /** The outermost of Slide 2's three nested cards -- a pale mint panel
+   *  spanning the full canvas, inset by a flat 10px (see
+   *  drawSlide1Understand), that slide1GreenCardBackground sits on. */
+  slide1OuterCardBackground: string;
+  /** The middle of Slide 2's three nested cards -- the "half page" dark
+   *  teal panel inset 10px within slide1OuterCardBackground, that
+   *  slide1CardBackground sits on. Same dark teal as the app's main
+   *  background colour (background/backgroundDeep) -- not a new colour,
+   *  just a new named field for this specific element. */
+  slide1GreenCardBackground: string;
+  /** The innermost of Slide 2's three nested cards -- a black panel
+   *  inset 30px within slide1GreenCardBackground, holding all of Slide
+   *  2's actual text content. */
   slide1CardBackground: string;
   /** Slide 2's Tamil reference line, its English transliteration, and the
    *  "direct meaning" editorial paragraph (Cal Sans 600, the middle of
@@ -147,6 +159,16 @@ export interface CarouselColors {
    *  still uses, so it needed its own background field (its text reuses
    *  the existing mint accent colour, already identical in both modes). */
   slide1EyebrowBackground: string;
+  /** The small rounded-square badge sitting above slide1GreenCardBackground,
+   *  left-aligned to its edge -- holds the pronunciation icon (moved out
+   *  of the black card into this corner badge, per explicit founder
+   *  direction and the reference image's own icon treatment). White
+   *  background, dark teal icon (slide1IconBadgeIconColor) -- the
+   *  inverse of how that icon used to read (white-on-black). */
+  slide1IconBadgeBackground: string;
+  /** The pronunciation icon's own colour inside slide1IconBadgeBackground
+   *  above -- dark teal, for contrast against the white badge. */
+  slide1IconBadgeIconColor: string;
 }
 
 export interface CarouselLayout {
@@ -422,10 +444,14 @@ export const DEFAULT_STYLE: CarouselStyle = {
     calSansText: "#FFFFFF",
     slide0HookText: "#68FFAD",
     slide0EyebrowText: "#FFFFFF",
-    slide1PageBackground: "#F6F1E3",
+    slide1PageBackground: "#FFFFFF",
+    slide1OuterCardBackground: "#EAF2F2",
+    slide1GreenCardBackground: "#0A363A",
     slide1CardBackground: "#000000",
     slide1CardText: "#FFFFFF",
     slide1EyebrowBackground: "#1D5D51",
+    slide1IconBadgeBackground: "#FFFFFF",
+    slide1IconBadgeIconColor: "#0A363A",
     slide3IconCardBackground: "#0A363A",
     slide3IconColor: "#68FFAD",
   },
@@ -520,10 +546,14 @@ export const INVERTED_COLORS: CarouselColors = {
   slide0EyebrowText: "#FFFFFF",
   // Not yet split by mode -- see CarouselColors.slide1PageBackground's
   // doc comment. Same values as DEFAULT_STYLE for now.
-  slide1PageBackground: "#F6F1E3",
+  slide1PageBackground: "#FFFFFF",
+  slide1OuterCardBackground: "#EAF2F2",
+  slide1GreenCardBackground: "#0A363A",
   slide1CardBackground: "#000000",
   slide1CardText: "#FFFFFF",
   slide1EyebrowBackground: "#1D5D51",
+  slide1IconBadgeBackground: "#FFFFFF",
+  slide1IconBadgeIconColor: "#0A363A",
   slide3IconCardBackground: "#FFFFFF",
   slide3IconColor: "#0A363A",
 };
@@ -1359,19 +1389,26 @@ function drawPronunciationIcon(ctx: CanvasRenderingContext2D, cx: number, cy: nu
   ctx.restore();
 }
 
-/** "Understand" -- redesigned per explicit founder direction and the
- *  attached reference images into a black card (slide1CardBackground)
- *  inset within a full-bleed cream page (drawn in
- *  renderAathichoodiCarouselSlide, see slide1PageBackground), filling
- *  the slide's whole content frame. The card's own content, top to
- *  bottom: the pronunciation icon, the Tamil line, its English
- *  transliteration (both white), the "WHAT DOES THIS MEAN?" heading as
- *  its own pill (not the shared top-of-canvas treatment -- see
- *  sectionHeadingFor), then the editorial paragraphs. The card is a
- *  fixed size (the full content frame), not sized to its own content
- *  like most other slides -- `startY` (the balanced-layout position) is
- *  deliberately unused here, since there's no slack to balance inside a
- *  fixed card. */
+/** "Understand" -- redesigned per explicit founder direction and two
+ *  attached reference images into three nested cards sitting on a
+ *  full-bleed white page (the outermost, pale-mint card is drawn in
+ *  renderAathichoodiCarouselSlide -- see slide1OuterCardBackground):
+ *
+ *  1. The pale outer card (drawn by the caller).
+ *  2. A "half page" dark teal card inset 10px within it
+ *     (slide1GreenCardBackground).
+ *  3. A black card inset 30px within that (slide1CardBackground),
+ *     holding the slide's actual text: the Tamil line, its English
+ *     transliteration (both white), the "WHAT DOES THIS MEAN?" heading
+ *     as its own pill (not the shared top-of-canvas treatment -- see
+ *     sectionHeadingFor), then the editorial paragraphs.
+ *
+ *  The pronunciation icon sits in its own small white rounded-square
+ *  badge above the green card, left-aligned to its edge -- per the
+ *  reference image's own icon treatment -- not inside the black card any
+ *  more. All three cards are fixed-size (not sized to their own
+ *  content) -- `startY` (the balanced-layout position) is deliberately
+ *  unused here, since there's no slack to balance inside a fixed card. */
 function drawSlide1Understand(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
@@ -1391,28 +1428,66 @@ function drawSlide1Understand(
   const transliteration = px(style.slide1.transliterationSize, width);
   const body = px(style.slide1.bodySize, width);
   const tamilRef = px(style.slide1.tamilRefSize, width);
-  const cardRadius = px(28, width);
 
+  // Outer card bounds mirror exactly what renderAathichoodiCarouselSlide
+  // drew behind this (same outerMargin, same frame.contentBottom-anchored
+  // bottom edge) -- recomputed here rather than threaded through, since
+  // it's cheap and keeps this function self-contained.
+  const outerMargin = px(10, width);
+  const outerBottom = frame.contentBottom;
+
+  const greenMargin = px(10, width);
+  const greenX = outerMargin + greenMargin;
+  const greenW = width - outerMargin * 2 - greenMargin * 2;
+  const greenBottom = outerBottom - greenMargin;
+  const greenRadius = px(24, width);
+
+  // Pronunciation icon -- its own small white badge above the green
+  // card, left-aligned to its edge, per the reference image's icon
+  // treatment (not centred inside the black card any more). Anchored at
+  // frame.contentTop (right below the AATHICHOODI eyebrow); the green
+  // card's own top -- and so its height -- is derived from the badge's
+  // bottom edge, rather than a fixed "half page" fraction, so the black
+  // card inside it always gets whatever room the content actually needs
+  // instead of overflowing when a fixed fraction leaves too little.
+  const badgeSize = px(110, width);
+  const badgeGap = px(18, width);
+  const badgeRadius = px(22, width);
+  const badgeOffset = posFor(positions, "slide1.icon");
+  const badgeX = greenX + badgeOffset.dx;
+  const badgeY = frame.contentTop + badgeOffset.dy;
+  const greenTop = frame.contentTop + badgeSize + badgeGap;
+  const greenH = greenBottom - greenTop;
+  if (draw) {
+    ctx.fillStyle = style.colors.slide1GreenCardBackground;
+    ctx.beginPath();
+    ctx.roundRect(greenX, greenTop, greenW, greenH, greenRadius);
+    ctx.fill();
+    ctx.fillStyle = style.colors.slide1IconBadgeBackground;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, badgeSize, badgeSize, badgeRadius);
+    ctx.fill();
+    drawPronunciationIcon(ctx, badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize * 0.68, style.colors.slide1IconBadgeIconColor);
+  }
+  pushHotspot(hotspots, "slide1.icon", badgeX, badgeSize, badgeY, badgeY + badgeSize, badgeSize, ZERO_OFFSET);
+
+  const blackMargin = px(30, width);
+  const blackX = greenX + blackMargin;
+  const blackW = greenW - blackMargin * 2;
+  const blackTop = greenTop + blackMargin;
+  const blackBottom = greenBottom - blackMargin;
+  const blackRadius = px(16, width);
   if (draw) {
     ctx.fillStyle = style.colors.slide1CardBackground;
     ctx.beginPath();
-    ctx.roundRect(frame.contentX, frame.contentTop, frame.contentW, frame.contentBottom - frame.contentTop, cardRadius);
+    ctx.roundRect(blackX, blackTop, blackW, blackBottom - blackTop, blackRadius);
     ctx.fill();
   }
 
-  const padX = frame.contentW * 0.08;
-  const padY = padX;
-  const innerLeft = frame.contentX + padX;
-  const innerFrame: Frame = { ...frame, contentX: innerLeft, contentW: frame.contentW - padX * 2 };
-  let cursorY = frame.contentTop + padY;
-
-  const iconSize = px(76, width);
-  const iconOffset = posFor(positions, "slide1.icon");
-  const iconCx = frame.contentX + frame.contentW / 2 + iconOffset.dx;
-  cursorY += iconSize / 2;
-  if (draw) drawPronunciationIcon(ctx, iconCx, cursorY + iconOffset.dy, iconSize, style.colors.slide1CardText);
-  pushHotspot(hotspots, "slide1.icon", iconCx - iconSize / 2, iconSize, cursorY - iconSize / 2, cursorY + iconSize / 2, iconSize, ZERO_OFFSET);
-  cursorY += iconSize / 2 + iconSize * 0.3;
+  const padX = blackW * 0.08;
+  const innerLeft = blackX + padX;
+  const innerFrame: Frame = { ...frame, contentX: innerLeft, contentW: blackW - padX * 2 };
+  let cursorY = blackTop + padX;
 
   // Tamil line and its English transliteration -- both white
   // (slide1CardText), same Noto Sans Tamil family as the Kural Koorum
@@ -1448,7 +1523,7 @@ function drawSlide1Understand(
   // top-of-canvas section heading every other slide still draws (see
   // sectionHeadingFor). style.slide1.sectionHeadingText stays the text's
   // source of truth, so the existing override UI still edits it.
-  cursorY += transliteration * 1.9;
+  cursorY += transliteration * 1.7;
   const headingText = style.slide1.sectionHeadingText;
   if (headingText) {
     const headingSize = px(style.slide1.sectionHeadingSize, width);
@@ -1476,13 +1551,13 @@ function drawSlide1Understand(
     cursorY += pillH;
   }
 
-  cursorY += transliteration * 1.4;
+  cursorY += transliteration * 1.1;
   return drawEditorialParagraphs(
     ctx,
     style,
     innerFrame,
     cursorY,
-    frame.contentBottom - padY,
+    blackBottom - padX,
     episode.understanding,
     interFont,
     body,
@@ -2024,11 +2099,20 @@ export function renderAathichoodiCarouselSlide(
 
   drawSurface(ctx, width, height, style.colors);
   if (slideIndex === 1) {
-    // Full-bleed cream page, replacing the usual dark/white field -- the
-    // slide's own black card (drawn in drawSlide1Understand) sits on top
-    // of this. See CarouselColors.slide1PageBackground.
+    // Full-bleed white page, replacing the usual dark/white field -- the
+    // outer of Slide 2's three nested cards (drawSlide1Understand draws
+    // the other two) sits on top of this. See
+    // CarouselColors.slide1PageBackground/slide1OuterCardBackground. Its
+    // bottom edge stops at frame.contentBottom, not the canvas edge, so
+    // it never covers the footer lockup every slide still draws below
+    // that line.
     ctx.fillStyle = style.colors.slide1PageBackground;
     ctx.fillRect(0, 0, width, height);
+    const outerMargin = px(10, width);
+    ctx.fillStyle = style.colors.slide1OuterCardBackground;
+    ctx.beginPath();
+    ctx.roundRect(outerMargin, outerMargin, width - outerMargin * 2, frame.contentBottom - outerMargin, px(32, width));
+    ctx.fill();
   }
   if (slideIndex === 2 && opts.familyImage) {
     drawSlide2BackgroundPhoto(ctx, style, width, height, opts.familyImage);
