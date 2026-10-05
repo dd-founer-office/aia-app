@@ -1315,6 +1315,197 @@ export default function PublishingWorkspace() {
     [setActiveHotspotId]
   );
 
+  // Canva-style corner-handle resize: dragging any of the active hotspot's
+  // 4 corners scales every one of its sizeFields together, by the ratio
+  // between the pointer's current and starting distance from the box's
+  // own centre. Scaling from the centre (not the opposite corner) is the
+  // only model that makes sense here -- these boxes aren't freely
+  // positioned/sized rectangles, their width/height is just whatever the
+  // text/icon naturally renders at a given font/icon size, so there's no
+  // "opposite corner" to anchor; the box simply reflows around its centre
+  // on the next repaint once the size field(s) change.
+  // Only plain data in the ref -- NOT the sizeFields' own onChange
+  // callbacks. Those close over component state/props and would go stale
+  // the moment anything they depend on changes mid-drag (e.g. switching
+  // slides); re-deriving them fresh from getHotspotConfig on every move
+  // (below) avoids that, at the cost of one extra lookup per pointermove.
+  const resizeStateRef = useRef<{
+    hotspotId: string;
+    pointerId: number;
+    centerX: number;
+    centerY: number;
+    startDist: number;
+    scaleX: number;
+    scaleY: number;
+    initialValues: number[];
+  } | null>(null);
+
+  const handleResizePointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+      const hotspotId = e.currentTarget.dataset.hotspotId;
+      if (!hotspotId) return;
+      const sizeFields = getHotspotConfig(hotspotId)?.sizeFields ?? [];
+      const container = previewContainerRef.current;
+      if (!container || sizeFields.length === 0) return;
+      const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const hotspot = hotspots.find((h) => h.id === hotspotId);
+      if (!hotspot) return;
+      const scaleX = previewFormat.width / rect.width;
+      const scaleY = previewFormat.height / rect.height;
+      const centerX = hotspot.x + hotspot.width / 2;
+      const centerY = hotspot.y + hotspot.height / 2;
+      const pointerX = (e.clientX - rect.left) * scaleX;
+      const pointerY = (e.clientY - rect.top) * scaleY;
+      resizeStateRef.current = {
+        hotspotId,
+        pointerId: e.pointerId,
+        centerX,
+        centerY,
+        startDist: Math.max(1, Math.hypot(pointerX - centerX, pointerY - centerY)),
+        scaleX,
+        scaleY,
+        initialValues: sizeFields.map((f) => f.value),
+      };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [hotspots, previewFormat.width, previewFormat.height, getHotspotConfig]
+  );
+
+  const handleResizePointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const resize = resizeStateRef.current;
+      if (!resize || e.pointerId !== resize.pointerId) return;
+      const container = previewContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const pointerX = (e.clientX - rect.left) * resize.scaleX;
+      const pointerY = (e.clientY - rect.top) * resize.scaleY;
+      const dist = Math.max(1, Math.hypot(pointerX - resize.centerX, pointerY - resize.centerY));
+      const scale = dist / resize.startDist;
+      const sizeFields = getHotspotConfig(resize.hotspotId)?.sizeFields ?? [];
+      sizeFields.forEach((field, i) => {
+        const initial = resize.initialValues[i];
+        if (initial === undefined) return;
+        field.onChange(Math.round(Math.min(300, Math.max(6, initial * scale))));
+      });
+    },
+    [getHotspotConfig]
+  );
+
+  const handleResizePointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const resize = resizeStateRef.current;
+    if (resize && e.pointerId === resize.pointerId) resizeStateRef.current = null;
+  }, []);
+
+  // Plain top-level values, not state/memo -- recomputed every render,
+  // same as `hotspots`/`activeHotspotId` themselves, so the resize
+  // handles below (rendered directly inline in JSX, not through a called
+  // function -- see the comment there) can use them without re-deriving.
+  const activeHotspot = activeHotspotId ? hotspots.find((x) => x.id === activeHotspotId) : undefined;
+  const activeHotspotConfig = activeHotspot && activeHotspotId ? getHotspotConfig(activeHotspotId) : null;
+
+  const renderActiveHotspotPanel = () => {
+    const h = activeHotspot;
+    const config = activeHotspotConfig;
+    if (!h || !config) return null;
+    const leftPct = (h.x / previewFormat.width) * 100;
+    const topPct = (h.y / previewFormat.height) * 100;
+    const wPct = (h.width / previewFormat.width) * 100;
+    const hPct = (h.height / previewFormat.height) * 100;
+
+    if (config.onTextChange) {
+      // True in-canvas editing: a borderless textarea sitting exactly
+      // where the text is drawn, roughly matching its font/size/color,
+      // instead of a separate form field elsewhere in the UI. Enter
+      // inserts a real newline (a plain textarea's native behavior) --
+      // never submits anything, since this isn't inside a <form>.
+      const containerWidthPx = previewContainerWidth || previewFormat.width;
+      const fontPx = config.refSize ? (config.refSize / 1080) * containerWidthPx : undefined;
+      const emphasisStyle: CSSProperties = {
+        minHeight: `${hPct}%`,
+        fontFamily: `var(${config.fontVar ?? "--font-serif"})`,
+        fontSize: fontPx ? `${Math.max(fontPx, 10)}px` : undefined,
+        fontWeight: config.emphasis.bold ? 700 : undefined,
+        fontStyle: config.emphasis.italic ? "italic" : undefined,
+        color: resolvedStyle.colors.textPrimary,
+        backgroundColor: resolvedStyle.colors.background,
+        borderColor: "var(--color-primary)",
+        caretColor: resolvedStyle.colors.textPrimary,
+      };
+      return (
+        <div className="absolute z-10" style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, minWidth: "160px" }}>
+          <div
+            className="relative"
+            // Blur-to-close lives on this wrapper (not the textarea
+            // itself) and only fires when focus actually leaves the
+            // whole editor -- moving focus into the toolbar's own size
+            // field must not close it out from under the click.
+            // React's onBlur bubbles like focusout, so this catches
+            // focus leaving any child.
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setActiveHotspotId(null);
+              }
+            }}
+          >
+            <div className="absolute bottom-full left-0 mb-1 w-max min-w-full rounded-[var(--radius-photo)] border border-[var(--color-primary)] bg-[var(--color-card)] p-2 shadow-lg">
+              {renderStyleToolbar(config)}
+            </div>
+            <textarea
+              autoFocus
+              // Pre-filled with the REAL current text (the override if
+              // one exists, else the generated default) -- not left
+              // empty with the generated text shown only as a faded,
+              // unselectable placeholder. Editing in place (e.g.
+              // deleting one character) has to start from the actual
+              // text, not force retyping the whole line from scratch.
+              // Clearing the box entirely still reverts to the
+              // generated default, per the same convention every other
+              // override field already follows.
+              value={config.textValue || config.textPlaceholder || ""}
+              onChange={(e) => config.onTextChange?.(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") e.currentTarget.blur();
+              }}
+              ref={(el) => {
+                if (!el) return;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
+              }}
+              // A thin dashed selection outline (Canva's own in-place
+              // text editing look), not a heavy solid form-field border
+              // -- this is meant to feel like editing the design
+              // directly, not filling out a form next to it.
+              className="w-full resize-none overflow-hidden rounded-[2px] border border-dashed px-0.5 py-0 leading-tight outline-none"
+              style={emphasisStyle}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Canonical/fixed-size hotspots (no live text to edit inline) keep
+    // the small floating popover with just size steppers, positioned
+    // below the element.
+    const belowPct = ((h.y + h.height) / previewFormat.height) * 100;
+    return (
+      <div
+        className="absolute left-2 right-2 z-10 rounded-[var(--radius-photo)] border border-[var(--color-primary)] bg-[var(--color-card)] p-3 shadow-lg"
+        style={{ top: `calc(${belowPct}% + 6px)` }}
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-semibold text-[var(--color-foreground)]">{config.label}</span>
+          <button type="button" onClick={() => setActiveHotspotId(null)} className="text-xs text-[var(--color-muted-foreground)]">
+            ✕
+          </button>
+        </div>
+        {renderStyleToolbar(config)}
+      </div>
+    );
+  };
+
   const handleKuralFieldChange = useCallback(
     (key: ContentField, value: string) => {
       setKuralContent((prev) => ({ ...prev, [key]: value }));
@@ -2704,117 +2895,34 @@ export default function PublishingWorkspace() {
               ))}
             </div>
           )}
+          {/* Canva-style corner resize handles for the active hotspot.
+              handleResizePointerDown takes no arguments -- it reads the
+              target hotspot id off the DOM via e.currentTarget.dataset
+              instead -- so no render-time value ever needs to be passed
+              into a ref-reading callback through a wrapper closure here. */}
           {effectiveTemplate === "aathichoodi-carousel" &&
-            activeHotspotId &&
-            (() => {
-              const h = hotspots.find((x) => x.id === activeHotspotId);
-              const config = h ? getHotspotConfig(activeHotspotId) : null;
-              if (!h || !config) return null;
-              const leftPct = (h.x / previewFormat.width) * 100;
-              const topPct = (h.y / previewFormat.height) * 100;
-              const wPct = (h.width / previewFormat.width) * 100;
-              const hPct = (h.height / previewFormat.height) * 100;
-
-              if (config.onTextChange) {
-                // True in-canvas editing: a borderless textarea sitting
-                // exactly where the text is drawn, roughly matching its
-                // font/size/color, instead of a separate form field
-                // elsewhere in the UI. Enter inserts a real newline (a
-                // plain textarea's native behavior) -- never submits
-                // anything, since this isn't inside a <form>.
-                const containerWidthPx = previewContainerWidth || previewFormat.width;
-                const fontPx = config.refSize ? (config.refSize / 1080) * containerWidthPx : undefined;
-                const emphasisStyle: CSSProperties = {
-                  minHeight: `${hPct}%`,
-                  fontFamily: `var(${config.fontVar ?? "--font-serif"})`,
-                  fontSize: fontPx ? `${Math.max(fontPx, 10)}px` : undefined,
-                  fontWeight: config.emphasis.bold ? 700 : undefined,
-                  fontStyle: config.emphasis.italic ? "italic" : undefined,
-                  color: resolvedStyle.colors.textPrimary,
-                  backgroundColor: resolvedStyle.colors.background,
-                  borderColor: "var(--color-primary)",
-                  caretColor: resolvedStyle.colors.textPrimary,
-                };
-                return (
-                  <div
-                    className="absolute z-10"
-                    style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${wPct}%`, minWidth: "160px" }}
-                  >
-                    <div
-                      className="relative"
-                      // Blur-to-close lives on this wrapper (not the
-                      // textarea itself) and only fires when focus actually
-                      // leaves the whole editor -- moving focus into the
-                      // toolbar's own size field must not close it out from
-                      // under the click. React's onBlur bubbles like
-                      // focusout, so this catches focus leaving any child.
-                      onBlur={(e) => {
-                        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-                          setActiveHotspotId(null);
-                        }
-                      }}
-                    >
-                      <div className="absolute bottom-full left-0 mb-1 w-max min-w-full rounded-[var(--radius-photo)] border border-[var(--color-primary)] bg-[var(--color-card)] p-2 shadow-lg">
-                        {renderStyleToolbar(config)}
-                      </div>
-                      <textarea
-                        autoFocus
-                        // Pre-filled with the REAL current text (the
-                        // override if one exists, else the generated
-                        // default) -- not left empty with the generated
-                        // text shown only as a faded, unselectable
-                        // placeholder. Editing in place (e.g. deleting one
-                        // character) has to start from the actual text,
-                        // not force retyping the whole line from scratch.
-                        // Clearing the box entirely still reverts to the
-                        // generated default, per the same convention every
-                        // other override field already follows.
-                        value={config.textValue || config.textPlaceholder || ""}
-                        onChange={(e) => config.onTextChange?.(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") e.currentTarget.blur();
-                        }}
-                        ref={(el) => {
-                          if (!el) return;
-                          el.style.height = "auto";
-                          el.style.height = `${el.scrollHeight}px`;
-                        }}
-                        // A thin dashed selection outline (Canva's own
-                        // in-place text editing look), not a heavy solid
-                        // form-field border -- this is meant to feel like
-                        // editing the design directly, not filling out a
-                        // form next to it.
-                        className="w-full resize-none overflow-hidden rounded-[2px] border border-dashed px-0.5 py-0 leading-tight outline-none"
-                        style={emphasisStyle}
-                      />
-                    </div>
-                  </div>
-                );
-              }
-
-              // Canonical/fixed-size hotspots (no live text to edit inline)
-              // keep the small floating popover with just size steppers,
-              // positioned below the element.
-              const belowPct = ((h.y + h.height) / previewFormat.height) * 100;
-              return (
-                <div
-                  className="absolute left-2 right-2 z-10 rounded-[var(--radius-photo)] border border-[var(--color-primary)] bg-[var(--color-card)] p-3 shadow-lg"
-                  style={{ top: `calc(${belowPct}% + 6px)` }}
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-[var(--color-foreground)]">{config.label}</span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveHotspotId(null)}
-                      className="text-xs text-[var(--color-muted-foreground)]"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  {renderStyleToolbar(config)}
-                </div>
-              );
-            })()}
+            activeHotspot &&
+            activeHotspotConfig &&
+            activeHotspotConfig.sizeFields.length > 0 &&
+            [
+              { x: activeHotspot.x, y: activeHotspot.y, cursor: "nwse-resize" },
+              { x: activeHotspot.x + activeHotspot.width, y: activeHotspot.y, cursor: "nesw-resize" },
+              { x: activeHotspot.x, y: activeHotspot.y + activeHotspot.height, cursor: "nesw-resize" },
+              { x: activeHotspot.x + activeHotspot.width, y: activeHotspot.y + activeHotspot.height, cursor: "nwse-resize" },
+            ].map((c, i) => (
+              <div
+                key={i}
+                data-hotspot-id={activeHotspot.id}
+                title="Drag to resize"
+                onPointerDown={handleResizePointerDown}
+                onPointerMove={handleResizePointerMove}
+                onPointerUp={handleResizePointerUp}
+                className="absolute z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-[var(--color-primary)] bg-white shadow"
+                style={{ left: `${(c.x / previewFormat.width) * 100}%`, top: `${(c.y / previewFormat.height) * 100}%`, cursor: c.cursor }}
+                aria-label={`Resize ${activeHotspot.id}`}
+              />
+            ))}
+          {effectiveTemplate === "aathichoodi-carousel" && activeHotspotId && renderActiveHotspotPanel()}
         </div>
         {effectiveTemplate === "aathichoodi-carousel" && (
           <button
