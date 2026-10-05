@@ -70,11 +70,11 @@ export interface CarouselColors {
    *  idea as the logo badge above, independent of background/textPrimary. */
   eyebrowBadgeBackground: string;
   eyebrowBadgeText: string;
-  /** Slide 1's big Tamil heading specifically -- locked to pure white in
-   *  dark mode per explicit founder correction (distinct from textPrimary's
-   *  cream, which other dark-mode body text keeps). In light mode this is
-   *  also white, since the hero now sits on its own dark panel
-   *  (slide0HeroPanelBackground below) rather than the plain white field. */
+  /** Slide 1's big Tamil heading -- every word except its own last word
+   *  (see slide0HeroHighlightText below), which gets its own "selection"
+   *  highlight treatment instead. Mint in both modes, per explicit
+   *  founder direction -- previously white, when the whole line shared
+   *  one colour. */
   slide0HeroText: string;
   /** The dark card sitting behind the header and hero (Tamil) line in
    *  light mode only -- full-bleed, square top corners, rounded bottom
@@ -82,6 +82,12 @@ export interface CarouselColors {
    *  drawn (the whole slide is already this colour), so its value there
    *  is unused but kept at the same dark teal for type-safety. */
   slide0HeroPanelBackground: string;
+  /** The hero's own last word specifically -- drawn on top of
+   *  drawHeroWordHighlight's mint-tinted marquee box, not the mint the
+   *  rest of the hero uses. White in both modes, per the attached
+   *  reference image (a "Generate [mint] creative [white, boxed]"
+   *  pattern this mirrors). */
+  slide0HeroHighlightText: string;
   /** Slide 1's closing tagline specifically -- one locked colour in BOTH
    *  dark and light mode per explicit founder correction (distinct from
    *  textSecondary, which other slides' muted text keeps and which still
@@ -377,8 +383,9 @@ export const DEFAULT_STYLE: CarouselStyle = {
     logoBadgeText: "#0A363A",
     eyebrowBadgeBackground: "#1D5D51",
     eyebrowBadgeText: "#68FFAD",
-    slide0HeroText: "#FFFFFF",
+    slide0HeroText: "#68FFAD",
     slide0HeroPanelBackground: "#0A363A",
+    slide0HeroHighlightText: "#FFFFFF",
     slide0TaglineText: "#788485",
     calSansText: "#FFFFFF",
     slide0HookText: "#68FFAD",
@@ -462,10 +469,11 @@ export const INVERTED_COLORS: CarouselColors = {
   logoBadgeText: "#68FFAD",
   eyebrowBadgeBackground: "#0A363A",
   eyebrowBadgeText: "#68FFAD",
-  // White, not teal -- the hero now renders on its own dark panel
-  // (slide0HeroPanelBackground) rather than directly on the white field.
-  slide0HeroText: "#FFFFFF",
+  // Mint, not white -- same reasoning as dark mode: every word but the
+  // hero's own last word, which gets the white highlight treatment below.
+  slide0HeroText: "#68FFAD",
   slide0HeroPanelBackground: "#0A363A",
+  slide0HeroHighlightText: "#FFFFFF",
   slide0TaglineText: "#788485",
   calSansText: "#0A363A",
   // Black, centred (drawSlide0Stop handles the alignment), per explicit
@@ -1003,6 +1011,38 @@ function drawSlide0HeroPanel(ctx: CanvasRenderingContext2D, style: CarouselStyle
   ctx.fill();
 }
 
+/** Marquee-style "selection" highlight for the hero's last word (see
+ *  drawSlide0Stop below) -- a faint mint-tinted rectangle with four small
+ *  solid mint squares straddling its corners, per the attached reference
+ *  image. No connecting border lines, no rounded corners -- measured
+ *  directly off that reference (box-fill alpha, corner-square size as a
+ *  fraction of box height, and padding all fit the reference's
+ *  proportions). `baseline` is the word's own text baseline; `left` is
+ *  its left edge. Must be called before the word itself is drawn, so the
+ *  box sits behind the glyphs. */
+function drawHeroWordHighlight(ctx: CanvasRenderingContext2D, accent: string, left: number, baseline: number, wordWidth: number, fontSize: number): void {
+  const padX = fontSize * 0.28;
+  const top = baseline - fontSize * 0.78;
+  const bottom = baseline + fontSize * 0.32;
+  const boxX = left - padX;
+  const boxW = wordWidth + padX * 2;
+  const boxH = bottom - top;
+
+  ctx.fillStyle = hexToRgba(accent, 0.1);
+  ctx.fillRect(boxX, top, boxW, boxH);
+
+  const markSize = boxH * 0.2;
+  ctx.fillStyle = accent;
+  for (const [cx, cy] of [
+    [boxX, top],
+    [boxX + boxW, top],
+    [boxX, top + boxH],
+    [boxX + boxW, top + boxH],
+  ]) {
+    ctx.fillRect(cx - markSize / 2, cy - markSize / 2, markSize, markSize);
+  }
+}
+
 function drawSlide0Stop(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
@@ -1026,29 +1066,46 @@ function drawSlide0Stop(
   const taglineEmphasis = emphasisFor(emphases, "slide0.tagline");
 
   // The Tamil line is the hero -- dramatically the largest element on the
-  // slide, in pure white in dark mode (its own locked colour, independent
-  // of textPrimary -- see CarouselColors.slide0HeroText) per explicit
-  // founder correction. May reduce toward heroMinSize (never below) only
-  // if a specific episode's line genuinely doesn't fit. Uses the same Noto
-  // Sans Tamil family as the Kural Koorum Aram cover (tamilFont), not the
-  // serif Tamil face, for typographic consistency across the app.
+  // slide. May reduce toward heroMinSize (never below) only if a specific
+  // episode's line genuinely doesn't fit. Uses the same Noto Sans Tamil
+  // family as the Kural Koorum Aram cover (tamilFont), not the serif
+  // Tamil face, for typographic consistency across the app.
   ctx.textAlign = "left";
-  if (draw) ctx.fillStyle = style.colors.slide0HeroText;
-  const hero = fitText(
-    ctx,
-    episode.tamilText,
-    (size) => `${styleFor(false, heroEmphasis)} ${weightFor(700, heroEmphasis)} ${size}px ${tamilFont}`,
-    frame.contentW,
-    (frame.contentBottom - frame.contentTop) * 0.46,
-    Math.round(px(style.slide0.heroSize, width)),
-    Math.round(px(style.slide0.heroMinSize, width))
-  );
+  const heroFont = (size: number) => `${styleFor(false, heroEmphasis)} ${weightFor(700, heroEmphasis)} ${size}px ${tamilFont}`;
+  const hero = fitText(ctx, episode.tamilText, heroFont, frame.contentW, (frame.contentBottom - frame.contentTop) * 0.46, Math.round(px(style.slide0.heroSize, width)), Math.round(px(style.slide0.heroMinSize, width)));
+  ctx.font = heroFont(hero.size);
+
+  // The hero's own last word gets a "selection" highlight (white on a
+  // mint-tinted marquee box, see drawHeroWordHighlight) instead of the
+  // mint every other word uses -- per the attached reference image and
+  // explicit founder direction. It's always the last word of the last
+  // wrapped line, since that's the end of the text regardless of how
+  // fitText happened to wrap it.
   const heroOffset = posFor(positions, "slide0.hero");
+  const heroLastLineIndex = hero.lines.length - 1;
   let heroFirst = 0;
-  for (const line of hero.lines) {
+  for (let lineIndex = 0; lineIndex < hero.lines.length; lineIndex++) {
     cursorY += hero.lineHeight;
     if (heroFirst === 0) heroFirst = cursorY;
-    if (draw) ctx.fillText(line, frame.contentX + heroOffset.dx, cursorY + heroOffset.dy);
+    if (!draw) continue;
+    const line = hero.lines[lineIndex];
+    const lineX = frame.contentX + heroOffset.dx;
+    const lineY = cursorY + heroOffset.dy;
+    if (lineIndex !== heroLastLineIndex) {
+      ctx.fillStyle = style.colors.slide0HeroText;
+      ctx.fillText(line, lineX, lineY);
+      continue;
+    }
+    const lastSpace = line.lastIndexOf(" ");
+    const before = lastSpace >= 0 ? line.slice(0, lastSpace + 1) : "";
+    const lastWord = lastSpace >= 0 ? line.slice(lastSpace + 1) : line;
+    ctx.fillStyle = style.colors.slide0HeroText;
+    if (before) ctx.fillText(before, lineX, lineY);
+    const beforeWidth = before ? ctx.measureText(before).width : 0;
+    const wordWidth = ctx.measureText(lastWord).width;
+    drawHeroWordHighlight(ctx, style.colors.accent, lineX + beforeWidth, lineY, wordWidth, hero.size);
+    ctx.fillStyle = style.colors.slide0HeroHighlightText;
+    ctx.fillText(lastWord, lineX + beforeWidth, lineY);
   }
   pushHotspot(hotspots, "slide0.hero", frame.contentX, frame.contentW, heroFirst, cursorY, hero.size, heroOffset);
 
