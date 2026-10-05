@@ -379,7 +379,9 @@ export const DEFAULT_STYLE: CarouselStyle = {
     sectionHeadingSize: 24,
     tamilRefSize: 50,
     transliterationSize: 25,
-    meaningSize: 22,
+    // Matches slide2.bodySize (Family Situation's content) -- locked
+    // design correction, now that this line is set in Cal Sans.
+    meaningSize: 32,
     bodySize: 29,
   },
   slide2: {
@@ -1030,18 +1032,23 @@ function drawEditorialParagraphs(
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[],
-  hotspotId?: string
+  hotspotId?: string,
+  firstParagraphColor?: string
 ): number {
   const paragraphs = splitEditorialParagraphs(text);
   const emphasis = emphasisFor(emphases, hotspotId ?? "");
-  if (draw) ctx.fillStyle = style.colors.textPrimary;
   ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${interFont}`;
   const lineHeight = size * style.layout.bodyLineHeight;
   const offset = posFor(positions, hotspotId ?? "");
   let cursorY = startY;
   let firstBaseline = 0;
-  for (const paragraph of paragraphs) {
-    const lines = wrapText(ctx, paragraph, frame.contentW);
+  for (let paragraphIndex = 0; paragraphIndex < paragraphs.length; paragraphIndex++) {
+    // The opener sentence (always paragraph 0 -- see splitEditorialParagraphs,
+    // which breaks after a colon, and every opener in understanding.ts ends
+    // with one) gets its own locked colour when firstParagraphColor is
+    // supplied; every other paragraph keeps the default body colour.
+    if (draw) ctx.fillStyle = paragraphIndex === 0 && firstParagraphColor ? firstParagraphColor : style.colors.textPrimary;
+    const lines = wrapText(ctx, paragraphs[paragraphIndex], frame.contentW);
     for (const line of lines) {
       if (cursorY > maxY) {
         pushHotspot(hotspots, hotspotId ?? "", frame.contentX, frame.contentW, firstBaseline, cursorY, size, offset);
@@ -1068,6 +1075,7 @@ function drawSlide1Understand(
   episode: ComposedEpisode,
   tamilFont: string,
   interFont: string,
+  calSansFont: string,
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
@@ -1111,7 +1119,7 @@ function drawSlide1Understand(
   cursorY += transliteration * 2.0;
   const meaningEmphasis = emphasisFor(emphases, "slide1.meaning");
   if (draw) ctx.fillStyle = style.colors.textSecondary;
-  ctx.font = `${styleFor(false, meaningEmphasis)} ${weightFor(400, meaningEmphasis)} ${Math.round(meaning)}px ${interFont}`;
+  ctx.font = `${styleFor(false, meaningEmphasis)} ${weightFor(600, meaningEmphasis)} ${Math.round(meaning)}px ${calSansFont}`;
   const meaningOffset = posFor(positions, "slide1.meaning");
   if (draw) ctx.fillText(episode.simpleMeaning, frame.contentX + meaningOffset.dx, cursorY + meaningOffset.dy);
   pushHotspot(hotspots, "slide1.meaning", frame.contentX, frame.contentW, cursorY, cursorY, meaning, meaningOffset);
@@ -1132,7 +1140,8 @@ function drawSlide1Understand(
     positions,
     emphases,
     hotspots,
-    "slide1.body"
+    "slide1.body",
+    style.colors.accent
   );
 }
 
@@ -1446,8 +1455,10 @@ function drawSlide4Carry(
   }
 
   // CTA -- no icon, no decorative graphic. Muted, not bright accent green
-  // -- the headline already carries the slide's emphasis.
-  if (draw) ctx.fillStyle = style.colors.textSecondary;
+  // -- the headline already carries the slide's emphasis. Same locked grey
+  // as Slide 1's tagline (slide0TaglineText), not textSecondary, per the
+  // locked design correction.
+  if (draw) ctx.fillStyle = style.colors.slide0TaglineText;
   ctx.font = `${styleFor(false, ctaEmphasisForSize)} ${weightFor(700, ctaEmphasisForSize)} ${Math.round(ctaSize)}px ${interFont}`;
   const ctaLines = wrapText(ctx, episode.cta.copy, frame.contentW);
   const ctaOffset = posFor(positions, "slide4.cta");
@@ -1492,7 +1503,7 @@ function layoutSlide(
     case 0:
       return drawSlide0Stop(ctx, style, frame, width, episode, tamilFont, interFont, calSansFont, startY, draw, positions, emphases, hotspots);
     case 1:
-      return drawSlide1Understand(ctx, style, frame, width, episode, tamilFont, interFont, startY, draw, positions, emphases, hotspots);
+      return drawSlide1Understand(ctx, style, frame, width, episode, tamilFont, interFont, calSansFont, startY, draw, positions, emphases, hotspots);
     case 2:
       return drawSlide2Family(
         ctx,
