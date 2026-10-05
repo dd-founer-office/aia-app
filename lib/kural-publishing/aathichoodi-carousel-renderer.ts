@@ -88,6 +88,20 @@ export interface CarouselColors {
    *  THIS MEAN? / etc.) -- those stay their own locked colours (mint
    *  accent / badge text) per explicit founder direction. */
   calSansText: string;
+  /** Slide 1's hook specifically -- mint in dark mode per explicit founder
+   *  correction (distinct from calSansText's white, which the hook used
+   *  before); reverse mode keeps the same colour as calSansText there,
+   *  unchanged. */
+  slide0HookText: string;
+  /** Slide 4's quote-mark icon card -- a small solid rounded-square badge
+   *  behind the decorative opening quote, not a translucent flourish any
+   *  more. White in light mode / dark teal in dark mode, i.e. roughly the
+   *  inverse of the quote glyph colour below it, per explicit founder
+   *  direction. */
+  slide3QuoteCardBackground: string;
+  /** The quote glyph drawn inside slide3QuoteCardBackground above -- dark
+   *  teal in light mode, mint in dark mode. */
+  slide3QuoteGlyphColor: string;
 }
 
 export interface CarouselLayout {
@@ -357,6 +371,9 @@ export const DEFAULT_STYLE: CarouselStyle = {
     slide0HeroText: "#FFFFFF",
     slide0TaglineText: "#788485",
     calSansText: "#FFFFFF",
+    slide0HookText: "#68FFAD",
+    slide3QuoteCardBackground: "#0A363A",
+    slide3QuoteGlyphColor: "#68FFAD",
   },
   layout: {
     marginX: 0.093,
@@ -438,6 +455,9 @@ export const INVERTED_COLORS: CarouselColors = {
   slide0HeroText: "#0A363A",
   slide0TaglineText: "#788485",
   calSansText: "#0A363A",
+  slide0HookText: "#0A363A",
+  slide3QuoteCardBackground: "#FFFFFF",
+  slide3QuoteGlyphColor: "#0A363A",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -981,7 +1001,7 @@ function drawSlide0Stop(
   // carries the separation.
   cursorY += hero.lineHeight * 0.7;
 
-  if (draw) ctx.fillStyle = style.colors.calSansText;
+  if (draw) ctx.fillStyle = style.colors.slide0HookText;
   const hookSize = px(style.slide0.hookSize, width);
   ctx.font = `${styleFor(false, hookEmphasis)} ${weightFor(600, hookEmphasis)} ${Math.round(hookSize)}px ${calSansFont}`;
   const hookLines = wrapText(ctx, episode.hook, frame.contentW);
@@ -1030,21 +1050,30 @@ function drawEditorialParagraphs(
   emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[],
   hotspotId?: string,
-  firstParagraphColor?: string
+  firstParagraphColor?: string,
+  calSansFont?: string
 ): number {
   const paragraphs = splitEditorialParagraphs(text);
   const emphasis = emphasisFor(emphases, hotspotId ?? "");
-  ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${interFont}`;
   const lineHeight = size * style.layout.bodyLineHeight;
   const offset = posFor(positions, hotspotId ?? "");
   let cursorY = startY;
   let firstBaseline = 0;
   for (let paragraphIndex = 0; paragraphIndex < paragraphs.length; paragraphIndex++) {
-    // The opener sentence (always paragraph 0 -- see splitEditorialParagraphs,
-    // which breaks after a colon, and every opener in understanding.ts ends
-    // with one) gets its own locked colour when firstParagraphColor is
-    // supplied; every other paragraph keeps the default body colour.
+    // Three locked components, per the latest design correction:
+    // paragraph 0 (the opener, e.g. "Avvaiyar begins with a powerful
+    // idea:" -- always first, since splitEditorialParagraphs breaks after
+    // a colon and every opener ends with one) keeps Inter at its own
+    // locked colour (firstParagraphColor, the mint accent). Paragraph 1
+    // (the direct meaning sentence) switches to Cal Sans 600. Paragraph 2+
+    // (the explanation) stays Inter 400, textPrimary -- the original
+    // default.
     if (draw) ctx.fillStyle = paragraphIndex === 0 && firstParagraphColor ? firstParagraphColor : style.colors.textPrimary;
+    if (paragraphIndex === 1 && calSansFont) {
+      ctx.font = `${styleFor(false, emphasis)} 600 ${Math.round(size)}px ${calSansFont}`;
+    } else {
+      ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${interFont}`;
+    }
     const lines = wrapText(ctx, paragraphs[paragraphIndex], frame.contentW);
     for (const line of lines) {
       if (cursorY > maxY) {
@@ -1115,8 +1144,11 @@ function drawSlide1Understand(
 
   cursorY += transliteration * 2.0;
   const meaningEmphasis = emphasisFor(emphases, "slide1.meaning");
-  if (draw) ctx.fillStyle = style.colors.textSecondary;
-  ctx.font = `${styleFor(false, meaningEmphasis)} ${weightFor(600, meaningEmphasis)} ${Math.round(meaning)}px ${calSansFont}`;
+  // Back to Inter at weight 400, locked grey (slide0TaglineText) in both
+  // modes -- per the latest design correction, reversing the earlier
+  // Cal Sans/600/textSecondary pass.
+  if (draw) ctx.fillStyle = style.colors.slide0TaglineText;
+  ctx.font = `${styleFor(false, meaningEmphasis)} ${weightFor(400, meaningEmphasis)} ${Math.round(meaning)}px ${interFont}`;
   const meaningOffset = posFor(positions, "slide1.meaning");
   if (draw) ctx.fillText(episode.simpleMeaning, frame.contentX + meaningOffset.dx, cursorY + meaningOffset.dy);
   pushHotspot(hotspots, "slide1.meaning", frame.contentX, frame.contentW, cursorY, cursorY, meaning, meaningOffset);
@@ -1138,7 +1170,8 @@ function drawSlide1Understand(
     emphases,
     hotspots,
     "slide1.body",
-    style.colors.accent
+    style.colors.accent,
+    calSansFont
   );
 }
 
@@ -1155,6 +1188,7 @@ function drawSlide2Family(
   width: number,
   episode: ComposedEpisode,
   interFont: string,
+  calSansFont: string,
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
@@ -1187,7 +1221,13 @@ function drawSlide2Family(
     const size = px(emphasis.size ?? style.slide2.bodySize, width);
     const lineHeight = size * style.layout.bodyLineHeight;
     if (draw) ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${interFont}`;
+    // Paragraph 0 (some episodes only have two) is Cal Sans 600, per the
+    // latest design correction -- every other paragraph stays Inter 400.
+    if (i === 0) {
+      ctx.font = `${styleFor(false, emphasis)} 600 ${Math.round(size)}px ${calSansFont}`;
+    } else {
+      ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${interFont}`;
+    }
     const lines = wrapText(ctx, text, textW);
     let firstBaseline = 0;
     for (const line of lines) {
@@ -1251,6 +1291,7 @@ function drawSlide3Action(
   width: number,
   episode: ComposedEpisode,
   interFont: string,
+  calSansFont: string,
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
@@ -1293,14 +1334,23 @@ function drawSlide3Action(
   const qOffset = posFor(positions, questionId);
   const qEmphasis = emphasisFor(emphases, questionId);
   const qStyle = styleFor(false, qEmphasis);
-  const qWeight = weightFor(700, qEmphasis);
+  const qWeight = weightFor(600, qEmphasis);
   const questionSize = px(qEmphasis.size ?? style.slide3.questionSize, width);
   const panelPadX = frame.contentW * style.slide3.panelPadX;
   const panelPadY = frame.contentW * style.slide3.panelPadY;
-  ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${interFont}`;
+  ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${calSansFont}`;
   const quoteLines = wrapText(ctx, quoted, frame.contentW - panelPadX * 2);
   const quoteLineHeight = questionSize * 1.36;
-  const panelH = panelPadY * 2 + quoteLines.length * quoteLineHeight;
+
+  // Quote-mark icon card -- a small solid rounded-square badge sitting
+  // above the question text, per the locked design correction (replaces
+  // the old inline serif glyph drawn directly on the panel background).
+  const hasQuoteCard = style.slide3.showQuoteMark;
+  const quoteCardSize = frame.contentW * 0.1;
+  const quoteCardRadius = quoteCardSize * 0.28;
+  const quoteCardGap = quoteCardSize * 0.35;
+  const quoteCardBlock = hasQuoteCard ? quoteCardSize + quoteCardGap : 0;
+  const panelH = panelPadY * 2 + quoteCardBlock + quoteLines.length * quoteLineHeight;
   const panelY = cursorY;
   const qx = frame.contentX + qOffset.dx;
 
@@ -1312,15 +1362,26 @@ function drawSlide3Action(
     ctx.roundRect(qx, panelY + qOffset.dy, frame.contentW, panelH, frame.contentW * style.slide3.panelRadius);
     ctx.fill();
 
-    if (style.slide3.showQuoteMark) {
-      ctx.fillStyle = style.colors.textSecondary;
-      ctx.font = `700 ${Math.round(frame.contentW * 0.09)}px Georgia, serif`;
-      ctx.fillText("“", qx + panelPadX * 0.55, panelY + qOffset.dy + panelPadY + questionSize * 0.75);
+    if (hasQuoteCard) {
+      const cardX = qx + panelPadX;
+      const cardY = panelY + qOffset.dy + panelPadY;
+      ctx.fillStyle = style.colors.slide3QuoteCardBackground;
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, quoteCardSize, quoteCardSize, quoteCardRadius);
+      ctx.fill();
+
+      ctx.fillStyle = style.colors.slide3QuoteGlyphColor;
+      ctx.font = `700 ${Math.round(quoteCardSize * 0.55)}px Georgia, serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("“", cardX + quoteCardSize / 2, cardY + quoteCardSize / 2 + quoteCardSize * 0.04);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
     }
 
     ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${interFont}`;
-    let qy = panelY + qOffset.dy + panelPadY + questionSize * 0.85;
+    ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${calSansFont}`;
+    let qy = panelY + qOffset.dy + panelPadY + quoteCardBlock + questionSize * 0.85;
     for (const line of quoteLines) {
       ctx.fillText(line, qx + panelPadX, qy);
       qy += quoteLineHeight;
@@ -1416,7 +1477,9 @@ function drawSlide4Carry(
     const supportEmphasis = emphasisFor(emphases, supportId);
     const supportSize = px(supportEmphasis.size ?? style.slide4.supportSize, width);
     cursorY += leadLineHeight * 0.25;
-    if (draw) ctx.fillStyle = style.colors.textSecondary;
+    // Same colour as the headline (calSansText) now, not textSecondary --
+    // per the locked design correction.
+    if (draw) ctx.fillStyle = style.colors.calSansText;
     ctx.font = `${styleFor(false, supportEmphasis)} ${weightFor(400, supportEmphasis)} ${Math.round(supportSize)}px ${interFont}`;
     const lines = wrapText(ctx, rest, frame.contentW);
     let firstBaseline = 0;
@@ -1436,7 +1499,9 @@ function drawSlide4Carry(
     const connectionId = "slide4.connection";
     const connectionEmphasis = emphasisFor(emphases, connectionId);
     const connectionSize = px(connectionEmphasis.size ?? style.slide4.supportSize, width);
-    if (draw) ctx.fillStyle = style.colors.textSecondary;
+    // Same colour as the headline (calSansText) now, not textSecondary --
+    // per the locked design correction, same change as the support line.
+    if (draw) ctx.fillStyle = style.colors.calSansText;
     ctx.font = `${styleFor(false, connectionEmphasis)} ${weightFor(400, connectionEmphasis)} ${Math.round(connectionSize)}px ${interFont}`;
     const lines = wrapText(ctx, episode.distantDevotionConnection, frame.contentW);
     const connectionOffset = posFor(positions, connectionId);
@@ -1508,6 +1573,7 @@ function layoutSlide(
         width,
         episode,
         interFont,
+        calSansFont,
         startY,
         draw,
         positions,
@@ -1517,7 +1583,7 @@ function layoutSlide(
         hasImage
       );
     case 3:
-      return drawSlide3Action(ctx, style, frame, width, episode, interFont, startY, draw, positions, emphases, text?.slide3, hotspots);
+      return drawSlide3Action(ctx, style, frame, width, episode, interFont, calSansFont, startY, draw, positions, emphases, text?.slide3, hotspots);
     case 4:
     default:
       return drawSlide4Carry(
