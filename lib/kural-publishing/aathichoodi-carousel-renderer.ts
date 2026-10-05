@@ -121,6 +121,32 @@ export interface CarouselColors {
   /** The bulb icon drawn inside slide3IconCardBackground above -- dark
    *  teal in light mode, mint in dark mode. */
   slide3IconColor: string;
+  /** Slide 2's full-bleed page background (replacing the usual dark
+   *  gradient/white field there) -- a cream "page" the slide's black card
+   *  sits on, per explicit founder direction and the attached reference
+   *  image. Currently the same in both modes (the founder's own plan is
+   *  to design a separate "reversed colour" version of this slide later,
+   *  not yet specified -- this field is a placeholder for that pass, not
+   *  a locked decision that both modes look identical forever). */
+  slide1PageBackground: string;
+  /** The card itself -- a large rounded black panel holding all of
+   *  Slide 2's content, inset within slide1PageBackground. Same
+   *  not-yet-mode-split caveat as slide1PageBackground above. */
+  slide1CardBackground: string;
+  /** Slide 2's Tamil reference line, its English transliteration, and the
+   *  "direct meaning" editorial paragraph (Cal Sans 600, the middle of
+   *  the three paragraphs drawEditorialParagraphs renders for this
+   *  slide) -- all plain white against slide1CardBackground. Distinct
+   *  from slide0HeroHighlightText/slide0EyebrowText (also white) only in
+   *  that this is Slide 2's, not Slide 1's -- kept as its own field per
+   *  this file's one-field-per-element convention. */
+  slide1CardText: string;
+  /** The "WHAT DOES THIS MEAN?" heading's own pill background inside the
+   *  card -- Slide 2 draws this itself now (see drawSlide1Understand),
+   *  not the shared drawHeader path every other slide's section heading
+   *  still uses, so it needed its own background field (its text reuses
+   *  the existing mint accent colour, already identical in both modes). */
+  slide1EyebrowBackground: string;
 }
 
 export interface CarouselLayout {
@@ -396,6 +422,10 @@ export const DEFAULT_STYLE: CarouselStyle = {
     calSansText: "#FFFFFF",
     slide0HookText: "#68FFAD",
     slide0EyebrowText: "#FFFFFF",
+    slide1PageBackground: "#F6F1E3",
+    slide1CardBackground: "#000000",
+    slide1CardText: "#FFFFFF",
+    slide1EyebrowBackground: "#1D5D51",
     slide3IconCardBackground: "#0A363A",
     slide3IconColor: "#68FFAD",
   },
@@ -488,6 +518,12 @@ export const INVERTED_COLORS: CarouselColors = {
   // treatment, which is unchanged.
   slide0HookText: "#000000",
   slide0EyebrowText: "#FFFFFF",
+  // Not yet split by mode -- see CarouselColors.slide1PageBackground's
+  // doc comment. Same values as DEFAULT_STYLE for now.
+  slide1PageBackground: "#F6F1E3",
+  slide1CardBackground: "#000000",
+  slide1CardText: "#FFFFFF",
+  slide1EyebrowBackground: "#1D5D51",
   slide3IconCardBackground: "#FFFFFF",
   slide3IconColor: "#0A363A",
 };
@@ -705,11 +741,15 @@ interface Frame {
 }
 
 /** Which section heading (if any) a slide shows, and at what size --
- *  slides 0 and 4 have none. */
+ *  slides 0 and 4 have none. Slide 1 (UI "Understand") doesn't either any
+ *  more, per explicit founder direction: its "WHAT DOES THIS MEAN?"
+ *  heading moved into its own black card as a pill (see
+ *  drawSlide1Understand), not the shared top-of-canvas treatment every
+ *  other slide's heading still uses. style.slide1.sectionHeadingText is
+ *  still the text's source of truth -- drawSlide1Understand reads it
+ *  directly -- so the existing text-override UI for it keeps working. */
 function sectionHeadingFor(style: CarouselStyle, slideIndex: number): { text: string; size: number } {
   switch (slideIndex) {
-    case 1:
-      return { text: style.slide1.sectionHeadingText, size: style.slide1.sectionHeadingSize };
     case 2:
       return { text: style.slide2.sectionHeadingText, size: style.slide2.sectionHeadingSize };
     case 3:
@@ -1206,7 +1246,9 @@ function drawEditorialParagraphs(
   hotspots?: CarouselHotspot[],
   hotspotId?: string,
   firstParagraphColor?: string,
-  calSansFont?: string
+  calSansFont?: string,
+  lastParagraphColor?: string,
+  middleColor?: string
 ): number {
   const paragraphs = splitEditorialParagraphs(text);
   const emphasis = emphasisFor(emphases, hotspotId ?? "");
@@ -1215,16 +1257,32 @@ function drawEditorialParagraphs(
   let cursorY = startY;
   let firstBaseline = 0;
   for (let paragraphIndex = 0; paragraphIndex < paragraphs.length; paragraphIndex++) {
-    // Three locked components, per the latest design correction:
-    // paragraph 0 (the opener, e.g. "Avvaiyar begins with a powerful
-    // idea:" -- always first, since splitEditorialParagraphs breaks after
-    // a colon and every opener ends with one) keeps Inter at its own
-    // locked colour (firstParagraphColor, the mint accent). Paragraph 1
-    // (the direct meaning sentence) switches to Cal Sans 600. Paragraph 2+
-    // (the explanation) stays Inter 400, textPrimary -- the original
-    // default.
-    if (draw) ctx.fillStyle = paragraphIndex === 0 && firstParagraphColor ? firstParagraphColor : style.colors.textPrimary;
-    if (paragraphIndex === 1 && calSansFont) {
+    // Locked components, per the latest design correction: paragraph 0
+    // (the opener, e.g. "Avvaiyar begins with a powerful idea:" -- always
+    // first, since splitEditorialParagraphs breaks after a colon and
+    // every opener ends with one) is Inter 700 at its own locked colour
+    // (firstParagraphColor, the mint accent). The LAST paragraph (the
+    // explanation) is also Inter 700, at lastParagraphColor (the grey the
+    // rest of the app already uses) -- both weight bumps and the
+    // explanation's colour change are explicit founder corrections.
+    // Paragraph 1 specifically (the direct meaning sentence) stays Cal
+    // Sans 600, middleColor. Any further paragraph before the last one
+    // (some episodes generate more than 3) falls back to plain Inter 400,
+    // middleColor -- it was never meant to pick up paragraph 1's Cal Sans
+    // treatment just for sitting somewhere in the middle.
+    const isFirst = paragraphIndex === 0;
+    const isLast = !isFirst && paragraphIndex === paragraphs.length - 1;
+    const isDirectMeaning = !isFirst && !isLast && paragraphIndex === 1;
+    if (draw) {
+      ctx.fillStyle = isFirst
+        ? (firstParagraphColor ?? style.colors.textPrimary)
+        : isLast
+          ? (lastParagraphColor ?? style.colors.textPrimary)
+          : (middleColor ?? style.colors.textPrimary);
+    }
+    if (isFirst || isLast) {
+      ctx.font = `${styleFor(false, emphasis)} ${weightFor(700, emphasis)} ${Math.round(size)}px ${interFont}`;
+    } else if (isDirectMeaning && calSansFont) {
       ctx.font = `${styleFor(false, emphasis)} 600 ${Math.round(size)}px ${calSansFont}`;
     } else {
       ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${interFont}`;
@@ -1248,6 +1306,72 @@ function drawEditorialParagraphs(
   return cursorY;
 }
 
+/** A circular "pronunciation" mark -- outline circle, a simple right-
+ *  facing profile silhouette, radiating sound-wave arcs off the mouth,
+ *  and small "A" / "#" glyphs -- per the attached reference icon.
+ *  Hand-drawn with plain Canvas2D primitives, same convention as every
+ *  other icon in this file (the circular "AiA" wordmark, the lightbulb).
+ *  `size` is the icon's overall diameter; (cx, cy) is its centre. */
+function drawPronunciationIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, color: string): void {
+  const r = size / 2;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = Math.max(1.5, size * 0.045);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.92, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Profile: forehead -> nose bridge -> nose tip -> lips -> chin -> neck,
+  // one continuous open path, sitting right-of-centre and facing right.
+  const fx = cx + r * 0.05;
+  ctx.beginPath();
+  ctx.moveTo(fx - r * 0.12, cy - r * 0.72);
+  ctx.quadraticCurveTo(fx + r * 0.3, cy - r * 0.5, fx + r * 0.08, cy - r * 0.08);
+  ctx.quadraticCurveTo(fx + r * 0.38, cy, fx + r * 0.16, cy + r * 0.14);
+  ctx.quadraticCurveTo(fx + r * 0.32, cy + r * 0.24, fx + r * 0.06, cy + r * 0.32);
+  ctx.quadraticCurveTo(fx + r * 0.2, cy + r * 0.44, fx - r * 0.08, cy + r * 0.58);
+  ctx.lineTo(fx - r * 0.08, cy + r * 0.8);
+  ctx.stroke();
+
+  // Sound-wave arcs, radiating right from the mouth.
+  const waveCx = fx + r * 0.22;
+  const waveCy = cy + r * 0.14;
+  for (let i = 0; i < 3; i++) {
+    const waveR = r * (0.22 + i * 0.17);
+    ctx.beginPath();
+    ctx.arc(waveCx, waveCy, waveR, -Math.PI * 0.22, Math.PI * 0.22);
+    ctx.stroke();
+  }
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${Math.round(r * 0.34)}px sans-serif`;
+  ctx.fillText("A", cx - r * 0.34, cy - r * 0.4);
+  ctx.font = `700 ${Math.round(r * 0.28)}px sans-serif`;
+  ctx.fillText("#", cx - r * 0.56, cy - r * 0.04);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+
+  ctx.restore();
+}
+
+/** "Understand" -- redesigned per explicit founder direction and the
+ *  attached reference images into a black card (slide1CardBackground)
+ *  inset within a full-bleed cream page (drawn in
+ *  renderAathichoodiCarouselSlide, see slide1PageBackground), filling
+ *  the slide's whole content frame. The card's own content, top to
+ *  bottom: the pronunciation icon, the Tamil line, its English
+ *  transliteration (both white), the "WHAT DOES THIS MEAN?" heading as
+ *  its own pill (not the shared top-of-canvas treatment -- see
+ *  sectionHeadingFor), then the editorial paragraphs. The card is a
+ *  fixed size (the full content frame), not sized to its own content
+ *  like most other slides -- `startY` (the balanced-layout position) is
+ *  deliberately unused here, since there's no slack to balance inside a
+ *  fixed card. */
 function drawSlide1Understand(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
@@ -1263,60 +1387,102 @@ function drawSlide1Understand(
   emphases: CarouselTextEmphases | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
+  void startY;
   const transliteration = px(style.slide1.transliterationSize, width);
-  const meaning = px(style.slide1.meaningSize, width);
   const body = px(style.slide1.bodySize, width);
   const tamilRef = px(style.slide1.tamilRefSize, width);
-  let cursorY = startY;
+  const cardRadius = px(28, width);
 
-  // Same Noto Sans Tamil family as the Kural Koorum Aram cover, not the
-  // serif Tamil face -- consistency across the app's Tamil rendering.
+  if (draw) {
+    ctx.fillStyle = style.colors.slide1CardBackground;
+    ctx.beginPath();
+    ctx.roundRect(frame.contentX, frame.contentTop, frame.contentW, frame.contentBottom - frame.contentTop, cardRadius);
+    ctx.fill();
+  }
+
+  const padX = frame.contentW * 0.08;
+  const padY = padX;
+  const innerLeft = frame.contentX + padX;
+  const innerFrame: Frame = { ...frame, contentX: innerLeft, contentW: frame.contentW - padX * 2 };
+  let cursorY = frame.contentTop + padY;
+
+  const iconSize = px(76, width);
+  const iconOffset = posFor(positions, "slide1.icon");
+  const iconCx = frame.contentX + frame.contentW / 2 + iconOffset.dx;
+  cursorY += iconSize / 2;
+  if (draw) drawPronunciationIcon(ctx, iconCx, cursorY + iconOffset.dy, iconSize, style.colors.slide1CardText);
+  pushHotspot(hotspots, "slide1.icon", iconCx - iconSize / 2, iconSize, cursorY - iconSize / 2, cursorY + iconSize / 2, iconSize, ZERO_OFFSET);
+  cursorY += iconSize / 2 + iconSize * 0.3;
+
+  // Tamil line and its English transliteration -- both white
+  // (slide1CardText), same Noto Sans Tamil family as the Kural Koorum
+  // Aram cover for the Tamil, not the serif face.
   const tamilRefEmphasis = emphasisFor(emphases, "slide1.tamilRef");
   ctx.textAlign = "left";
-  if (draw) ctx.fillStyle = style.colors.textPrimary;
+  if (draw) ctx.fillStyle = style.colors.slide1CardText;
   ctx.font = `${styleFor(false, tamilRefEmphasis)} ${weightFor(700, tamilRefEmphasis)} ${Math.round(tamilRef)}px ${tamilFont}`;
   cursorY += tamilRef;
   const tamilRefOffset = posFor(positions, "slide1.tamilRef");
-  if (draw) ctx.fillText(episode.tamilText, frame.contentX + tamilRefOffset.dx, cursorY + tamilRefOffset.dy);
-  pushHotspot(hotspots, "slide1.tamilRef", frame.contentX, frame.contentW, cursorY, cursorY, tamilRef, tamilRefOffset);
+  if (draw) ctx.fillText(episode.tamilText, innerLeft + tamilRefOffset.dx, cursorY + tamilRefOffset.dy);
+  pushHotspot(hotspots, "slide1.tamilRef", innerLeft, innerFrame.contentW, cursorY, cursorY, tamilRef, tamilRefOffset);
 
-  cursorY += transliteration * 2.4;
+  cursorY += transliteration * 2.1;
   const transliterationEmphasis = emphasisFor(emphases, "slide1.transliteration");
-  if (draw) ctx.fillStyle = style.colors.textPrimary;
+  if (draw) ctx.fillStyle = style.colors.slide1CardText;
   ctx.font = `${styleFor(false, transliterationEmphasis)} ${weightFor(700, transliterationEmphasis)} ${Math.round(transliteration)}px ${interFont}`;
   const transliterationOffset = posFor(positions, "slide1.transliteration");
-  if (draw) ctx.fillText(episode.transliteration, frame.contentX + transliterationOffset.dx, cursorY + transliterationOffset.dy);
+  if (draw) ctx.fillText(episode.transliteration, innerLeft + transliterationOffset.dx, cursorY + transliterationOffset.dy);
   pushHotspot(
     hotspots,
     "slide1.transliteration",
-    frame.contentX,
-    frame.contentW,
+    innerLeft,
+    innerFrame.contentW,
     cursorY,
     cursorY,
     transliteration,
     transliterationOffset
   );
 
-  cursorY += transliteration * 2.0;
-  const meaningEmphasis = emphasisFor(emphases, "slide1.meaning");
-  // Back to Inter at weight 400, locked grey (slide0TaglineText) in both
-  // modes -- per the latest design correction, reversing the earlier
-  // Cal Sans/600/textSecondary pass.
-  if (draw) ctx.fillStyle = style.colors.slide0TaglineText;
-  ctx.font = `${styleFor(false, meaningEmphasis)} ${weightFor(400, meaningEmphasis)} ${Math.round(meaning)}px ${interFont}`;
-  const meaningOffset = posFor(positions, "slide1.meaning");
-  if (draw) ctx.fillText(episode.simpleMeaning, frame.contentX + meaningOffset.dx, cursorY + meaningOffset.dy);
-  pushHotspot(hotspots, "slide1.meaning", frame.contentX, frame.contentW, cursorY, cursorY, meaning, meaningOffset);
+  // "WHAT DOES THIS MEAN?" -- its own pill now (green fill, mint text,
+  // same colours the AATHICHOODI eyebrow pill uses), not the shared
+  // top-of-canvas section heading every other slide still draws (see
+  // sectionHeadingFor). style.slide1.sectionHeadingText stays the text's
+  // source of truth, so the existing override UI still edits it.
+  cursorY += transliteration * 1.9;
+  const headingText = style.slide1.sectionHeadingText;
+  if (headingText) {
+    const headingSize = px(style.slide1.sectionHeadingSize, width);
+    const headingEmphasis = emphasisFor(emphases, "slide1.sectionHeading");
+    const headingOffset = posFor(positions, "slide1.sectionHeading");
+    ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(headingSize)}px ${calSansFont}`;
+    const padPillX = headingSize * 0.75;
+    const padPillY = headingSize * 0.5;
+    const pillTextWidth = ctx.measureText(headingText).width;
+    const pillW = pillTextWidth + padPillX * 2;
+    const pillH = headingSize + padPillY * 2;
+    const pillX = innerLeft + headingOffset.dx;
+    const pillY = cursorY + headingOffset.dy;
+    if (draw) {
+      ctx.fillStyle = style.colors.slide1EyebrowBackground;
+      ctx.beginPath();
+      ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
+      ctx.fill();
+      ctx.fillStyle = style.colors.accent;
+      ctx.textBaseline = "middle";
+      ctx.fillText(headingText, pillX + padPillX, pillY + pillH / 2 + headingSize * 0.03);
+      ctx.textBaseline = "alphabetic";
+    }
+    pushHotspot(hotspots, "slide1.sectionHeading", pillX, pillW, pillY, pillY + pillH, headingSize, ZERO_OFFSET);
+    cursorY += pillH;
+  }
 
-  // No divider line any more, per the locked design correction -- the gap
-  // itself carries the separation before the editorial paragraphs below.
-  cursorY += meaning * 3.6;
+  cursorY += transliteration * 1.4;
   return drawEditorialParagraphs(
     ctx,
     style,
-    frame,
+    innerFrame,
     cursorY,
-    frame.contentBottom,
+    frame.contentBottom - padY,
     episode.understanding,
     interFont,
     body,
@@ -1326,7 +1492,9 @@ function drawSlide1Understand(
     hotspots,
     "slide1.body",
     style.colors.accent,
-    calSansFont
+    calSansFont,
+    style.colors.slide0TaglineText,
+    style.colors.slide1CardText
   );
 }
 
@@ -1855,6 +2023,13 @@ export function renderAathichoodiCarouselSlide(
   const hotspots: CarouselHotspot[] = [];
 
   drawSurface(ctx, width, height, style.colors);
+  if (slideIndex === 1) {
+    // Full-bleed cream page, replacing the usual dark/white field -- the
+    // slide's own black card (drawn in drawSlide1Understand) sits on top
+    // of this. See CarouselColors.slide1PageBackground.
+    ctx.fillStyle = style.colors.slide1PageBackground;
+    ctx.fillRect(0, 0, width, height);
+  }
   if (slideIndex === 2 && opts.familyImage) {
     drawSlide2BackgroundPhoto(ctx, style, width, height, opts.familyImage);
   }
