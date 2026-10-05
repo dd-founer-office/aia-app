@@ -468,7 +468,11 @@ export const INVERTED_COLORS: CarouselColors = {
   slide0HeroPanelBackground: "#0A363A",
   slide0TaglineText: "#788485",
   calSansText: "#0A363A",
-  slide0HookText: "#0A363A",
+  // Mint, not teal -- same reasoning as slide0HeroText above: the hook
+  // sits just below the hero, inside the same dark panel's 55%-of-canvas
+  // extent, so it needs the dark-mode-style light-on-dark colour (same
+  // mint dark mode already uses here) rather than dark-on-dark.
+  slide0HookText: "#68FFAD",
   slide3IconCardBackground: "#FFFFFF",
   slide3IconColor: "#0A363A",
 };
@@ -777,42 +781,49 @@ function drawHeader(
   ctx.textAlign = "left";
 
   // Eyebrow is a tight button/pill, not plain text -- per the locked design
-  // correction. No divider line beneath it any more.
-  try {
-    ctx.letterSpacing = `${Math.round(px(2, width))}px`;
-  } catch {
-    /* Canvas2D letterSpacing unsupported -- default tracking is fine */
-  }
+  // correction. No divider line beneath it any more. Slide 1 drops it
+  // entirely per explicit founder direction (its header is otherwise
+  // empty -- it has no section heading -- so this slide's header draws
+  // nothing at all now); the vertical space reserved for it (headerMetrics,
+  // shared with computeFrame) is left as-is so the hero text's position
+  // doesn't shift.
+  if (slideIndex !== 0) {
+    try {
+      ctx.letterSpacing = `${Math.round(px(2, width))}px`;
+    } catch {
+      /* Canvas2D letterSpacing unsupported -- default tracking is fine */
+    }
 
-  const eyebrowOffset = posFor(positions, "header.eyebrow");
-  const eyebrowEmphasis = emphasisFor(emphases, "header.eyebrow");
-  const eyebrowText = "AATHICHOODI";
-  ctx.font = `${styleFor(false, eyebrowEmphasis)} ${weightFor(600, eyebrowEmphasis)} ${Math.round(eyebrow)}px ${calSansFont}`;
-  const eyebrowPadX = eyebrow * 0.65;
-  const eyebrowTextWidth = ctx.measureText(eyebrowText).width;
-  const badgeW = eyebrowTextWidth + eyebrowPadX * 2;
-  const badgeX = frame.contentX + eyebrowOffset.dx;
-  const badgeY = frame.marginY + eyebrowOffset.dy;
-  const badgeRadius = px(6, width);
+    const eyebrowOffset = posFor(positions, "header.eyebrow");
+    const eyebrowEmphasis = emphasisFor(emphases, "header.eyebrow");
+    const eyebrowText = "AATHICHOODI";
+    ctx.font = `${styleFor(false, eyebrowEmphasis)} ${weightFor(600, eyebrowEmphasis)} ${Math.round(eyebrow)}px ${calSansFont}`;
+    const eyebrowPadX = eyebrow * 0.65;
+    const eyebrowTextWidth = ctx.measureText(eyebrowText).width;
+    const badgeW = eyebrowTextWidth + eyebrowPadX * 2;
+    const badgeX = frame.contentX + eyebrowOffset.dx;
+    const badgeY = frame.marginY + eyebrowOffset.dy;
+    const badgeRadius = px(6, width);
 
-  ctx.fillStyle = style.colors.eyebrowBadgeBackground;
-  ctx.beginPath();
-  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeRadius);
-  ctx.fill();
+    ctx.fillStyle = style.colors.eyebrowBadgeBackground;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeRadius);
+    ctx.fill();
 
-  ctx.fillStyle = style.colors.eyebrowBadgeText;
-  ctx.textBaseline = "middle";
-  ctx.fillText(eyebrowText, badgeX + eyebrowPadX, badgeY + badgeH / 2 + eyebrow * 0.03);
-  ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = style.colors.eyebrowBadgeText;
+    ctx.textBaseline = "middle";
+    ctx.fillText(eyebrowText, badgeX + eyebrowPadX, badgeY + badgeH / 2 + eyebrow * 0.03);
+    ctx.textBaseline = "alphabetic";
 
-  try {
-    ctx.letterSpacing = "0px";
-  } catch {
-    /* no-op */
-  }
+    try {
+      ctx.letterSpacing = "0px";
+    } catch {
+      /* no-op */
+    }
 
-  if (hotspots) {
-    hotspots.push({ id: "header.eyebrow", x: badgeX, y: badgeY, width: badgeW, height: badgeH });
+    if (hotspots) {
+      hotspots.push({ id: "header.eyebrow", x: badgeX, y: badgeY, width: badgeW, height: badgeH });
+    }
   }
 
   if (headingText) {
@@ -966,33 +977,14 @@ function drawFooterLockup(
  *  behind the header and the Tamil hero line, square top corners flush
  *  with the canvas edge, rounded bottom corners, per explicit founder
  *  direction. Never drawn in dark mode: the whole slide is already this
- *  colour there, so a second copy of it would be redundant.
- *
- *  Its height depends on where the hero line actually ends, which isn't
- *  known until the balanced layout has been computed -- so this re-runs
- *  drawSlide0Stop in measure mode (draw=false, a throwaway hotspots array)
- *  purely to read back the "slide0.hero" bounding box, rather than
- *  duplicating the hero's own sizing/wrapping logic here. */
-function drawSlide0HeroPanel(
-  ctx: CanvasRenderingContext2D,
-  style: CarouselStyle,
-  frame: Frame,
-  width: number,
-  episode: ComposedEpisode,
-  tamilFont: string,
-  interFont: string,
-  calSansFont: string,
-  startY: number,
-  positions: CarouselPositions | undefined,
-  emphases: CarouselTextEmphases | undefined
-): void {
-  const heroHotspots: CarouselHotspot[] = [];
-  drawSlide0Stop(ctx, style, frame, width, episode, tamilFont, interFont, calSansFont, startY, false, positions, emphases, heroHotspots);
-  const heroBox = heroHotspots.find((h) => h.id === "slide0.hero");
-  if (!heroBox) return;
-
-  const bottom = heroBox.y + heroBox.height + frame.marginY * 0.5;
-  const radius = width * 0.05;
+ *  colour there, so a second copy of it would be redundant. Fixed extent
+ *  (55% of the canvas height) and fixed corner radius (6px at the 1080px
+ *  reference width, same convention as the eyebrow badge's own radius) --
+ *  both locked numbers per explicit founder direction, not sized to the
+ *  hero text's own rendered bounds. */
+function drawSlide0HeroPanel(ctx: CanvasRenderingContext2D, style: CarouselStyle, width: number, height: number): void {
+  const bottom = height * 0.55;
+  const radius = px(6, width);
 
   ctx.fillStyle = style.colors.slide0HeroPanelBackground;
   ctx.beginPath();
@@ -1736,6 +1728,9 @@ export function renderAathichoodiCarouselSlide(
   if (slideIndex === 2 && opts.familyImage) {
     drawSlide2BackgroundPhoto(ctx, style, width, height, opts.familyImage);
   }
+  if (slideIndex === 0 && opts.design?.invertColors) {
+    drawSlide0HeroPanel(ctx, style, width, height);
+  }
 
   ctx.textBaseline = "alphabetic";
 
@@ -1761,14 +1756,6 @@ export function renderAathichoodiCarouselSlide(
   const available = frame.contentBottom - frame.contentTop;
   const slack = Math.max(0, available - contentHeight);
   const balancedStartY = frame.contentTop + slack * style.layout.verticalBalanceBias;
-
-  // Slide 1's dark hero panel (light mode only) has to be drawn before the
-  // header/hero text that sits on top of it, but its height depends on
-  // where the balanced hero line actually lands -- so it's computed here,
-  // after balancedStartY, and drawn ahead of drawHeader below.
-  if (slideIndex === 0 && opts.design?.invertColors) {
-    drawSlide0HeroPanel(ctx, style, frame, width, episode, tamilFont, interFont, calSansFont, balancedStartY, positions, emphases);
-  }
 
   drawHeader(ctx, style, frame, width, height, slideIndex, calSansFont, positions, emphases, hotspots);
 
