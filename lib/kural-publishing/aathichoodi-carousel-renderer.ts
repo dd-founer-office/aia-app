@@ -515,6 +515,12 @@ function applyTextOverrides(episode: ComposedEpisode, text?: CarouselTextOverrid
 
 const REFERENCE_WIDTH = 1080;
 
+/** Slide 1's light-mode hero panel's fixed height, as a fraction of the
+ *  canvas height -- shared between drawSlide0HeroPanel (which draws it)
+ *  and drawSlide0Stop (which clamps the tagline below it) so the two
+ *  can't drift apart. */
+const SLIDE0_HERO_PANEL_HEIGHT_FRACTION = 0.4;
+
 /** Scales one of the design system's 1080px-reference sizes to the actual
  *  rendered width -- keeps proportions correct at any selected
  *  AssetFormat instead of hardcoding 1080. */
@@ -982,12 +988,14 @@ function drawFooterLockup(
  *  with the canvas edge, rounded bottom corners, per explicit founder
  *  direction. Never drawn in dark mode: the whole slide is already this
  *  colour there, so a second copy of it would be redundant. Fixed extent
- *  (50% of the canvas height) and fixed corner radius (12px at the 1080px
- *  reference width) -- both locked numbers per explicit founder
- *  direction, not sized to the hero text's own rendered bounds. */
+ *  (40% of the canvas height) and fixed corner radius (24px at the 1080px
+ *  reference width -- measured directly off the founder's reference
+ *  image, which fit a ~2.3%-of-width corner radius) -- both locked
+ *  numbers per explicit founder direction, not sized to the hero text's
+ *  own rendered bounds. */
 function drawSlide0HeroPanel(ctx: CanvasRenderingContext2D, style: CarouselStyle, width: number, height: number): void {
-  const bottom = height * 0.5;
-  const radius = px(12, width);
+  const bottom = height * SLIDE0_HERO_PANEL_HEIGHT_FRACTION;
+  const radius = px(24, width);
 
   ctx.fillStyle = style.colors.slide0HeroPanelBackground;
   ctx.beginPath();
@@ -1052,12 +1060,14 @@ function drawSlide0Stop(
   // Black and centred in light mode only, per explicit founder direction
   // (it still sits on the dark panel there, just a different colour/
   // alignment than dark mode's mint/left-aligned treatment, which is
-  // unchanged).
+  // unchanged). Weight 500, not 600 -- reduced by 100 per explicit
+  // founder direction (this "supporting line" under the hero headline
+  // reads as too heavy at 600).
   if (draw) ctx.fillStyle = style.colors.slide0HookText;
   ctx.textAlign = invertColors ? "center" : "left";
   const hookX = invertColors ? frame.contentX + frame.contentW / 2 : frame.contentX;
   const hookSize = px(style.slide0.hookSize, width);
-  ctx.font = `${styleFor(false, hookEmphasis)} ${weightFor(600, hookEmphasis)} ${Math.round(hookSize)}px ${calSansFont}`;
+  ctx.font = `${styleFor(false, hookEmphasis)} ${weightFor(500, hookEmphasis)} ${Math.round(hookSize)}px ${calSansFont}`;
   const hookLines = wrapText(ctx, episode.hook, frame.contentW);
   const hookOffset = posFor(positions, "slide0.hook");
   let hookFirst = 0;
@@ -1084,7 +1094,7 @@ function drawSlide0Stop(
   const taglineSize = px(style.slide0.taglineSize, width);
   cursorY += hookSize * 0.9;
   if (invertColors) {
-    const panelBottom = canvasHeight * 0.5;
+    const panelBottom = canvasHeight * SLIDE0_HERO_PANEL_HEIGHT_FRACTION;
     // The target is the first line's *glyph top* clearing the panel, not
     // its baseline -- Inter's ascent is roughly 0.75x the font size, so
     // the baseline itself needs to land a full taglineSize below the
