@@ -72,9 +72,16 @@ export interface CarouselColors {
   eyebrowBadgeText: string;
   /** Slide 1's big Tamil heading specifically -- locked to pure white in
    *  dark mode per explicit founder correction (distinct from textPrimary's
-   *  cream, which other dark-mode body text keeps); reverse mode keeps the
-   *  same colour as textPrimary there, unchanged. */
+   *  cream, which other dark-mode body text keeps). In light mode this is
+   *  also white, since the hero now sits on its own dark panel
+   *  (slide0HeroPanelBackground below) rather than the plain white field. */
   slide0HeroText: string;
+  /** The dark card sitting behind the header and hero (Tamil) line in
+   *  light mode only -- full-bleed, square top corners, rounded bottom
+   *  corners, per explicit founder direction. In dark mode this is never
+   *  drawn (the whole slide is already this colour), so its value there
+   *  is unused but kept at the same dark teal for type-safety. */
+  slide0HeroPanelBackground: string;
   /** Slide 1's closing tagline specifically -- one locked colour in BOTH
    *  dark and light mode per explicit founder correction (distinct from
    *  textSecondary, which other slides' muted text keeps and which still
@@ -371,6 +378,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     eyebrowBadgeBackground: "#1D5D51",
     eyebrowBadgeText: "#68FFAD",
     slide0HeroText: "#FFFFFF",
+    slide0HeroPanelBackground: "#0A363A",
     slide0TaglineText: "#788485",
     calSansText: "#FFFFFF",
     slide0HookText: "#68FFAD",
@@ -454,7 +462,10 @@ export const INVERTED_COLORS: CarouselColors = {
   logoBadgeText: "#68FFAD",
   eyebrowBadgeBackground: "#0A363A",
   eyebrowBadgeText: "#68FFAD",
-  slide0HeroText: "#0A363A",
+  // White, not teal -- the hero now renders on its own dark panel
+  // (slide0HeroPanelBackground) rather than directly on the white field.
+  slide0HeroText: "#FFFFFF",
+  slide0HeroPanelBackground: "#0A363A",
   slide0TaglineText: "#788485",
   calSansText: "#0A363A",
   slide0HookText: "#0A363A",
@@ -950,6 +961,44 @@ function drawFooterLockup(
 // ---------------------------------------------------------------------------
 // Slide content
 // ---------------------------------------------------------------------------
+
+/** Slide 1's light-mode-only hero panel -- a full-bleed dark card sitting
+ *  behind the header and the Tamil hero line, square top corners flush
+ *  with the canvas edge, rounded bottom corners, per explicit founder
+ *  direction. Never drawn in dark mode: the whole slide is already this
+ *  colour there, so a second copy of it would be redundant.
+ *
+ *  Its height depends on where the hero line actually ends, which isn't
+ *  known until the balanced layout has been computed -- so this re-runs
+ *  drawSlide0Stop in measure mode (draw=false, a throwaway hotspots array)
+ *  purely to read back the "slide0.hero" bounding box, rather than
+ *  duplicating the hero's own sizing/wrapping logic here. */
+function drawSlide0HeroPanel(
+  ctx: CanvasRenderingContext2D,
+  style: CarouselStyle,
+  frame: Frame,
+  width: number,
+  episode: ComposedEpisode,
+  tamilFont: string,
+  interFont: string,
+  calSansFont: string,
+  startY: number,
+  positions: CarouselPositions | undefined,
+  emphases: CarouselTextEmphases | undefined
+): void {
+  const heroHotspots: CarouselHotspot[] = [];
+  drawSlide0Stop(ctx, style, frame, width, episode, tamilFont, interFont, calSansFont, startY, false, positions, emphases, heroHotspots);
+  const heroBox = heroHotspots.find((h) => h.id === "slide0.hero");
+  if (!heroBox) return;
+
+  const bottom = heroBox.y + heroBox.height + frame.marginY * 0.5;
+  const radius = width * 0.05;
+
+  ctx.fillStyle = style.colors.slide0HeroPanelBackground;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, width, bottom, [0, 0, radius, radius]);
+  ctx.fill();
+}
 
 function drawSlide0Stop(
   ctx: CanvasRenderingContext2D,
@@ -1687,7 +1736,6 @@ export function renderAathichoodiCarouselSlide(
   if (slideIndex === 2 && opts.familyImage) {
     drawSlide2BackgroundPhoto(ctx, style, width, height, opts.familyImage);
   }
-  drawHeader(ctx, style, frame, width, height, slideIndex, calSansFont, positions, emphases, hotspots);
 
   ctx.textBaseline = "alphabetic";
 
@@ -1713,6 +1761,16 @@ export function renderAathichoodiCarouselSlide(
   const available = frame.contentBottom - frame.contentTop;
   const slack = Math.max(0, available - contentHeight);
   const balancedStartY = frame.contentTop + slack * style.layout.verticalBalanceBias;
+
+  // Slide 1's dark hero panel (light mode only) has to be drawn before the
+  // header/hero text that sits on top of it, but its height depends on
+  // where the balanced hero line actually lands -- so it's computed here,
+  // after balancedStartY, and drawn ahead of drawHeader below.
+  if (slideIndex === 0 && opts.design?.invertColors) {
+    drawSlide0HeroPanel(ctx, style, frame, width, episode, tamilFont, interFont, calSansFont, balancedStartY, positions, emphases);
+  }
+
+  drawHeader(ctx, style, frame, width, height, slideIndex, calSansFont, positions, emphases, hotspots);
 
   layoutSlide(
     ctx,
