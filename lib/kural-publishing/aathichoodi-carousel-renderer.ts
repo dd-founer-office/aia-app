@@ -468,11 +468,10 @@ export const INVERTED_COLORS: CarouselColors = {
   slide0HeroPanelBackground: "#0A363A",
   slide0TaglineText: "#788485",
   calSansText: "#0A363A",
-  // Mint, not teal -- same reasoning as slide0HeroText above: the hook
-  // sits just below the hero, inside the same dark panel's 55%-of-canvas
-  // extent, so it needs the dark-mode-style light-on-dark colour (same
-  // mint dark mode already uses here) rather than dark-on-dark.
-  slide0HookText: "#68FFAD",
+  // Black, centred (drawSlide0Stop handles the alignment), per explicit
+  // founder direction -- distinct from dark mode's mint/left-aligned
+  // treatment, which is unchanged.
+  slide0HookText: "#000000",
   slide3IconCardBackground: "#FFFFFF",
   slide3IconColor: "#0A363A",
 };
@@ -781,13 +780,12 @@ function drawHeader(
   ctx.textAlign = "left";
 
   // Eyebrow is a tight button/pill, not plain text -- per the locked design
-  // correction. No divider line beneath it any more. Slide 1 drops it
-  // entirely per explicit founder direction (its header is otherwise
-  // empty -- it has no section heading -- so this slide's header draws
-  // nothing at all now); the vertical space reserved for it (headerMetrics,
-  // shared with computeFrame) is left as-is so the hero text's position
-  // doesn't shift.
-  if (slideIndex !== 0) {
+  // correction. No divider line beneath it any more. Slide 1 drops just
+  // the pill background per explicit founder direction (the "AATHICHOODI"
+  // text itself stays, same position/colour as every other slide); its
+  // mint text colour still reads fine directly on the dark panel/dark
+  // canvas behind it there, so no colour change is needed.
+  {
     try {
       ctx.letterSpacing = `${Math.round(px(2, width))}px`;
     } catch {
@@ -805,10 +803,12 @@ function drawHeader(
     const badgeY = frame.marginY + eyebrowOffset.dy;
     const badgeRadius = px(6, width);
 
-    ctx.fillStyle = style.colors.eyebrowBadgeBackground;
-    ctx.beginPath();
-    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeRadius);
-    ctx.fill();
+    if (slideIndex !== 0) {
+      ctx.fillStyle = style.colors.eyebrowBadgeBackground;
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeRadius);
+      ctx.fill();
+    }
 
     ctx.fillStyle = style.colors.eyebrowBadgeText;
     ctx.textBaseline = "middle";
@@ -978,13 +978,12 @@ function drawFooterLockup(
  *  with the canvas edge, rounded bottom corners, per explicit founder
  *  direction. Never drawn in dark mode: the whole slide is already this
  *  colour there, so a second copy of it would be redundant. Fixed extent
- *  (55% of the canvas height) and fixed corner radius (6px at the 1080px
- *  reference width, same convention as the eyebrow badge's own radius) --
- *  both locked numbers per explicit founder direction, not sized to the
- *  hero text's own rendered bounds. */
+ *  (50% of the canvas height) and fixed corner radius (12px at the 1080px
+ *  reference width) -- both locked numbers per explicit founder
+ *  direction, not sized to the hero text's own rendered bounds. */
 function drawSlide0HeroPanel(ctx: CanvasRenderingContext2D, style: CarouselStyle, width: number, height: number): void {
-  const bottom = height * 0.55;
-  const radius = px(6, width);
+  const bottom = height * 0.5;
+  const radius = px(12, width);
 
   ctx.fillStyle = style.colors.slide0HeroPanelBackground;
   ctx.beginPath();
@@ -997,6 +996,7 @@ function drawSlide0Stop(
   style: CarouselStyle,
   frame: Frame,
   width: number,
+  canvasHeight: number,
   episode: ComposedEpisode,
   tamilFont: string,
   interFont: string,
@@ -1005,7 +1005,8 @@ function drawSlide0Stop(
   draw: boolean,
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
-  hotspots?: CarouselHotspot[]
+  hotspots?: CarouselHotspot[],
+  invertColors?: boolean
 ): number {
   let cursorY = startY;
   const heroEmphasis = emphasisFor(emphases, "slide0.hero");
@@ -1044,7 +1045,13 @@ function drawSlide0Stop(
   // carries the separation.
   cursorY += hero.lineHeight * 0.7;
 
+  // Black and centred in light mode only, per explicit founder direction
+  // (it still sits on the dark panel there, just a different colour/
+  // alignment than dark mode's mint/left-aligned treatment, which is
+  // unchanged).
   if (draw) ctx.fillStyle = style.colors.slide0HookText;
+  ctx.textAlign = invertColors ? "center" : "left";
+  const hookX = invertColors ? frame.contentX + frame.contentW / 2 : frame.contentX;
   const hookSize = px(style.slide0.hookSize, width);
   ctx.font = `${styleFor(false, hookEmphasis)} ${weightFor(600, hookEmphasis)} ${Math.round(hookSize)}px ${calSansFont}`;
   const hookLines = wrapText(ctx, episode.hook, frame.contentW);
@@ -1053,18 +1060,37 @@ function drawSlide0Stop(
   for (const line of hookLines) {
     cursorY += hookSize * 1.3;
     if (hookFirst === 0) hookFirst = cursorY;
-    if (draw) ctx.fillText(line, frame.contentX + hookOffset.dx, cursorY + hookOffset.dy);
+    if (draw) ctx.fillText(line, hookX + hookOffset.dx, cursorY + hookOffset.dy);
   }
+  ctx.textAlign = "left";
   pushHotspot(hotspots, "slide0.hook", frame.contentX, frame.contentW, hookFirst, cursorY, hookSize, hookOffset);
 
   // Closing tagline -- per-episode generated content now (episode.tagline,
-  // see taglines.ts), muted, two explicit lines ("\n" forces the break
-  // rather than word-wrapping). Its own locked colour (slide0TaglineText),
-  // same in both dark and light mode, per explicit founder correction --
-  // not textSecondary, which other slides' muted text still varies by mode.
-  cursorY += hookSize * 0.9;
-  if (draw) ctx.fillStyle = style.colors.slide0TaglineText;
+  // see taglines.ts), two explicit lines ("\n" forces the break rather
+  // than word-wrapping). In dark mode, its own locked muted colour
+  // (slide0TaglineText), left-aligned, unchanged. In light mode, per
+  // explicit founder direction, it instead takes the hero panel's own
+  // background colour (slide0HeroPanelBackground) -- dark teal text, not
+  // muted grey -- and is centred, Inter 400 (the weight it already was).
+  // Since that colour matches the panel itself, the tagline also gets
+  // nudged below the panel's fixed bottom edge when it would otherwise
+  // straddle it (the panel's fixed height doesn't track the balanced
+  // layout's actual content flow) -- otherwise the part of the text still
+  // over the panel would render invisible, dark-on-dark.
   const taglineSize = px(style.slide0.taglineSize, width);
+  cursorY += hookSize * 0.9;
+  if (invertColors) {
+    const panelBottom = canvasHeight * 0.5;
+    // The target is the first line's *glyph top* clearing the panel, not
+    // its baseline -- Inter's ascent is roughly 0.75x the font size, so
+    // the baseline itself needs to land a full taglineSize below the
+    // panel edge for the glyphs above it to actually clear it.
+    const minCursorBeforeFirstLine = panelBottom - taglineSize * 0.3;
+    cursorY = Math.max(cursorY, minCursorBeforeFirstLine);
+  }
+  if (draw) ctx.fillStyle = invertColors ? style.colors.slide0HeroPanelBackground : style.colors.slide0TaglineText;
+  ctx.textAlign = invertColors ? "center" : "left";
+  const taglineX = invertColors ? frame.contentX + frame.contentW / 2 : frame.contentX;
   ctx.font = `${styleFor(false, taglineEmphasis)} ${weightFor(400, taglineEmphasis)} ${Math.round(taglineSize)}px ${interFont}`;
   const taglineLines = episode.tagline.split("\n").filter(Boolean);
   const taglineOffset = posFor(positions, "slide0.tagline");
@@ -1072,8 +1098,9 @@ function drawSlide0Stop(
   for (const line of taglineLines) {
     cursorY += taglineSize * 1.3;
     if (taglineFirst === 0) taglineFirst = cursorY;
-    if (draw) ctx.fillText(line, frame.contentX + taglineOffset.dx, cursorY + taglineOffset.dy);
+    if (draw) ctx.fillText(line, taglineX + taglineOffset.dx, cursorY + taglineOffset.dy);
   }
+  ctx.textAlign = "left";
   pushHotspot(hotspots, "slide0.tagline", frame.contentX, frame.contentW, taglineFirst, cursorY, taglineSize, taglineOffset);
 
   return cursorY;
@@ -1646,6 +1673,7 @@ function layoutSlide(
   style: CarouselStyle,
   frame: Frame,
   width: number,
+  canvasHeight: number,
   episode: ComposedEpisode,
   slideIndex: number,
   tamilFont: string,
@@ -1657,11 +1685,28 @@ function layoutSlide(
   emphases: CarouselTextEmphases | undefined,
   text: CarouselTextOverrides | undefined,
   hotspots?: CarouselHotspot[],
-  hasImage?: boolean
+  hasImage?: boolean,
+  invertColors?: boolean
 ): number {
   switch (slideIndex) {
     case 0:
-      return drawSlide0Stop(ctx, style, frame, width, episode, tamilFont, interFont, calSansFont, startY, draw, positions, emphases, hotspots);
+      return drawSlide0Stop(
+        ctx,
+        style,
+        frame,
+        width,
+        canvasHeight,
+        episode,
+        tamilFont,
+        interFont,
+        calSansFont,
+        startY,
+        draw,
+        positions,
+        emphases,
+        hotspots,
+        Boolean(invertColors)
+      );
     case 1:
       return drawSlide1Understand(ctx, style, frame, width, episode, tamilFont, interFont, calSansFont, startY, draw, positions, emphases, hotspots);
     case 2:
@@ -1739,6 +1784,7 @@ export function renderAathichoodiCarouselSlide(
     style,
     frame,
     width,
+    height,
     episode,
     slideIndex,
     tamilFont,
@@ -1750,7 +1796,8 @@ export function renderAathichoodiCarouselSlide(
     emphases,
     text,
     undefined,
-    Boolean(opts.familyImage)
+    Boolean(opts.familyImage),
+    opts.design?.invertColors
   );
   const contentHeight = measuredEndY - frame.contentTop;
   const available = frame.contentBottom - frame.contentTop;
@@ -1764,6 +1811,7 @@ export function renderAathichoodiCarouselSlide(
     style,
     frame,
     width,
+    height,
     episode,
     slideIndex,
     tamilFont,
@@ -1775,7 +1823,8 @@ export function renderAathichoodiCarouselSlide(
     emphases,
     text,
     hotspots,
-    Boolean(opts.familyImage)
+    Boolean(opts.familyImage),
+    opts.design?.invertColors
   );
 
   drawFooterLockup(ctx, style, frame, width, height, calSansFont, interFont, opts, positions, emphases, hotspots);
