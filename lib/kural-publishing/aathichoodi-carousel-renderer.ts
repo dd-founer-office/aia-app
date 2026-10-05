@@ -93,15 +93,15 @@ export interface CarouselColors {
    *  before); reverse mode keeps the same colour as calSansText there,
    *  unchanged. */
   slide0HookText: string;
-  /** Slide 4's quote-mark icon card -- a small solid rounded-square badge
-   *  behind the decorative opening quote, not a translucent flourish any
-   *  more. White in light mode / dark teal in dark mode, i.e. roughly the
-   *  inverse of the quote glyph colour below it, per explicit founder
-   *  direction. */
-  slide3QuoteCardBackground: string;
-  /** The quote glyph drawn inside slide3QuoteCardBackground above -- dark
+  /** Slide 4's action-icon card (a hand-drawn lightbulb, replacing the
+   *  earlier quote mark) -- a small solid rounded-square badge above the
+   *  question text. White in light mode / dark teal in dark mode, i.e.
+   *  roughly the inverse of the icon colour below it, per explicit
+   *  founder direction. */
+  slide3IconCardBackground: string;
+  /** The bulb icon drawn inside slide3IconCardBackground above -- dark
    *  teal in light mode, mint in dark mode. */
-  slide3QuoteGlyphColor: string;
+  slide3IconColor: string;
 }
 
 export interface CarouselLayout {
@@ -172,7 +172,9 @@ export interface Slide3Style {
   panelPadX: number;
   panelPadY: number;
   panelRadius: number;
-  showQuoteMark: boolean;
+  /** Shows the small action-icon card above the question text -- a
+   *  hand-drawn lightbulb, not the quote mark this used to be. */
+  showActionIcon: boolean;
 }
 export interface Slide4Style {
   heroSize: number;
@@ -372,8 +374,8 @@ export const DEFAULT_STYLE: CarouselStyle = {
     slide0TaglineText: "#788485",
     calSansText: "#FFFFFF",
     slide0HookText: "#68FFAD",
-    slide3QuoteCardBackground: "#0A363A",
-    slide3QuoteGlyphColor: "#68FFAD",
+    slide3IconCardBackground: "#0A363A",
+    slide3IconColor: "#68FFAD",
   },
   layout: {
     marginX: 0.093,
@@ -416,7 +418,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     panelPadX: 0.075,
     panelPadY: 0.07,
     panelRadius: 0.03,
-    showQuoteMark: true,
+    showActionIcon: true,
   },
   slide4: {
     heroSize: 48,
@@ -456,8 +458,8 @@ export const INVERTED_COLORS: CarouselColors = {
   slide0TaglineText: "#788485",
   calSansText: "#0A363A",
   slide0HookText: "#0A363A",
-  slide3QuoteCardBackground: "#FFFFFF",
-  slide3QuoteGlyphColor: "#0A363A",
+  slide3IconCardBackground: "#FFFFFF",
+  slide3IconColor: "#0A363A",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -1278,6 +1280,61 @@ function drawSlide2BackgroundPhoto(
   ctx.fillRect(0, 0, width, height);
 }
 
+/** A small hand-drawn lightbulb -- dome + base + a knocked-out filament
+ *  squiggle and screw-thread lines in the card's own background colour --
+ *  replacing Slide 4's old decorative quote mark, per explicit founder
+ *  direction ("try this today" reads as an idea/insight prompt, not a
+ *  quotation). Drawn with plain Canvas2D primitives, same as every other
+ *  icon in this file (the circular "AiA" badge, the eyebrow pill) --
+ *  no icon font or external asset. `size` is the icon's overall height;
+ *  (cx, cy) is its centre. */
+function drawLightbulbIcon(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number,
+  glyphColor: string,
+  cardColor: string
+): void {
+  const r = size * 0.32;
+  const headCy = cy - size * 0.09;
+
+  ctx.fillStyle = glyphColor;
+  ctx.beginPath();
+  ctx.arc(cx, headCy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  const baseW = r * 1.15;
+  const baseH = size * 0.24;
+  const baseX = cx - baseW / 2;
+  const baseY = headCy + r * 0.6;
+  ctx.beginPath();
+  ctx.roundRect(baseX, baseY, baseW, baseH, baseW * 0.18);
+  ctx.fill();
+
+  // Filament squiggle and screw-thread lines, knocked out of the shapes
+  // above using the card's own background colour -- the detail that
+  // actually reads as "bulb" rather than "circle on a box".
+  ctx.strokeStyle = cardColor;
+  ctx.lineCap = "round";
+
+  ctx.lineWidth = Math.max(1, size * 0.045);
+  ctx.beginPath();
+  ctx.moveTo(cx - r * 0.32, headCy - r * 0.18);
+  ctx.lineTo(cx + r * 0.12, headCy + r * 0.22);
+  ctx.lineTo(cx - r * 0.08, headCy - r * 0.02);
+  ctx.lineTo(cx + r * 0.32, headCy + r * 0.3);
+  ctx.stroke();
+
+  ctx.lineWidth = Math.max(1, size * 0.035);
+  ctx.beginPath();
+  ctx.moveTo(baseX + baseW * 0.14, baseY + baseH * 0.35);
+  ctx.lineTo(baseX + baseW * 0.86, baseY + baseH * 0.35);
+  ctx.moveTo(baseX + baseW * 0.14, baseY + baseH * 0.65);
+  ctx.lineTo(baseX + baseW * 0.86, baseY + baseH * 0.65);
+  ctx.stroke();
+}
+
 /** "Today's Action" -- the lead-in line, the highlighted question, and the
  *  trailing line are three separately draggable/editable components (ids
  *  slide3.before / slide3.question / slide3.after), not one combined
@@ -1342,15 +1399,15 @@ function drawSlide3Action(
   const quoteLines = wrapText(ctx, quoted, frame.contentW - panelPadX * 2);
   const quoteLineHeight = questionSize * 1.36;
 
-  // Quote-mark icon card -- a small solid rounded-square badge sitting
-  // above the question text, per the locked design correction (replaces
-  // the old inline serif glyph drawn directly on the panel background).
-  const hasQuoteCard = style.slide3.showQuoteMark;
-  const quoteCardSize = frame.contentW * 0.1;
-  const quoteCardRadius = quoteCardSize * 0.28;
-  const quoteCardGap = quoteCardSize * 0.35;
-  const quoteCardBlock = hasQuoteCard ? quoteCardSize + quoteCardGap : 0;
-  const panelH = panelPadY * 2 + quoteCardBlock + quoteLines.length * quoteLineHeight;
+  // Action-icon card (lightbulb) -- a small solid rounded-square badge
+  // sitting above the question text, per the locked design correction
+  // (replaces the earlier quote-mark glyph).
+  const hasIcon = style.slide3.showActionIcon;
+  const iconCardSize = frame.contentW * 0.1;
+  const iconCardRadius = iconCardSize * 0.28;
+  const iconCardGap = iconCardSize * 0.35;
+  const iconCardBlock = hasIcon ? iconCardSize + iconCardGap : 0;
+  const panelH = panelPadY * 2 + iconCardBlock + quoteLines.length * quoteLineHeight;
   const panelY = cursorY;
   const qx = frame.contentX + qOffset.dx;
 
@@ -1362,26 +1419,27 @@ function drawSlide3Action(
     ctx.roundRect(qx, panelY + qOffset.dy, frame.contentW, panelH, frame.contentW * style.slide3.panelRadius);
     ctx.fill();
 
-    if (hasQuoteCard) {
+    if (hasIcon) {
       const cardX = qx + panelPadX;
       const cardY = panelY + qOffset.dy + panelPadY;
-      ctx.fillStyle = style.colors.slide3QuoteCardBackground;
+      ctx.fillStyle = style.colors.slide3IconCardBackground;
       ctx.beginPath();
-      ctx.roundRect(cardX, cardY, quoteCardSize, quoteCardSize, quoteCardRadius);
+      ctx.roundRect(cardX, cardY, iconCardSize, iconCardSize, iconCardRadius);
       ctx.fill();
 
-      ctx.fillStyle = style.colors.slide3QuoteGlyphColor;
-      ctx.font = `700 ${Math.round(quoteCardSize * 0.55)}px Georgia, serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("“", cardX + quoteCardSize / 2, cardY + quoteCardSize / 2 + quoteCardSize * 0.04);
-      ctx.textAlign = "left";
-      ctx.textBaseline = "alphabetic";
+      drawLightbulbIcon(
+        ctx,
+        cardX + iconCardSize / 2,
+        cardY + iconCardSize / 2,
+        iconCardSize * 0.62,
+        style.colors.slide3IconColor,
+        style.colors.slide3IconCardBackground
+      );
     }
 
     ctx.fillStyle = style.colors.textPrimary;
     ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${calSansFont}`;
-    let qy = panelY + qOffset.dy + panelPadY + quoteCardBlock + questionSize * 0.85;
+    let qy = panelY + qOffset.dy + panelPadY + iconCardBlock + questionSize * 0.85;
     for (const line of quoteLines) {
       ctx.fillText(line, qx + panelPadX, qy);
       qy += quoteLineHeight;

@@ -2036,7 +2036,7 @@ export default function PublishingWorkspace() {
                       <NumField label="Panel padding X (fraction)" value={resolvedStyle.slide3.panelPadX} step={0.005} onChange={(v) => patchSlide3("panelPadX", v)} />
                       <NumField label="Panel padding Y (fraction)" value={resolvedStyle.slide3.panelPadY} step={0.005} onChange={(v) => patchSlide3("panelPadY", v)} />
                       <NumField label="Panel corner radius (fraction)" value={resolvedStyle.slide3.panelRadius} step={0.005} onChange={(v) => patchSlide3("panelRadius", v)} />
-                      <CheckField label="Show decorative quote mark" checked={resolvedStyle.slide3.showQuoteMark} onChange={(v) => patchSlide3("showQuoteMark", v)} />
+                      <CheckField label="Show action icon (bulb)" checked={resolvedStyle.slide3.showActionIcon} onChange={(v) => patchSlide3("showActionIcon", v)} />
                       <TextAreaField
                         label="Lead-in line override"
                         value={textOverrides.slide3?.before ?? ""}
