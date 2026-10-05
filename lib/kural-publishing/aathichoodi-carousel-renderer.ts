@@ -862,14 +862,15 @@ function drawHeader(
   }
 }
 
-/** Large circular avatar-style brand badge -- never a small rectangular
- *  mark, never a square container. Per explicit founder direction, this is
- *  now a live-drawn "AiA" wordmark (Cal Sans, logoBadgeText colour) on a
- *  filled logoBadgeBackground circle -- not the AiA.png asset, which this
- *  function no longer reads. (This reverses the file's older "never
- *  approximated with text" rule for this one element -- a deliberate,
- *  explicit call, not an oversight.) */
-function drawCircularBadge(
+/** Large avatar-sized brand badge -- a rounded square (squircle-ish, per
+ *  explicit founder direction matching the attached reference icon), not
+ *  the circle this used to be. Same live-drawn "AiA" wordmark (Cal Sans,
+ *  logoBadgeText colour) on a filled logoBadgeBackground shape -- not the
+ *  AiA.png asset, which this function doesn't read. `radius` is kept as
+ *  the parameter name (unchanged call site/footprint: the shape still
+ *  occupies the exact square bounding box a circle of this radius would)
+ *  even though it now sizes a rounded square, not a circle's radius. */
+function drawLogoBadge(
   ctx: CanvasRenderingContext2D,
   colors: CarouselColors,
   calSansFont: string,
@@ -877,9 +878,12 @@ function drawCircularBadge(
   cy: number,
   radius: number
 ): void {
+  const size = radius * 2;
+  const cornerRadius = size * 0.26;
+
   ctx.save();
   ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.roundRect(cx - radius, cy - radius, size, size, cornerRadius);
   ctx.fillStyle = colors.logoBadgeBackground;
   ctx.fill();
   ctx.strokeStyle = colors.badgeRing;
@@ -934,10 +938,10 @@ function drawFooterLockup(
   const rowY = height - frame.marginY - logoRadius;
   const logoX = frame.contentX + logoRadius;
 
-  // The badge is now live-drawn text (see drawCircularBadge), not an
+  // The badge is now live-drawn text (see drawLogoBadge), not an
   // uploaded image -- it no longer waits on opts.logoImage to have loaded.
   const logoOffset = posFor(positions, "footer.logo");
-  drawCircularBadge(ctx, style.colors, calSansFont, logoX + logoOffset.dx, rowY + logoOffset.dy, logoRadius);
+  drawLogoBadge(ctx, style.colors, calSansFont, logoX + logoOffset.dx, rowY + logoOffset.dy, logoRadius);
   if (hotspots) {
     hotspots.push({
       id: "footer.logo",
