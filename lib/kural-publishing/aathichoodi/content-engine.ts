@@ -65,6 +65,9 @@ export interface ComposedEpisode {
   totalEpisodes: number;
   tamilText: string;
   transliteration: string;
+  /** See AathichoodiCanonEntry.readingChunks -- threaded straight through,
+   *  unset for every episode that doesn't have one authored yet. */
+  readingChunks?: { tamil: string; reading: string }[];
   simpleMeaning: string;
   understanding: string;
   primaryTheme: ThemeId;
@@ -167,6 +170,7 @@ export function composeEpisode(
     totalEpisodes: AATHICHOODI_CANON.length,
     tamilText: entry.tamilText,
     transliteration: entry.transliteration,
+    readingChunks: entry.readingChunks,
     simpleMeaning: entry.simpleMeaning,
     understanding: understanding.text,
     primaryTheme: theme,
