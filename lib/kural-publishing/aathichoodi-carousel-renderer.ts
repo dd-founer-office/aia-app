@@ -932,9 +932,14 @@ function headerMetrics(style: CarouselStyle, width: number, height: number, slid
   // The eyebrow badge's own vertical footprint -- tight padding, per the
   // locked correction ("reduce the space around the text keep it tight").
   // Shared with drawHeader so the badge's actual drawn height and the
-  // space reserved for it can never drift apart.
+  // space reserved for it can never drift apart. Slide 2 (UNDERSTAND,
+  // slideIndex 1) has no "AATHICHOODI" eyebrow at all any more -- per
+  // explicit founder direction -- so no vertical space is reserved for
+  // it there; the icon badge below it moves straight up to the top
+  // margin instead of leaving a dead gap.
+  const hasEyebrow = slideIndex !== 1;
   const eyebrowPadY = eyebrow * 0.42;
-  const badgeH = eyebrow + eyebrowPadY * 2;
+  const badgeH = hasEyebrow ? eyebrow + eyebrowPadY * 2 : 0;
   const badgeBottom = marginY + badgeH;
   const hasHeading = Boolean(headingText);
   const headingY = badgeBottom + heading * 1.3;
@@ -998,12 +1003,14 @@ function drawHeader(
   ctx.textAlign = "left";
 
   // Eyebrow is a tight button/pill, not plain text -- per the locked design
-  // correction. No divider line beneath it any more. Slide 1 drops the
+  // correction. No divider line beneath it any more. Slide 0 drops the
   // pill background per explicit founder direction (the "AATHICHOODI"
   // text itself stays, same position as every other slide) and its text
   // is white there (slide0EyebrowText), not the mint every other slide's
   // eyebrow badge text uses -- a further explicit founder correction.
-  {
+  // Slide 1 (UNDERSTAND) drops the eyebrow entirely, text included -- see
+  // headerMetrics' hasEyebrow.
+  if (slideIndex !== 1) {
     try {
       ctx.letterSpacing = `${Math.round(px(2, width))}px`;
     } catch {
