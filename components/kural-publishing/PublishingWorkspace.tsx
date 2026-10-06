@@ -959,7 +959,7 @@ export default function PublishingWorkspace() {
           };
         case "slide1.sectionHeading":
           return {
-            label: "Message panel copy",
+            label: "Message copy (centered, muted)",
             textValue: resolvedStyle.slide1.sectionHeadingText,
             onTextChange: (v) => patchSlide1("sectionHeadingText", v),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide1.sectionHeadingSize, onChange: (v) => patchSlide1("sectionHeadingSize", v) }],
@@ -968,13 +968,8 @@ export default function PublishingWorkspace() {
           };
         case "slide1.cta":
           return {
-            label: "“PASS IT ON” CTA pill (fixed copy, size only)",
+            label: "“Pass It On” CTA pill (fixed copy, size only)",
             sizeFields: [{ label: "Size", value: resolvedStyle.slide1.ctaSize, onChange: (v) => patchSlide1("ctaSize", v) }],
-          };
-        case "slide1.handle":
-          return {
-            label: "Poster handle (fixed copy, size only)",
-            sizeFields: [{ label: "Size", value: resolvedStyle.slide1.handleSize, onChange: (v) => patchSlide1("handleSize", v) }],
           };
         case "slide2.sectionHeading":
           return {
@@ -2255,9 +2250,10 @@ export default function PublishingWorkspace() {
                       <NumField label="Tamil reading size (px)" value={resolvedStyle.slide1.tamilRefSize} onChange={(v) => patchSlide1("tamilRefSize", v)} />
                       <NumField label="Romanized reading size (px)" value={resolvedStyle.slide1.transliterationSize} onChange={(v) => patchSlide1("transliterationSize", v)} />
                       <NumField label="Meaning size (px)" value={resolvedStyle.slide1.meaningSize} onChange={(v) => patchSlide1("meaningSize", v)} />
-                      <NumField label="Explanation size (px)" value={resolvedStyle.slide1.bodySize} onChange={(v) => patchSlide1("bodySize", v)} />
-                      <NumField label="“PASS IT ON” CTA size (px)" value={resolvedStyle.slide1.ctaSize} onChange={(v) => patchSlide1("ctaSize", v)} />
-                      <NumField label="Poster handle size (px)" value={resolvedStyle.slide1.handleSize} onChange={(v) => patchSlide1("handleSize", v)} />
+                      <NumField label="Explanation intro size (px)" value={resolvedStyle.slide1.explanationIntroSize} onChange={(v) => patchSlide1("explanationIntroSize", v)} />
+                      <NumField label="Explanation hero size (px)" value={resolvedStyle.slide1.explanationHeroSize} onChange={(v) => patchSlide1("explanationHeroSize", v)} />
+                      <NumField label="Explanation supporting size (px)" value={resolvedStyle.slide1.bodySize} onChange={(v) => patchSlide1("bodySize", v)} />
+                      <NumField label="“Pass It On” CTA size (px)" value={resolvedStyle.slide1.ctaSize} onChange={(v) => patchSlide1("ctaSize", v)} />
                       <CheckField label="🔒 Lock card sizes & positions" checked={cardsLocked} onChange={setCardsLocked} />
                       <NumField label="Outer card margin X (px)" value={resolvedStyle.slide1.outerCardMarginX} onChange={(v) => patchSlide1("outerCardMarginX", v)} disabled={cardsLocked} />
                       <NumField label="Outer card margin top (px)" value={resolvedStyle.slide1.outerCardMarginTop} onChange={(v) => patchSlide1("outerCardMarginTop", v)} disabled={cardsLocked} />

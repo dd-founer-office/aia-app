@@ -110,15 +110,15 @@ export interface AathichoodiCanonEntry {
   primaryTheme: ThemeId;
   verified: boolean;
   curated?: CuratedEpisodeContent;
-  /** Optional syllable/word-level phonetic breakdown of tamilText, for
-   *  Slide 2's reading-board (each chunk shows its own Tamil fragment
-   *  stacked above its own romanized reading, e.g. "பரு"/"pa-ru"). Hand-
-   *  authored per episode -- this is a real phonetic segmentation call,
-   *  not something mechanically derivable from tamilText/transliteration
-   *  alone. When omitted (the default for most episodes until these are
-   *  authored), Slide 2 falls back to the single whole-phrase Tamil +
-   *  transliteration line it always used. */
-  readingChunks?: { tamil: string; reading: string }[];
+  /** Optional syllable-level phonetic breakdown of tamilText, for Slide 2's
+   *  reading board (shown as its own line directly under the Tamil line,
+   *  e.g. "pa–ru vath–thē  pa–yir  sey" -- a single hyphen within a word's
+   *  syllables, two spaces between words). Hand-authored per episode --
+   *  this is a real phonetic segmentation call, not something mechanically
+   *  derivable from tamilText/transliteration alone. When omitted (the
+   *  default for most episodes until these are authored), Slide 2 falls
+   *  back to the plain transliteration line it always used. */
+  phoneticReading?: string;
 }
 
 export const AATHICHOODI_SOURCE_URL =
@@ -291,15 +291,8 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
     // Curated: uncurated, this composes from the responsibility pool's
     // "finish your chores properly" angle -- the actual line is about
     // TIMING (acting at the right moment), not task-completion.
-    // readingChunks: founder-supplied (Figma Slide 2 redesign) phonetic
-    // breakdown of tamilText -- பருவத்தே splits across two chunks
-    // (பரு/வத்தே), பயிர் and செய் are each their own.
-    readingChunks: [
-      { tamil: "பரு", reading: "pa–ru" },
-      { tamil: "வத்தே", reading: "vath–thē" },
-      { tamil: "பயிர்", reading: "pa–yir" },
-      { tamil: "செய்", reading: "sey" },
-    ],
+    // phoneticReading: founder-supplied (Figma Slide 2 redesign).
+    phoneticReading: "pa–ru vath–thē  pa–yir  sey",
     curated: {
       hookOverride: "Does your child know that the right time to act is now, not later?",
       understanding: "Avvaiyar's wisdom here uses farming: sow the crop in its proper season, not whenever it's convenient. A farmer who waits too long loses the harvest — some things in life only work if you do them at the right time, not late.",

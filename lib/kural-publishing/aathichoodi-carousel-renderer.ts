@@ -141,49 +141,45 @@ export interface CarouselColors {
    *  background colour (background/backgroundDeep) -- not a new colour,
    *  just a new named field for this specific element. */
   slide1GreenCardBackground: string;
-  /** The innermost of Slide 2's three nested cards -- a black panel
-   *  inset 30px within slide1GreenCardBackground, holding all of Slide
-   *  2's actual text content. */
+  /** The innermost of Slide 2's three nested cards -- a near-black panel
+   *  (not pure black -- see slide1CardBorder) inset within
+   *  slide1GreenCardBackground, holding the reading board and message
+   *  panel as one unified card (per the Figma mockup's own node: a single
+   *  fill, not two stacked panels with different backgrounds). */
   slide1CardBackground: string;
-  /** Slide 2's Tamil reference line, its English transliteration, and the
-   *  "direct meaning" editorial paragraph (Cal Sans 600, the middle of
-   *  the three paragraphs drawEditorialParagraphs renders for this
-   *  slide) -- all plain white against slide1CardBackground. Distinct
-   *  from slide0HeroHighlightText/slide0EyebrowText (also white) only in
-   *  that this is Slide 2's, not Slide 1's -- kept as its own field per
-   *  this file's one-field-per-element convention. */
+  /** slide1CardBackground's 1px stroke -- the Figma mockup draws this
+   *  card with a subtle lighter-grey border (plus a drop shadow this file
+   *  doesn't reproduce, canvas shadows being a much heavier effect for a
+   *  1px-equivalent blur than CSS's). */
+  slide1CardBorder: string;
+  /** Slide 2's Tamil line and its romanized reading -- both plain white
+   *  against slide1CardBackground. Distinct from slide0HeroHighlightText/
+   *  slide0EyebrowText (also white) only in that this is Slide 2's, not
+   *  Slide 1's -- kept as its own field per this file's one-field-per-
+   *  element convention. */
   slide1CardText: string;
-  /** The "WHAT DOES THIS MEAN?" heading's own pill background inside the
-   *  card -- Slide 2 draws this itself now (see drawSlide1Understand),
-   *  not the shared drawHeader path every other slide's section heading
-   *  still uses, so it needed its own background field (its text reuses
-   *  the existing mint accent colour, already identical in both modes). */
-  slide1EyebrowBackground: string;
   /** The small rounded-square badge sitting above slide1GreenCardBackground,
-   *  left-aligned to its edge -- holds the pronunciation icon (moved out
-   *  of the black card into this corner badge, per explicit founder
-   *  direction and the reference image's own icon treatment). White
-   *  background, dark teal icon (slide1IconBadgeIconColor) -- the
-   *  inverse of how that icon used to read (white-on-black). */
+   *  left-aligned to its edge -- holds the manuscript icon. White
+   *  background at 80% opacity (per the Figma mockup -- baked into the
+   *  rgba value here rather than a separate globalAlpha call), dark teal
+   *  icon (slide1IconBadgeIconColor). */
   slide1IconBadgeBackground: string;
-  /** The pronunciation icon's own colour inside slide1IconBadgeBackground
+  /** The manuscript icon's own colour inside slide1IconBadgeBackground
    *  above -- dark teal, for contrast against the white badge. */
   slide1IconBadgeIconColor: string;
   /** Slide 2's "explanation" copy (the Avvaiyar's-wisdom paragraph),
    *  drawn directly on slide1OuterCardBackground below the card stack --
-   *  dark teal ink, the same value this file already uses as INVERTED_
-   *  COLORS.textPrimary for body text on a light field, given its own
-   *  slide1-scoped name since slide1's colours don't change with
-   *  invertColors (see slide1PageBackground's own doc comment). */
+   *  plain black for the intro/headline, given its own slide1-scoped name
+   *  since slide1's colours don't change with invertColors (see
+   *  slide1PageBackground's own doc comment). */
   slide1ExplanationText: string;
-  /** The last (muted) paragraph of that same explanation copy -- same
-   *  value as INVERTED_COLORS.textSecondary, same reasoning. */
+  /** The muted grey used for BOTH the message panel's copy inside the
+   *  black card and the explanation's last (supporting) paragraph below
+   *  it -- the Figma mockup uses the identical value in both places. */
   slide1ExplanationMutedText: string;
-  /** The "PASS IT ON" pill inside Slide 2's message panel -- a pale fill
-   *  with dark text, the inverse of this app's usual pill (dark fill,
-   *  mint text), used deliberately here so the pill still pops against
-   *  the message panel's own dark teal fill rather than disappearing
-   *  into it. */
+  /** The "Pass It On" pill inside Slide 2's black card -- mint fill, dark
+   *  text (this app's usual pill convention: dark fill/mint text, run in
+   *  reverse here since the fill already sits on a dark card). */
   slide1CtaPillBackground: string;
   slide1CtaPillText: string;
 }
@@ -214,22 +210,28 @@ export interface Slide0Style {
   showBranding: boolean;
 }
 export interface Slide1Style {
-  /** The message panel's static tagline ("Some words deserve to travel
-   *  from your voice to theirs.") -- fixed design-system copy, the same
-   *  for every episode, not generated per-episode content, but still
-   *  founder-editable here like every other style field. Field names kept
-   *  from this slide's previous "WHAT DOES THIS MEAN?" pill (which this
+  /** The black card's static tagline ("Some words deserve to travel from
+   *  your voice to theirs.") -- fixed design-system copy, the same for
+   *  every episode, not generated per-episode content, but still founder-
+   *  editable here like every other style field. Field names kept from
+   *  this slide's previous "WHAT DOES THIS MEAN?" pill (which this
    *  replaced) to avoid an unrelated schema rename. */
   sectionHeadingText: string;
   sectionHeadingSize: number;
   tamilRefSize: number;
   transliterationSize: number;
   meaningSize: number;
+  /** The explanation's 3 parts (episode.understanding, split via
+   *  splitEditorialParagraphs) each get their own size now, matching the
+   *  Figma mockup's own type scale -- a small intro, a large headline-
+   *  style middle paragraph, and a smaller muted supporting paragraph.
+   *  bodySize is the supporting paragraph's, kept under its original name
+   *  since it's the one that existed before this split. */
+  explanationIntroSize: number;
+  explanationHeroSize: number;
   bodySize: number;
-  /** The "PASS IT ON" CTA pill and the "@handle" line below the message
-   *  copy, inside the message panel. */
+  /** The "Pass It On" CTA pill inside the black card. */
   ctaSize: number;
-  handleSize: number;
   /** Insets (reference px, same scale as every other size field here) for
    *  the three nested cards drawSlide1Understand/renderAathichoodiCarouselSlide
    *  draw -- see the "Outer card bounds"/"Gap between..." comments at each
@@ -472,20 +474,15 @@ function clampInsetPair(a: number, b: number, available: number, minSize: number
 
 // Reference px (1080-scale, same as every other size field) -- absolute
 // floors clampInset enforces for the outer/green cards' WIDTH and the
-// black frame's width (drawSlide1Understand). The outer and green cards'
-// own HEIGHT no longer needs a floor here: the black frame's height (and
+// black card's width (drawSlide1Understand). The outer and green cards'
+// own HEIGHT no longer needs a floor here: the black card's height (and
 // so the green/outer cards wrapping it) is now computed bottom-up from
-// its actual content -- the reading board stacked on the message panel,
-// which has its own floor, MIN_MESSAGE_PANEL_H -- so nothing in this
-// chain can collapse to zero/negative the way an independently-set,
-// container-driven margin could.
+// its actual content -- so nothing in this chain can collapse to
+// zero/negative the way an independently-set, container-driven margin
+// could.
 const MIN_OUTER_CARD_SIZE = 500;
 const MIN_GREEN_CARD_SIZE = 450;
 const MIN_BLACK_CARD_W = 200;
-// Floor for the message panel (see drawSlide1Understand) -- keeps the
-// "PASS IT ON" pill and handle from ever being squeezed into an unusably
-// short panel.
-const MIN_MESSAGE_PANEL_H = 180;
 
 /** Appends a hotspot spanning from the first to the last drawn line's
  *  baseline (a generous, forgiving click target, not pixel-exact) --
@@ -546,13 +543,13 @@ export const DEFAULT_STYLE: CarouselStyle = {
     slide1PageBackground: "#FFFFFF",
     slide1OuterCardBackground: "#EAF2F2",
     slide1GreenCardBackground: "#0A363A",
-    slide1CardBackground: "#000000",
+    slide1CardBackground: "#222226",
+    slide1CardBorder: "#3A3A3A",
     slide1CardText: "#FFFFFF",
-    slide1EyebrowBackground: "#1D5D51",
-    slide1IconBadgeBackground: "#FFFFFF",
+    slide1IconBadgeBackground: "rgba(255, 255, 255, 0.8)",
     slide1IconBadgeIconColor: "#0A363A",
-    slide1ExplanationText: "#0A363A",
-    slide1ExplanationMutedText: "rgba(10, 54, 58, 0.65)",
+    slide1ExplanationText: "#000000",
+    slide1ExplanationMutedText: "#788485",
     slide1CtaPillBackground: "#68FFAD",
     slide1CtaPillText: "#0A363A",
     slide3IconCardBackground: "#0A363A",
@@ -572,32 +569,37 @@ export const DEFAULT_STYLE: CarouselStyle = {
     taglineSize: 25,
     showBranding: true,
   },
+  // Every value below is read directly off the Figma dev-mode inspector
+  // (file H9LpyoKvzC5UanyL360JLs, node 1:3) -- that file's own frame is
+  // 1080px wide, the same reference width px() scales against here, so
+  // these translate 1:1 with no unit conversion.
   slide1: {
     sectionHeadingText: "Some words deserve to travel from your voice to theirs.",
     sectionHeadingSize: 26,
-    tamilRefSize: 50,
-    transliterationSize: 25,
+    tamilRefSize: 30,
+    transliterationSize: 30,
     // Matches slide2.bodySize (Family Situation's content) -- locked
     // design correction, now that this line is set in Cal Sans.
     meaningSize: 32,
-    bodySize: 29,
-    ctaSize: 22,
-    handleSize: 16,
-    outerCardMarginX: 17,
-    outerCardMarginTop: 60,
-    outerCardMarginBottom: 60,
-    greenCardMarginX: 30,
+    explanationIntroSize: 36,
+    explanationHeroSize: 54,
+    bodySize: 34,
+    ctaSize: 20,
+    outerCardMarginX: 30,
+    outerCardMarginTop: 30,
+    outerCardMarginBottom: 30,
+    greenCardMarginX: 54,
     // Icon-badge-bottom to main-card-top gap now (see the field's own doc
     // comment on Slide1Style) -- much smaller than the old "outer-card-
     // top to green-card-top" gap this used to measure.
-    greenCardMarginTop: 32,
-    greenCardMarginBottom: 30,
-    // Matches the Figma mockup's own main-card padding (40px at its
-    // 760px reference width, scaled) -- down from 80, which was
-    // calibrated for the old design's much taller single black card.
-    blackCardMarginX: 60,
-    blackCardMarginTop: 40,
-    blackCardMarginBottom: 40,
+    greenCardMarginTop: 54,
+    // The whole green-to-black gap is blackCardMarginBottom alone now
+    // (matches Figma's actual nesting -- green wraps black with one
+    // gap, not two stacked ones), so this stays 0.
+    greenCardMarginBottom: 0,
+    blackCardMarginX: 160,
+    blackCardMarginTop: 80,
+    blackCardMarginBottom: 80,
   },
   slide2: {
     sectionHeadingText: "IT HAPPENS AT HOME",
@@ -669,13 +671,13 @@ export const INVERTED_COLORS: CarouselColors = {
   slide1PageBackground: "#FFFFFF",
   slide1OuterCardBackground: "#EAF2F2",
   slide1GreenCardBackground: "#0A363A",
-  slide1CardBackground: "#000000",
+  slide1CardBackground: "#222226",
+  slide1CardBorder: "#3A3A3A",
   slide1CardText: "#FFFFFF",
-  slide1EyebrowBackground: "#1D5D51",
-  slide1IconBadgeBackground: "#FFFFFF",
+  slide1IconBadgeBackground: "rgba(255, 255, 255, 0.8)",
   slide1IconBadgeIconColor: "#0A363A",
-  slide1ExplanationText: "#0A363A",
-  slide1ExplanationMutedText: "rgba(10, 54, 58, 0.65)",
+  slide1ExplanationText: "#000000",
+  slide1ExplanationMutedText: "#788485",
   slide1CtaPillBackground: "#68FFAD",
   slide1CtaPillText: "#0A363A",
   slide3IconCardBackground: "#FFFFFF",
@@ -1385,81 +1387,6 @@ function drawSlide0Stop(
   return cursorY;
 }
 
-function drawEditorialParagraphs(
-  ctx: CanvasRenderingContext2D,
-  style: CarouselStyle,
-  frame: Frame,
-  startY: number,
-  maxY: number,
-  text: string,
-  interFont: string,
-  size: number,
-  draw: boolean,
-  positions: CarouselPositions | undefined,
-  emphases: CarouselTextEmphases | undefined,
-  hotspots?: CarouselHotspot[],
-  hotspotId?: string,
-  firstParagraphColor?: string,
-  calSansFont?: string,
-  lastParagraphColor?: string,
-  middleColor?: string
-): number {
-  const paragraphs = splitEditorialParagraphs(text);
-  const emphasis = emphasisFor(emphases, hotspotId ?? "");
-  const lineHeight = size * style.layout.bodyLineHeight;
-  const offset = posFor(positions, hotspotId ?? "");
-  let cursorY = startY;
-  let firstBaseline = 0;
-  for (let paragraphIndex = 0; paragraphIndex < paragraphs.length; paragraphIndex++) {
-    // Locked components, per the latest design correction: paragraph 0
-    // (the opener, e.g. "Avvaiyar begins with a powerful idea:" -- always
-    // first, since splitEditorialParagraphs breaks after a colon and
-    // every opener ends with one) is Inter 700 at its own locked colour
-    // (firstParagraphColor, the mint accent). The LAST paragraph (the
-    // explanation) is also Inter 700, at lastParagraphColor (the grey the
-    // rest of the app already uses) -- both weight bumps and the
-    // explanation's colour change are explicit founder corrections.
-    // Paragraph 1 specifically (the direct meaning sentence) stays Cal
-    // Sans 600, middleColor. Any further paragraph before the last one
-    // (some episodes generate more than 3) falls back to plain Inter 400,
-    // middleColor -- it was never meant to pick up paragraph 1's Cal Sans
-    // treatment just for sitting somewhere in the middle.
-    const isFirst = paragraphIndex === 0;
-    const isLast = !isFirst && paragraphIndex === paragraphs.length - 1;
-    const isDirectMeaning = !isFirst && !isLast && paragraphIndex === 1;
-    if (draw) {
-      ctx.fillStyle = isFirst
-        ? (firstParagraphColor ?? style.colors.textPrimary)
-        : isLast
-          ? (lastParagraphColor ?? style.colors.textPrimary)
-          : (middleColor ?? style.colors.textPrimary);
-    }
-    if (isFirst || isLast) {
-      ctx.font = `${styleFor(false, emphasis)} ${weightFor(700, emphasis)} ${Math.round(size)}px ${interFont}`;
-    } else if (isDirectMeaning && calSansFont) {
-      ctx.font = `${styleFor(false, emphasis)} 600 ${Math.round(size)}px ${calSansFont}`;
-    } else {
-      ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${interFont}`;
-    }
-    const lines = wrapText(ctx, paragraphs[paragraphIndex], frame.contentW);
-    for (const line of lines) {
-      if (cursorY > maxY) {
-        pushHotspot(hotspots, hotspotId ?? "", frame.contentX, frame.contentW, firstBaseline, cursorY, size, offset);
-        return cursorY;
-      }
-      cursorY += lineHeight;
-      if (firstBaseline === 0) firstBaseline = cursorY;
-      if (draw) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
-    }
-    // Generous paragraph gap -- distinct visual breaks between grafs
-    // rather than a dense block, so the copy occupies its natural share
-    // of the frame instead of reading as one cramped paragraph.
-    cursorY += lineHeight * 0.85;
-  }
-  pushHotspot(hotspots, hotspotId ?? "", frame.contentX, frame.contentW, firstBaseline, cursorY - lineHeight * 0.85, size, offset);
-  return cursorY;
-}
-
 /** A palm-leaf manuscript mark -- two stacked bound bundles of leaves
  *  (each a rounded bar with two cord-dots, joined top-to-bottom by the
  *  cord itself), a fanned top edge suggesting loose leaves, and a few
@@ -1537,35 +1464,34 @@ function drawManuscriptIcon(ctx: CanvasRenderingContext2D, cx: number, cy: numbe
   ctx.restore();
 }
 
-/** "Understand" -- redesigned (Figma Slide 2 mockup) as a compact
- *  "shareable poster" plus separate explanation copy below it, replacing
- *  the earlier version where the Tamil line/transliteration/heading pill/
- *  explanation all flowed through one tall black card. Structure, outer
- *  to inner:
+/** "Understand" -- matches the Figma mockup (file H9LpyoKvzC5UanyL360JLs,
+ *  node 1:3) exactly: a compact "shareable poster" plus separate
+ *  explanation copy below it. Structure, outer to inner:
  *
  *  1. The pale outer card (drawn by the caller, slide1OuterCardBackground)
- *     -- now also wraps the explanation copy below the card stack, not
- *     just the stack itself.
- *  2. A manuscript-icon badge, white rounded square, in its own flow slot
- *     above the main card -- no longer notched into/overlapping it.
+ *     -- also wraps the explanation copy below the card stack, not just
+ *     the stack itself.
+ *  2. A manuscript-icon badge, white (80% opacity) rounded square, in its
+ *     own flow slot above the main card -- not notched into/overlapping
+ *     it.
  *  3. The dark teal "main" card (slide1GreenCardBackground).
- *  4. A black "frame" card inset within that (slide1CardBackground),
- *     holding a compact 2-panel poster:
- *       a. The reading board (top) -- episode.readingChunks, when
- *          authored: each Tamil fragment stacked over its own romanized
- *          reading, in a row (see AathichoodiCanonEntry.readingChunks's
- *          own doc comment). Falls back to today's plain Tamil line +
- *          transliteration pair for every episode that doesn't have one
- *          yet.
- *       b. The message panel (bottom, slide1EyebrowBackground) -- fixed
- *          design-system copy (style.slide1.sectionHeadingText), a
- *          "PASS IT ON" CTA pill, and the brand handle. Fills whatever
- *          height the reading board left inside the black frame.
+ *  4. A single near-black card inset within that (slide1CardBackground,
+ *     with a 1px slide1CardBorder stroke), holding -- all centred, all
+ *     stacked with no separate panel backgrounds:
+ *       - The Tamil line (episode.tamilText, white), its romanized
+ *         reading (episode.phoneticReading when authored -- see
+ *         AathichoodiCanonEntry's own doc comment -- else
+ *         episode.transliteration, also white),
+ *       - The message copy (style.slide1.sectionHeadingText, fixed
+ *         design-system copy, muted grey),
+ *       - The "Pass It On" CTA pill (mint fill, dark text).
  *  5. Below the card stack, still inside the pale outer card: the
  *     episode's own explanation (episode.understanding), split into its
- *     existing 3-paragraph editorial shape (splitEditorialParagraphs) and
- *     recoloured for this light field instead of the old black card's
- *     dark one.
+ *     existing 3-paragraph editorial shape (splitEditorialParagraphs) --
+ *     a small bold intro, a large Cal Sans headline, and a smaller muted
+ *     supporting paragraph, each with its own size per the mockup's type
+ *     scale (Slide1Style.explanationIntroSize/explanationHeroSize/
+ *     bodySize) -- left-aligned, black ink.
  *
  *  All card bounds are fixed-size (not sized to their own content) --
  *  `startY` (the balanced-layout position) is deliberately unused here,
@@ -1588,7 +1514,6 @@ function drawSlide1Understand(
 ): number {
   void startY;
   const transliteration = px(style.slide1.transliterationSize, width);
-  const body = px(style.slide1.bodySize, width);
   const tamilRef = px(style.slide1.tamilRefSize, width);
   ctx.textAlign = "left";
 
@@ -1627,8 +1552,8 @@ function drawSlide1Understand(
   // card -- no "notch into the card" overlap: greenMarginTop is purely
   // the gap between the badge's own bottom edge and the card's top (see
   // Slide1Style.greenCardMarginTop's own doc comment).
-  const badgeSize = px(56, width);
-  const badgeRadius = px(14, width);
+  const badgeSize = px(98, width);
+  const badgeRadius = px(24, width);
   const badgeOffset = posFor(positions, "slide1.icon");
   const badgeX = greenX + badgeOffset.dx;
   const eyebrowBadgeBottom = headerMetrics(style, width, canvasHeight, 1).badgeBottom;
@@ -1636,100 +1561,77 @@ function drawSlide1Understand(
   const badgeY = eyebrowBadgeBottom + badgePad + badgeOffset.dy;
   const greenTop = badgeY + badgeSize + greenMarginTop;
 
-  // Black "frame" card -- X-axis sizing is still top-down (width-only,
-  // never circular), but its HEIGHT now drives everything below it: the
-  // card stack is a compact poster, not a container stretched to fill
-  // the outer pale card, so there's room left for the explanation copy
+  // Black card -- X-axis sizing is still top-down (width-only, never
+  // circular), but its HEIGHT now drives everything below it: the card
+  // stack is a compact poster, not a container stretched to fill the
+  // outer pale card, so there's room left for the explanation copy
   // underneath. blackTop only depends on greenTop (known already);
-  // blackBottom is computed from the reading board + message panel's own
-  // content height, below, then greenBottom/greenH derive from THAT.
+  // blackBottom is computed from its own content height, below, then
+  // greenBottom/greenH derive from THAT.
   const blackMarginX = clampInset(px(style.slide1.blackCardMarginX, width), greenW, px(MIN_BLACK_CARD_W, width));
   const blackMarginTop = Math.min(150, Math.max(0, px(style.slide1.blackCardMarginTop, width)));
   const blackMarginBottom = Math.min(150, Math.max(0, px(style.slide1.blackCardMarginBottom, width)));
   const blackX = greenX + blackMarginX;
   const blackW = Math.max(px(MIN_BLACK_CARD_W, width), greenW - blackMarginX * 2);
   const blackTop = greenTop + blackMarginTop;
-  const blackRadius = px(18, width);
+  const blackRadius = px(24, width);
+  const blackCenterX = blackX + blackW / 2;
 
-  // Inside the black frame: the reading board (top) and the message
-  // panel (bottom), stacked edge-to-edge with no gap between them, both
-  // inset from the frame's own edges by framePad.
-  const framePadX = blackW * 0.06;
-  const framePadY = framePadX;
-  const innerLeft = blackX + framePadX;
-  const innerW = blackW - framePadX * 2;
-  const readingTop = blackTop + framePadY;
+  // Everything inside the black card is centred and stacked with a plain
+  // top-down cursor -- no separate panel backgrounds any more (the Figma
+  // mockup draws this as ONE card, not reading-board + message-panel).
+  // framePad is this card's own top/bottom breathing room, symmetric.
+  const framePad = blackW * 0.08;
+  const innerW = blackW - framePad * 2;
+  let cursorY = blackTop + framePad;
 
   const tamilRefOffset = posFor(positions, "slide1.tamilRef");
   const transliterationOffset = posFor(positions, "slide1.transliteration");
   const tamilRefEmphasis = emphasisFor(emphases, "slide1.tamilRef");
   const transliterationEmphasis = emphasisFor(emphases, "slide1.transliteration");
-  const readingChunks = episode.readingChunks;
-  const hasChunks = Boolean(readingChunks && readingChunks.length > 0);
-  // Same height formula either way (a Tamil line's baseline, a gap, then
-  // the reading's baseline) -- only the gap and the X-axis layout (one
-  // row of columns vs one left-aligned line) differ, see the draw step
-  // below. Computing the height doesn't need any text measurement, so
-  // this -- and everything derived from it -- is known up front.
-  const readingGap = tamilRef * (hasChunks ? 0.3 : 0.5);
-  const tamilBaseline = readingTop + tamilRef;
-  const translitBaseline = tamilBaseline + readingGap + transliteration;
-  // + a descender allowance below the reading row's own baseline -- text
-  // extends visibly past its baseline (descenders, line-height), so
-  // translitBaseline alone understates how much room the row actually
-  // occupies and the message panel below it would start high enough to
-  // clip the bottom of the reading text.
-  const readingBoardH = translitBaseline - readingTop + transliteration * 0.4;
+  const readingLine = episode.phoneticReading ?? episode.transliteration;
 
-  // Message panel's own content height -- computed up front (a "dry run"
-  // of the same layout the draw step below actually paints) purely so
-  // blackBottom/greenBottom can wrap it tightly instead of guessing.
-  const messageTop = readingTop + readingBoardH;
-  const messagePadX = innerW * 0.1;
+  cursorY += tamilRef;
+  const tamilBaseline = cursorY;
+  cursorY += tamilRef * 0.55 + transliteration;
+  const translitBaseline = cursorY;
+  cursorY += transliteration * 1.15;
+
   const messageCopy = style.slide1.sectionHeadingText;
   const messageCopySize = px(style.slide1.sectionHeadingSize, width);
   const messageCopyEmphasis = emphasisFor(emphases, "slide1.sectionHeading");
   const messageCopyOffset = posFor(positions, "slide1.sectionHeading");
-  const messagePadTop = messageCopySize * 0.7;
-  ctx.font = `${styleFor(false, messageCopyEmphasis)} ${weightFor(600, messageCopyEmphasis)} ${Math.round(messageCopySize)}px ${interFont}`;
-  const messageLines = messageCopy ? wrapText(ctx, messageCopy, innerW - messagePadX * 2) : [];
-  const messageLineHeight = messageCopySize * 1.25;
-  const messageCopyBottom = messageTop + messagePadTop + messageLines.length * messageLineHeight;
+  ctx.font = `${styleFor(false, messageCopyEmphasis)} ${weightFor(500, messageCopyEmphasis)} ${Math.round(messageCopySize)}px ${interFont}`;
+  const messageLines = messageCopy ? wrapText(ctx, messageCopy, innerW) : [];
+  const messageLineHeight = messageCopySize * 1.2;
+  const messageTop = cursorY;
+  for (let i = 0; i < messageLines.length; i++) cursorY += messageLineHeight;
+  const messageBottom = cursorY;
+  cursorY += messageCopySize * 0.7;
 
   const ctaSize = px(style.slide1.ctaSize, width);
   const ctaOffset = posFor(positions, "slide1.cta");
   const ctaEmphasis = emphasisFor(emphases, "slide1.cta");
-  const ctaLabel = "PASS IT ON  →";
-  ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(600, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
-  const ctaPadX = ctaSize * 0.75;
-  const ctaPadY = ctaSize * 0.5;
+  const ctaLabel = "Pass It On";
+  ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(700, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
+  const ctaPadX = ctaSize * 1.0;
+  const ctaPadY = ctaSize * 0.475;
   const ctaTextWidth = ctx.measureText(ctaLabel).width;
   const ctaPillW = ctaTextWidth + ctaPadX * 2;
   const ctaPillH = ctaSize + ctaPadY * 2;
-  const ctaY = messageCopyBottom + messageCopySize * 0.6 + ctaOffset.dy;
-  const ctaX = innerLeft + messagePadX + ctaOffset.dx;
+  const ctaRadius = px(8, width);
+  const ctaX = blackCenterX - ctaPillW / 2 + ctaOffset.dx;
+  const ctaY = cursorY + ctaOffset.dy;
+  cursorY += ctaPillH;
 
-  const handleSize = px(style.slide1.handleSize, width);
-  const handleOffset = posFor(positions, "slide1.handle");
-  const handleEmphasis = emphasisFor(emphases, "slide1.handle");
-  const handleText = "@aram_in_action";
-  ctx.font = `${styleFor(false, handleEmphasis)} ${weightFor(500, handleEmphasis)} ${Math.round(handleSize)}px ${interFont}`;
-  const handleWidth = ctx.measureText(handleText).width;
-  const handleY = ctaY - ctaOffset.dy + ctaPillH + handleSize * 1.2 + handleOffset.dy;
-  const handleX = innerLeft + innerW - messagePadX - handleWidth + handleOffset.dx;
-
-  const messageBottom = Math.max(px(MIN_MESSAGE_PANEL_H, width) + messageTop, handleY + messagePadTop);
-  const messageH = messageBottom - messageTop;
-  const messageRadius = px(14, width);
-
-  const blackBottom = messageBottom + framePadY;
+  const blackBottom = cursorY + framePad;
   const greenBottom = blackBottom + blackMarginBottom + greenMarginBottom;
   const greenH = greenBottom - greenTop;
-  const greenRadius = px(26, width);
+  const greenRadius = px(24, width);
 
   // Like every other draggable element, a card's own drag offset only
   // nudges where ITS rectangle is drawn/hit-tested -- it never feeds back
-  // into the layout math above, so the badge/black-frame/text positions
+  // into the layout math above, so the badge/black-card/text positions
   // stay put even if a card's own background is dragged away from them.
   const greenCardOffset = posFor(positions, "slide1.greenCard");
   if (draw) {
@@ -1760,10 +1662,20 @@ function drawSlide1Understand(
 
   const blackCardOffset = posFor(positions, "slide1.blackCard");
   if (draw) {
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+    ctx.shadowBlur = px(16, width);
+    ctx.shadowOffsetY = px(5, width);
     ctx.fillStyle = style.colors.slide1CardBackground;
     ctx.beginPath();
     ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackBottom - blackTop, blackRadius);
     ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = style.colors.slide1CardBorder;
+    ctx.lineWidth = Math.max(1, px(1, width));
+    ctx.beginPath();
+    ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackBottom - blackTop, blackRadius);
+    ctx.stroke();
   }
   if (hotspots) {
     hotspots.push({
@@ -1775,136 +1687,105 @@ function drawSlide1Understand(
     });
   }
 
-  if (readingChunks && readingChunks.length > 0) {
-    // Per-chunk grid -- each chunk's own Tamil fragment stacked over its
-    // own romanized reading, distributed with even gaps across innerW
-    // (CSS grid's space-between, by hand).
+  if (draw) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = style.colors.slide1CardText;
     ctx.font = `${styleFor(false, tamilRefEmphasis)} ${weightFor(700, tamilRefEmphasis)} ${Math.round(tamilRef)}px ${tamilFont}`;
-    const tamilWidths = readingChunks.map((c) => ctx.measureText(c.tamil).width);
-    ctx.font = `${styleFor(false, transliterationEmphasis)} ${weightFor(600, transliterationEmphasis)} ${Math.round(transliteration)}px ${interFont}`;
-    const readingWidths = readingChunks.map((c) => ctx.measureText(c.reading).width);
-    const columnWidths = tamilWidths.map((w, i) => Math.max(w, readingWidths[i]));
-    const totalColumnsW = columnWidths.reduce((a, b) => a + b, 0);
-    const gapCount = Math.max(1, readingChunks.length - 1);
-    const colGap = readingChunks.length > 1 ? Math.max(0, (innerW - totalColumnsW) / gapCount) : 0;
+    ctx.fillText(episode.tamilText, blackCenterX + tamilRefOffset.dx, tamilBaseline + tamilRefOffset.dy);
+    ctx.font = `${styleFor(false, transliterationEmphasis)} ${weightFor(500, transliterationEmphasis)} ${Math.round(transliteration)}px ${interFont}`;
+    ctx.fillText(readingLine, blackCenterX + transliterationOffset.dx, translitBaseline + transliterationOffset.dy);
+    ctx.textAlign = "left";
+  }
+  pushHotspot(hotspots, "slide1.tamilRef", blackX, blackW, tamilBaseline, tamilBaseline, tamilRef, tamilRefOffset);
+  pushHotspot(hotspots, "slide1.transliteration", blackX, blackW, translitBaseline, translitBaseline, transliteration, transliterationOffset);
 
+  if (messageCopy) {
     if (draw) {
       ctx.textAlign = "center";
-      let colX = innerLeft;
-      for (let i = 0; i < readingChunks.length; i++) {
-        const chunk = readingChunks[i];
-        const colW = columnWidths[i];
-        const colCenter = colX + colW / 2;
-        ctx.fillStyle = style.colors.slide1CardText;
-        ctx.font = `${styleFor(false, tamilRefEmphasis)} ${weightFor(700, tamilRefEmphasis)} ${Math.round(tamilRef)}px ${tamilFont}`;
-        ctx.fillText(chunk.tamil, colCenter + tamilRefOffset.dx, tamilBaseline + tamilRefOffset.dy);
-        ctx.fillStyle = style.colors.accent;
-        ctx.font = `${styleFor(false, transliterationEmphasis)} ${weightFor(600, transliterationEmphasis)} ${Math.round(transliteration)}px ${interFont}`;
-        ctx.fillText(chunk.reading, colCenter + transliterationOffset.dx, translitBaseline + transliterationOffset.dy);
-        colX += colW + colGap;
+      ctx.fillStyle = style.colors.slide1ExplanationMutedText;
+      ctx.font = `${styleFor(false, messageCopyEmphasis)} ${weightFor(500, messageCopyEmphasis)} ${Math.round(messageCopySize)}px ${interFont}`;
+      let lineY = messageTop;
+      for (const line of messageLines) {
+        lineY += messageLineHeight;
+        ctx.fillText(line, blackCenterX + messageCopyOffset.dx, lineY + messageCopyOffset.dy);
       }
       ctx.textAlign = "left";
     }
-  } else if (draw) {
-    // Fallback: today's single Tamil line + transliteration line,
-    // unchanged, for every episode that doesn't have readingChunks yet.
-    ctx.fillStyle = style.colors.slide1CardText;
-    ctx.font = `${styleFor(false, tamilRefEmphasis)} ${weightFor(700, tamilRefEmphasis)} ${Math.round(tamilRef)}px ${tamilFont}`;
-    ctx.fillText(episode.tamilText, innerLeft + tamilRefOffset.dx, tamilBaseline + tamilRefOffset.dy);
-    ctx.fillStyle = style.colors.accent;
-    ctx.font = `${styleFor(false, transliterationEmphasis)} ${weightFor(600, transliterationEmphasis)} ${Math.round(transliteration)}px ${interFont}`;
-    ctx.fillText(episode.transliteration, innerLeft + transliterationOffset.dx, translitBaseline + transliterationOffset.dy);
-  }
-  pushHotspot(hotspots, "slide1.tamilRef", innerLeft, innerW, tamilBaseline, tamilBaseline, tamilRef, tamilRefOffset);
-  pushHotspot(hotspots, "slide1.transliteration", innerLeft, innerW, translitBaseline, translitBaseline, transliteration, transliterationOffset);
-
-  if (draw) {
-    ctx.fillStyle = style.colors.slide1EyebrowBackground;
-    ctx.beginPath();
-    ctx.roundRect(innerLeft, messageTop, innerW, messageH, messageRadius);
-    ctx.fill();
+    pushHotspot(hotspots, "slide1.sectionHeading", blackX, blackW, messageTop + messageLineHeight, messageBottom, messageCopySize, messageCopyOffset);
   }
 
-  let messageCursorY = messageTop + messagePadTop;
-  if (messageCopy) {
-    ctx.font = `${styleFor(false, messageCopyEmphasis)} ${weightFor(600, messageCopyEmphasis)} ${Math.round(messageCopySize)}px ${interFont}`;
-    if (draw) ctx.fillStyle = style.colors.slide1CardText;
-    for (const line of messageLines) {
-      messageCursorY += messageLineHeight;
-      if (draw) ctx.fillText(line, innerLeft + messagePadX + messageCopyOffset.dx, messageCursorY + messageCopyOffset.dy);
-    }
-    pushHotspot(
-      hotspots,
-      "slide1.sectionHeading",
-      innerLeft + messagePadX,
-      innerW - messagePadX * 2,
-      messageTop + messagePadTop,
-      messageCursorY,
-      messageCopySize,
-      messageCopyOffset
-    );
-  }
-
-  // "PASS IT ON ->" CTA pill -- fixed copy (a design-system convention,
-  // not per-episode content, same as the AATHICHOODI eyebrow text
-  // elsewhere), size/position/bold/italic still fully editable.
+  // "Pass It On" CTA pill -- fixed copy (a design-system convention, not
+  // per-episode content, same as the AATHICHOODI eyebrow text elsewhere),
+  // size/position/bold/italic still fully editable.
   if (draw) {
     ctx.fillStyle = style.colors.slide1CtaPillBackground;
     ctx.beginPath();
-    ctx.roundRect(ctaX, ctaY, ctaPillW, ctaPillH, ctaPillH / 2);
+    ctx.roundRect(ctaX, ctaY, ctaPillW, ctaPillH, ctaRadius);
     ctx.fill();
     ctx.fillStyle = style.colors.slide1CtaPillText;
-    // ctx.font is a shared, mutable piece of canvas state -- by this
-    // point it's whatever the handle's own measurement (below) last left
-    // it as, not this pill's font, since all the measuring above runs
-    // before any of this actual drawing does. Reset it explicitly rather
-    // than relying on leftover state from an unrelated element.
-    ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(600, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
+    ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(700, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
     ctx.textBaseline = "middle";
     ctx.fillText(ctaLabel, ctaX + ctaPadX, ctaY + ctaPillH / 2 + ctaSize * 0.03);
     ctx.textBaseline = "alphabetic";
   }
   pushHotspot(hotspots, "slide1.cta", ctaX, ctaPillW, ctaY, ctaY + ctaPillH, ctaSize, ctaOffset);
 
-  // Handle, bottom-right of the message panel -- hardcoded like the
-  // AATHICHOODI eyebrow text, not threaded through RenderCarouselSlideOptions'
-  // conditional brandingHandle (that one's gated behind the "show AiA
-  // branding" footer toggle; this handle is part of the poster concept
-  // itself, not optional footer branding).
-  if (draw) {
-    ctx.fillStyle = style.colors.slide1CardText;
-    ctx.font = `${styleFor(false, handleEmphasis)} ${weightFor(500, handleEmphasis)} ${Math.round(handleSize)}px ${interFont}`;
-    ctx.fillText(handleText, handleX, handleY);
-  }
-  pushHotspot(hotspots, "slide1.handle", handleX, handleWidth, handleY, handleY, handleSize, handleOffset);
-
   // Explanation -- episode.understanding, split into its existing
-  // 3-paragraph editorial shape and recoloured for the light outer card
-  // it now sits on (previously drawn inside the black card, in
-  // slide1CardText/accent, on a dark field). greenBottom is now the
-  // card stack's true (compact) bottom, so there's real room left here.
-  const explanationTop = greenBottom + px(32, width);
+  // 3-paragraph editorial shape (splitEditorialParagraphs), each
+  // paragraph its own size/weight/font per the mockup's type scale, drawn
+  // directly on the light outer card (previously inside the black card).
+  // greenBottom is now the card stack's true (compact) bottom, so there's
+  // real room left here. One hotspot ("slide1.body") spans the whole
+  // block -- clicking it edits episode.understanding as one combined
+  // text, same as before this redesign; only the per-paragraph SIZE
+  // fields (explanationIntroSize/explanationHeroSize/bodySize, sidebar-
+  // only) are independent.
+  const introSize = px(style.slide1.explanationIntroSize, width);
+  const heroSize = px(style.slide1.explanationHeroSize, width);
+  const supportingSize = px(style.slide1.bodySize, width);
+  const explanationEmphasis = emphasisFor(emphases, "slide1.body");
+  const explanationOffset = posFor(positions, "slide1.body");
   const explanationBottom = outerBottom - px(40, width);
-  const explanationFrame: Frame = { ...frame, contentX: greenX, contentW: greenW };
-  return drawEditorialParagraphs(
-    ctx,
-    style,
-    explanationFrame,
-    explanationTop,
-    explanationBottom,
-    episode.understanding,
-    interFont,
-    body,
-    draw,
-    positions,
-    emphases,
-    hotspots,
-    "slide1.body",
-    style.colors.slide1ExplanationText,
-    calSansFont,
-    style.colors.slide1ExplanationMutedText,
-    style.colors.slide1ExplanationText
-  );
+  let explanationCursorY = greenBottom + px(45, width);
+  const explanationFirstY = explanationCursorY;
+
+  const paragraphs = splitEditorialParagraphs(episode.understanding);
+  for (let i = 0; i < paragraphs.length; i++) {
+    const isFirst = i === 0;
+    const isLast = !isFirst && i === paragraphs.length - 1;
+    const isHero = !isFirst && !isLast && i === 1;
+    const size = isFirst ? introSize : isLast ? supportingSize : isHero ? heroSize : supportingSize;
+    const lineHeight = size * (isHero ? 0.93 : 1.3);
+    if (draw) {
+      ctx.fillStyle = isLast ? style.colors.slide1ExplanationMutedText : style.colors.slide1ExplanationText;
+      if (isHero) {
+        try {
+          ctx.letterSpacing = `${Math.round(px(2.16, width))}px`;
+        } catch {
+          /* Canvas2D letterSpacing unsupported -- default tracking is fine */
+        }
+        ctx.font = `${styleFor(false, explanationEmphasis)} ${weightFor(400, explanationEmphasis)} ${Math.round(size)}px ${calSansFont}`;
+      } else {
+        ctx.font = `${styleFor(false, explanationEmphasis)} ${weightFor(isFirst ? 600 : 500, explanationEmphasis)} ${Math.round(size)}px ${interFont}`;
+      }
+    }
+    const lines = wrapText(ctx, paragraphs[i], greenW);
+    for (const line of lines) {
+      if (explanationCursorY > explanationBottom) break;
+      explanationCursorY += lineHeight;
+      if (draw) ctx.fillText(line, greenX + explanationOffset.dx, explanationCursorY + explanationOffset.dy);
+    }
+    if (draw && isHero) {
+      try {
+        ctx.letterSpacing = "0px";
+      } catch {
+        /* no-op */
+      }
+    }
+    explanationCursorY += lineHeight * 0.4;
+  }
+  pushHotspot(hotspots, "slide1.body", greenX, greenW, explanationFirstY, explanationCursorY, introSize, explanationOffset);
+  return explanationCursorY;
 }
 
 /** "Family Situation" -- each generated paragraph is its own independently
@@ -2462,7 +2343,7 @@ export function renderAathichoodiCarouselSlide(
       outerMarginTop + outerCardOffset.dy,
       width - outerMarginX * 2,
       outerBottom - outerMarginTop,
-      px(32, width)
+      px(28, width)
     );
     ctx.fill();
     hotspots.push({
