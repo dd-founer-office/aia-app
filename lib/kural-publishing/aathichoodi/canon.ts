@@ -92,7 +92,26 @@ export interface CuratedEpisodeContent {
    *  its own per-theme hook automatically -- there is no more single fixed
    *  hook repeated across the series. */
   hookOverride?: string;
+  /** Optional language-development category, per the Figma redesign's new
+   *  3-pill selector on Slide 4 (one pill shown active/filled) and matching
+   *  footnote on Slide 5. This is a new, hand-authored editorial
+   *  classification -- there is no mechanical way to derive it from
+   *  primaryTheme or any other existing field, and no taxonomy has been
+   *  worked out yet for the other 108 episodes, so it's left undefined
+   *  (Slide 4/5 simply omit the pill row/footnote) everywhere except
+   *  episode 22 for now. See LANGUAGE_CATEGORY_LABELS below for display
+   *  text. */
+  languageCategory?: "beliefs" | "practices" | "management";
 }
+
+/** Display labels for CuratedEpisodeContent.languageCategory, matching the
+ *  Figma file's own copy -- except "management", corrected from the Figma
+ *  file's own "Language Managenent" typo. */
+export const LANGUAGE_CATEGORY_LABELS: Record<NonNullable<CuratedEpisodeContent["languageCategory"]>, string> = {
+  beliefs: "Language Beliefs",
+  practices: "Language Practices",
+  management: "Language Management",
+};
 
 export interface AathichoodiCanonEntry {
   episodeNumber: number;
@@ -310,6 +329,10 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       // today's action...") the Figma mockup shows, rather than leaving
       // it to classifyCta's own rotation/history logic.
       recommendedCta: "TRY_TODAY",
+      // Founder-supplied (Figma Slide 4/5 redesign) -- the middle pill
+      // ("Language Practices") is the one shown active in the Figma file
+      // for this episode.
+      languageCategory: "practices",
     },
   },
   // Corrected from the earlier "மன்றுபறித் துண்ணேல்" (mandru = court/

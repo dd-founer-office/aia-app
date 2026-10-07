@@ -44,6 +44,7 @@
  */
 
 import type { ComposedEpisode } from "./aathichoodi/content-engine";
+import { LANGUAGE_CATEGORY_LABELS } from "./aathichoodi/canon";
 
 // ---------------------------------------------------------------------------
 // Design system -- fully overridable. DEFAULT_STYLE is the founder-approved
@@ -121,6 +122,18 @@ export interface CarouselColors {
   /** The bulb icon drawn inside slide3IconCardBackground above -- dark
    *  teal in light mode, mint in dark mode. */
   slide3IconColor: string;
+  /** The 3-category ("Language Beliefs/Practices/Management") pill row
+   *  above Slide 4's panel, per the Figma file's own update -- one pill
+   *  per episode's episode.languageCategory is shown "active" (filled),
+   *  the other two stay outlined. Not mode-dependent, same reasoning as
+   *  every other slide3* colour here (this slide's own light panel
+   *  doesn't change with invertColors). */
+  tagPillInactiveBackground: string;
+  tagPillInactiveBorder: string;
+  tagPillInactiveText: string;
+  tagPillActiveBackground: string;
+  tagPillActiveBorder: string;
+  tagPillActiveText: string;
   /** Slide 2's full-bleed page background (replacing the usual dark
    *  gradient/white field there) -- plain white, per explicit founder
    *  direction and the attached reference image (a nested-card UI
@@ -299,6 +312,23 @@ export interface Slide2Style {
   photoHeight: number;
 }
 export interface Slide3Style {
+  /** The 3-category tag-pill row ("Language Beliefs/Practices/Management"),
+   *  drawn above the panel -- per the Figma file's own later update (node
+   *  9:26), read directly off its dev-mode inspector: 3 pills at x=90/315/
+   *  544 (1080-reference scale), y=184, each 175x57 with an 8px radius.
+   *  One pill (episode.languageCategory) is shown active/filled; episodes
+   *  without that field set skip this row entirely (see drawSlide3Action).
+   *  tagRowX holds each pill's literal left edge rather than a margin +
+   *  uniform gap -- the Figma spec's own gaps aren't quite uniform (50px,
+   *  then 54px), and three literal positions are simpler and more exact
+   *  than reverse-engineering a formula from them. */
+  showTagRow: boolean;
+  tagRowY: number;
+  tagRowX: readonly [number, number, number];
+  tagRowPillW: number;
+  tagRowPillH: number;
+  tagRowPillRadius: number;
+  tagRowTextSize: number;
   /** Now drawn directly by drawSlide3Action itself (black, Inter
    *  SemiBold, no eyebrow pill above it -- see headerMetrics' hasEyebrow)
    *  instead of the generic drawHeader heading mechanism every other
@@ -306,11 +336,15 @@ export interface Slide3Style {
    *  H9LpyoKvzC5UanyL360JLs, node 9:26), a fixed design-system label
    *  ("ASK YOUR CHILD TODAY"), not derived from the episode's own
    *  generated todayAction text (that varies too much in length/shape
-   *  across episodes to carry this slide's single dominant heading). */
+   *  across episodes to carry this slide's single dominant heading).
+   *  Per the Figma file's later update, this heading now lives INSIDE the
+   *  panel's own bottom-up content stack (between the icon and the
+   *  question) instead of as a page-level element above it -- its
+   *  position is no longer its own headingMarginX/headingMarginTop (its
+   *  new Figma x, 148, is simply panelMarginX + panelPadX, confirming the
+   *  move into the panel's existing content flow; see drawSlide3Action). */
   sectionHeadingText: string;
   sectionHeadingSize: number;
-  headingMarginX: number;
-  headingMarginTop: number;
   /** The supporting ("after") line's size -- Inter Medium, muted. The
    *  question ("quoted") has its own field, questionSize, since the two
    *  are deliberately different type scales. splitQuotedAction's "before"
@@ -367,6 +401,19 @@ export interface Slide4Style {
   brandNameSize: number;
   handleSize: number;
   showBranding: boolean;
+  /** Small "*{Language Category}" footnote inside the mint band, matching
+   *  Slide 4's own tag row -- per the Figma file's later update (node
+   *  12:46), read directly off its dev-mode inspector: Inter Regular 20px,
+   *  #0A363A (hardcoded directly at the draw call, not a style.colors
+   *  token -- same reasoning as drawFooterLockup's own Slide 4 hardcode:
+   *  this slide's panel is always light, never mode-dependent), 2px
+   *  tracking, left edge at x=756.5/y=1004 (1080-reference scale). Only
+   *  drawn when episode.languageCategory is set (every episode except 22,
+   *  for now -- see canon.ts). */
+  showFootnote: boolean;
+  footnoteSize: number;
+  footnoteX: number;
+  footnoteY: number;
 }
 
 export interface CarouselStyle {
@@ -612,7 +659,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     slide0HeroHighlightText: "#FFFFFF",
     slide0TaglineText: "#788485",
     calSansText: "#FFFFFF",
-    slide0HookText: "#68FFAD",
+    slide0HookText: "#788485",
     slide0EyebrowText: "#FFFFFF",
     slide1PageBackground: "#FFFFFF",
     slide1OuterCardBackground: "#EAF2F2",
@@ -631,6 +678,12 @@ export const DEFAULT_STYLE: CarouselStyle = {
     // this slide's own light panel too, not mode-dependent.
     slide3IconCardBackground: "rgba(255, 255, 255, 0.8)",
     slide3IconColor: "#0A363A",
+    tagPillInactiveBackground: "#FFFFFF",
+    tagPillInactiveBorder: "#000000",
+    tagPillInactiveText: "#788485",
+    tagPillActiveBackground: "#000000",
+    tagPillActiveBorder: "#000000",
+    tagPillActiveText: "#FFFFFF",
   },
   layout: {
     marginX: 0.093,
@@ -693,10 +746,15 @@ export const DEFAULT_STYLE: CarouselStyle = {
     photoHeight: 749,
   },
   slide3: {
+    showTagRow: true,
+    tagRowY: 184,
+    tagRowX: [90, 315, 544],
+    tagRowPillW: 175,
+    tagRowPillH: 57,
+    tagRowPillRadius: 8,
+    tagRowTextSize: 22,
     sectionHeadingText: "ASK YOUR CHILD TODAY",
     sectionHeadingSize: 40,
-    headingMarginX: 84,
-    headingMarginTop: 182,
     bodySize: 34,
     questionSize: 54,
     panelMarginX: 76,
@@ -718,10 +776,19 @@ export const DEFAULT_STYLE: CarouselStyle = {
     bandPadTop: 95,
     brandNameSize: 22,
     handleSize: 17,
-    // No footer lockup visible in the Figma redesign (file
-    // H9LpyoKvzC5UanyL360JLs, node 12:46) -- the band fills all the way
-    // to the canvas bottom edge, leaving no room for one.
-    showBranding: false,
+    // Restored per explicit founder direction (the Figma mockup's own
+    // bottom edge left no visible room for it, but the founder wants the
+    // same logo lockup Slide 1 has back on this slide too) -- it now sits
+    // on top of the mint band (drawFooterLockup draws after
+    // drawSlide4Carry), using the same dark-teal-on-mint pairing the CTA
+    // pill and this badge's own colors (logoBadgeBackground/Text) already
+    // use elsewhere, so it reads as part of the same system rather than a
+    // mismatched addition.
+    showBranding: true,
+    showFootnote: true,
+    footnoteSize: 20,
+    footnoteX: 756.5,
+    footnoteY: 1004,
   },
 };
 
@@ -741,7 +808,7 @@ export const INVERTED_COLORS: CarouselColors = {
   background: "#FFFFFF",
   backgroundDeep: "#FFFFFF",
   textPrimary: "#0A363A",
-  textSecondary: "rgba(10, 54, 58, 0.65)",
+  textSecondary: "#0A363A",
   accent: "#68FFAD",
   panelFill: "#F6F1E3",
   badgeRing: "rgba(10, 54, 58, 0.18)",
@@ -777,6 +844,12 @@ export const INVERTED_COLORS: CarouselColors = {
   slide1CtaPillText: "#0A363A",
   slide3IconCardBackground: "rgba(255, 255, 255, 0.8)",
   slide3IconColor: "#0A363A",
+  tagPillInactiveBackground: "#FFFFFF",
+  tagPillInactiveBorder: "#000000",
+  tagPillInactiveText: "#788485",
+  tagPillActiveBackground: "#000000",
+  tagPillActiveBorder: "#000000",
+  tagPillActiveText: "#FFFFFF",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -1265,8 +1338,24 @@ function drawFooterLockup(
   const textEndX = frame.contentX + frame.contentW;
   const brandNameOffset = posFor(positions, "footer.brandName");
   const brandNameEmphasis = emphasisFor(emphases, "footer.brandName");
+  // Slide 4 always wants #0A363A -- its page is white/mint now, and that's
+  // the dark-on-light pairing the CTA pill and this badge's own colors
+  // (logoBadgeBackground/Text) already use elsewhere. Slide 1 keeps the
+  // mode-aware style.colors.textPrimary/textSecondary tokens instead of
+  // that same hardcoded value: Slide 1's default mode is still a dark
+  // background (unlike Slide 4), and #0A363A text there is invisible,
+  // confirmed live -- those tokens already resolve to the right color for
+  // both of Slide 1's own modes (white in dark mode, #0A363A in inverted/
+  // light mode) without this footer needing to special-case slideIndex
+  // itself. Not style.colors.textPrimary/textSecondary for Slide 4,
+  // though -- those are ALSO the generic in-canvas-edit-textarea fallback
+  // colors (PublishingWorkspace.tsx), shared across every slide's text
+  // fields; changing them globally to #0A363A would make that textarea's
+  // own typed text invisible on Slide 1's dark default background
+  // whenever ANY field there is being edited, not just this footer.
+  const isSlide4 = opts.slideIndex === 4;
   ctx.textAlign = "left";
-  ctx.fillStyle = style.colors.textPrimary;
+  ctx.fillStyle = isSlide4 ? "#0A363A" : style.colors.textPrimary;
   ctx.font = `${styleFor(false, brandNameEmphasis)} ${weightFor(700, brandNameEmphasis)} ${Math.round(brandName)}px ${interFont}`;
   const brandNameY = rowY - textBlockHeight / 2 + brandName;
   ctx.fillText(opts.brandingWordmark.replace("AiA — ", ""), textX + brandNameOffset.dx, brandNameY + brandNameOffset.dy);
@@ -1274,7 +1363,7 @@ function drawFooterLockup(
   if (opts.brandingHandle) {
     const handleOffset = posFor(positions, "footer.handle");
     const handleEmphasis = emphasisFor(emphases, "footer.handle");
-    ctx.fillStyle = style.colors.textSecondary;
+    ctx.fillStyle = isSlide4 ? "#0A363A" : style.colors.textSecondary;
     ctx.font = `${styleFor(false, handleEmphasis)} ${weightFor(400, handleEmphasis)} ${Math.round(handle)}px ${interFont}`;
     const handleY = rowY + textBlockHeight / 2 - handle * 0.25;
     ctx.fillText(`@${opts.brandingHandle}`, textX + handleOffset.dx, handleY + handleOffset.dy);
@@ -1313,17 +1402,20 @@ function drawSlide0HeroPanel(ctx: CanvasRenderingContext2D, style: CarouselStyle
  *  the word's own text baseline; `left` is its left edge. Must be called
  *  before the word itself is drawn, so the box sits behind the glyphs.
  *
- *  The top padding is taller than the reference image's Latin-text
- *  original called for, per explicit founder correction -- Tamil vowel
- *  signs (e.g. the ெ mark in செய்) sit above the consonant's own
- *  cap-height and were getting clipped by the box's top edge at the
- *  reference's proportions. Side padding and corner-square size were
- *  both reduced the same way (founder correction over the first pass),
- *  so none of these four numbers are the reference's original measured
- *  values any more. */
+ *  The top padding is still a little taller than the reference image's
+ *  Latin-text original called for -- Tamil vowel signs (e.g. the ெ mark
+ *  in செய்) sit above the consonant's own cap-height and were getting
+ *  clipped by the box's top edge at the reference's exact proportions --
+ *  but tightened back down from an earlier, even taller correction that
+ *  over-shot: on a 2-line hero (common; see drawSlide0Stop's own
+ *  lineHeightRatio), that taller box's top edge reached past the
+ *  PREVIOUS line's own baseline, overlapping its glyphs -- confirmed
+ *  live on episode 22's two-line hero. Hugging the word tighter here
+ *  AND giving the hero's own lines more breathing room (see the
+ *  fitText call below) both needed to happen together to fix it. */
 function drawHeroWordHighlight(ctx: CanvasRenderingContext2D, accent: string, left: number, baseline: number, wordWidth: number, fontSize: number): void {
   const padX = fontSize * 0.12;
-  const top = baseline - fontSize * 1.35;
+  const top = baseline - fontSize * 1.1;
   const bottom = baseline + fontSize * 0.32;
   const boxX = left - padX;
   const boxW = wordWidth + padX * 2;
@@ -1373,7 +1465,20 @@ function drawSlide0Stop(
   // Tamil face, for typographic consistency across the app.
   ctx.textAlign = "left";
   const heroFont = (size: number) => `${styleFor(false, heroEmphasis)} ${weightFor(700, heroEmphasis)} ${size}px ${tamilFont}`;
-  const hero = fitText(ctx, episode.tamilText, heroFont, frame.contentW, (frame.contentBottom - frame.contentTop) * 0.46, Math.round(px(style.slide0.heroSize, width)), Math.round(px(style.slide0.heroMinSize, width)));
+  // lineHeightRatio bumped from fitText's 1.32 default to 1.55 -- on a
+  // wrapped (2+ line) hero, the last line's word-highlight box (see
+  // drawHeroWordHighlight) needs clearance above it that the default
+  // ratio didn't leave room for.
+  const hero = fitText(
+    ctx,
+    episode.tamilText,
+    heroFont,
+    frame.contentW,
+    (frame.contentBottom - frame.contentTop) * 0.46,
+    Math.round(px(style.slide0.heroSize, width)),
+    Math.round(px(style.slide0.heroMinSize, width)),
+    1.55
+  );
   ctx.font = heroFont(hero.size);
 
   // The hero's own last word gets a "selection" highlight (white on a
@@ -1491,7 +1596,10 @@ function drawManuscriptIcon(ctx: CanvasRenderingContext2D, cx: number, cy: numbe
   ctx.save();
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
-  ctx.lineWidth = Math.max(1.5, size * 0.05);
+  // Bumped from 0.05 -- per explicit founder direction, weight should
+  // match the attached "practice" icon's own bolder stroke (see
+  // drawPracticeIcon).
+  ctx.lineWidth = Math.max(2, size * 0.09);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
@@ -1502,7 +1610,7 @@ function drawManuscriptIcon(ctx: CanvasRenderingContext2D, cx: number, cy: numbe
   const topBarY = cy - barH * 1.05;
   const bottomBarY = cy + barH * 0.08;
   const dotInset = barW * 0.22;
-  const dotR = Math.max(1, size * 0.028);
+  const dotR = Math.max(1.5, size * 0.04);
 
   // Fanned loose-leaf edge above the top bar -- 3 overlapping strokes
   // sweeping up toward the top-right, like a stack of leaves splayed open.
@@ -2086,59 +2194,128 @@ function drawSlide2Family(
   return cursorY;
 }
 
-/** A small hand-drawn lightbulb -- dome + base + a knocked-out filament
- *  squiggle and screw-thread lines in the card's own background colour --
- *  replacing Slide 4's old decorative quote mark, per explicit founder
- *  direction ("try this today" reads as an idea/insight prompt, not a
- *  quotation). Drawn with plain Canvas2D primitives, same as every other
- *  icon in this file (the circular "AiA" badge, the eyebrow pill) --
- *  no icon font or external asset. `size` is the icon's overall height;
- *  (cx, cy) is its centre. */
-function drawLightbulbIcon(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  size: number,
-  glyphColor: string,
-  cardColor: string
-): void {
-  const r = size * 0.32;
-  const headCy = cy - size * 0.09;
-
-  ctx.fillStyle = glyphColor;
-  ctx.beginPath();
-  ctx.arc(cx, headCy, r, 0, Math.PI * 2);
-  ctx.fill();
-
-  const baseW = r * 1.15;
-  const baseH = size * 0.24;
-  const baseX = cx - baseW / 2;
-  const baseY = headCy + r * 0.6;
-  ctx.beginPath();
-  ctx.roundRect(baseX, baseY, baseW, baseH, baseW * 0.18);
-  ctx.fill();
-
-  // Filament squiggle and screw-thread lines, knocked out of the shapes
-  // above using the card's own background colour -- the detail that
-  // actually reads as "bulb" rather than "circle on a box".
-  ctx.strokeStyle = cardColor;
+/** "Practice" -- a gear ring with a lightbulb at its centre (idea, turned
+ *  into practiced action) plus a pencil beside it and a few sparkle
+ *  dashes above, all pure outline strokes -- replacing the old solid-
+ *  filled bulb-on-a-base glyph, per explicit founder direction and the
+ *  attached reference icon. Same bold stroke weight as
+ *  drawManuscriptIcon's own (per explicit founder direction, both icons
+ *  now match). Drawn with plain Canvas2D primitives, same convention as
+ *  every other icon in this file -- no icon font or external asset.
+ *  `size` is the icon's overall height; (cx, cy) is its centre. */
+function drawPracticeIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, color: string): void {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = Math.max(2, size * 0.09);
   ctx.lineCap = "round";
+  ctx.lineJoin = "round";
 
-  ctx.lineWidth = Math.max(1, size * 0.045);
+  // Gear + bulb sit left-of-centre, the pencil to the right -- same
+  // overall layout as the reference icon.
+  const gearCx = cx - size * 0.22;
+  const gearR = size * 0.42;
+  const toothCount = 8;
+  const toothOuter = gearR * 1.14;
+  const toothInner = gearR * 0.92;
+  const toothHalfAngle = (Math.PI / toothCount) * 0.38;
+
   ctx.beginPath();
-  ctx.moveTo(cx - r * 0.32, headCy - r * 0.18);
-  ctx.lineTo(cx + r * 0.12, headCy + r * 0.22);
-  ctx.lineTo(cx - r * 0.08, headCy - r * 0.02);
-  ctx.lineTo(cx + r * 0.32, headCy + r * 0.3);
+  for (let i = 0; i < toothCount; i++) {
+    const a0 = (i / toothCount) * Math.PI * 2;
+    const a1 = a0 + toothHalfAngle;
+    const a2 = ((i + 1) / toothCount) * Math.PI * 2 - toothHalfAngle;
+    const a3 = ((i + 1) / toothCount) * Math.PI * 2;
+    const px0 = gearCx + Math.cos(a0) * toothInner;
+    const py0 = cy + Math.sin(a0) * toothInner;
+    const px1 = gearCx + Math.cos(a1) * toothOuter;
+    const py1 = cy + Math.sin(a1) * toothOuter;
+    const px2 = gearCx + Math.cos(a2) * toothOuter;
+    const py2 = cy + Math.sin(a2) * toothOuter;
+    const px3 = gearCx + Math.cos(a3) * toothInner;
+    const py3 = cy + Math.sin(a3) * toothInner;
+    if (i === 0) ctx.moveTo(px0, py0);
+    else ctx.lineTo(px0, py0);
+    ctx.lineTo(px1, py1);
+    ctx.lineTo(px2, py2);
+    ctx.lineTo(px3, py3);
+  }
+  ctx.closePath();
   ctx.stroke();
 
-  ctx.lineWidth = Math.max(1, size * 0.035);
+  // Lightbulb -- dome, a twisted double-coil "filament" at the neck, two
+  // angled leads down to a small base with one screw-thread line, all
+  // outline only (no knockout fill needed now that nothing's solid).
+  const bulbR = gearR * 0.5;
+  const bulbCy = cy - bulbR * 0.3;
   ctx.beginPath();
-  ctx.moveTo(baseX + baseW * 0.14, baseY + baseH * 0.35);
-  ctx.lineTo(baseX + baseW * 0.86, baseY + baseH * 0.35);
-  ctx.moveTo(baseX + baseW * 0.14, baseY + baseH * 0.65);
-  ctx.lineTo(baseX + baseW * 0.86, baseY + baseH * 0.65);
+  ctx.arc(gearCx, bulbCy, bulbR, Math.PI * 0.92, Math.PI * 2.08);
   ctx.stroke();
+
+  const neckY = bulbCy + bulbR * 0.78;
+  const coilR = bulbR * 0.22;
+  ctx.beginPath();
+  ctx.arc(gearCx - coilR * 0.9, neckY, coilR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(gearCx + coilR * 0.9, neckY, coilR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const baseW = bulbR * 0.9;
+  const baseH = bulbR * 0.5;
+  const baseX = gearCx - baseW / 2;
+  const baseY = neckY + coilR * 0.6;
+  ctx.beginPath();
+  ctx.moveTo(gearCx - baseW * 0.32, neckY + coilR * 0.3);
+  ctx.lineTo(baseX, baseY);
+  ctx.lineTo(baseX, baseY + baseH * 0.6);
+  ctx.lineTo(baseX + baseW * 0.15, baseY + baseH);
+  ctx.lineTo(baseX + baseW * 0.85, baseY + baseH);
+  ctx.lineTo(baseX + baseW, baseY + baseH * 0.6);
+  ctx.lineTo(baseX + baseW, baseY);
+  ctx.lineTo(gearCx + baseW * 0.32, neckY + coilR * 0.3);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(baseX + baseW * 0.1, baseY + baseH * 0.35);
+  ctx.lineTo(baseX + baseW * 0.9, baseY + baseH * 0.35);
+  ctx.stroke();
+
+  // Sparkle dashes above the gear -- same convention as
+  // drawManuscriptIcon's own, for a consistent icon language.
+  const sparkleOrigin = { x: gearCx + gearR * 0.3, y: cy - gearR * 0.95 };
+  const sparkleAngles = [-2.0, -1.65, -1.3, -0.95];
+  for (const angle of sparkleAngles) {
+    const innerR = size * 0.1;
+    const outerR = size * 0.22;
+    ctx.beginPath();
+    ctx.moveTo(sparkleOrigin.x + Math.cos(angle) * innerR, sparkleOrigin.y + Math.sin(angle) * innerR);
+    ctx.lineTo(sparkleOrigin.x + Math.cos(angle) * outerR, sparkleOrigin.y + Math.sin(angle) * outerR);
+    ctx.stroke();
+  }
+
+  // Pencil, to the right of the gear -- a long angled body with a flat
+  // cap near the top (a short cross-line, like a ferrule) and a point at
+  // the bottom.
+  const pencilCx = cx + size * 0.42;
+  const pencilW = size * 0.17;
+  const pencilTop = cy - size * 0.46;
+  const pencilTipY = cy + size * 0.46;
+  const bodyBottom = pencilTipY - pencilW * 1.1;
+  ctx.beginPath();
+  ctx.moveTo(pencilCx - pencilW / 2, pencilTop);
+  ctx.lineTo(pencilCx + pencilW / 2, pencilTop);
+  ctx.lineTo(pencilCx + pencilW / 2, bodyBottom);
+  ctx.lineTo(pencilCx, pencilTipY);
+  ctx.lineTo(pencilCx - pencilW / 2, bodyBottom);
+  ctx.closePath();
+  ctx.stroke();
+  const capY = pencilTop + pencilW * 0.8;
+  ctx.beginPath();
+  ctx.moveTo(pencilCx - pencilW / 2, capY);
+  ctx.lineTo(pencilCx + pencilW / 2, capY);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 /** "Ask Your Child Today" -- read directly off the Figma dev-mode
@@ -2178,35 +2355,75 @@ function drawSlide3Action(
   const quoted = overrides?.question || generated.quoted;
   const after = overrides?.after || generated.after;
 
+  // Tag-pill row -- "Language Beliefs/Practices/Management", per the
+  // Figma file's later update (node 9:26). Episodes without
+  // episode.languageCategory authored yet (every one except 22, for now --
+  // see canon.ts's own doc comment on that field) skip this row entirely
+  // rather than guessing a category, same "only render what's actually
+  // set" convention distantDevotionConnection/aiaConnection follow.
+  const category = episode.languageCategory;
+  if (style.slide3.showTagRow && category) {
+    const tagRowOffset = posFor(positions, "slide3.tagRow");
+    const pillW = px(style.slide3.tagRowPillW, width);
+    const pillH = px(style.slide3.tagRowPillH, width);
+    const pillRadius = px(style.slide3.tagRowPillRadius, width);
+    const pillY = px(style.slide3.tagRowY, width) + tagRowOffset.dy;
+    const textSize = px(style.slide3.tagRowTextSize, width);
+    if (draw) {
+      try {
+        ctx.letterSpacing = `${Math.round(px(0.88, width))}px`;
+      } catch {
+        /* Canvas2D letterSpacing unsupported -- default tracking is fine */
+      }
+      for (const [i, id] of (["beliefs", "practices", "management"] as const).entries()) {
+        const pillX = px(style.slide3.tagRowX[i], width) + tagRowOffset.dx;
+        const isActive = id === category;
+        ctx.fillStyle = isActive ? style.colors.tagPillActiveBackground : style.colors.tagPillInactiveBackground;
+        ctx.strokeStyle = isActive ? style.colors.tagPillActiveBorder : style.colors.tagPillInactiveBorder;
+        ctx.lineWidth = Math.max(1, px(1, width));
+        ctx.beginPath();
+        ctx.roundRect(pillX, pillY, pillW, pillH, pillRadius);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = "center";
+        ctx.fillStyle = isActive ? style.colors.tagPillActiveText : style.colors.tagPillInactiveText;
+        ctx.font = `normal ${isActive ? 500 : 400} ${Math.round(textSize)}px ${interFont}`;
+        const [firstWord, ...rest] = LANGUAGE_CATEGORY_LABELS[id].split(" ");
+        const secondWord = rest.join(" ");
+        const lineHeight = textSize * 1.15;
+        const textCx = pillX + pillW / 2;
+        const textCy = pillY + pillH / 2;
+        ctx.fillText(firstWord, textCx, textCy - lineHeight * 0.1);
+        ctx.fillText(secondWord, textCx, textCy + lineHeight * 0.9);
+      }
+      try {
+        ctx.letterSpacing = "0px";
+      } catch {
+        /* no-op */
+      }
+    }
+    if (hotspots) {
+      const groupX = px(style.slide3.tagRowX[0], width) + tagRowOffset.dx;
+      const groupRight = px(style.slide3.tagRowX[2], width) + pillW + tagRowOffset.dx;
+      hotspots.push({
+        id: "slide3.tagRow",
+        x: groupX,
+        y: pillY,
+        width: groupRight - groupX,
+        height: pillH,
+      });
+    }
+  }
+
   // Heading -- "ASK YOUR CHILD TODAY" by default, a fixed design-system
-  // label (see Slide3Style.sectionHeadingText), not episode content.
+  // label (see Slide3Style.sectionHeadingText), not episode content. Lives
+  // inside the panel's own bottom-up content stack now (see below), not as
+  // a page-level element above it -- per the Figma file's later update.
   const headingId = "slide3.sectionHeading";
   const headingOffset = posFor(positions, headingId);
   const headingEmphasis = emphasisFor(emphases, headingId);
   const headingSize = px(style.slide3.sectionHeadingSize, width);
-  const headingX = px(style.slide3.headingMarginX, width);
-  const headingTop = px(style.slide3.headingMarginTop, width);
-  if (draw && style.slide3.sectionHeadingText) {
-    ctx.textAlign = "left";
-    ctx.fillStyle = style.colors.slide1ExplanationText;
-    try {
-      ctx.letterSpacing = `${Math.round(px(-2, width))}px`;
-    } catch {
-      /* Canvas2D letterSpacing unsupported -- default tracking is fine */
-    }
-    ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(headingSize)}px ${interFont}`;
-    ctx.fillText(style.slide3.sectionHeadingText, headingX + headingOffset.dx, headingTop + headingSize + headingOffset.dy);
-    try {
-      ctx.letterSpacing = "0px";
-    } catch {
-      /* no-op */
-    }
-  }
-  if (style.slide3.sectionHeadingText) {
-    ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(headingSize)}px ${interFont}`;
-    const headingWidth = ctx.measureText(style.slide3.sectionHeadingText).width;
-    pushHotspot(hotspots, headingId, headingX, headingWidth, headingTop + headingSize, headingTop + headingSize, headingSize, headingOffset);
-  }
 
   // Panel -- its own margin fields (independent of the generic frame
   // margin), content-driven height (icon + question + supporting line +
@@ -2235,7 +2452,9 @@ function drawSlide3Action(
   const quoteLineHeight = questionSize * 0.93;
 
   let innerCursorY = panelPadY;
-  if (hasIcon) innerCursorY += iconSize + px(43, width);
+  if (hasIcon) innerCursorY += iconSize + px(29, width);
+  const headingTop = innerCursorY;
+  if (style.slide3.sectionHeadingText) innerCursorY += headingSize + px(42, width);
   const questionTop = innerCursorY;
   innerCursorY += quoteLines.length * quoteLineHeight;
   innerCursorY += px(36, width);
@@ -2284,7 +2503,38 @@ function drawSlide3Action(
     ctx.beginPath();
     ctx.roundRect(iconX, iconY, iconSize, iconSize, iconRadius);
     ctx.fill();
-    drawLightbulbIcon(ctx, iconX + iconSize / 2, iconY + iconSize / 2, iconSize * 0.62, style.colors.slide3IconColor, style.colors.slide3IconCardBackground);
+    drawPracticeIcon(ctx, iconX + iconSize / 2, iconY + iconSize / 2, iconSize * 0.62, style.colors.slide3IconColor);
+  }
+
+  if (style.slide3.sectionHeadingText) {
+    if (draw) {
+      ctx.textAlign = "left";
+      ctx.fillStyle = style.colors.slide1ExplanationText;
+      try {
+        ctx.letterSpacing = `${Math.round(px(-2, width))}px`;
+      } catch {
+        /* Canvas2D letterSpacing unsupported -- default tracking is fine */
+      }
+      ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(headingSize)}px ${interFont}`;
+      ctx.fillText(style.slide3.sectionHeadingText, panelX + panelPadX + headingOffset.dx, panelTop + headingTop + headingSize + headingOffset.dy);
+      try {
+        ctx.letterSpacing = "0px";
+      } catch {
+        /* no-op */
+      }
+    }
+    ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(headingSize)}px ${interFont}`;
+    const headingWidth = ctx.measureText(style.slide3.sectionHeadingText).width;
+    pushHotspot(
+      hotspots,
+      headingId,
+      panelX + panelPadX,
+      headingWidth,
+      panelTop + headingTop + headingSize,
+      panelTop + headingTop + headingSize,
+      headingSize,
+      headingOffset
+    );
   }
 
   if (draw) {
@@ -2496,6 +2746,34 @@ function drawSlide4Carry(
   }
   ctx.textAlign = "left";
   pushHotspot(hotspots, ctaId, centerX - (width - bandPadX * 2) / 2, width - bandPadX * 2, ctaFirst + ctaLineHeight, ctaY, ctaSize, ctaOffset);
+
+  if (style.slide4.showFootnote && episode.languageCategory) {
+    const footnoteId = "slide4.footnote";
+    const footnoteOffset = posFor(positions, footnoteId);
+    const footnoteSize = px(style.slide4.footnoteSize, width);
+    const footnoteX = px(style.slide4.footnoteX, width);
+    const footnoteY = px(style.slide4.footnoteY, width);
+    const footnoteText = `*${LANGUAGE_CATEGORY_LABELS[episode.languageCategory]}`;
+    if (draw) {
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#0A363A";
+      try {
+        ctx.letterSpacing = `${Math.round(px(2, width))}px`;
+      } catch {
+        /* Canvas2D letterSpacing unsupported -- default tracking is fine */
+      }
+      ctx.font = `normal 400 ${Math.round(footnoteSize)}px ${interFont}`;
+      ctx.fillText(footnoteText, footnoteX + footnoteOffset.dx, footnoteY + footnoteOffset.dy);
+      try {
+        ctx.letterSpacing = "0px";
+      } catch {
+        /* no-op */
+      }
+    }
+    ctx.font = `normal 400 ${Math.round(footnoteSize)}px ${interFont}`;
+    const footnoteWidth = ctx.measureText(footnoteText).width;
+    pushHotspot(hotspots, footnoteId, footnoteX, footnoteWidth, footnoteY, footnoteY, footnoteSize, footnoteOffset);
+  }
 
   return canvasHeight;
 }

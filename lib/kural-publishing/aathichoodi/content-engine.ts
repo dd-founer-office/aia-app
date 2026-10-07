@@ -42,7 +42,7 @@
  * never invented per-episode.
  */
 
-import { AATHICHOODI_CANON, getCanonEntry, type AathichoodiCanonEntry } from "./canon";
+import { AATHICHOODI_CANON, getCanonEntry, type AathichoodiCanonEntry, type CuratedEpisodeContent } from "./canon";
 import { themeLabel, type ThemeId } from "./themes";
 import { selectHook } from "./hooks";
 import { selectTagline } from "./taglines";
@@ -82,6 +82,9 @@ export interface ComposedEpisode {
   todayAction: string;
   aiaConnection: string;
   distantDevotionConnection?: string;
+  /** See CuratedEpisodeContent.languageCategory -- threaded straight
+   *  through, unset for every episode that doesn't have one authored yet. */
+  languageCategory?: CuratedEpisodeContent["languageCategory"];
   cta: CtaSelection;
   /** Exactly 3: brand + theme + a rotated broad-reach tag (hashtags.ts). */
   hashtags: string[];
@@ -182,6 +185,7 @@ export function composeEpisode(
     todayAction: action.text,
     aiaConnection: aiaConnection.text,
     distantDevotionConnection: curated?.distantDevotionConnection,
+    languageCategory: curated?.languageCategory,
     cta,
     hashtags: hashtags.tags,
     captionOpener: captionOpener.text,

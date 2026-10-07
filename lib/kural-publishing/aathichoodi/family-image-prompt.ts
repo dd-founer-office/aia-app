@@ -15,19 +15,15 @@
  * consistent episode to episode rather than each looking like a different
  * generator/style.
  *
- * The renderer (drawSlide2BackgroundPhoto in aathichoodi-carousel-
- * renderer.ts) draws this photo full-bleed behind the WHOLE slide, with a
- * tint over roughly the left half (where the text sits) fading to fully
- * clear on the right -- so the composition asked for here matters, not
- * just the subject matter: a photo with its subjects spread across the
- * full width, or weighted left, puts someone under the heaviest part of
- * the tint (confirmed live: a founder-uploaded two-child photo left one
- * child almost unreadable at the left edge). Subjects need to sit inside
- * roughly the right two-thirds of the frame, with the left third kept as
- * calmer, simpler background -- that's what the composition line below
- * is asking for, and it's the one thing worth double-checking before
- * generating: is EVERYONE who matters in the scene inside that right
- * two-thirds already?
+ * The renderer (drawSlide2Family in aathichoodi-carousel-renderer.ts) now
+ * draws this photo inside a contained, bordered picture-holder card
+ * (cropped via object-cover to fill it, roughly square -- see
+ * Slide2Style.photoHeight/photoMarginX), not full-bleed behind the whole
+ * slide with a text-legibility tint over one side any more -- so the old
+ * "keep everyone in the right two-thirds, left third clear for the
+ * overlaid text" composition rule no longer applies. The whole photo is
+ * fully visible inside its own card now; subjects can be framed normally
+ * across the full width.
  *
  * AUDIENCE, applied to every prompt (not per-episode): the series' actual
  * readership is Tamil families living abroad, not in Tamil Nadu itself --
@@ -127,7 +123,7 @@ export function buildFamilyImagePrompt(familyAngleText: string, episodeNumber: n
     "The family is Tamil / South Indian in heritage and appearance, living abroad in a Western diaspora country (for example a modern home in the US, UK, Canada, Australia, or Singapore) -- an authentic contemporary diaspora household, not a rural or 'exoticized' village-India setting.",
     `Cultural detail: include ${touch}, if it fits naturally -- just this one touch, not a checklist of props. It should feel like an ordinary detail of the home, never costumed or staged for the camera.`,
     "Natural light, candid and unposed, soft warm tones, genuine expressions.",
-    "Vertical portrait composition (roughly 4:5 aspect ratio). IMPORTANT: keep everyone in the scene within the RIGHT two-thirds of the frame -- the left third should be simple, uncluttered background (a wall, soft shadow, blurred negative space), since that side of the final image will carry overlaid text. Do not spread people or the main action across the full width or toward the left edge.",
+    "Roughly square composition (close to 1:1, very slightly taller than wide) to match the picture-holder card it will be cropped into -- frame the scene normally across the full width, no need to leave either side clear for overlaid text.",
     "Photorealistic only -- no text, no logos, no watermarks, no illustration or cartoon style.",
   ].join(" ");
 }

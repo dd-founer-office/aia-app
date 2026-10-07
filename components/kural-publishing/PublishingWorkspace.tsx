@@ -1140,6 +1140,11 @@ export default function PublishingWorkspace() {
               { label: "Top margin", value: resolvedStyle.slide3.panelMarginTop, invert: true, axis: "top", onChange: (v) => patchSlide3("panelMarginTop", v) },
             ],
           };
+        case "slide3.tagRow":
+          return {
+            label: "Language-category tags (position only — drag to move, Episode 22 only for now)",
+            sizeFields: [{ label: "Top margin", value: resolvedStyle.slide3.tagRowY, invert: true, axis: "top", onChange: (v) => patchSlide3("tagRowY", v) }],
+          };
         case "slide3.question": {
           const generated = displayEpisode ? splitQuotedAction(displayEpisode.todayAction).quoted : "";
           const size = emphasisOverrides[id]?.size ?? resolvedStyle.slide3.questionSize;
@@ -1210,6 +1215,11 @@ export default function PublishingWorkspace() {
             sizeFields: [{ label: "Size", value: resolvedStyle.slide4.ctaSize, onChange: (v) => patchSlide4("ctaSize", v) }],
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide4.ctaSize,
+          };
+        case "slide4.footnote":
+          return {
+            label: "Language-category footnote (size only — Episode 22 only for now)",
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide4.footnoteSize, onChange: (v) => patchSlide4("footnoteSize", v) }],
           };
         case "footer.brandName":
           return {
@@ -2418,8 +2428,6 @@ export default function PublishingWorkspace() {
                     <div className="mt-2 flex flex-col gap-1.5">
                       <TextField label="Heading (fixed, all episodes)" value={resolvedStyle.slide3.sectionHeadingText} onChange={(v) => patchSlide3("sectionHeadingText", v)} />
                       <NumField label="Heading size (px)" value={resolvedStyle.slide3.sectionHeadingSize} onChange={(v) => patchSlide3("sectionHeadingSize", v)} />
-                      <NumField label="Heading margin X (px)" value={resolvedStyle.slide3.headingMarginX} onChange={(v) => patchSlide3("headingMarginX", v)} />
-                      <NumField label="Heading margin top (px)" value={resolvedStyle.slide3.headingMarginTop} onChange={(v) => patchSlide3("headingMarginTop", v)} />
                       <NumField label="Question size (px)" value={resolvedStyle.slide3.questionSize} onChange={(v) => patchSlide3("questionSize", v)} />
                       <NumField label="Supporting line size (px)" value={resolvedStyle.slide3.bodySize} onChange={(v) => patchSlide3("bodySize", v)} />
                       <NumField label="Panel margin X (px)" value={resolvedStyle.slide3.panelMarginX} onChange={(v) => patchSlide3("panelMarginX", v)} />
@@ -2428,6 +2436,7 @@ export default function PublishingWorkspace() {
                       <NumField label="Panel padding Y (px)" value={resolvedStyle.slide3.panelPadY} onChange={(v) => patchSlide3("panelPadY", v)} />
                       <NumField label="Panel corner radius (px)" value={resolvedStyle.slide3.panelRadius} onChange={(v) => patchSlide3("panelRadius", v)} />
                       <CheckField label="Show action icon (bulb)" checked={resolvedStyle.slide3.showActionIcon} onChange={(v) => patchSlide3("showActionIcon", v)} />
+                      <CheckField label="Show language-category tag row" checked={resolvedStyle.slide3.showTagRow} onChange={(v) => patchSlide3("showTagRow", v)} />
                       <TextAreaField
                         label="Question override (highlighted panel)"
                         value={textOverrides.slide3?.question ?? ""}
@@ -2460,6 +2469,8 @@ export default function PublishingWorkspace() {
                       <NumField label="Brand name size (px)" value={resolvedStyle.slide4.brandNameSize} onChange={(v) => patchSlide4("brandNameSize", v)} />
                       <NumField label="Handle size (px)" value={resolvedStyle.slide4.handleSize} onChange={(v) => patchSlide4("handleSize", v)} />
                       <CheckField label="Show AiA branding on this slide" checked={resolvedStyle.slide4.showBranding} onChange={(v) => patchSlide4("showBranding", v)} />
+                      <NumField label="Footnote size (px)" value={resolvedStyle.slide4.footnoteSize} onChange={(v) => patchSlide4("footnoteSize", v)} />
+                      <CheckField label="Show language-category footnote" checked={resolvedStyle.slide4.showFootnote} onChange={(v) => patchSlide4("showFootnote", v)} />
                       <TextAreaField
                         label="Headline text override"
                         value={textOverrides.slide4?.headline ?? ""}
