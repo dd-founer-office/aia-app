@@ -254,31 +254,49 @@ export interface Slide1Style {
   blackCardMarginBottom: number;
 }
 export interface Slide2Style {
+  /** No longer drawn (see headerMetrics' hasEyebrow/sectionHeadingFor) --
+   *  the Figma redesign (file H9LpyoKvzC5UanyL360JLs, node 7:3) has no
+   *  eyebrow or section heading on this slide at all, same as Slide 2
+   *  (UNDERSTAND). Left defined rather than removed so a stale style
+   *  override a browser saved before this change doesn't error; both
+   *  fields are simply inert now. */
   sectionHeadingText: string;
   sectionHeadingSize: number;
+  /** The supporting (second) paragraph's size -- Inter Medium, muted. The
+   *  headline (first) paragraph has its own field, headlineSize, since
+   *  the two are deliberately different type scales (see drawSlide2Family). */
   bodySize: number;
-  /** When RenderCarouselSlideOptions.familyImage is set, the photo covers
-   *  the FULL canvas (edge to edge, full height) as a background layer,
-   *  with a horizontal scrim fading from the opaque field color on the
-   *  left to fully transparent -- so the photo bleeds into the design
-   *  instead of sitting in a separate boxed panel. imageFadeStart/imageFadeEnd
-   *  are fractions of the canvas width marking where that fade begins and
-   *  ends (0 = fully opaque field color, 1 = fully transparent/photo).
-   *  textColumnRatio is the fraction of frame.contentW the text is
-   *  allowed to wrap into, kept comfortably inside the opaque zone so it
-   *  never fights the photo for contrast. Ignored when no photo is set
-   *  (text uses the full content width, as before). */
-  imageFadeStart: number;
-  imageFadeEnd: number;
-  textColumnRatio: number;
-  /** Opacity (0-1) of the field-color tint at imageFadeStart. Less than 1
-   *  on purpose: a FULLY opaque tint hides whatever of the photo falls
-   *  under it completely, not just dims it -- for a photo with a subject
-   *  on that side (not just background/negative space), that subject
-   *  disappears entirely rather than reading as "in shadow". A strong but
-   *  translucent tint keeps the whole photo visible while still giving
-   *  the text a legible field to sit on. */
-  imageOpaqueTint: number;
+  /** The headline paragraph's size -- Cal Sans, black, the dominant text
+   *  on this slide (per the Figma spec: 40px/2.16px tracking at 1080
+   *  reference scale). */
+  headlineSize: number;
+  /** This slide's own pale outer card -- same pattern as Slide 2's
+   *  (slide1.outerCardMarginX/Top/Bottom) but independently adjustable,
+   *  since each slide gets its own sidebar section. */
+  outerCardMarginX: number;
+  outerCardMarginTop: number;
+  outerCardMarginBottom: number;
+  /** The dark teal card nested inside the outer card, holding the family
+   *  photo -- cardMarginX/Top inset it from the outer card's edges (X
+   *  mirrors Slide 2's greenCardMarginX convention; Top replaces that
+   *  slide's icon-badge-driven offset, since this card has no badge above
+   *  it). The card's BOTTOM is content-driven from the photo's own height
+   *  plus photoMarginBottom, same "compute bottom-up" pattern as Slide 2's
+   *  black card. */
+  cardMarginX: number;
+  cardMarginTop: number;
+  /** The photo itself sits flush with the teal card's TOP (no inset there
+   *  -- per the Figma spec, it's cropped square into the card's rounded
+   *  top corners) but inset by photoMarginX on the sides and
+   *  photoMarginBottom underneath. photoHeight is the photo's own
+   *  rendered height (reference px, 1080 scale) -- a deliberate design
+   *  choice (how much of the card the photo fills), not derived from the
+   *  uploaded image's own aspect ratio; the image is cropped to fill it
+   *  via the same object-cover scaling Slide 2's old full-bleed photo
+   *  used. */
+  photoMarginX: number;
+  photoMarginBottom: number;
+  photoHeight: number;
 }
 export interface Slide3Style {
   sectionHeadingText: string;
@@ -610,11 +628,16 @@ export const DEFAULT_STYLE: CarouselStyle = {
   slide2: {
     sectionHeadingText: "IT HAPPENS AT HOME",
     sectionHeadingSize: 24,
-    bodySize: 32,
-    imageFadeStart: 0.52,
-    imageFadeEnd: 0.74,
-    textColumnRatio: 0.5,
-    imageOpaqueTint: 0.82,
+    bodySize: 34,
+    headlineSize: 40,
+    outerCardMarginX: 30,
+    outerCardMarginTop: 30,
+    outerCardMarginBottom: 30,
+    cardMarginX: 54,
+    cardMarginTop: 54,
+    photoMarginX: 90,
+    photoMarginBottom: 90,
+    photoHeight: 749,
   },
   slide3: {
     sectionHeadingText: "TRY THIS TODAY",
@@ -912,11 +935,12 @@ interface Frame {
  *  directly -- so the existing text-override UI for it keeps working. */
 function sectionHeadingFor(style: CarouselStyle, slideIndex: number): { text: string; size: number } {
   switch (slideIndex) {
-    case 2:
-      return { text: style.slide2.sectionHeadingText, size: style.slide2.sectionHeadingSize };
     case 3:
       return { text: style.slide3.sectionHeadingText, size: style.slide3.sectionHeadingSize };
     default:
+      // Covers 0 (no heading, just the eyebrow), 1 and 2 (the Figma
+      // redesign drops the eyebrow AND the section heading on both --
+      // see headerMetrics' hasEyebrow), and 4.
       return { text: "", size: DEFAULT_STYLE.slide1.sectionHeadingSize };
   }
 }
@@ -943,7 +967,7 @@ function headerMetrics(style: CarouselStyle, width: number, height: number, slid
   // explicit founder direction -- so no vertical space is reserved for
   // it there; the icon badge below it moves straight up to the top
   // margin instead of leaving a dead gap.
-  const hasEyebrow = slideIndex !== 1;
+  const hasEyebrow = slideIndex !== 1 && slideIndex !== 2;
   const eyebrowPadY = eyebrow * 0.42;
   const badgeH = hasEyebrow ? eyebrow + eyebrowPadY * 2 : 0;
   const badgeBottom = marginY + badgeH;
@@ -1014,9 +1038,9 @@ function drawHeader(
   // text itself stays, same position as every other slide) and its text
   // is white there (slide0EyebrowText), not the mint every other slide's
   // eyebrow badge text uses -- a further explicit founder correction.
-  // Slide 1 (UNDERSTAND) drops the eyebrow entirely, text included -- see
-  // headerMetrics' hasEyebrow.
-  if (slideIndex !== 1) {
+  // Slide 1 (UNDERSTAND) and Slide 2 (FAMILY SITUATION) both drop the
+  // eyebrow entirely, text included -- see headerMetrics' hasEyebrow.
+  if (slideIndex !== 1 && slideIndex !== 2) {
     try {
       ctx.letterSpacing = `${Math.round(px(2, width))}px`;
     } catch {
@@ -1811,17 +1835,27 @@ function drawSlide1Understand(
   return explanationCursorY;
 }
 
-/** "Family Situation" -- each generated paragraph is its own independently
- *  draggable/editable text box (id `slide2.body.N`), not one combined
- *  block, per explicit founder direction. An override at index N replaces
- *  just that paragraph's text (falling back to the generated paragraph
- *  when empty); the paragraph COUNT always follows the generated content --
- *  overrides can only reword an existing paragraph, not add/remove one. */
+/** "Family Situation" -- read directly off the Figma dev-mode inspector
+ *  (file H9LpyoKvzC5UanyL360JLs, node 7:3): the founder-supplied family
+ *  photo sits in a dark teal card (slide1GreenCardBackground, same token
+ *  Slide 2's black-card-holding card uses), flush with the card's own
+ *  top and cropped only at the bottom corners, on the SAME pale-page +
+ *  rounded-outer-card page Slide 2 (UNDERSTAND) uses (drawn by the
+ *  caller -- see the slideIndex===2 block in renderAathichoodiCarouselSlide).
+ *  Below the card: the generated scenario copy as two distinct roles, not
+ *  one flowed block -- a bold black Cal Sans headline (the scenario) and
+ *  a muted Inter supporting line (its consequence), same per-paragraph
+ *  hotspot pattern as before (id `slide2.body.N`, independently draggable/
+ *  editable, override at index N replaces just that paragraph). Without a
+ *  photo, the card is skipped entirely and the text starts right under
+ *  the top margin -- the slide still reads consistently light either way,
+ *  it just loses the card. */
 function drawSlide2Family(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
   frame: Frame,
   width: number,
+  canvasHeight: number,
   episode: ComposedEpisode,
   interFont: string,
   calSansFont: string,
@@ -1831,87 +1865,171 @@ function drawSlide2Family(
   emphases: CarouselTextEmphases | undefined,
   overrideParagraphs: string[] | undefined,
   hotspots?: CarouselHotspot[],
-  hasImage?: boolean
+  familyImage?: HTMLImageElement | null
 ): number {
+  // Self-positioning from the top margin, same as drawSlide1Understand --
+  // the card is flush under the top margin, not vertically balanced, so
+  // startY (the generic vertical-centering pass's result) doesn't apply.
+  void startY;
+  void frame;
+
+  const outerMarginX = clampInset(px(style.slide2.outerCardMarginX, width), width, px(MIN_OUTER_CARD_SIZE, width));
+  const [outerMarginTop, outerMarginBottom] = clampInsetPair(
+    px(style.slide2.outerCardMarginTop, width),
+    px(style.slide2.outerCardMarginBottom, width),
+    canvasHeight,
+    px(MIN_OUTER_CARD_SIZE, width)
+  );
+  // No frame.contentBottom clamp on the text loop below -- same bug as
+  // Slide 2's had (see renderAathichoodiCarouselSlide's slideIndex===1
+  // comment): that's the generic footer-safe-area boundary every OTHER
+  // slide's body text respects, but this slide draws no footer either,
+  // and clamping to it was cutting the supporting line off entirely once
+  // the photo card pushed cursorY past it.
+  const textBottom = canvasHeight - outerMarginBottom - px(40, width);
+  const outerCardW = width - outerMarginX * 2;
+  const cardMarginX = clampInset(px(style.slide2.cardMarginX, width), outerCardW, px(MIN_GREEN_CARD_SIZE, width));
+  const cardMarginTop = Math.min(150, Math.max(0, px(style.slide2.cardMarginTop, width)));
+  const cardX = outerMarginX + cardMarginX;
+  const cardW = outerCardW - cardMarginX * 2;
+  const cardTop = outerMarginTop + cardMarginTop;
+  // Text aligns to the same left margin as the card, whether or not a
+  // photo (and so the card) is actually drawn -- keeps the slide
+  // consistent instead of text jumping between two different margins
+  // depending on upload state.
+  const textX = cardX;
+  const textW = cardW;
+
+  let cursorY = cardTop;
+
+  if (familyImage) {
+    const photoMarginX = Math.min(150, Math.max(0, px(style.slide2.photoMarginX, width)));
+    const photoMarginBottom = Math.min(150, Math.max(0, px(style.slide2.photoMarginBottom, width)));
+    const photoX = cardX + photoMarginX;
+    const photoW = Math.max(px(MIN_BLACK_CARD_W, width), cardW - photoMarginX * 2);
+    const photoTop = cardTop; // flush with the card's own top, per spec
+    const photoH = px(style.slide2.photoHeight, width);
+    const photoBottom = photoTop + photoH;
+    const photoRadius = px(24, width);
+    const cardRadius = px(24, width);
+    const cardBottom = photoBottom + photoMarginBottom;
+    const cardH = cardBottom - cardTop;
+
+    const cardOffset = posFor(positions, "slide2.photoCard");
+    if (draw) {
+      ctx.fillStyle = style.colors.slide1GreenCardBackground;
+      ctx.beginPath();
+      ctx.roundRect(cardX + cardOffset.dx, cardTop + cardOffset.dy, cardW, cardH, cardRadius);
+      ctx.fill();
+    }
+    if (hotspots) {
+      hotspots.push({
+        id: "slide2.photoCard",
+        x: cardX + cardOffset.dx,
+        y: cardTop + cardOffset.dy,
+        width: cardW,
+        height: cardH,
+      });
+    }
+
+    if (draw) {
+      // Flush square top corners, rounded only at the bottom -- traced as
+      // one path, reused for the drop shadow, the clipped photo, and the
+      // border stroke so all three stay pixel-identical.
+      const photoPath = () => {
+        ctx.beginPath();
+        ctx.moveTo(photoX, photoTop);
+        ctx.lineTo(photoX + photoW, photoTop);
+        ctx.lineTo(photoX + photoW, photoBottom - photoRadius);
+        ctx.arcTo(photoX + photoW, photoBottom, photoX + photoW - photoRadius, photoBottom, photoRadius);
+        ctx.lineTo(photoX + photoRadius, photoBottom);
+        ctx.arcTo(photoX, photoBottom, photoX, photoBottom - photoRadius, photoRadius);
+        ctx.closePath();
+      };
+
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+      ctx.shadowBlur = px(18, width);
+      ctx.shadowOffsetY = px(4, width);
+      photoPath();
+      ctx.fillStyle = "#000000";
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      photoPath();
+      ctx.clip();
+      const scale = Math.max(photoW / familyImage.width, photoH / familyImage.height);
+      const drawW = familyImage.width * scale;
+      const drawH = familyImage.height * scale;
+      ctx.drawImage(familyImage, photoX + (photoW - drawW) / 2, photoTop + (photoH - drawH) / 2, drawW, drawH);
+      ctx.restore();
+
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+      ctx.lineWidth = Math.max(1, px(1, width));
+      photoPath();
+      ctx.stroke();
+    }
+    // A plain rect, not pushHotspot -- that helper pads a text hotspot
+    // above/below its baselines using the font size as a proxy for
+    // ascent/descent, which would wildly inflate a ~750px-tall photo's
+    // hotspot well past its actual drawn bounds.
+    if (hotspots) {
+      hotspots.push({ id: "slide2.photo", x: photoX, y: photoTop, width: photoW, height: photoH });
+    }
+
+    cursorY = cardBottom + px(37, width);
+  }
+
   const generatedParagraphs = splitEditorialParagraphs(episode.familyAngle);
-  let cursorY = startY;
-
-  // With a photo, the photo itself is a full-canvas background layer
-  // (drawn separately, before the header -- see drawSlide2BackgroundPhoto)
-  // with a scrim fading from opaque on the left to transparent toward the
-  // photo. Text just needs to stay comfortably inside that opaque zone,
-  // hence the narrower wrap width -- it has nothing to do with the
-  // photo's own position/size anymore. Without a photo, text keeps the
-  // full width, exactly as before.
-  const textW = hasImage ? frame.contentW * style.slide2.textColumnRatio : frame.contentW;
-
   for (let i = 0; i < generatedParagraphs.length; i++) {
-    if (cursorY > frame.contentBottom) break;
+    if (cursorY > textBottom) break;
+    const isHeadline = i === 0;
     const id = `slide2.body.${i}`;
     const text = overrideParagraphs?.[i] || generatedParagraphs[i];
     const offset = posFor(positions, id);
     const emphasis = emphasisFor(emphases, id);
-    // Own size per paragraph (emphasis.size), not the shared
-    // style.slide2.bodySize -- otherwise resizing one paragraph would
-    // resize every paragraph, since they'd all be reading the same field.
-    const size = px(emphasis.size ?? style.slide2.bodySize, width);
-    const lineHeight = size * style.layout.bodyLineHeight;
-    if (draw) ctx.fillStyle = style.colors.textPrimary;
-    // Paragraph 0 (some episodes only have two) is Cal Sans 600, per the
-    // latest design correction -- every other paragraph stays Inter 400.
-    if (i === 0) {
-      ctx.font = `${styleFor(false, emphasis)} 600 ${Math.round(size)}px ${calSansFont}`;
-    } else {
-      ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${interFont}`;
+    // Own size per paragraph (emphasis.size), falling back to this role's
+    // own named default (headlineSize/bodySize) -- not one shared field,
+    // since the headline and supporting line are deliberately different
+    // type scales (Figma: 40px Cal Sans vs 34px Inter Medium).
+    const size = px(emphasis.size ?? (isHeadline ? style.slide2.headlineSize : style.slide2.bodySize), width);
+    const lineHeight = size * (isHeadline ? 1.25 : 1.3);
+    if (draw) {
+      ctx.fillStyle = isHeadline ? style.colors.slide1ExplanationText : style.colors.slide1ExplanationMutedText;
+      if (isHeadline) {
+        try {
+          ctx.letterSpacing = `${Math.round(px(1.6, width))}px`;
+        } catch {
+          /* Canvas2D letterSpacing unsupported -- default tracking is fine */
+        }
+        ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${calSansFont}`;
+      } else {
+        ctx.font = `${styleFor(false, emphasis)} ${weightFor(500, emphasis)} ${Math.round(size)}px ${interFont}`;
+      }
     }
     const lines = wrapText(ctx, text, textW);
     let firstBaseline = 0;
     for (const line of lines) {
       cursorY += lineHeight;
       if (firstBaseline === 0) firstBaseline = cursorY;
-      if (draw) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
+      if (draw) ctx.fillText(line, textX + offset.dx, cursorY + offset.dy);
     }
-    pushHotspot(hotspots, id, frame.contentX, textW, firstBaseline, cursorY, size, offset);
-    // Generous paragraph gap -- distinct visual breaks between grafs
-    // rather than a dense block, so the copy occupies its natural share
-    // of the frame instead of reading as one cramped paragraph.
-    cursorY += lineHeight * 0.85;
+    if (draw && isHeadline) {
+      try {
+        ctx.letterSpacing = "0px";
+      } catch {
+        /* no-op */
+      }
+    }
+    pushHotspot(hotspots, id, textX, textW, firstBaseline, cursorY, size, offset);
+    // Figma: a flat 37px gap after each paragraph -- the same rhythm the
+    // card-to-headline and headline-to-supporting transitions both use,
+    // not proportional to font size.
+    cursorY += px(37, width);
   }
 
   return cursorY;
-}
-
-/** Full-bleed hero background for Slide 3's optional founder-supplied
- *  photo: covers the ENTIRE canvas (edge to edge, full height), cropped
- *  to fill without distortion, no rounded corners drawn here -- the
- *  canvas element's own CSS border-radius (KuralHeroCanvas.tsx) rounds
- *  the whole rendered card, photo included. Drawn BEFORE the header/text
- *  (see renderAathichoodiCarouselSlide) so everything else layers on top
- *  of it. A horizontal scrim fades from the opaque field color on the
- *  left (where the text sits) to fully transparent toward the photo, so
- *  it blends into the design rather than sitting behind a hard seam --
- *  outside the two gradient stops, canvas extends each stop's color
- *  flat, so the zone left of imageFadeStart is fully opaque and the zone
- *  right of imageFadeEnd is the photo with no tint at all. */
-function drawSlide2BackgroundPhoto(
-  ctx: CanvasRenderingContext2D,
-  style: CarouselStyle,
-  width: number,
-  height: number,
-  img: HTMLImageElement
-): void {
-  const scale = Math.max(width / img.width, height / img.height);
-  const drawW = img.width * scale;
-  const drawH = img.height * scale;
-  ctx.drawImage(img, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
-
-  const fadeStart = width * style.slide2.imageFadeStart;
-  const fadeEnd = width * style.slide2.imageFadeEnd;
-  const gradient = ctx.createLinearGradient(fadeStart, 0, fadeEnd, 0);
-  gradient.addColorStop(0, hexToRgba(style.colors.background, style.slide2.imageOpaqueTint));
-  gradient.addColorStop(1, hexToRgba(style.colors.background, 0));
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
 }
 
 /** A small hand-drawn lightbulb -- dome + base + a knocked-out filament
@@ -2251,7 +2369,7 @@ function layoutSlide(
   emphases: CarouselTextEmphases | undefined,
   text: CarouselTextOverrides | undefined,
   hotspots?: CarouselHotspot[],
-  hasImage?: boolean,
+  familyImage?: HTMLImageElement | null,
   invertColors?: boolean
 ): number {
   switch (slideIndex) {
@@ -2297,6 +2415,7 @@ function layoutSlide(
         style,
         frame,
         width,
+        canvasHeight,
         episode,
         interFont,
         calSansFont,
@@ -2306,7 +2425,7 @@ function layoutSlide(
         emphases,
         text?.slide2?.paragraphs,
         hotspots,
-        hasImage
+        familyImage
       );
     case 3:
       return drawSlide3Action(ctx, style, frame, width, episode, interFont, calSansFont, startY, draw, positions, emphases, text?.slide3, hotspots);
@@ -2395,8 +2514,42 @@ export function renderAathichoodiCarouselSlide(
       height: outerBottom - outerMarginTop,
     });
   }
-  if (slideIndex === 2 && opts.familyImage) {
-    drawSlide2BackgroundPhoto(ctx, style, width, height, opts.familyImage);
+  if (slideIndex === 2) {
+    // Same full-bleed pale page + rounded outer card pattern as Slide 2
+    // (UNDERSTAND) above, own margin fields (Slide2Style.outerCardMarginX/
+    // Top/Bottom) so each slide's card is independently adjustable.
+    // Drawn unconditionally (not just when a photo is set) -- drawSlide2Family
+    // draws the teal photo card on top of this when familyImage is present,
+    // or just the headline/supporting text directly on this pale page when
+    // it isn't, so the slide reads consistently light either way.
+    ctx.fillStyle = style.colors.slide1PageBackground;
+    ctx.fillRect(0, 0, width, height);
+    const outerMarginX = clampInset(px(style.slide2.outerCardMarginX, width), width, px(MIN_OUTER_CARD_SIZE, width));
+    const [outerMarginTop, outerMarginBottom] = clampInsetPair(
+      px(style.slide2.outerCardMarginTop, width),
+      px(style.slide2.outerCardMarginBottom, width),
+      height,
+      px(MIN_OUTER_CARD_SIZE, width)
+    );
+    const outerBottom = height - outerMarginBottom;
+    const outerCardOffset = posFor(positions, "slide2.outerCard");
+    ctx.fillStyle = style.colors.slide1OuterCardBackground;
+    ctx.beginPath();
+    ctx.roundRect(
+      outerMarginX + outerCardOffset.dx,
+      outerMarginTop + outerCardOffset.dy,
+      width - outerMarginX * 2,
+      outerBottom - outerMarginTop,
+      px(28, width)
+    );
+    ctx.fill();
+    hotspots.push({
+      id: "slide2.outerCard",
+      x: outerMarginX + outerCardOffset.dx,
+      y: outerMarginTop + outerCardOffset.dy,
+      width: width - outerMarginX * 2,
+      height: outerBottom - outerMarginTop,
+    });
   }
   if (slideIndex === 0 && opts.design?.invertColors) {
     drawSlide0HeroPanel(ctx, style, width, height);
@@ -2421,7 +2574,7 @@ export function renderAathichoodiCarouselSlide(
     emphases,
     text,
     undefined,
-    Boolean(opts.familyImage),
+    opts.familyImage,
     opts.design?.invertColors
   );
   const contentHeight = measuredEndY - frame.contentTop;
@@ -2448,7 +2601,7 @@ export function renderAathichoodiCarouselSlide(
     emphases,
     text,
     hotspots,
-    Boolean(opts.familyImage),
+    opts.familyImage,
     opts.design?.invertColors
   );
 

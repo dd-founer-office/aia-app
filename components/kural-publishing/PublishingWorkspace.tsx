@@ -968,22 +968,25 @@ export default function PublishingWorkspace() {
       }
 
       // "Family Situation" -- each generated paragraph is its own hotspot,
-      // id `slide2.body.<index>` (see drawSlide2Family).
+      // id `slide2.body.<index>` (see drawSlide2Family). Paragraph 0 (the
+      // headline) and every paragraph after it (the supporting line(s))
+      // are deliberately different type scales, so each falls back to its
+      // own named default (headlineSize/bodySize) -- via patchEmphasis for
+      // an actual override, not the shared style field, since otherwise
+      // resizing one paragraph would resize every paragraph sharing it.
       const paragraphMatch = id.match(/^slide2\.body\.(\d+)$/);
       if (paragraphMatch) {
         const index = Number(paragraphMatch[1]);
         const generated = displayEpisode ? (splitEditorialParagraphs(displayEpisode.familyAngle)[index] ?? "") : "";
-        // Own size per paragraph (via patchEmphasis), not the shared
-        // slide2.bodySize style field -- otherwise resizing one paragraph
-        // would resize every paragraph, since they'd share one field.
-        const paragraphSize = emphasisOverrides[id]?.size ?? resolvedStyle.slide2.bodySize;
+        const isHeadline = index === 0;
+        const paragraphSize = emphasisOverrides[id]?.size ?? (isHeadline ? resolvedStyle.slide2.headlineSize : resolvedStyle.slide2.bodySize);
         return {
-          label: `Family story — paragraph ${index + 1}`,
+          label: isHeadline ? "Family story — headline" : `Family story — supporting line ${index}`,
           textValue: textOverrides.slide2?.paragraphs?.[index] ?? "",
           textPlaceholder: generated,
           onTextChange: (v) => patchText2Paragraph(index, v),
           sizeFields: [{ label: "Size", value: paragraphSize, onChange: (v) => patchEmphasis(id, { size: v }) }],
-          fontVar: "--font-serif",
+          fontVar: isHeadline ? "--font-display" : "--font-sans",
           refSize: paragraphSize,
           emphasisId: id,
           emphasis: emphasisOverrides[id] ?? {},
@@ -1103,6 +1106,36 @@ export default function PublishingWorkspace() {
               { label: "Side margin", value: resolvedStyle.slide1.blackCardMarginX, invert: true, axis: "x", onChange: (v) => patchSlide1("blackCardMarginX", v) },
               { label: "Top margin", value: resolvedStyle.slide1.blackCardMarginTop, invert: true, axis: "top", onChange: (v) => patchSlide1("blackCardMarginTop", v) },
               { label: "Bottom margin", value: resolvedStyle.slide1.blackCardMarginBottom, invert: true, axis: "bottom", onChange: (v) => patchSlide1("blackCardMarginBottom", v) },
+            ],
+          };
+        // Slide 3 (FAMILY SITUATION)'s own pale outer card + teal photo
+        // card -- same invert-margin pattern as Slide 2's cards above, own
+        // style fields (Slide2Style) so each slide's cards are
+        // independently adjustable.
+        case "slide2.outerCard":
+          return {
+            label: "Outer card",
+            sizeFields: [
+              { label: "Side margin", value: resolvedStyle.slide2.outerCardMarginX, invert: true, axis: "x", onChange: (v) => patchSlide2("outerCardMarginX", v) },
+              { label: "Top margin", value: resolvedStyle.slide2.outerCardMarginTop, invert: true, axis: "top", onChange: (v) => patchSlide2("outerCardMarginTop", v) },
+              { label: "Bottom margin", value: resolvedStyle.slide2.outerCardMarginBottom, invert: true, axis: "bottom", onChange: (v) => patchSlide2("outerCardMarginBottom", v) },
+            ],
+          };
+        case "slide2.photoCard":
+          return {
+            label: "Teal photo card",
+            sizeFields: [
+              { label: "Side margin", value: resolvedStyle.slide2.cardMarginX, invert: true, axis: "x", onChange: (v) => patchSlide2("cardMarginX", v) },
+              { label: "Top margin", value: resolvedStyle.slide2.cardMarginTop, invert: true, axis: "top", onChange: (v) => patchSlide2("cardMarginTop", v) },
+              { label: "Bottom margin (photo-to-card gap)", value: resolvedStyle.slide2.photoMarginBottom, invert: true, axis: "bottom", onChange: (v) => patchSlide2("photoMarginBottom", v) },
+            ],
+          };
+        case "slide2.photo":
+          return {
+            label: "Family photo",
+            sizeFields: [
+              { label: "Side margin", value: resolvedStyle.slide2.photoMarginX, invert: true, axis: "x", onChange: (v) => patchSlide2("photoMarginX", v) },
+              { label: "Height", value: resolvedStyle.slide2.photoHeight, onChange: (v) => patchSlide2("photoHeight", v) },
             ],
           };
         // "before"/"after" both fall back to the same shared
@@ -2319,13 +2352,20 @@ export default function PublishingWorkspace() {
                       Slide 3 — FAMILY SITUATION
                     </summary>
                     <div className="mt-2 flex flex-col gap-1.5">
-                      <TextField label="Section heading" value={resolvedStyle.slide2.sectionHeadingText} onChange={(v) => patchSlide2("sectionHeadingText", v)} />
-                      <NumField label="Section heading size (px)" value={resolvedStyle.slide2.sectionHeadingSize} onChange={(v) => patchSlide2("sectionHeadingSize", v)} />
-                      <NumField label="Body size (px)" value={resolvedStyle.slide2.bodySize} onChange={(v) => patchSlide2("bodySize", v)} />
+                      <NumField label="Headline size (px)" value={resolvedStyle.slide2.headlineSize} onChange={(v) => patchSlide2("headlineSize", v)} />
+                      <NumField label="Supporting line size (px)" value={resolvedStyle.slide2.bodySize} onChange={(v) => patchSlide2("bodySize", v)} />
+                      <NumField label="Outer card margin X (px)" value={resolvedStyle.slide2.outerCardMarginX} onChange={(v) => patchSlide2("outerCardMarginX", v)} />
+                      <NumField label="Outer card margin top (px)" value={resolvedStyle.slide2.outerCardMarginTop} onChange={(v) => patchSlide2("outerCardMarginTop", v)} />
+                      <NumField label="Outer card margin bottom (px)" value={resolvedStyle.slide2.outerCardMarginBottom} onChange={(v) => patchSlide2("outerCardMarginBottom", v)} />
+                      <NumField label="Teal card margin X (px)" value={resolvedStyle.slide2.cardMarginX} onChange={(v) => patchSlide2("cardMarginX", v)} />
+                      <NumField label="Teal card margin top (px)" value={resolvedStyle.slide2.cardMarginTop} onChange={(v) => patchSlide2("cardMarginTop", v)} />
+                      <NumField label="Photo margin X (px)" value={resolvedStyle.slide2.photoMarginX} onChange={(v) => patchSlide2("photoMarginX", v)} />
+                      <NumField label="Photo margin bottom (px)" value={resolvedStyle.slide2.photoMarginBottom} onChange={(v) => patchSlide2("photoMarginBottom", v)} />
+                      <NumField label="Photo height (px)" value={resolvedStyle.slide2.photoHeight} onChange={(v) => patchSlide2("photoHeight", v)} />
                       {splitEditorialParagraphs(displayEpisode.familyAngle).map((generated, i) => (
                         <TextAreaField
                           key={i}
-                          label={`Paragraph ${i + 1} text override`}
+                          label={i === 0 ? "Headline text override" : `Supporting line ${i} text override`}
                           value={textOverrides.slide2?.paragraphs?.[i] ?? ""}
                           placeholder={generated}
                           onChange={(v) => patchText2Paragraph(i, v)}
@@ -2335,7 +2375,7 @@ export default function PublishingWorkspace() {
                       <div className="mt-1 flex flex-col gap-1.5 border-t border-[var(--color-border)] pt-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] text-[var(--color-muted-foreground)]">
-                            Background photo (optional, right side)
+                            Family photo (optional, in the teal card)
                           </span>
                           <button
                             type="button"
@@ -2378,7 +2418,7 @@ export default function PublishingWorkspace() {
                           )}
                         </div>
                         <p className="text-[10px] text-[var(--color-muted-foreground)]">
-                          Paste the prompt into your AI image generator, then upload the result here. It fills the right side of this slide, text on the left.
+                          Paste the prompt into your AI image generator, then upload the result here. It appears in the teal card at the top of this slide, with the headline and supporting line below. Without a photo, the card is skipped and the text starts at the top.
                         </p>
                       </div>
                     </div>
