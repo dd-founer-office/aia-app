@@ -126,6 +126,7 @@ import { runQualityChecks } from "@/lib/kural-publishing/aathichoodi/quality-che
 import { generateCaption } from "@/lib/kural-publishing/aathichoodi/caption";
 import {
   CAROUSEL_SLIDE_COUNT,
+  CAROUSEL_SLIDE_ORDER,
   SLIDE_LABELS,
   resolveStyle,
   splitEditorialParagraphs,
@@ -1769,7 +1770,13 @@ export default function PublishingWorkspace() {
 
       if (isSeriesType && effectiveTemplate === "aathichoodi-carousel" && composedEpisode) {
         for (const format of formats) {
-          for (let slide = 0; slide < CAROUSEL_SLIDE_COUNT; slide++) {
+          for (let position = 0; position < CAROUSEL_SLIDE_COUNT; position++) {
+            // CAROUSEL_SLIDE_ORDER maps this DISPLAY position to the
+            // internal slide identity that actually renders there (see its
+            // own doc comment) -- `position` (not `slide`) is what goes
+            // into the filename/label numbering, so exports are named
+            // slide1/slide2/... in the founder's chosen viewing order.
+            const slide = CAROUSEL_SLIDE_ORDER[position];
             const blob = await renderAathichoodiCarouselAssetForExport(
               composedEpisode,
               slide,
@@ -1782,12 +1789,12 @@ export default function PublishingWorkspace() {
             );
             if (!blob) continue;
             results.push({
-              formatId: `${format.id}-slide${slide + 1}`,
+              formatId: `${format.id}-slide${position + 1}`,
               label: `${format.label} · ${SLIDE_LABELS[slide]}`,
               width: format.width,
               height: format.height,
               url: URL.createObjectURL(blob),
-              filename: buildSeriesCarouselFilename(composedEpisode, slide, format),
+              filename: buildSeriesCarouselFilename(composedEpisode, position, format),
             });
           }
         }
@@ -3044,20 +3051,20 @@ export default function PublishingWorkspace() {
         )}
         {isSeriesType && effectiveTemplate === "aathichoodi-carousel" && (
           <div className="mb-3 flex flex-wrap gap-2">
-            {SLIDE_LABELS.map((label, index) => {
-              const active = index === activeSlideIndex;
+            {CAROUSEL_SLIDE_ORDER.map((slideIndex, position) => {
+              const active = slideIndex === activeSlideIndex;
               return (
                 <button
-                  key={label}
+                  key={slideIndex}
                   type="button"
-                  onClick={() => setActiveSlideIndex(index)}
+                  onClick={() => setActiveSlideIndex(slideIndex)}
                   className={`rounded-[var(--radius-button)] border px-3 py-1.5 text-xs font-medium transition-colors ${
                     active
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
                       : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)]"
                   }`}
                 >
-                  {index + 1}. {label}
+                  {position + 1}. {SLIDE_LABELS[slideIndex]}
                 </button>
               );
             })}

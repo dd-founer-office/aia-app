@@ -954,6 +954,27 @@ export const SLIDE_LABELS: readonly string[] = [
   "AiA · Save · Share",
 ];
 
+/** Display order for the carousel -- per explicit founder direction: Stop,
+ *  Family Situation, Today's Action, Understand, Share/CTA, instead of the
+ *  slide0..slide4 order every internal name/field/hotspot-id/style-key/
+ *  override-store-key above is still keyed by. Each entry is the INTERNAL
+ *  slideIndex (0=Stop, 1=Understand, 2=Family Situation, 3=Today's Action,
+ *  4=AiA/CTA) to show at that DISPLAY position -- so CAROUSEL_SLIDE_ORDER[2]
+ *  is the internal slideIndex shown third. Deliberately NOT a rename of
+ *  slide0Style/slide1Style/.../drawSlide0Stop/drawSlide1Understand/etc:
+ *  every one of those, plus every saved CarouselPositions/
+ *  CarouselTextEmphases/CarouselTextOverrides key and every "slideN.xxx"
+ *  hotspot id, is keyed by a slide's own CONTENT identity (what it draws),
+ *  not its position in the sequence -- renaming them to match display
+ *  order would be a sprawling, purely-cosmetic rename touching dozens of
+ *  call sites for zero behavioural gain, and would silently orphan every
+ *  design/position override a user already saved under the old keys. The
+ *  caller (PublishingWorkspace.tsx) is the only place that needs to
+ *  translate between "which tab position is this" and "which internal
+ *  slide do I render there" -- see its own use of this array for the tab
+ *  list and the asset-export loop. */
+export const CAROUSEL_SLIDE_ORDER: readonly number[] = [0, 2, 3, 1, 4];
+
 export interface RenderCarouselSlideOptions {
   width: number;
   height: number;
