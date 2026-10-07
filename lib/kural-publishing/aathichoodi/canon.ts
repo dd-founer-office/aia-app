@@ -297,7 +297,10 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       hookOverride: "Does your child know that the right time to act is now, not later?",
       understanding: "Avvaiyar's wisdom here uses farming: sow the crop in its proper season, not whenever it's convenient. A farmer who waits too long loses the harvest — some things in life only work if you do them at the right time, not late.",
       familyAngle: "Your child has a school project due in two weeks and keeps putting it off, thinking there's plenty of time. By the time they start, the time that actually mattered is already gone.",
-      todayAction: "Ask your child today: \"What's one thing you've been putting off that really needs to start now, not later?\"",
+      // The trailing sentence (after the quoted question) is founder-
+      // supplied (Figma Slide 4 redesign) -- splitQuotedAction's "after"
+      // segment, drawn as the panel's muted supporting line.
+      todayAction: "Ask your child today: \"What's one thing you've been putting off that really needs to start now, not later?\" Start with whatever they've been saying, \"I'll do it later,\" about.",
       childLesson: "Some things only work if you do them at the right time. Waiting too long can lose the chance completely.",
     },
   },

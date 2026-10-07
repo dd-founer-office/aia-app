@@ -1138,22 +1138,20 @@ export default function PublishingWorkspace() {
               { label: "Height", value: resolvedStyle.slide2.photoHeight, onChange: (v) => patchSlide2("photoHeight", v) },
             ],
           };
-        // "before"/"after" both fall back to the same shared
-        // slide3.bodySize style field, so each needs its own size override
-        // (via patchEmphasis) to stay independently resizable.
-        case "slide3.before": {
-          const generated = displayEpisode ? splitQuotedAction(displayEpisode.todayAction).before : "";
-          const size = emphasisOverrides[id]?.size ?? resolvedStyle.slide3.bodySize;
+        // "after" falls back to the shared slide3.bodySize style field, so
+        // it needs its own size override (via patchEmphasis) to stay
+        // independently resizable from the question. "before"
+        // (splitQuotedAction's lead-in segment) is no longer drawn at all
+        // on this slide -- see Slide3Style.sectionHeadingText's own doc
+        // comment -- so it has no hotspot here any more.
+        case "slide3.panel":
           return {
-            label: "Lead-in line",
-            textValue: textOverrides.slide3?.before ?? "",
-            textPlaceholder: generated,
-            onTextChange: (v) => patchText3({ before: v }),
-            sizeFields: [{ label: "Size", value: size, onChange: (v) => patchEmphasis(id, { size: v }) }],
-            fontVar: "--font-serif",
-            refSize: size,
+            label: "Panel",
+            sizeFields: [
+              { label: "Side margin", value: resolvedStyle.slide3.panelMarginX, invert: true, axis: "x", onChange: (v) => patchSlide3("panelMarginX", v) },
+              { label: "Top margin", value: resolvedStyle.slide3.panelMarginTop, invert: true, axis: "top", onChange: (v) => patchSlide3("panelMarginTop", v) },
+            ],
           };
-        }
         case "slide3.question": {
           const generated = displayEpisode ? splitQuotedAction(displayEpisode.todayAction).quoted : "";
           const size = emphasisOverrides[id]?.size ?? resolvedStyle.slide3.questionSize;
@@ -2429,20 +2427,18 @@ export default function PublishingWorkspace() {
                       Slide 4 — TODAY&apos;S ACTION
                     </summary>
                     <div className="mt-2 flex flex-col gap-1.5">
-                      <TextField label="Section heading" value={resolvedStyle.slide3.sectionHeadingText} onChange={(v) => patchSlide3("sectionHeadingText", v)} />
-                      <NumField label="Section heading size (px)" value={resolvedStyle.slide3.sectionHeadingSize} onChange={(v) => patchSlide3("sectionHeadingSize", v)} />
-                      <NumField label="Body size (px)" value={resolvedStyle.slide3.bodySize} onChange={(v) => patchSlide3("bodySize", v)} />
+                      <TextField label="Heading (fixed, all episodes)" value={resolvedStyle.slide3.sectionHeadingText} onChange={(v) => patchSlide3("sectionHeadingText", v)} />
+                      <NumField label="Heading size (px)" value={resolvedStyle.slide3.sectionHeadingSize} onChange={(v) => patchSlide3("sectionHeadingSize", v)} />
+                      <NumField label="Heading margin X (px)" value={resolvedStyle.slide3.headingMarginX} onChange={(v) => patchSlide3("headingMarginX", v)} />
+                      <NumField label="Heading margin top (px)" value={resolvedStyle.slide3.headingMarginTop} onChange={(v) => patchSlide3("headingMarginTop", v)} />
                       <NumField label="Question size (px)" value={resolvedStyle.slide3.questionSize} onChange={(v) => patchSlide3("questionSize", v)} />
-                      <NumField label="Panel padding X (fraction)" value={resolvedStyle.slide3.panelPadX} step={0.005} onChange={(v) => patchSlide3("panelPadX", v)} />
-                      <NumField label="Panel padding Y (fraction)" value={resolvedStyle.slide3.panelPadY} step={0.005} onChange={(v) => patchSlide3("panelPadY", v)} />
-                      <NumField label="Panel corner radius (fraction)" value={resolvedStyle.slide3.panelRadius} step={0.005} onChange={(v) => patchSlide3("panelRadius", v)} />
+                      <NumField label="Supporting line size (px)" value={resolvedStyle.slide3.bodySize} onChange={(v) => patchSlide3("bodySize", v)} />
+                      <NumField label="Panel margin X (px)" value={resolvedStyle.slide3.panelMarginX} onChange={(v) => patchSlide3("panelMarginX", v)} />
+                      <NumField label="Panel margin top (px)" value={resolvedStyle.slide3.panelMarginTop} onChange={(v) => patchSlide3("panelMarginTop", v)} />
+                      <NumField label="Panel padding X (px)" value={resolvedStyle.slide3.panelPadX} onChange={(v) => patchSlide3("panelPadX", v)} />
+                      <NumField label="Panel padding Y (px)" value={resolvedStyle.slide3.panelPadY} onChange={(v) => patchSlide3("panelPadY", v)} />
+                      <NumField label="Panel corner radius (px)" value={resolvedStyle.slide3.panelRadius} onChange={(v) => patchSlide3("panelRadius", v)} />
                       <CheckField label="Show action icon (bulb)" checked={resolvedStyle.slide3.showActionIcon} onChange={(v) => patchSlide3("showActionIcon", v)} />
-                      <TextAreaField
-                        label="Lead-in line override"
-                        value={textOverrides.slide3?.before ?? ""}
-                        placeholder={splitQuotedAction(displayEpisode.todayAction).before}
-                        onChange={(v) => patchText3({ before: v })}
-                      />
                       <TextAreaField
                         label="Question override (highlighted panel)"
                         value={textOverrides.slide3?.question ?? ""}

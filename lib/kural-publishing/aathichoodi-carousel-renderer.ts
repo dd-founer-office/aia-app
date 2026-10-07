@@ -299,10 +299,35 @@ export interface Slide2Style {
   photoHeight: number;
 }
 export interface Slide3Style {
+  /** Now drawn directly by drawSlide3Action itself (black, Inter
+   *  SemiBold, no eyebrow pill above it -- see headerMetrics' hasEyebrow)
+   *  instead of the generic drawHeader heading mechanism every other
+   *  slide's heading still goes through -- per the Figma redesign (file
+   *  H9LpyoKvzC5UanyL360JLs, node 9:26), a fixed design-system label
+   *  ("ASK YOUR CHILD TODAY"), not derived from the episode's own
+   *  generated todayAction text (that varies too much in length/shape
+   *  across episodes to carry this slide's single dominant heading). */
   sectionHeadingText: string;
   sectionHeadingSize: number;
+  headingMarginX: number;
+  headingMarginTop: number;
+  /** The supporting ("after") line's size -- Inter Medium, muted. The
+   *  question ("quoted") has its own field, questionSize, since the two
+   *  are deliberately different type scales. splitQuotedAction's "before"
+   *  segment is no longer drawn at all in this design -- the fixed
+   *  heading above replaces its role. */
   bodySize: number;
   questionSize: number;
+  /** The light panel's own margin from the canvas edge (independent of
+   *  the generic frame margin every other slide's body text uses) and its
+   *  own internal padding -- same self-contained "literal 1080-reference
+   *  px" pattern as Slide 2/Slide 3's cards, not a fraction of frame.contentW
+   *  the way these fields worked before this redesign. The panel's HEIGHT
+   *  is content-driven bottom-up from the icon + question + supporting
+   *  line, same pattern as those slides' cards, not the Figma spec's
+   *  literal 575px (episodes vary too much in copy length to hardcode it). */
+  panelMarginX: number;
+  panelMarginTop: number;
   panelPadX: number;
   panelPadY: number;
   panelRadius: number;
@@ -576,8 +601,11 @@ export const DEFAULT_STYLE: CarouselStyle = {
     slide1ExplanationMutedText: "#788485",
     slide1CtaPillBackground: "#68FFAD",
     slide1CtaPillText: "#0A363A",
-    slide3IconCardBackground: "#0A363A",
-    slide3IconColor: "#68FFAD",
+    // Figma Slide 4 redesign -- same pale badge + dark icon as Slide 2's
+    // manuscript-icon badge (slide1IconBadgeBackground/IconColor), now on
+    // this slide's own light panel too, not mode-dependent.
+    slide3IconCardBackground: "rgba(255, 255, 255, 0.8)",
+    slide3IconColor: "#0A363A",
   },
   layout: {
     marginX: 0.093,
@@ -640,13 +668,17 @@ export const DEFAULT_STYLE: CarouselStyle = {
     photoHeight: 749,
   },
   slide3: {
-    sectionHeadingText: "TRY THIS TODAY",
-    sectionHeadingSize: 24,
-    bodySize: 29,
-    questionSize: 32,
-    panelPadX: 0.075,
-    panelPadY: 0.07,
-    panelRadius: 0.03,
+    sectionHeadingText: "ASK YOUR CHILD TODAY",
+    sectionHeadingSize: 40,
+    headingMarginX: 84,
+    headingMarginTop: 182,
+    bodySize: 34,
+    questionSize: 54,
+    panelMarginX: 76,
+    panelMarginTop: 276,
+    panelPadX: 72,
+    panelPadY: 72,
+    panelRadius: 24,
     showActionIcon: true,
   },
   slide4: {
@@ -709,7 +741,7 @@ export const INVERTED_COLORS: CarouselColors = {
   slide1ExplanationMutedText: "#788485",
   slide1CtaPillBackground: "#68FFAD",
   slide1CtaPillText: "#0A363A",
-  slide3IconCardBackground: "#FFFFFF",
+  slide3IconCardBackground: "rgba(255, 255, 255, 0.8)",
   slide3IconColor: "#0A363A",
 };
 
@@ -933,16 +965,12 @@ interface Frame {
  *  other slide's heading still uses. style.slide1.sectionHeadingText is
  *  still the text's source of truth -- drawSlide1Understand reads it
  *  directly -- so the existing text-override UI for it keeps working. */
-function sectionHeadingFor(style: CarouselStyle, slideIndex: number): { text: string; size: number } {
-  switch (slideIndex) {
-    case 3:
-      return { text: style.slide3.sectionHeadingText, size: style.slide3.sectionHeadingSize };
-    default:
-      // Covers 0 (no heading, just the eyebrow), 1 and 2 (the Figma
-      // redesign drops the eyebrow AND the section heading on both --
-      // see headerMetrics' hasEyebrow), and 4.
-      return { text: "", size: DEFAULT_STYLE.slide1.sectionHeadingSize };
-  }
+function sectionHeadingFor(): { text: string; size: number } {
+  // Covers every slideIndex now: 0 has no heading, just the eyebrow; 1, 2
+  // and 3 all drop BOTH the eyebrow and the generic header heading (see
+  // headerMetrics' hasEyebrow) -- Slide 4's own heading is drawn directly
+  // by drawSlide3Action instead, and 4 (CARRY IT FORWARD) never had one.
+  return { text: "", size: DEFAULT_STYLE.slide1.sectionHeadingSize };
 }
 
 /** Single source of truth for the header's own vertical geometry, used by
@@ -957,7 +985,7 @@ function headerMetrics(style: CarouselStyle, width: number, height: number, slid
   const marginX = Math.round(width * style.layout.marginX);
   const marginY = Math.round(height * style.layout.marginY);
   const eyebrow = px(style.layout.eyebrowSize, width);
-  const { text: headingText, size: headingSizeBase } = sectionHeadingFor(style, slideIndex);
+  const { text: headingText, size: headingSizeBase } = sectionHeadingFor();
   const heading = px(headingSizeBase, width);
   // The eyebrow badge's own vertical footprint -- tight padding, per the
   // locked correction ("reduce the space around the text keep it tight").
@@ -967,7 +995,7 @@ function headerMetrics(style: CarouselStyle, width: number, height: number, slid
   // explicit founder direction -- so no vertical space is reserved for
   // it there; the icon badge below it moves straight up to the top
   // margin instead of leaving a dead gap.
-  const hasEyebrow = slideIndex !== 1 && slideIndex !== 2;
+  const hasEyebrow = slideIndex !== 1 && slideIndex !== 2 && slideIndex !== 3;
   const eyebrowPadY = eyebrow * 0.42;
   const badgeH = hasEyebrow ? eyebrow + eyebrowPadY * 2 : 0;
   const badgeBottom = marginY + badgeH;
@@ -1038,9 +1066,10 @@ function drawHeader(
   // text itself stays, same position as every other slide) and its text
   // is white there (slide0EyebrowText), not the mint every other slide's
   // eyebrow badge text uses -- a further explicit founder correction.
-  // Slide 1 (UNDERSTAND) and Slide 2 (FAMILY SITUATION) both drop the
-  // eyebrow entirely, text included -- see headerMetrics' hasEyebrow.
-  if (slideIndex !== 1 && slideIndex !== 2) {
+  // Slide 1 (UNDERSTAND), Slide 2 (FAMILY SITUATION), and Slide 3 (ASK
+  // YOUR CHILD TODAY) all drop the eyebrow entirely, text included -- see
+  // headerMetrics' hasEyebrow.
+  if (slideIndex !== 1 && slideIndex !== 2 && slideIndex !== 3) {
     try {
       ctx.letterSpacing = `${Math.round(px(2, width))}px`;
     } catch {
@@ -2087,12 +2116,22 @@ function drawLightbulbIcon(
   ctx.stroke();
 }
 
-/** "Today's Action" -- the lead-in line, the highlighted question, and the
- *  trailing line are three separately draggable/editable components (ids
- *  slide3.before / slide3.question / slide3.after), not one combined
- *  block, per explicit founder direction. Each falls back independently to
- *  its own slice of the generated todayAction text (see splitQuotedAction)
- *  when not overridden. */
+/** "Ask Your Child Today" -- read directly off the Figma dev-mode
+ *  inspector (file H9LpyoKvzC5UanyL360JLs, node 9:26): a plain white page
+ *  (no eyebrow, no outer/pale wrapping card -- just this slide's own
+ *  fixed black heading and a single light panel), the panel holding the
+ *  lightbulb icon badge, the generated question in large black Cal Sans,
+ *  and the generated trailing line as a muted Inter supporting line
+ *  underneath it -- all three stacked INSIDE the one panel, not a
+ *  separate panel-plus-trailing-line-below-it the way this slide used to
+ *  split them. splitQuotedAction's "before" segment is no longer drawn at
+ *  all (see Slide3Style.sectionHeadingText's own doc comment) -- only
+ *  "quoted" (the question) and "after" (the supporting line) are, each
+ *  its own hotspot (slide3.question / slide3.after) for independent drag/
+ *  resize/text-override, same as before this redesign. Self-positioning
+ *  from its own margin fields, same "ignore startY" pattern as Slide 2/
+ *  Slide 3's cards -- this slide's content sits near the top by design,
+ *  not vertically balanced. */
 function drawSlide3Action(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
@@ -2108,121 +2147,175 @@ function drawSlide3Action(
   overrides: { before?: string; question?: string; after?: string } | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
+  void startY;
+  void frame;
   const generated = splitQuotedAction(episode.todayAction);
-  const before = overrides?.before || generated.before;
   const quoted = overrides?.question || generated.quoted;
   const after = overrides?.after || generated.after;
-  let cursorY = startY;
 
-  if (before) {
-    const id = "slide3.before";
-    const offset = posFor(positions, id);
-    const emphasis = emphasisFor(emphases, id);
-    // Own size (emphasis.size), not the shared style.slide3.bodySize --
-    // otherwise resizing this line would also resize the trailing line,
-    // since both would be reading the same field.
-    const beforeSize = px(emphasis.size ?? style.slide3.bodySize, width);
+  // Heading -- "ASK YOUR CHILD TODAY" by default, a fixed design-system
+  // label (see Slide3Style.sectionHeadingText), not episode content.
+  const headingId = "slide3.sectionHeading";
+  const headingOffset = posFor(positions, headingId);
+  const headingEmphasis = emphasisFor(emphases, headingId);
+  const headingSize = px(style.slide3.sectionHeadingSize, width);
+  const headingX = px(style.slide3.headingMarginX, width);
+  const headingTop = px(style.slide3.headingMarginTop, width);
+  if (draw && style.slide3.sectionHeadingText) {
     ctx.textAlign = "left";
-    if (draw) ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(beforeSize)}px ${interFont}`;
-    const lines = wrapText(ctx, before, frame.contentW);
-    let firstBaseline = 0;
-    for (const line of lines) {
-      cursorY += beforeSize * style.layout.bodyLineHeight;
-      if (firstBaseline === 0) firstBaseline = cursorY;
-      if (draw) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
+    ctx.fillStyle = style.colors.slide1ExplanationText;
+    try {
+      ctx.letterSpacing = `${Math.round(px(-2, width))}px`;
+    } catch {
+      /* Canvas2D letterSpacing unsupported -- default tracking is fine */
     }
-    pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, beforeSize, offset);
-    cursorY += beforeSize * 1.2;
+    ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(headingSize)}px ${interFont}`;
+    ctx.fillText(style.slide3.sectionHeadingText, headingX + headingOffset.dx, headingTop + headingSize + headingOffset.dy);
+    try {
+      ctx.letterSpacing = "0px";
+    } catch {
+      /* no-op */
+    }
+  }
+  if (style.slide3.sectionHeadingText) {
+    ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(headingSize)}px ${interFont}`;
+    const headingWidth = ctx.measureText(style.slide3.sectionHeadingText).width;
+    pushHotspot(hotspots, headingId, headingX, headingWidth, headingTop + headingSize, headingTop + headingSize, headingSize, headingOffset);
   }
 
-  // Translucent glass-effect highlight panel, optionally with a small
-  // decorative opening quote mark -- isolates the single actionable
-  // question, which carries the strongest hierarchy here.
+  // Panel -- its own margin fields (independent of the generic frame
+  // margin), content-driven height (icon + question + supporting line +
+  // bottom padding), not the Figma spec's literal 575px (episode copy
+  // varies too much in length to hardcode it, same reasoning as Slide 2/
+  // Slide 3's cards).
+  const panelX = px(style.slide3.panelMarginX, width);
+  const panelW = width - panelX * 2;
+  const panelTop = px(style.slide3.panelMarginTop, width);
+  const panelPadX = px(style.slide3.panelPadX, width);
+  const panelPadY = px(style.slide3.panelPadY, width);
+  const panelRadius = px(style.slide3.panelRadius, width);
+
+  const hasIcon = style.slide3.showActionIcon;
+  const iconSize = px(98, width);
+  const iconRadius = px(24, width);
+
   const questionId = "slide3.question";
   const qOffset = posFor(positions, questionId);
   const qEmphasis = emphasisFor(emphases, questionId);
   const qStyle = styleFor(false, qEmphasis);
-  const qWeight = weightFor(600, qEmphasis);
+  const qWeight = weightFor(400, qEmphasis);
   const questionSize = px(qEmphasis.size ?? style.slide3.questionSize, width);
-  const panelPadX = frame.contentW * style.slide3.panelPadX;
-  const panelPadY = frame.contentW * style.slide3.panelPadY;
   ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${calSansFont}`;
-  const quoteLines = wrapText(ctx, quoted, frame.contentW - panelPadX * 2);
-  const quoteLineHeight = questionSize * 1.36;
+  const quoteLines = wrapText(ctx, quoted, panelW - panelPadX * 2);
+  const quoteLineHeight = questionSize * 0.93;
 
-  // Action-icon card (lightbulb) -- a small solid rounded-square badge
-  // sitting above the question text, per the locked design correction
-  // (replaces the earlier quote-mark glyph).
-  const hasIcon = style.slide3.showActionIcon;
-  const iconCardSize = frame.contentW * 0.1;
-  const iconCardRadius = iconCardSize * 0.28;
-  const iconCardGap = iconCardSize * 0.35;
-  const iconCardBlock = hasIcon ? iconCardSize + iconCardGap : 0;
-  const panelH = panelPadY * 2 + iconCardBlock + quoteLines.length * quoteLineHeight;
-  const panelY = cursorY;
-  const qx = frame.contentX + qOffset.dx;
+  let innerCursorY = panelPadY;
+  if (hasIcon) innerCursorY += iconSize + px(43, width);
+  const questionTop = innerCursorY;
+  innerCursorY += quoteLines.length * quoteLineHeight;
+  innerCursorY += px(36, width);
+  const afterTop = innerCursorY;
 
+  const afterId = "slide3.after";
+  const afterOffset = posFor(positions, afterId);
+  const afterEmphasis = emphasisFor(emphases, afterId);
+  const afterSize = px(afterEmphasis.size ?? style.slide3.bodySize, width);
+  const afterLineHeight = afterSize * 1.3;
+  let afterLines: string[] = [];
+  if (after) {
+    ctx.font = `${styleFor(false, afterEmphasis)} ${weightFor(500, afterEmphasis)} ${Math.round(afterSize)}px ${interFont}`;
+    afterLines = wrapText(ctx, after, panelW - panelPadX * 2);
+    innerCursorY += afterLines.length * afterLineHeight;
+  }
+  innerCursorY += panelPadY;
+  const panelH = innerCursorY;
+
+  const panelOffset = posFor(positions, "slide3.panel");
   if (draw) {
-    // No border stroke any more, per the locked design correction -- the
-    // panel is now a solid fill only.
-    ctx.fillStyle = style.colors.panelFill;
+    ctx.fillStyle = style.colors.slide1OuterCardBackground;
     ctx.beginPath();
-    ctx.roundRect(qx, panelY + qOffset.dy, frame.contentW, panelH, frame.contentW * style.slide3.panelRadius);
+    ctx.roundRect(panelX + panelOffset.dx, panelTop + panelOffset.dy, panelW, panelH, panelRadius);
     ctx.fill();
-
-    if (hasIcon) {
-      const cardX = qx + panelPadX;
-      const cardY = panelY + qOffset.dy + panelPadY;
-      ctx.fillStyle = style.colors.slide3IconCardBackground;
-      ctx.beginPath();
-      ctx.roundRect(cardX, cardY, iconCardSize, iconCardSize, iconCardRadius);
-      ctx.fill();
-
-      drawLightbulbIcon(
-        ctx,
-        cardX + iconCardSize / 2,
-        cardY + iconCardSize / 2,
-        iconCardSize * 0.62,
-        style.colors.slide3IconColor,
-        style.colors.slide3IconCardBackground
-      );
-    }
-
-    ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${calSansFont}`;
-    let qy = panelY + qOffset.dy + panelPadY + iconCardBlock + questionSize * 0.85;
-    for (const line of quoteLines) {
-      ctx.fillText(line, qx + panelPadX, qy);
-      qy += quoteLineHeight;
-    }
   }
   if (hotspots) {
-    hotspots.push({ id: questionId, x: qx, y: panelY + qOffset.dy, width: frame.contentW, height: panelH });
+    hotspots.push({
+      id: "slide3.panel",
+      x: panelX + panelOffset.dx,
+      y: panelTop + panelOffset.dy,
+      width: panelW,
+      height: panelH,
+    });
   }
 
-  // Generic spacing gap below the panel -- not tied to any one element's
-  // own (possibly overridden) size, so it stays based on the shared style
-  // field rather than "before" or "after"'s individual size.
-  cursorY = panelY + panelH + px(style.slide3.bodySize, width) * 1.3;
+  // Like every other draggable card, the panel's own drag offset only
+  // nudges where ITS rectangle is drawn/hit-tested -- it never feeds back
+  // into the icon/question/after's own layout math, so they stay put even
+  // if the panel's background is dragged away from them (same convention
+  // as Slide 2's black card and its contents).
+  if (draw && hasIcon) {
+    const iconX = panelX + panelPadX;
+    const iconY = panelTop + panelPadY;
+    ctx.fillStyle = style.colors.slide3IconCardBackground;
+    ctx.beginPath();
+    ctx.roundRect(iconX, iconY, iconSize, iconSize, iconRadius);
+    ctx.fill();
+    drawLightbulbIcon(ctx, iconX + iconSize / 2, iconY + iconSize / 2, iconSize * 0.62, style.colors.slide3IconColor, style.colors.slide3IconCardBackground);
+  }
+
+  if (draw) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = style.colors.slide1ExplanationText;
+    try {
+      ctx.letterSpacing = `${Math.round(px(2.16, width))}px`;
+    } catch {
+      /* Canvas2D letterSpacing unsupported -- default tracking is fine */
+    }
+    ctx.font = `${qStyle} ${qWeight} ${Math.round(questionSize)}px ${calSansFont}`;
+    let qy = panelTop + questionTop + qOffset.dy;
+    for (const line of quoteLines) {
+      qy += quoteLineHeight;
+      ctx.fillText(line, panelX + panelPadX + qOffset.dx, qy);
+    }
+    try {
+      ctx.letterSpacing = "0px";
+    } catch {
+      /* no-op */
+    }
+  }
+  pushHotspot(
+    hotspots,
+    questionId,
+    panelX + panelPadX,
+    panelW - panelPadX * 2,
+    panelTop + questionTop + quoteLineHeight,
+    panelTop + questionTop + quoteLines.length * quoteLineHeight,
+    questionSize,
+    qOffset
+  );
 
   if (after) {
-    const id = "slide3.after";
-    const offset = posFor(positions, id);
-    const emphasis = emphasisFor(emphases, id);
-    const afterSize = px(emphasis.size ?? style.slide3.bodySize, width);
-    if (draw) ctx.fillStyle = style.colors.textPrimary;
-    ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(afterSize)}px ${interFont}`;
-    const lines = wrapText(ctx, after, frame.contentW);
-    let firstBaseline = 0;
-    for (const line of lines) {
-      cursorY += afterSize * style.layout.bodyLineHeight;
-      if (firstBaseline === 0) firstBaseline = cursorY;
-      if (draw && cursorY <= frame.contentBottom) ctx.fillText(line, frame.contentX + offset.dx, cursorY + offset.dy);
+    if (draw) {
+      ctx.fillStyle = style.colors.slide1ExplanationMutedText;
+      ctx.font = `${styleFor(false, afterEmphasis)} ${weightFor(500, afterEmphasis)} ${Math.round(afterSize)}px ${interFont}`;
+      let ay = panelTop + afterTop + afterOffset.dy;
+      for (const line of afterLines) {
+        ay += afterLineHeight;
+        ctx.fillText(line, panelX + panelPadX + afterOffset.dx, ay);
+      }
     }
-    pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, afterSize, offset);
+    pushHotspot(
+      hotspots,
+      afterId,
+      panelX + panelPadX,
+      panelW - panelPadX * 2,
+      panelTop + afterTop + afterLineHeight,
+      panelTop + afterTop + afterLines.length * afterLineHeight,
+      afterSize,
+      afterOffset
+    );
   }
-  return cursorY;
+
+  return panelTop + panelH;
 }
 
 /** "AiA · Save · Share" -- the headline's lead clause and trailing clause
@@ -2550,6 +2643,14 @@ export function renderAathichoodiCarouselSlide(
       width: width - outerMarginX * 2,
       height: outerBottom - outerMarginTop,
     });
+  }
+  if (slideIndex === 3) {
+    // Plain white page, per the Figma redesign (file H9LpyoKvzC5UanyL360JLs,
+    // node 9:26) -- no separate outer/pale wrapping card like Slide 2/
+    // Slide 2 above, just this slide's own single light panel
+    // (drawSlide3Action) floating directly on white.
+    ctx.fillStyle = style.colors.slide1PageBackground;
+    ctx.fillRect(0, 0, width, height);
   }
   if (slideIndex === 0 && opts.design?.invertColors) {
     drawSlide0HeroPanel(ctx, style, width, height);
