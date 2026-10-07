@@ -336,9 +336,34 @@ export interface Slide3Style {
   showActionIcon: boolean;
 }
 export interface Slide4Style {
+  /** The whole generated aiaConnection statement, centered, as ONE Cal
+   *  Sans headline -- not split into a heavier lead clause and a lighter
+   *  trailing one the way this slide used to render it (see
+   *  CarouselTextOverrides.slide4's own doc comment). */
   heroSize: number;
+  headlineMarginTop: number;
+  headlineMarginX: number;
+  /** distantDevotionConnection's own size, when that optional field is
+   *  set -- positioned between the headline and the band below. */
   supportSize: number;
+  /** The CTA copy's size -- now drawn INSIDE the mint band (see
+   *  bandMarginTop and friends), not as a plain line below the headline. */
   ctaSize: number;
+  /** episode.tamilText's size inside the band -- this slide shows the
+   *  canonical Tamil line again (Noto Sans Tamil SemiBold), same as
+   *  Slide 2 (UNDERSTAND). */
+  tamilSize: number;
+  /** The mint "sheet" band itself (Figma: #68FFAD, same token as the
+   *  slide1CtaPillBackground color) -- full canvas width, rounded only at
+   *  the top corners, anchored to the canvas BOTTOM edge (not a content-
+   *  driven height the way Slide 2/Slide 3's cards are -- the Figma
+   *  source shows this band always filling the remaining space below
+   *  bandMarginTop regardless of content length, like a bottom sheet).
+   *  bandPadX is the Tamil line's own left inset within it; bandPadTop is
+   *  the gap from the band's top edge to the Tamil line. */
+  bandMarginTop: number;
+  bandPadX: number;
+  bandPadTop: number;
   brandNameSize: number;
   handleSize: number;
   showBranding: boolean;
@@ -682,12 +707,21 @@ export const DEFAULT_STYLE: CarouselStyle = {
     showActionIcon: true,
   },
   slide4: {
-    heroSize: 48,
+    heroSize: 54,
+    headlineMarginTop: 321,
+    headlineMarginX: 136,
     supportSize: 25,
-    ctaSize: 25,
+    ctaSize: 40,
+    tamilSize: 54,
+    bandMarginTop: 707,
+    bandPadX: 182,
+    bandPadTop: 95,
     brandNameSize: 22,
     handleSize: 17,
-    showBranding: true,
+    // No footer lockup visible in the Figma redesign (file
+    // H9LpyoKvzC5UanyL360JLs, node 12:46) -- the band fills all the way
+    // to the canvas bottom edge, leaving no room for one.
+    showBranding: false,
   },
 };
 
@@ -990,12 +1024,13 @@ function headerMetrics(style: CarouselStyle, width: number, height: number, slid
   // The eyebrow badge's own vertical footprint -- tight padding, per the
   // locked correction ("reduce the space around the text keep it tight").
   // Shared with drawHeader so the badge's actual drawn height and the
-  // space reserved for it can never drift apart. Slide 2 (UNDERSTAND,
-  // slideIndex 1) has no "AATHICHOODI" eyebrow at all any more -- per
-  // explicit founder direction -- so no vertical space is reserved for
-  // it there; the icon badge below it moves straight up to the top
+  // space reserved for it can never drift apart. Only Slide 1 (STOP)
+  // still carries the "AATHICHOODI" eyebrow -- each of Slides 2-5 dropped
+  // it as its own Figma redesign landed (file H9LpyoKvzC5UanyL360JLs),
+  // so no vertical space is reserved for it there any more; whatever
+  // comes next on each of those slides moves straight up to the top
   // margin instead of leaving a dead gap.
-  const hasEyebrow = slideIndex !== 1 && slideIndex !== 2 && slideIndex !== 3;
+  const hasEyebrow = slideIndex === 0;
   const eyebrowPadY = eyebrow * 0.42;
   const badgeH = hasEyebrow ? eyebrow + eyebrowPadY * 2 : 0;
   const badgeBottom = marginY + badgeH;
@@ -1061,15 +1096,13 @@ function drawHeader(
   ctx.textAlign = "left";
 
   // Eyebrow is a tight button/pill, not plain text -- per the locked design
-  // correction. No divider line beneath it any more. Slide 0 drops the
-  // pill background per explicit founder direction (the "AATHICHOODI"
-  // text itself stays, same position as every other slide) and its text
-  // is white there (slide0EyebrowText), not the mint every other slide's
-  // eyebrow badge text uses -- a further explicit founder correction.
-  // Slide 1 (UNDERSTAND), Slide 2 (FAMILY SITUATION), and Slide 3 (ASK
-  // YOUR CHILD TODAY) all drop the eyebrow entirely, text included -- see
-  // headerMetrics' hasEyebrow.
-  if (slideIndex !== 1 && slideIndex !== 2 && slideIndex !== 3) {
+  // correction. No divider line beneath it any more, and no pill
+  // background -- just the "AATHICHOODI" text itself, in
+  // slide0EyebrowText (white), per explicit founder direction. Only Slide
+  // 1 (STOP) still draws it at all any more -- see headerMetrics'
+  // hasEyebrow -- every other slide dropped it as its own Figma redesign
+  // landed (file H9LpyoKvzC5UanyL360JLs).
+  if (slideIndex === 0) {
     try {
       ctx.letterSpacing = `${Math.round(px(2, width))}px`;
     } catch {
@@ -1085,16 +1118,8 @@ function drawHeader(
     const badgeW = eyebrowTextWidth + eyebrowPadX * 2;
     const badgeX = frame.contentX + eyebrowOffset.dx;
     const badgeY = frame.marginY + eyebrowOffset.dy;
-    const badgeRadius = px(6, width);
 
-    if (slideIndex !== 0) {
-      ctx.fillStyle = style.colors.eyebrowBadgeBackground;
-      ctx.beginPath();
-      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeRadius);
-      ctx.fill();
-    }
-
-    ctx.fillStyle = slideIndex === 0 ? style.colors.slide0EyebrowText : style.colors.eyebrowBadgeText;
+    ctx.fillStyle = style.colors.slide0EyebrowText;
     ctx.textBaseline = "middle";
     ctx.fillText(eyebrowText, badgeX + eyebrowPadX, badgeY + badgeH / 2 + eyebrow * 0.03);
     ctx.textBaseline = "alphabetic";
@@ -2318,123 +2343,161 @@ function drawSlide3Action(
   return panelTop + panelH;
 }
 
-/** "AiA · Save · Share" -- the headline's lead clause and trailing clause
- *  (split at an em dash) are two separately draggable/editable/sizable
- *  components (slide4.headline / slide4.support), alongside the already-
- *  separate connection line and CTA, per explicit founder direction that
- *  every field on this slide be independently editable. */
+/** "Carry It Forward" -- read directly off the Figma dev-mode inspector
+ *  (file H9LpyoKvzC5UanyL360JLs, node 12:46): a plain white page, the
+ *  whole generated aiaConnection statement as ONE centered Cal Sans
+ *  headline (no more lead/trailing-clause em-dash split -- see
+ *  CarouselTextOverrides.slide4's own doc comment), and a bright mint
+ *  "sheet" band anchored to the canvas BOTTOM edge (not a content-driven
+ *  height the way Slide 2/Slide 3/Slide 4's cards are -- this one always
+ *  fills the remaining space below Slide4Style.bandMarginTop, like a
+ *  bottom sheet, regardless of how much it needs), holding the canonical
+ *  Tamil line again (first time it reappears since Slide 2) and the CTA
+ *  copy underneath it. */
 function drawSlide4Carry(
   ctx: CanvasRenderingContext2D,
   style: CarouselStyle,
   frame: Frame,
   width: number,
+  canvasHeight: number,
   episode: ComposedEpisode,
+  tamilFont: string,
   interFont: string,
   calSansFont: string,
   startY: number,
   draw: boolean,
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
-  overrides: { headline?: string; support?: string } | undefined,
+  overrides: { headline?: string; support?: string; ctaCopy?: string; distantDevotionConnection?: string } | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
-  const ctaEmphasisForSize = emphasisFor(emphases, "slide4.cta");
-  const ctaSize = px(ctaEmphasisForSize.size ?? style.slide4.ctaSize, width);
-  let cursorY = startY;
-  const headlineStartY = cursorY;
-
-  // The main statement gets the premium editorial (Cal Sans heading)
-  // treatment -- the strongest typography on this slide. Split at an em
-  // dash when present so the first clause can read heavier than the rest,
-  // matching the approved benchmark's shape. The trailing "—" is baked
-  // into generatedLead itself (not appended separately at render time),
-  // so it's a real, editable/removable character in the in-canvas
-  // textbox -- not a render-only artifact the user could see but never
-  // actually edit out.
-  const generatedSplit = episode.aiaConnection.split(" — ");
-  const generatedLeadClause = generatedSplit[0];
-  const generatedRest = generatedSplit.slice(1).join(" — ");
-  const generatedLead = generatedRest ? `${generatedLeadClause} —` : generatedLeadClause;
-  const lead = overrides?.headline || generatedLead;
-  const rest = overrides?.support || generatedRest;
+  void startY;
+  void frame;
+  const centerX = width / 2;
 
   const leadId = "slide4.headline";
   const leadOffset = posFor(positions, leadId);
   const leadEmphasis = emphasisFor(emphases, leadId);
   const heroSize = px(leadEmphasis.size ?? style.slide4.heroSize, width);
+  const headline = overrides?.headline || episode.aiaConnection;
+  const headlineMarginX = px(style.slide4.headlineMarginX, width);
 
-  ctx.textAlign = "left";
-  if (draw) ctx.fillStyle = style.colors.calSansText;
-  ctx.font = `${styleFor(false, leadEmphasis)} ${weightFor(600, leadEmphasis)} ${Math.round(heroSize)}px ${calSansFont}`;
-  const leadLines = wrapText(ctx, lead, frame.contentW);
-  const leadLineHeight = heroSize * 1.22;
+  ctx.textAlign = "center";
+  if (draw) {
+    ctx.fillStyle = style.colors.slide1ExplanationText;
+    try {
+      ctx.letterSpacing = `${Math.round(px(2.16, width))}px`;
+    } catch {
+      /* Canvas2D letterSpacing unsupported -- default tracking is fine */
+    }
+  }
+  ctx.font = `${styleFor(false, leadEmphasis)} ${weightFor(400, leadEmphasis)} ${Math.round(heroSize)}px ${calSansFont}`;
+  const leadLines = wrapText(ctx, headline, width - headlineMarginX * 2);
+  const leadLineHeight = heroSize * 0.93;
+  let cursorY = px(style.slide4.headlineMarginTop, width);
+  const headlineFirst = cursorY;
   for (const line of leadLines) {
     cursorY += leadLineHeight;
-    if (draw) ctx.fillText(line, frame.contentX + leadOffset.dx, cursorY + leadOffset.dy);
+    if (draw) ctx.fillText(line, centerX + leadOffset.dx, cursorY + leadOffset.dy);
   }
-  pushHotspot(hotspots, leadId, frame.contentX, frame.contentW, headlineStartY + heroSize, cursorY, heroSize, leadOffset);
-
-  if (rest) {
-    const supportId = "slide4.support";
-    const supportOffset = posFor(positions, supportId);
-    const supportEmphasis = emphasisFor(emphases, supportId);
-    const supportSize = px(supportEmphasis.size ?? style.slide4.supportSize, width);
-    cursorY += leadLineHeight * 0.25;
-    // Same colour as the headline (calSansText) now, not textSecondary --
-    // per the locked design correction.
-    if (draw) ctx.fillStyle = style.colors.calSansText;
-    ctx.font = `${styleFor(false, supportEmphasis)} ${weightFor(400, supportEmphasis)} ${Math.round(supportSize)}px ${interFont}`;
-    const lines = wrapText(ctx, rest, frame.contentW);
-    let firstBaseline = 0;
-    for (const line of lines) {
-      cursorY += supportSize * style.layout.bodyLineHeight;
-      if (firstBaseline === 0) firstBaseline = cursorY;
-      if (draw) ctx.fillText(line, frame.contentX + supportOffset.dx, cursorY + supportOffset.dy);
+  if (draw) {
+    try {
+      ctx.letterSpacing = "0px";
+    } catch {
+      /* no-op */
     }
-    pushHotspot(hotspots, supportId, frame.contentX, frame.contentW, firstBaseline, cursorY, supportSize, supportOffset);
   }
-
-  // No divider line any more, per the locked design correction -- the gap
-  // itself carries the separation before the CTA below.
-  cursorY += frame.contentW * 0.2;
+  pushHotspot(hotspots, leadId, centerX - headlineMarginX, headlineMarginX * 2, headlineFirst + leadLineHeight, cursorY, heroSize, leadOffset);
 
   if (episode.distantDevotionConnection) {
     const connectionId = "slide4.connection";
     const connectionEmphasis = emphasisFor(emphases, connectionId);
     const connectionSize = px(connectionEmphasis.size ?? style.slide4.supportSize, width);
-    // Same colour as the headline (calSansText) now, not textSecondary --
-    // per the locked design correction, same change as the support line.
-    if (draw) ctx.fillStyle = style.colors.calSansText;
+    cursorY += leadLineHeight * 0.5;
+    if (draw) ctx.fillStyle = style.colors.slide1ExplanationMutedText;
     ctx.font = `${styleFor(false, connectionEmphasis)} ${weightFor(400, connectionEmphasis)} ${Math.round(connectionSize)}px ${interFont}`;
-    const lines = wrapText(ctx, episode.distantDevotionConnection, frame.contentW);
+    const lines = wrapText(ctx, episode.distantDevotionConnection, width - headlineMarginX * 2);
     const connectionOffset = posFor(positions, connectionId);
     let connectionFirst = 0;
+    ctx.textAlign = "center";
     for (const line of lines) {
       cursorY += connectionSize * style.layout.bodyLineHeight;
       if (connectionFirst === 0) connectionFirst = cursorY;
-      if (draw) ctx.fillText(line, frame.contentX + connectionOffset.dx, cursorY + connectionOffset.dy);
+      if (draw) ctx.fillText(line, centerX + connectionOffset.dx, cursorY + connectionOffset.dy);
     }
-    pushHotspot(hotspots, connectionId, frame.contentX, frame.contentW, connectionFirst, cursorY, connectionSize, connectionOffset);
-    cursorY += frame.contentW * 0.06;
+    pushHotspot(hotspots, connectionId, centerX - headlineMarginX, headlineMarginX * 2, connectionFirst, cursorY, connectionSize, connectionOffset);
+  }
+  ctx.textAlign = "left";
+
+  // Mint "sheet" band -- full canvas width, rounded only at the top
+  // corners, anchored to the canvas bottom edge (see Slide4Style.
+  // bandMarginTop's own doc comment for why this isn't content-driven
+  // like every other card in this redesign).
+  const bandTop = px(style.slide4.bandMarginTop, width);
+  const bandH = canvasHeight - bandTop;
+  const bandOffset = posFor(positions, "slide4.band");
+  if (draw) {
+    ctx.fillStyle = style.colors.slide1CtaPillBackground;
+    ctx.beginPath();
+    ctx.roundRect(bandOffset.dx, bandTop + bandOffset.dy, width, bandH, [px(24, width), px(24, width), 0, 0]);
+    ctx.fill();
+  }
+  if (hotspots) {
+    hotspots.push({ id: "slide4.band", x: bandOffset.dx, y: bandTop + bandOffset.dy, width, height: bandH });
   }
 
-  // CTA -- no icon, no decorative graphic. Muted, not bright accent green
-  // -- the headline already carries the slide's emphasis. Same locked grey
-  // as Slide 1's tagline (slide0TaglineText), not textSecondary, per the
-  // locked design correction.
-  if (draw) ctx.fillStyle = style.colors.slide0TaglineText;
-  ctx.font = `${styleFor(false, ctaEmphasisForSize)} ${weightFor(700, ctaEmphasisForSize)} ${Math.round(ctaSize)}px ${interFont}`;
-  const ctaLines = wrapText(ctx, episode.cta.copy, frame.contentW);
-  const ctaOffset = posFor(positions, "slide4.cta");
-  let ctaY = cursorY;
-  let ctaFirst = 0;
-  for (const line of ctaLines) {
-    ctaY += ctaSize * 1.4;
-    if (ctaFirst === 0) ctaFirst = ctaY;
-    if (draw) ctx.fillText(line, frame.contentX + ctaOffset.dx, ctaY + ctaOffset.dy);
+  // Like every other draggable card, the band's own drag offset only
+  // nudges where ITS rectangle is drawn/hit-tested -- it never feeds back
+  // into the Tamil/CTA's own layout math, so they stay put even if the
+  // band's background is dragged away from them (same convention as
+  // Slide 4's panel and its contents).
+  const bandPadX = px(style.slide4.bandPadX, width);
+  const bandPadTop = px(style.slide4.bandPadTop, width);
+
+  const tamilId = "slide4.tamil";
+  const tamilOffset = posFor(positions, tamilId);
+  const tamilEmphasis = emphasisFor(emphases, tamilId);
+  const tamilSize = px(tamilEmphasis.size ?? style.slide4.tamilSize, width);
+  if (draw) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = style.colors.slide1GreenCardBackground;
+    try {
+      ctx.letterSpacing = `${Math.round(px(2.16, width))}px`;
+    } catch {
+      /* Canvas2D letterSpacing unsupported -- default tracking is fine */
+    }
+    ctx.font = `${styleFor(false, tamilEmphasis)} ${weightFor(600, tamilEmphasis)} ${Math.round(tamilSize)}px ${tamilFont}`;
+    ctx.fillText(episode.tamilText, bandPadX + tamilOffset.dx, bandTop + bandPadTop + tamilSize + tamilOffset.dy);
+    try {
+      ctx.letterSpacing = "0px";
+    } catch {
+      /* no-op */
+    }
   }
-  pushHotspot(hotspots, "slide4.cta", frame.contentX, frame.contentW, ctaFirst, ctaY, ctaSize, ctaOffset);
-  return ctaY;
+  pushHotspot(hotspots, tamilId, bandPadX, width - bandPadX * 2, bandTop + bandPadTop + tamilSize, bandTop + bandPadTop + tamilSize, tamilSize, tamilOffset);
+
+  const ctaId = "slide4.cta";
+  const ctaEmphasis = emphasisFor(emphases, ctaId);
+  const ctaSize = px(ctaEmphasis.size ?? style.slide4.ctaSize, width);
+  const ctaCopy = overrides?.ctaCopy || episode.cta.copy;
+  const ctaOffset = posFor(positions, ctaId);
+  ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(500, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
+  if (draw) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = style.colors.slide1GreenCardBackground;
+  }
+  const ctaLines = wrapText(ctx, ctaCopy, width - bandPadX * 2);
+  const ctaLineHeight = ctaSize * 1.3;
+  let ctaY = bandTop + bandPadTop + tamilSize * 1.5;
+  const ctaFirst = ctaY;
+  for (const line of ctaLines) {
+    ctaY += ctaLineHeight;
+    if (draw) ctx.fillText(line, centerX + ctaOffset.dx, ctaY + ctaOffset.dy);
+  }
+  ctx.textAlign = "left";
+  pushHotspot(hotspots, ctaId, centerX - (width - bandPadX * 2) / 2, width - bandPadX * 2, ctaFirst + ctaLineHeight, ctaY, ctaSize, ctaOffset);
+
+  return canvasHeight;
 }
 
 /** Runs one slide's own layout in either "measure" (draw=false, no fillText/
@@ -2529,7 +2592,9 @@ function layoutSlide(
         style,
         frame,
         width,
+        canvasHeight,
         episode,
+        tamilFont,
         interFont,
         calSansFont,
         startY,
@@ -2649,6 +2714,13 @@ export function renderAathichoodiCarouselSlide(
     // node 9:26) -- no separate outer/pale wrapping card like Slide 2/
     // Slide 2 above, just this slide's own single light panel
     // (drawSlide3Action) floating directly on white.
+    ctx.fillStyle = style.colors.slide1PageBackground;
+    ctx.fillRect(0, 0, width, height);
+  }
+  if (slideIndex === 4) {
+    // Plain white page, per the Figma redesign (file H9LpyoKvzC5UanyL360JLs,
+    // node 12:46) -- drawSlide4Carry draws the mint band directly on this,
+    // same "just white, no wrapping card" pattern as Slide 4 above.
     ctx.fillStyle = style.colors.slide1PageBackground;
     ctx.fillRect(0, 0, width, height);
   }

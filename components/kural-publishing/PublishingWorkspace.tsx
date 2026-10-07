@@ -229,18 +229,6 @@ function slugify(text: string): string {
   return slug || "untitled";
 }
 
-/** Mirrors drawSlide4Carry's own split exactly -- the trailing "—" is
- *  baked into the lead clause itself (not appended separately at render
- *  time), so what the placeholder shows in the in-canvas editor is a real,
- *  editable/removable character, not a render-only artifact the user
- *  could see on the canvas but never actually delete from the textbox. */
-function splitHeadline(aiaConnection: string): { lead: string; rest: string } {
-  const split = aiaConnection.split(" — ");
-  const leadClause = split[0];
-  const rest = split.slice(1).join(" — ");
-  return { lead: rest ? `${leadClause} —` : leadClause, rest };
-}
-
 function buildAathichoodiFilename(
   contentTypeId: ContentTypeId,
   content: AathichoodiContent,
@@ -1179,27 +1167,18 @@ export default function PublishingWorkspace() {
           };
         }
         case "slide4.headline": {
+          // The whole generated aiaConnection statement now, as ONE
+          // centered headline -- no more lead/trailing-clause split (see
+          // drawSlide4Carry's own doc comment).
           const headlineSize = emphasisOverrides["slide4.headline"]?.size ?? resolvedStyle.slide4.heroSize;
           return {
-            label: "Headline (lead clause)",
+            label: "Headline",
             textValue: textOverrides.slide4?.headline ?? "",
-            textPlaceholder: displayEpisode ? splitHeadline(displayEpisode.aiaConnection).lead : "",
+            textPlaceholder: displayEpisode?.aiaConnection,
             onTextChange: (v) => patchText4({ headline: v }),
             sizeFields: [{ label: "Size", value: headlineSize, onChange: (v) => patchEmphasis("slide4.headline", { size: v }) }],
             fontVar: "--font-display",
             refSize: headlineSize,
-          };
-        }
-        case "slide4.support": {
-          const supportSize = emphasisOverrides["slide4.support"]?.size ?? resolvedStyle.slide4.supportSize;
-          return {
-            label: "Headline (trailing clause)",
-            textValue: textOverrides.slide4?.support ?? "",
-            textPlaceholder: displayEpisode ? splitHeadline(displayEpisode.aiaConnection).rest : "",
-            onTextChange: (v) => patchText4({ support: v }),
-            sizeFields: [{ label: "Size", value: supportSize, onChange: (v) => patchEmphasis("slide4.support", { size: v }) }],
-            fontVar: "--font-serif",
-            refSize: supportSize,
           };
         }
         case "slide4.connection":
@@ -1211,6 +1190,16 @@ export default function PublishingWorkspace() {
             sizeFields: [{ label: "Size", value: resolvedStyle.slide4.supportSize, onChange: (v) => patchSlide4("supportSize", v) }],
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide4.supportSize,
+          };
+        case "slide4.band":
+          return {
+            label: "Mint band",
+            sizeFields: [{ label: "Top margin", value: resolvedStyle.slide4.bandMarginTop, invert: true, axis: "top", onChange: (v) => patchSlide4("bandMarginTop", v) }],
+          };
+        case "slide4.tamil":
+          return {
+            label: "Tamil line (canonical text — size only)",
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide4.tamilSize, onChange: (v) => patchSlide4("tamilSize", v) }],
           };
         case "slide4.cta":
           return {
@@ -2460,22 +2449,22 @@ export default function PublishingWorkspace() {
                     </summary>
                     <div className="mt-2 flex flex-col gap-1.5">
                       <NumField label="Headline size (px)" value={resolvedStyle.slide4.heroSize} onChange={(v) => patchSlide4("heroSize", v)} />
-                      <NumField label="Support size (px)" value={resolvedStyle.slide4.supportSize} onChange={(v) => patchSlide4("supportSize", v)} />
+                      <NumField label="Headline margin top (px)" value={resolvedStyle.slide4.headlineMarginTop} onChange={(v) => patchSlide4("headlineMarginTop", v)} />
+                      <NumField label="Headline margin X (px)" value={resolvedStyle.slide4.headlineMarginX} onChange={(v) => patchSlide4("headlineMarginX", v)} />
+                      <NumField label="Connection line size (px)" value={resolvedStyle.slide4.supportSize} onChange={(v) => patchSlide4("supportSize", v)} />
+                      <NumField label="Band margin top (px)" value={resolvedStyle.slide4.bandMarginTop} onChange={(v) => patchSlide4("bandMarginTop", v)} />
+                      <NumField label="Band padding X (px)" value={resolvedStyle.slide4.bandPadX} onChange={(v) => patchSlide4("bandPadX", v)} />
+                      <NumField label="Band padding top (px)" value={resolvedStyle.slide4.bandPadTop} onChange={(v) => patchSlide4("bandPadTop", v)} />
+                      <NumField label="Tamil line size (px)" value={resolvedStyle.slide4.tamilSize} onChange={(v) => patchSlide4("tamilSize", v)} />
                       <NumField label="CTA size (px)" value={resolvedStyle.slide4.ctaSize} onChange={(v) => patchSlide4("ctaSize", v)} />
                       <NumField label="Brand name size (px)" value={resolvedStyle.slide4.brandNameSize} onChange={(v) => patchSlide4("brandNameSize", v)} />
                       <NumField label="Handle size (px)" value={resolvedStyle.slide4.handleSize} onChange={(v) => patchSlide4("handleSize", v)} />
                       <CheckField label="Show AiA branding on this slide" checked={resolvedStyle.slide4.showBranding} onChange={(v) => patchSlide4("showBranding", v)} />
                       <TextAreaField
-                        label="Headline (lead clause) text override"
+                        label="Headline text override"
                         value={textOverrides.slide4?.headline ?? ""}
-                        placeholder={splitHeadline(displayEpisode.aiaConnection).lead}
+                        placeholder={displayEpisode.aiaConnection}
                         onChange={(v) => patchText4({ headline: v })}
-                      />
-                      <TextAreaField
-                        label="Headline (trailing clause) text override"
-                        value={textOverrides.slide4?.support ?? ""}
-                        placeholder={splitHeadline(displayEpisode.aiaConnection).rest}
-                        onChange={(v) => patchText4({ support: v })}
                       />
                       <TextField
                         label="CTA text override"

@@ -302,6 +302,14 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       // segment, drawn as the panel's muted supporting line.
       todayAction: "Ask your child today: \"What's one thing you've been putting off that really needs to start now, not later?\" Start with whatever they've been saying, \"I'll do it later,\" about.",
       childLesson: "Some things only work if you do them at the right time. Waiting too long can lose the chance completely.",
+      // Founder-supplied (Figma Slide 5 redesign) -- a single centered
+      // statement now, not the lead/trailing-clause em-dash shape most
+      // other episodes' generated aiaConnection has.
+      aiaConnection: "Aram in Action turns a lesson in responsibility into something your child actually lives out.",
+      // Guarantees the TRY_TODAY CTA copy ("Don't just read it — try
+      // today's action...") the Figma mockup shows, rather than leaving
+      // it to classifyCta's own rotation/history logic.
+      recommendedCta: "TRY_TODAY",
     },
   },
   // Corrected from the earlier "மன்றுபறித் துண்ணேல்" (mandru = court/
