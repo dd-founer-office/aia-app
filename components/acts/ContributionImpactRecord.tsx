@@ -20,7 +20,6 @@ const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900
 // used everywhere else on this page, not a new palette for this section.
 const TEAL = "#0A363A";
 const MINT = "#68FFAD";
-const PALE_MINT = "var(--color-background)"; // #EFF4F2, same token ActEvidence's icon badges use
 
 function subscribeToReducedMotionChanges(onChange: () => void): () => void {
   const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -65,8 +64,8 @@ const ENTRY_META: { key: keyof ContributionImpactRecordData; number: string; lab
 ];
 
 function RecordIdPill({ recordId, href }: { recordId: string; href?: string }) {
-  const className = `${inter.className} inline-flex w-fit items-center gap-1 rounded-full px-3.5 py-2 transition-opacity hover:opacity-80`;
-  const style = { background: "#FFFFFF" };
+  const className = `${inter.className} inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-3.5 py-2 transition-opacity hover:opacity-80`;
+  const style = { background: MINT };
   const content = (
     <>
       <span className="text-[12px] font-semibold" style={{ color: TEAL }}>
@@ -93,24 +92,64 @@ function RecordIdPill({ recordId, href }: { recordId: string; href?: string }) {
   );
 }
 
-function ImpactRecordCard({
+// The icon badge "emerges" past its row's top/bottom edge -- a dark-teal
+// rounded shape with a soft mint stroke, absolutely positioned inside its
+// (bordered-column) parent so it can overflow that column's own box
+// without affecting row height, holding a smaller mint circular badge
+// with the dark-teal icon inside it (reference: founder-supplied
+// Abyssale-table close-up of the mint-on-teal checkmark badge).
+function EmergingIconBadge({ icon: Icon }: { icon: ComponentType<{ size?: number; strokeWidth?: number; color?: string }> }) {
+  return (
+    <div
+      className="absolute flex items-center justify-center rounded-[20px]"
+      style={{
+        top: -10,
+        bottom: -10,
+        left: 12,
+        right: 12,
+        background: TEAL,
+        border: `1.5px solid ${MINT}66`,
+        zIndex: 1,
+      }}
+    >
+      <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: MINT }}>
+        <Icon size={17} strokeWidth={2} color={TEAL} />
+      </div>
+    </div>
+  );
+}
+
+const ROW_DIVIDER = { borderTop: `1px solid var(--color-border)` };
+
+function ImpactRecordRows({
   number,
   label,
-  icon: Icon,
+  icon,
   entry,
+  isFirst,
+  isLast,
 }: {
   number: string;
   label: string;
   icon: ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;
   entry: ImpactRecordEntry;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   return (
-    <div className="overflow-hidden rounded-[16px] border" style={{ borderColor: "var(--color-border)" }}>
-      <div className="flex">
-        <div className="flex w-1/2 items-center justify-center py-6" style={{ background: TEAL }}>
-          <Icon size={26} strokeWidth={1.75} color="#FFFFFF" />
+    <>
+      {/* Icon + heading row */}
+      <div className="flex" style={isFirst ? undefined : ROW_DIVIDER}>
+        <div
+          className={`relative w-1/2 ${isFirst ? "rounded-tl-[16px]" : ""}`}
+          style={{ background: "#FFFFFF" }}
+        >
+          <EmergingIconBadge icon={icon} />
         </div>
-        <div className="flex w-1/2 flex-col items-center justify-center gap-0.5 py-6" style={{ background: "#FFFFFF" }}>
+        <div
+          className={`flex w-1/2 flex-col items-center justify-center gap-0.5 py-6 ${isFirst ? "rounded-tr-[16px]" : ""}`}
+          style={{ background: "#FAFAFA" }}
+        >
           <span className={`${inter.className} text-[10px]`} style={{ color: "var(--color-muted-foreground)" }}>
             {number}
           </span>
@@ -120,7 +159,11 @@ function ImpactRecordCard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 px-5 py-5" style={{ background: PALE_MINT }}>
+      {/* Data row -- label/value on the left, the id pill trailing on the right */}
+      <div
+        className={`flex items-center justify-between gap-3 px-5 py-4 ${isLast ? "rounded-b-[16px]" : ""}`}
+        style={{ background: "#FFFFFF", ...ROW_DIVIDER }}
+      >
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className={`${inter.className} text-[10px]`} style={{ color: "var(--color-muted-foreground)" }}>
             {entry.dataLabel}
@@ -131,7 +174,7 @@ function ImpactRecordCard({
         </div>
         <RecordIdPill recordId={entry.recordId} href={entry.href} />
       </div>
-    </div>
+    </>
   );
 }
 
@@ -223,9 +266,17 @@ export function ContributionImpactRecord({ data }: { data: ContributionImpactRec
               </p>
             </div>
 
-            <div className="flex flex-col gap-3">
-              {ENTRY_META.map(({ key, number, label, icon }) => (
-                <ImpactRecordCard key={key} number={number} label={label} icon={icon} entry={data[key]} />
+            <div className="border" style={{ borderColor: "var(--color-border)", borderRadius: 16 }}>
+              {ENTRY_META.map(({ key, number, label, icon }, index) => (
+                <ImpactRecordRows
+                  key={key}
+                  number={number}
+                  label={label}
+                  icon={icon}
+                  entry={data[key]}
+                  isFirst={index === 0}
+                  isLast={index === ENTRY_META.length - 1}
+                />
               ))}
             </div>
           </div>
