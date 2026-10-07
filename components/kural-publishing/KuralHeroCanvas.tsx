@@ -156,6 +156,18 @@ export const DISTANT_DEVOTION_LOGO_PATH = "/brand/distant-devotion-logo.png";
 export const DD_BRANDING_WORDMARK = "Distant Devotion";
 export const DD_BRANDING_HANDLE = "distant_devotion";
 
+/** The Daily Aathichoodi Series' own two founder-supplied line-art icons --
+ *  Slide 2 (UNDERSTAND)'s manuscript badge and Slide 4 (ASK YOUR CHILD
+ *  TODAY)'s practice badge (aathichoodi-carousel-renderer.ts's
+ *  drawSlide1Understand/drawSlide3Action). Per the standing rule, these
+ *  are the real files the founder supplied (twice -- an earlier pass drew
+ *  hand-vectored approximations of them instead, which founder feedback
+ *  confirmed wasn't acceptable), drawn via drawImage + a recolor
+ *  composite (see tintIcon in the renderer), never redrawn as vector
+ *  shapes. Black-stroke-on-transparent source art, any solid tint works. */
+export const MANUSCRIPT_ICON_PATH = "/aathichoodi/manuscript-icon.png";
+export const PRACTICE_ICON_PATH = "/aathichoodi/practice-icon.png";
+
 /** 6-Second Story's own brand signature text -- locked copy from the brief,
  *  kept separate from DD_BRANDING_WORDMARK/HANDLE above since this format's
  *  renderer draws a wordmark + tagline pair, not a wordmark + @handle.
@@ -228,6 +240,13 @@ interface KuralHeroCanvasProps {
    *  prop is just a generic "photo for templates that use one" slot.
    *  Ignored by every other template. */
   familyImage?: HTMLImageElement | null;
+  /** aathichoodi-carousel template only: the two founder-supplied line-art
+   *  icons (Slide 2's manuscript badge, Slide 4's practice badge) -- see
+   *  MANUSCRIPT_ICON_PATH/PRACTICE_ICON_PATH above. Ignored by every other
+   *  template. Null/undefined falls back to a hand-vectored approximation
+   *  (see the renderer's drawFileIconOrFallback) until loaded. */
+  manuscriptIcon?: HTMLImageElement | null;
+  practiceIcon?: HTMLImageElement | null;
   /** INTERNAL, development-only. Live-preview only, KKA template only.
    *  Defaults to false. */
   debugFormationLogic?: boolean;
@@ -252,6 +271,8 @@ export default function KuralHeroCanvas({
   generation,
   logoImage,
   familyImage,
+  manuscriptIcon,
+  practiceIcon,
   debugFormationLogic = false,
   format,
   slideIndex = 0,
@@ -292,6 +313,8 @@ export default function KuralHeroCanvas({
           calSansFont: fonts.calSansFont,
           logoImage: logoImage ?? null,
           familyImage: familyImage ?? null,
+          manuscriptIcon: manuscriptIcon ?? null,
+          practiceIcon: practiceIcon ?? null,
           brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
           brandingHandle: branding ? BRANDING_HANDLE : undefined,
           design: carouselDesign,
@@ -360,7 +383,7 @@ export default function KuralHeroCanvas({
     return () => {
       cancelled = true;
     };
-  }, [template, content, generation, logoImage, familyImage, debugFormationLogic, width, height, branding, slideIndex, carouselDesign, onCarouselHotspots]);
+  }, [template, content, generation, logoImage, familyImage, manuscriptIcon, practiceIcon, debugFormationLogic, width, height, branding, slideIndex, carouselDesign, onCarouselHotspots]);
 
   // distant-devotion-6sec only: a real requestAnimationFrame loop driving
   // the MOMENT -> CURIOSITY -> INSIGHT -> FEELING sequence, looping every
@@ -564,7 +587,9 @@ export async function renderAathichoodiCarouselAssetForExport(
   logoImage: HTMLImageElement | null,
   format: AssetFormat,
   carouselDesign?: CarouselDesignOverrides,
-  familyImage?: HTMLImageElement | null
+  familyImage?: HTMLImageElement | null,
+  manuscriptIcon?: HTMLImageElement | null,
+  practiceIcon?: HTMLImageElement | null
 ): Promise<Blob | null> {
   return renderAathichoodiCarouselSlideForExport(
     episode,
@@ -575,6 +600,8 @@ export async function renderAathichoodiCarouselAssetForExport(
     format.branding ? BRANDING_WORDMARK : undefined,
     format.branding ? BRANDING_HANDLE : undefined,
     carouselDesign,
-    familyImage
+    familyImage,
+    manuscriptIcon,
+    practiceIcon
   );
 }

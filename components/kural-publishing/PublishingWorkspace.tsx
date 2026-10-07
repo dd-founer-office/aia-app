@@ -53,6 +53,8 @@ import KuralHeroCanvas, {
   KKA_LOGO_PATH,
   AIA_KOLAM_MARK_PATH,
   DISTANT_DEVOTION_LOGO_PATH,
+  MANUSCRIPT_ICON_PATH,
+  PRACTICE_ICON_PATH,
   ASSET_FORMATS,
   formatsForTemplate,
   renderAssetForExport,
@@ -457,6 +459,14 @@ export default function PublishingWorkspace() {
   // AIA_KOLAM_MARK_PATH doc comment for why), loaded independently so both
   // logos are ready whenever their respective template is selected.
   const [aiaLogoImage, setAiaLogoImage] = useState<HTMLImageElement | null>(null);
+  // The Daily Aathichoodi Series' two founder-supplied line-art icons
+  // (Slide 2's manuscript badge, Slide 4's practice badge) -- same fixed,
+  // app-wide "load once from a public path" pattern as aiaLogoImage above,
+  // not per-episode state. See MANUSCRIPT_ICON_PATH/PRACTICE_ICON_PATH's
+  // own doc comment in KuralHeroCanvas.tsx for why these are the real
+  // files now, not a hand-vectored approximation.
+  const [manuscriptIconImage, setManuscriptIconImage] = useState<HTMLImageElement | null>(null);
+  const [practiceIconImage, setPracticeIconImage] = useState<HTMLImageElement | null>(null);
   const [selectedFormatIds, setSelectedFormatIds] = useState<string[]>(() => {
     const formats = formatsForTemplate(getContentType("kka").template);
     return formats[0] ? [formats[0].id] : [];
@@ -668,6 +678,38 @@ export default function PublishingWorkspace() {
       // but fails silently rather than crashing, same standing rule.
     };
     img.src = AIA_KOLAM_MARK_PATH;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) setManuscriptIconImage(img);
+    };
+    img.onerror = () => {
+      // Should not happen -- this asset is confirmed present on disk --
+      // but fails silently rather than crashing, same standing rule.
+    };
+    img.src = MANUSCRIPT_ICON_PATH;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) setPracticeIconImage(img);
+    };
+    img.onerror = () => {
+      // Should not happen -- this asset is confirmed present on disk --
+      // but fails silently rather than crashing, same standing rule.
+    };
+    img.src = PRACTICE_ICON_PATH;
     return () => {
       cancelled = true;
     };
@@ -1216,10 +1258,10 @@ export default function PublishingWorkspace() {
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide4.ctaSize,
           };
-        case "slide4.footnote":
+        case "slide4.languagePill":
           return {
-            label: "Language-category footnote (size only — Episode 22 only for now)",
-            sizeFields: [{ label: "Size", value: resolvedStyle.slide4.footnoteSize, onChange: (v) => patchSlide4("footnoteSize", v) }],
+            label: "Language-category pill (size only — Episode 22 only for now)",
+            sizeFields: [{ label: "Text size", value: resolvedStyle.slide4.pillTextSize, onChange: (v) => patchSlide4("pillTextSize", v) }],
           };
         case "footer.brandName":
           return {
@@ -1734,7 +1776,9 @@ export default function PublishingWorkspace() {
               aiaLogoImage,
               format,
               carouselDesign,
-              familyImageElement
+              familyImageElement,
+              manuscriptIconImage,
+              practiceIconImage
             );
             if (!blob) continue;
             results.push({
@@ -1826,6 +1870,8 @@ export default function PublishingWorkspace() {
     isDistantDevotion,
     ddParsedAsset,
     ddLogoImage,
+    manuscriptIconImage,
+    practiceIconImage,
     isSixSecond,
     sixSecondStory,
     sixSecondImageElement,
@@ -2469,8 +2515,9 @@ export default function PublishingWorkspace() {
                       <NumField label="Brand name size (px)" value={resolvedStyle.slide4.brandNameSize} onChange={(v) => patchSlide4("brandNameSize", v)} />
                       <NumField label="Handle size (px)" value={resolvedStyle.slide4.handleSize} onChange={(v) => patchSlide4("handleSize", v)} />
                       <CheckField label="Show AiA branding on this slide" checked={resolvedStyle.slide4.showBranding} onChange={(v) => patchSlide4("showBranding", v)} />
-                      <NumField label="Footnote size (px)" value={resolvedStyle.slide4.footnoteSize} onChange={(v) => patchSlide4("footnoteSize", v)} />
-                      <CheckField label="Show language-category footnote" checked={resolvedStyle.slide4.showFootnote} onChange={(v) => patchSlide4("showFootnote", v)} />
+                      <NumField label="CTA left inset (px)" value={resolvedStyle.slide4.ctaPadX} onChange={(v) => patchSlide4("ctaPadX", v)} />
+                      <NumField label="Language-category pill text size (px)" value={resolvedStyle.slide4.pillTextSize} onChange={(v) => patchSlide4("pillTextSize", v)} />
+                      <CheckField label="Show language-category pill" checked={resolvedStyle.slide4.showLanguagePill} onChange={(v) => patchSlide4("showLanguagePill", v)} />
                       <TextAreaField
                         label="Headline text override"
                         value={textOverrides.slide4?.headline ?? ""}
@@ -3046,6 +3093,8 @@ export default function PublishingWorkspace() {
                   ? sixSecondImageElement
                   : undefined
             }
+            manuscriptIcon={effectiveTemplate === "aathichoodi-carousel" ? manuscriptIconImage : undefined}
+            practiceIcon={effectiveTemplate === "aathichoodi-carousel" ? practiceIconImage : undefined}
             format={previewFormat}
             slideIndex={activeSlideIndex}
             carouselDesign={effectiveTemplate === "aathichoodi-carousel" ? carouselDesign : undefined}

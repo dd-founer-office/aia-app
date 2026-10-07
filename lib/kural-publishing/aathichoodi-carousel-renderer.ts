@@ -134,6 +134,14 @@ export interface CarouselColors {
   tagPillActiveBackground: string;
   tagPillActiveBorder: string;
   tagPillActiveText: string;
+  /** Slide 5's own inline "PRACTICES"-style category pill (distinct
+   *  component from Slide 4's tagPill row above -- see Slide4Style.
+   *  showLanguagePill's own doc comment), per the Figma file's later
+   *  update (node 12:46): bright yellow fill, dark text. Not mode-
+   *  dependent, same reasoning as every other slide1/slide3 colour
+   *  here. */
+  languagePillBackground: string;
+  languagePillText: string;
   /** Slide 2's full-bleed page background (replacing the usual dark
    *  gradient/white field there) -- plain white, per explicit founder
    *  direction and the attached reference image (a nested-card UI
@@ -394,26 +402,41 @@ export interface Slide4Style {
    *  source shows this band always filling the remaining space below
    *  bandMarginTop regardless of content length, like a bottom sheet).
    *  bandPadX is the Tamil line's own left inset within it; bandPadTop is
-   *  the gap from the band's top edge to the Tamil line. */
+   *  the gap from the band's top edge to the Tamil line. The band itself
+   *  is dark teal now, not mint (see CarouselColors.slide1GreenCardBackground,
+   *  reused here -- same value, new meaning) -- per the Figma file's later
+   *  update (node 12:46), which also turned the Tamil line and CTA copy
+   *  white (slide1CardText, also reused) to match. */
   bandMarginTop: number;
   bandPadX: number;
   bandPadTop: number;
   brandNameSize: number;
   handleSize: number;
   showBranding: boolean;
-  /** Small "*{Language Category}" footnote inside the mint band, matching
-   *  Slide 4's own tag row -- per the Figma file's later update (node
-   *  12:46), read directly off its dev-mode inspector: Inter Regular 20px,
-   *  #0A363A (hardcoded directly at the draw call, not a style.colors
-   *  token -- same reasoning as drawFooterLockup's own Slide 4 hardcode:
-   *  this slide's panel is always light, never mode-dependent), 2px
-   *  tracking, left edge at x=756.5/y=1004 (1080-reference scale). Only
-   *  drawn when episode.languageCategory is set (every episode except 22,
-   *  for now -- see canon.ts). */
-  showFootnote: boolean;
-  footnoteSize: number;
-  footnoteX: number;
-  footnoteY: number;
+  /** The CTA copy's own left inset (and, symmetrically, its wrap margin on
+   *  the right) -- its own field because the Figma file's update put it at
+   *  a different x (136) than the Tamil line's bandPadX (182) above it. */
+  ctaPadX: number;
+  /** Small "PRACTICES"-style category pill, inline immediately after the
+   *  CTA copy's own last line -- per the Figma file's later update (node
+   *  12:46), read directly off its dev-mode inspector: bright yellow fill
+   *  (languagePillBackground), Inter Bold 20px dark text (languagePillText
+   *  -- the file's own value, #0a3a6a, is almost certainly the same
+   *  transposed-digit typo as #0A363A elsewhere in this project; treated
+   *  as that color here), 8px corner radius. Text is the bare category
+   *  word, uppercased ("PRACTICES", not "Language Practices" -- distinct
+   *  from Slide 4's own 3-pill selector, a different component). Sized to
+   *  its own text rather than the Figma file's literal 129x39 (that's
+   *  specific to "PRACTICES"; other categories are shorter/longer words).
+   *  Only drawn when episode.languageCategory is set (every episode except
+   *  22, for now -- see canon.ts). Wraps to its own line below the CTA
+   *  text when the last line has no room left for it. */
+  showLanguagePill: boolean;
+  pillTextSize: number;
+  pillPadX: number;
+  pillPadY: number;
+  pillRadius: number;
+  pillGap: number;
 }
 
 export interface CarouselStyle {
@@ -684,6 +707,8 @@ export const DEFAULT_STYLE: CarouselStyle = {
     tagPillActiveBackground: "#000000",
     tagPillActiveBorder: "#000000",
     tagPillActiveText: "#FFFFFF",
+    languagePillBackground: "#FFF267",
+    languagePillText: "#0A363A",
   },
   layout: {
     marginX: 0.093,
@@ -774,21 +799,24 @@ export const DEFAULT_STYLE: CarouselStyle = {
     bandMarginTop: 707,
     bandPadX: 182,
     bandPadTop: 95,
+    ctaPadX: 136,
     brandNameSize: 22,
     handleSize: 17,
     // Restored per explicit founder direction (the Figma mockup's own
     // bottom edge left no visible room for it, but the founder wants the
     // same logo lockup Slide 1 has back on this slide too) -- it now sits
-    // on top of the mint band (drawFooterLockup draws after
-    // drawSlide4Carry), using the same dark-teal-on-mint pairing the CTA
-    // pill and this badge's own colors (logoBadgeBackground/Text) already
-    // use elsewhere, so it reads as part of the same system rather than a
-    // mismatched addition.
+    // on top of the band (drawFooterLockup draws after drawSlide4Carry).
+    // Mint badge background + white wordmark/handle text, per explicit
+    // founder direction once the band itself turned dark teal (see
+    // drawFooterLockup's own isSlide4 branch) -- mint-on-mint had no
+    // contrast at all, confirmed live.
     showBranding: true,
-    showFootnote: true,
-    footnoteSize: 20,
-    footnoteX: 756.5,
-    footnoteY: 1004,
+    showLanguagePill: true,
+    pillTextSize: 20,
+    pillPadX: 16,
+    pillPadY: 10,
+    pillRadius: 8,
+    pillGap: 16,
   },
 };
 
@@ -850,6 +878,8 @@ export const INVERTED_COLORS: CarouselColors = {
   tagPillActiveBackground: "#000000",
   tagPillActiveBorder: "#000000",
   tagPillActiveText: "#FFFFFF",
+  languagePillBackground: "#FFF267",
+  languagePillText: "#0A363A",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -940,6 +970,14 @@ export interface RenderCarouselSlideOptions {
    *  (generated externally, uploaded via the workspace sidebar), never
    *  fetched or generated by this app. */
   familyImage?: HTMLImageElement | null;
+  /** The two founder-supplied line-art icons (see MANUSCRIPT_ICON_PATH/
+   *  PRACTICE_ICON_PATH in KuralHeroCanvas.tsx) -- fixed, app-wide assets,
+   *  not per-episode, loaded once by the host component the same way
+   *  logoImage above is. Null/undefined (not yet loaded, or the file is
+   *  missing) falls back to a hand-vectored approximation -- see
+   *  drawFileIconOrFallback. */
+  manuscriptIcon?: HTMLImageElement | null;
+  practiceIcon?: HTMLImageElement | null;
   /** Live design/text overrides -- see the module doc comment. Omit for
    *  the founder-approved default look. */
   design?: CarouselDesignOverrides;
@@ -1322,8 +1360,17 @@ function drawFooterLockup(
 
   // The badge is now live-drawn text (see drawLogoBadge), not an
   // uploaded image -- it no longer waits on opts.logoImage to have loaded.
+  // Slide 4's own badge always wants mint-bg/dark-teal-text regardless of
+  // invertColors -- its band is always dark teal now (drawSlide4Carry),
+  // never mode-dependent, so the badge shouldn't flip with the toggle
+  // either; style.colors.logoBadgeBackground/Text stay mode-aware for
+  // Slide 1, which still alternates light/dark.
   const logoOffset = posFor(positions, "footer.logo");
-  drawLogoBadge(ctx, style.colors, calSansFont, logoX + logoOffset.dx, rowY + logoOffset.dy, logoRadius);
+  const isSlide4ForLogo = opts.slideIndex === 4;
+  const logoColors: CarouselColors = isSlide4ForLogo
+    ? { ...style.colors, logoBadgeBackground: "#68FFAD", logoBadgeText: "#0A363A" }
+    : style.colors;
+  drawLogoBadge(ctx, logoColors, calSansFont, logoX + logoOffset.dx, rowY + logoOffset.dy, logoRadius);
   if (hotspots) {
     hotspots.push({
       id: "footer.logo",
@@ -1338,24 +1385,25 @@ function drawFooterLockup(
   const textEndX = frame.contentX + frame.contentW;
   const brandNameOffset = posFor(positions, "footer.brandName");
   const brandNameEmphasis = emphasisFor(emphases, "footer.brandName");
-  // Slide 4 always wants #0A363A -- its page is white/mint now, and that's
-  // the dark-on-light pairing the CTA pill and this badge's own colors
-  // (logoBadgeBackground/Text) already use elsewhere. Slide 1 keeps the
-  // mode-aware style.colors.textPrimary/textSecondary tokens instead of
-  // that same hardcoded value: Slide 1's default mode is still a dark
-  // background (unlike Slide 4), and #0A363A text there is invisible,
-  // confirmed live -- those tokens already resolve to the right color for
-  // both of Slide 1's own modes (white in dark mode, #0A363A in inverted/
-  // light mode) without this footer needing to special-case slideIndex
-  // itself. Not style.colors.textPrimary/textSecondary for Slide 4,
-  // though -- those are ALSO the generic in-canvas-edit-textarea fallback
-  // colors (PublishingWorkspace.tsx), shared across every slide's text
-  // fields; changing them globally to #0A363A would make that textarea's
-  // own typed text invisible on Slide 1's dark default background
+  // Slide 4 always wants white now -- its band turned dark teal (see
+  // drawSlide4Carry), and white is the pairing the Tamil line/CTA copy on
+  // that same band already use. (An earlier pass hardcoded #0A363A here
+  // for a mint band; confirmed live that white is the one that keeps
+  // contrast now the band itself is dark.) Slide 1 keeps the mode-aware
+  // style.colors.textPrimary/textSecondary tokens instead of a hardcoded
+  // value: Slide 1's default mode is still a dark background (unlike
+  // Slide 4), and white-on-white would be invisible there in light/
+  // inverted mode -- those tokens already resolve to the right color for
+  // both of Slide 1's own modes without this footer needing to special-
+  // case slideIndex itself. Not style.colors.textPrimary/textSecondary for
+  // Slide 4, though -- those are ALSO the generic in-canvas-edit-textarea
+  // fallback colors (PublishingWorkspace.tsx), shared across every slide's
+  // text fields; changing them globally to white would make that
+  // textarea's own typed text invisible on Slide 1's light/inverted mode
   // whenever ANY field there is being edited, not just this footer.
   const isSlide4 = opts.slideIndex === 4;
   ctx.textAlign = "left";
-  ctx.fillStyle = isSlide4 ? "#0A363A" : style.colors.textPrimary;
+  ctx.fillStyle = isSlide4 ? "#FFFFFF" : style.colors.textPrimary;
   ctx.font = `${styleFor(false, brandNameEmphasis)} ${weightFor(700, brandNameEmphasis)} ${Math.round(brandName)}px ${interFont}`;
   const brandNameY = rowY - textBlockHeight / 2 + brandName;
   ctx.fillText(opts.brandingWordmark.replace("AiA — ", ""), textX + brandNameOffset.dx, brandNameY + brandNameOffset.dy);
@@ -1363,7 +1411,7 @@ function drawFooterLockup(
   if (opts.brandingHandle) {
     const handleOffset = posFor(positions, "footer.handle");
     const handleEmphasis = emphasisFor(emphases, "footer.handle");
-    ctx.fillStyle = isSlide4 ? "#0A363A" : style.colors.textSecondary;
+    ctx.fillStyle = isSlide4 ? "#FFFFFF" : style.colors.textSecondary;
     ctx.font = `${styleFor(false, handleEmphasis)} ${weightFor(400, handleEmphasis)} ${Math.round(handle)}px ${interFont}`;
     const handleY = rowY + textBlockHeight / 2 - handle * 0.25;
     ctx.fillText(`@${opts.brandingHandle}`, textX + handleOffset.dx, handleY + handleOffset.dy);
@@ -1402,21 +1450,18 @@ function drawSlide0HeroPanel(ctx: CanvasRenderingContext2D, style: CarouselStyle
  *  the word's own text baseline; `left` is its left edge. Must be called
  *  before the word itself is drawn, so the box sits behind the glyphs.
  *
- *  The top padding is still a little taller than the reference image's
- *  Latin-text original called for -- Tamil vowel signs (e.g. the ெ mark
- *  in செய்) sit above the consonant's own cap-height and were getting
- *  clipped by the box's top edge at the reference's exact proportions --
- *  but tightened back down from an earlier, even taller correction that
- *  over-shot: on a 2-line hero (common; see drawSlide0Stop's own
- *  lineHeightRatio), that taller box's top edge reached past the
- *  PREVIOUS line's own baseline, overlapping its glyphs -- confirmed
- *  live on episode 22's two-line hero. Hugging the word tighter here
- *  AND giving the hero's own lines more breathing room (see the
- *  fitText call below) both needed to happen together to fix it. */
+ *  Top/bottom overshoot halved again per explicit founder direction (the
+ *  previous, taller proportions -- needed at the time to clear Tamil
+ *  vowel signs above the cap-height without overlapping the previous
+ *  wrapped line -- read as too loose once seen live against the founder's
+ *  own reference crop). The hero's own lineHeightRatio (see the fitText
+ *  call below) is trimmed down to match -- a tighter box needs less
+ *  wrapped-line clearance than the one that drove it up to 1.55 in the
+ *  first place. */
 function drawHeroWordHighlight(ctx: CanvasRenderingContext2D, accent: string, left: number, baseline: number, wordWidth: number, fontSize: number): void {
   const padX = fontSize * 0.12;
-  const top = baseline - fontSize * 1.1;
-  const bottom = baseline + fontSize * 0.32;
+  const top = baseline - fontSize * 0.55;
+  const bottom = baseline + fontSize * 0.16;
   const boxX = left - padX;
   const boxW = wordWidth + padX * 2;
   const boxH = bottom - top;
@@ -1465,10 +1510,12 @@ function drawSlide0Stop(
   // Tamil face, for typographic consistency across the app.
   ctx.textAlign = "left";
   const heroFont = (size: number) => `${styleFor(false, heroEmphasis)} ${weightFor(700, heroEmphasis)} ${size}px ${tamilFont}`;
-  // lineHeightRatio bumped from fitText's 1.32 default to 1.55 -- on a
-  // wrapped (2+ line) hero, the last line's word-highlight box (see
+  // lineHeightRatio bumped from fitText's 1.32 default -- on a wrapped
+  // (2+ line) hero, the last line's word-highlight box (see
   // drawHeroWordHighlight) needs clearance above it that the default
-  // ratio didn't leave room for.
+  // ratio didn't leave room for. Trimmed back down from an earlier 1.55
+  // once that box's own overshoot was halved (see drawHeroWordHighlight's
+  // doc comment) -- a tighter box needs less clearance.
   const hero = fitText(
     ctx,
     episode.tamilText,
@@ -1477,7 +1524,7 @@ function drawSlide0Stop(
     (frame.contentBottom - frame.contentTop) * 0.46,
     Math.round(px(style.slide0.heroSize, width)),
     Math.round(px(style.slide0.heroMinSize, width)),
-    1.55
+    1.42
   );
   ctx.font = heroFont(hero.size);
 
@@ -1581,6 +1628,72 @@ function drawSlide0Stop(
   pushHotspot(hotspots, "slide0.tagline", frame.contentX, frame.contentW, taglineFirst, cursorY, taglineSize, taglineOffset);
 
   return cursorY;
+}
+
+// Recolored-image cache for drawFileIconOrFallback below -- keyed by the
+// image's own src plus the target color, since both icons are fixed,
+// app-wide assets (not per-episode), so the same tint is computed once and
+// reused across every render/drag/export rather than re-composited on
+// every frame.
+const iconTintCache = new Map<string, HTMLCanvasElement>();
+
+/** Recolors a black-stroke-on-transparent source icon to a flat `color` via
+ *  a `source-in` composite on an offscreen canvas -- the standard icon-
+ *  tinting trick: drawImage the icon, then fill the same rect with
+ *  `source-in` so the fill only survives where the icon's own alpha was
+ *  already nonzero, replacing its (black) pixels with `color` while
+ *  keeping its alpha mask intact. Done on an OFFSCREEN canvas, never
+ *  directly on the slide's own ctx -- `source-in` also clears every OTHER
+ *  pixel in the filled rect to transparent, which would punch a hole
+ *  through whatever card background was already drawn behind the icon on
+ *  the real canvas. */
+function tintedIcon(img: HTMLImageElement, color: string): HTMLCanvasElement | null {
+  const key = `${img.src}|${color}`;
+  const cached = iconTintCache.get(key);
+  if (cached) return cached;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h) return null;
+  const off = document.createElement("canvas");
+  off.width = w;
+  off.height = h;
+  const octx = off.getContext("2d");
+  if (!octx) return null;
+  octx.drawImage(img, 0, 0, w, h);
+  octx.globalCompositeOperation = "source-in";
+  octx.fillStyle = color;
+  octx.fillRect(0, 0, w, h);
+  iconTintCache.set(key, off);
+  return off;
+}
+
+/** Draws a founder-supplied line-art icon image (see MANUSCRIPT_ICON_PATH/
+ *  PRACTICE_ICON_PATH in KuralHeroCanvas.tsx), recolored to `color` and
+ *  centered in a `size`-square box at (cx, cy) -- the REAL file, per the
+ *  standing rule against approximating a supplied asset (founder feedback
+ *  confirmed an earlier hand-vectored pass wasn't acceptable). Falls back
+ *  to the hand-vectored `fallback` only for the brief window before the
+ *  image has finished loading (see PublishingWorkspace.tsx's
+ *  manuscriptIcon/practiceIcon state) -- never a permanent substitute. */
+function drawFileIconOrFallback(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement | null | undefined,
+  fallback: () => void,
+  cx: number,
+  cy: number,
+  size: number,
+  color: string
+): void {
+  if (!image || !image.complete || image.naturalWidth === 0) {
+    fallback();
+    return;
+  }
+  const tinted = tintedIcon(image, color);
+  if (!tinted) {
+    fallback();
+    return;
+  }
+  ctx.drawImage(tinted, cx - size / 2, cy - size / 2, size, size);
 }
 
 /** A palm-leaf manuscript mark -- two stacked bound bundles of leaves
@@ -1710,7 +1823,8 @@ function drawSlide1Understand(
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
   overrideParagraphs: string[] | undefined,
-  hotspots?: CarouselHotspot[]
+  hotspots?: CarouselHotspot[],
+  manuscriptIcon?: HTMLImageElement | null
 ): number {
   void startY;
   void frame;
@@ -1846,7 +1960,15 @@ function drawSlide1Understand(
     ctx.beginPath();
     ctx.roundRect(badgeX, badgeY, badgeSize, badgeSize, badgeRadius);
     ctx.fill();
-    drawManuscriptIcon(ctx, badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize * 0.62, style.colors.slide1IconBadgeIconColor);
+    drawFileIconOrFallback(
+      ctx,
+      manuscriptIcon,
+      () => drawManuscriptIcon(ctx, badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize * 0.62, style.colors.slide1IconBadgeIconColor),
+      badgeX + badgeSize / 2,
+      badgeY + badgeSize / 2,
+      badgeSize * 0.78,
+      style.colors.slide1IconBadgeIconColor
+    );
   }
   // Pushed before the icon/text hotspots below (not after) so they render
   // later in the overlay's DOM order and so stay on top for clicking --
@@ -2347,7 +2469,8 @@ function drawSlide3Action(
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
   overrides: { before?: string; question?: string; after?: string } | undefined,
-  hotspots?: CarouselHotspot[]
+  hotspots?: CarouselHotspot[],
+  practiceIcon?: HTMLImageElement | null
 ): number {
   void startY;
   void frame;
@@ -2503,7 +2626,15 @@ function drawSlide3Action(
     ctx.beginPath();
     ctx.roundRect(iconX, iconY, iconSize, iconSize, iconRadius);
     ctx.fill();
-    drawPracticeIcon(ctx, iconX + iconSize / 2, iconY + iconSize / 2, iconSize * 0.62, style.colors.slide3IconColor);
+    drawFileIconOrFallback(
+      ctx,
+      practiceIcon,
+      () => drawPracticeIcon(ctx, iconX + iconSize / 2, iconY + iconSize / 2, iconSize * 0.62, style.colors.slide3IconColor),
+      iconX + iconSize / 2,
+      iconY + iconSize / 2,
+      iconSize * 0.78,
+      style.colors.slide3IconColor
+    );
   }
 
   if (style.slide3.sectionHeadingText) {
@@ -2679,15 +2810,19 @@ function drawSlide4Carry(
   }
   ctx.textAlign = "left";
 
-  // Mint "sheet" band -- full canvas width, rounded only at the top
+  // Dark-teal "sheet" band -- full canvas width, rounded only at the top
   // corners, anchored to the canvas bottom edge (see Slide4Style.
   // bandMarginTop's own doc comment for why this isn't content-driven
-  // like every other card in this redesign).
+  // like every other card in this redesign). Dark teal, not mint, per the
+  // Figma file's later update (node 12:46) -- reuses
+  // slide1GreenCardBackground's own value (same dark teal Slide 2's
+  // middle card uses), with the Tamil line/CTA copy below turned white
+  // (slide1CardText, also reused) to match.
   const bandTop = px(style.slide4.bandMarginTop, width);
   const bandH = canvasHeight - bandTop;
   const bandOffset = posFor(positions, "slide4.band");
   if (draw) {
-    ctx.fillStyle = style.colors.slide1CtaPillBackground;
+    ctx.fillStyle = style.colors.slide1GreenCardBackground;
     ctx.beginPath();
     ctx.roundRect(bandOffset.dx, bandTop + bandOffset.dy, width, bandH, [px(24, width), px(24, width), 0, 0]);
     ctx.fill();
@@ -2710,7 +2845,7 @@ function drawSlide4Carry(
   const tamilSize = px(tamilEmphasis.size ?? style.slide4.tamilSize, width);
   if (draw) {
     ctx.textAlign = "left";
-    ctx.fillStyle = style.colors.slide1GreenCardBackground;
+    ctx.fillStyle = style.colors.slide1CardText;
     try {
       ctx.letterSpacing = `${Math.round(px(2.16, width))}px`;
     } catch {
@@ -2726,54 +2861,73 @@ function drawSlide4Carry(
   }
   pushHotspot(hotspots, tamilId, bandPadX, width - bandPadX * 2, bandTop + bandPadTop + tamilSize, bandTop + bandPadTop + tamilSize, tamilSize, tamilOffset);
 
+  // CTA copy -- left-aligned at its own ctaPadX (NOT centered, and not the
+  // Tamil line's own bandPadX -- the Figma file's later update put it at a
+  // different x), per that same update, white against the now-dark-teal
+  // band.
   const ctaId = "slide4.cta";
   const ctaEmphasis = emphasisFor(emphases, ctaId);
   const ctaSize = px(ctaEmphasis.size ?? style.slide4.ctaSize, width);
   const ctaCopy = overrides?.ctaCopy || episode.cta.copy;
   const ctaOffset = posFor(positions, ctaId);
+  const ctaPadX = px(style.slide4.ctaPadX, width);
   ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(500, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
   if (draw) {
-    ctx.textAlign = "center";
-    ctx.fillStyle = style.colors.slide1GreenCardBackground;
+    ctx.textAlign = "left";
+    ctx.fillStyle = style.colors.slide1CardText;
   }
-  const ctaLines = wrapText(ctx, ctaCopy, width - bandPadX * 2);
+  const ctaLines = wrapText(ctx, ctaCopy, width - ctaPadX * 2);
   const ctaLineHeight = ctaSize * 1.3;
   let ctaY = bandTop + bandPadTop + tamilSize * 1.5;
   const ctaFirst = ctaY;
   for (const line of ctaLines) {
     ctaY += ctaLineHeight;
-    if (draw) ctx.fillText(line, centerX + ctaOffset.dx, ctaY + ctaOffset.dy);
+    if (draw) ctx.fillText(line, ctaPadX + ctaOffset.dx, ctaY + ctaOffset.dy);
+  }
+  pushHotspot(hotspots, ctaId, ctaPadX, width - ctaPadX * 2, ctaFirst + ctaLineHeight, ctaY, ctaSize, ctaOffset);
+
+  // Category pill -- inline immediately after the CTA's own LAST line (see
+  // Slide4Style.showLanguagePill's own doc comment), wrapping onto its own
+  // line below when that last line has no room left for it.
+  if (style.slide4.showLanguagePill && episode.languageCategory && ctaLines.length > 0) {
+    const pillId = "slide4.languagePill";
+    const pillOffset = posFor(positions, pillId);
+    const pillTextSize = px(style.slide4.pillTextSize, width);
+    const pillPadX = px(style.slide4.pillPadX, width);
+    const pillPadY = px(style.slide4.pillPadY, width);
+    const pillRadius = px(style.slide4.pillRadius, width);
+    const pillGap = px(style.slide4.pillGap, width);
+    const pillText = episode.languageCategory.toUpperCase();
+
+    ctx.font = `700 ${Math.round(pillTextSize)}px ${interFont}`;
+    const pillTextWidth = ctx.measureText(pillText).width;
+    const pillW = pillTextWidth + pillPadX * 2;
+    const pillH = pillTextSize + pillPadY * 2;
+
+    const lastLine = ctaLines[ctaLines.length - 1];
+    ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(500, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
+    const lastLineWidth = ctx.measureText(lastLine).width;
+    const lastLineBaseline = ctaY;
+    const fitsInline = ctaPadX + lastLineWidth + pillGap + pillW <= width - ctaPadX;
+
+    const pillX = (fitsInline ? ctaPadX + lastLineWidth + pillGap : ctaPadX) + pillOffset.dx;
+    const pillTop =
+      (fitsInline ? lastLineBaseline - ctaSize * 0.78 - (pillH - ctaSize) / 2 : lastLineBaseline + ctaLineHeight * 0.3) +
+      pillOffset.dy;
+
+    if (draw) {
+      ctx.fillStyle = style.colors.languagePillBackground;
+      ctx.beginPath();
+      ctx.roundRect(pillX, pillTop, pillW, pillH, pillRadius);
+      ctx.fill();
+      ctx.textAlign = "left";
+      ctx.fillStyle = style.colors.languagePillText;
+      ctx.font = `700 ${Math.round(pillTextSize)}px ${interFont}`;
+      ctx.fillText(pillText, pillX + pillPadX, pillTop + pillH / 2 + pillTextSize * 0.36);
+    }
+    pushHotspot(hotspots, pillId, pillX, pillW, pillTop, pillTop + pillH, pillTextSize, pillOffset);
   }
   ctx.textAlign = "left";
-  pushHotspot(hotspots, ctaId, centerX - (width - bandPadX * 2) / 2, width - bandPadX * 2, ctaFirst + ctaLineHeight, ctaY, ctaSize, ctaOffset);
-
-  if (style.slide4.showFootnote && episode.languageCategory) {
-    const footnoteId = "slide4.footnote";
-    const footnoteOffset = posFor(positions, footnoteId);
-    const footnoteSize = px(style.slide4.footnoteSize, width);
-    const footnoteX = px(style.slide4.footnoteX, width);
-    const footnoteY = px(style.slide4.footnoteY, width);
-    const footnoteText = `*${LANGUAGE_CATEGORY_LABELS[episode.languageCategory]}`;
-    if (draw) {
-      ctx.textAlign = "left";
-      ctx.fillStyle = "#0A363A";
-      try {
-        ctx.letterSpacing = `${Math.round(px(2, width))}px`;
-      } catch {
-        /* Canvas2D letterSpacing unsupported -- default tracking is fine */
-      }
-      ctx.font = `normal 400 ${Math.round(footnoteSize)}px ${interFont}`;
-      ctx.fillText(footnoteText, footnoteX + footnoteOffset.dx, footnoteY + footnoteOffset.dy);
-      try {
-        ctx.letterSpacing = "0px";
-      } catch {
-        /* no-op */
-      }
-    }
-    ctx.font = `normal 400 ${Math.round(footnoteSize)}px ${interFont}`;
-    const footnoteWidth = ctx.measureText(footnoteText).width;
-    pushHotspot(hotspots, footnoteId, footnoteX, footnoteWidth, footnoteY, footnoteY, footnoteSize, footnoteOffset);
-  }
 
   return canvasHeight;
 }
@@ -2804,7 +2958,9 @@ function layoutSlide(
   text: CarouselTextOverrides | undefined,
   hotspots?: CarouselHotspot[],
   familyImage?: HTMLImageElement | null,
-  invertColors?: boolean
+  invertColors?: boolean,
+  manuscriptIcon?: HTMLImageElement | null,
+  practiceIcon?: HTMLImageElement | null
 ): number {
   switch (slideIndex) {
     case 0:
@@ -2841,7 +2997,8 @@ function layoutSlide(
         positions,
         emphases,
         text?.slide1?.paragraphs,
-        hotspots
+        hotspots,
+        manuscriptIcon
       );
     case 2:
       return drawSlide2Family(
@@ -2862,7 +3019,7 @@ function layoutSlide(
         familyImage
       );
     case 3:
-      return drawSlide3Action(ctx, style, frame, width, episode, interFont, calSansFont, startY, draw, positions, emphases, text?.slide3, hotspots);
+      return drawSlide3Action(ctx, style, frame, width, episode, interFont, calSansFont, startY, draw, positions, emphases, text?.slide3, hotspots, practiceIcon);
     case 4:
     default:
       return drawSlide4Carry(
@@ -3026,7 +3183,9 @@ export function renderAathichoodiCarouselSlide(
     text,
     undefined,
     opts.familyImage,
-    opts.design?.invertColors
+    opts.design?.invertColors,
+    opts.manuscriptIcon,
+    opts.practiceIcon
   );
   const contentHeight = measuredEndY - frame.contentTop;
   const available = frame.contentBottom - frame.contentTop;
@@ -3053,7 +3212,9 @@ export function renderAathichoodiCarouselSlide(
     text,
     hotspots,
     opts.familyImage,
-    opts.design?.invertColors
+    opts.design?.invertColors,
+    opts.manuscriptIcon,
+    opts.practiceIcon
   );
 
   drawFooterLockup(ctx, style, frame, width, height, calSansFont, interFont, opts, positions, emphases, hotspots);
@@ -3070,7 +3231,9 @@ export async function renderAathichoodiCarouselSlideForExport(
   brandingWordmark?: string,
   brandingHandle?: string,
   design?: CarouselDesignOverrides,
-  familyImage?: HTMLImageElement | null
+  familyImage?: HTMLImageElement | null,
+  manuscriptIcon?: HTMLImageElement | null,
+  practiceIcon?: HTMLImageElement | null
 ): Promise<Blob | null> {
   const canvas = document.createElement("canvas");
   canvas.width = format.width;
@@ -3094,6 +3257,8 @@ export async function renderAathichoodiCarouselSlideForExport(
     ...fonts,
     logoImage,
     familyImage,
+    manuscriptIcon,
+    practiceIcon,
     brandingWordmark: format.branding ? brandingWordmark : undefined,
     brandingHandle: format.branding ? brandingHandle : undefined,
     design,
