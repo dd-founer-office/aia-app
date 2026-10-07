@@ -45,6 +45,8 @@
 
 import type { ComposedEpisode } from "./aathichoodi/content-engine";
 import { LANGUAGE_CATEGORY_LABELS } from "./aathichoodi/canon";
+import { drawAmbientLanguageLayer, extractTamilGraphemes, extractTamilWords } from "./ambient-language-layer";
+import { createSeededRandom } from "./seeded-random";
 
 // ---------------------------------------------------------------------------
 // Design system -- fully overridable. DEFAULT_STYLE is the founder-approved
@@ -627,6 +629,14 @@ function clampInsetPair(a: number, b: number, available: number, minSize: number
 const MIN_OUTER_CARD_SIZE = 500;
 const MIN_GREEN_CARD_SIZE = 450;
 const MIN_BLACK_CARD_W = 200;
+
+// Fallback pools for Slide 2's living-language layer (see
+// drawSlide1Understand) -- only used if episode.tamilText/understanding
+// ever came through completely empty, which shouldn't happen for a real
+// canon.ts entry but keeps the field from rendering blank the same way
+// aathichoodi-renderer.ts's own FALLBACK_GLYPHS does for the static cover.
+const FALLBACK_AMBIENT_GLYPHS = ["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"];
+const FALLBACK_AMBIENT_WORDS = ["அறம்", "செய்", "விரும்பு"];
 
 /** Appends a hotspot spanning from the first to the last drawn line's
  *  baseline (a generous, forgiving click target, not pixel-exact) --
@@ -1957,6 +1967,38 @@ function drawSlide1Understand(
     ctx.beginPath();
     ctx.roundRect(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy, greenW, greenH, greenRadius);
     ctx.fill();
+
+    // Living-language layer, letter granularity, mint -- the same shared
+    // ambient-field system the KKA cover and Distant Devotion already use
+    // (ambient-language-layer.ts), brought into this card per explicit
+    // founder direction. Clipped to the green card's own rounded rect and
+    // drawn in its LOCAL coordinate space (translate, not re-derived
+    // offsets) so drawAmbientLanguageLayer's own (0,0)-anchored grid lands
+    // correctly; no clearBox needed -- the black card drawn on top of this
+    // later fully occludes its own footprint regardless, so letters only
+    // ever end up visible in the green margin around it, which is exactly
+    // the intended look. Sourced from this episode's own Tamil line, never
+    // invented, same rule as every other ambient-field caller.
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy, greenW, greenH, greenRadius);
+    ctx.clip();
+    ctx.translate(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy);
+    const greenLetterPool = extractTamilGraphemes(episode.tamilText);
+    drawAmbientLanguageLayer(ctx, {
+      width: greenW,
+      height: greenH,
+      rand: createSeededRandom(episode.episodeNumber * 7 + 3),
+      font: tamilFont,
+      glyphPool: greenLetterPool.length > 0 ? greenLetterPool : FALLBACK_AMBIENT_GLYPHS,
+      // The established mint accent -- hardcoded here rather than reused
+      // from an existing style.colors field, same reasoning as
+      // drawFooterLockup's own Slide 4 hardcodes: no existing token means
+      // "this specific element's mint", just the slide's accent value.
+      color: "#68FFAD",
+    });
+    ctx.restore();
+
     ctx.fillStyle = style.colors.slide1IconBadgeBackground;
     ctx.beginPath();
     ctx.roundRect(badgeX, badgeY, badgeSize, badgeSize, badgeRadius);
@@ -2002,6 +2044,44 @@ function drawSlide1Understand(
     ctx.beginPath();
     ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackBottom - blackTop, blackRadius);
     ctx.stroke();
+
+    // Living-language layer, word granularity, confined to the card's own
+    // edges -- per explicit founder direction, the black card's counterpart
+    // to the green card's letter layer above. clearBox is exactly this
+    // card's own framePad inset (the same gutter that already defines the
+    // Tamil/reading/message/CTA stack's own margin, re-used rather than a
+    // new invented value), so the words only ever show in the border strip
+    // around that content, feathering out via the shared clearingFactor
+    // technique rather than a hard clip. Drawn as two passes -- muted grey
+    // then white, reusing slide1ExplanationMutedText/slide1CardText rather
+    // than new colour tokens -- for the "muted grey and white mixed" look,
+    // each its own seeded pass so the two don't land on identical cells.
+    const blackCardH = blackBottom - blackTop;
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackCardH, blackRadius);
+    ctx.clip();
+    ctx.translate(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy);
+    const blackWordPool = extractTamilWords(`${episode.tamilText} ${episode.understanding}`);
+    const blackClearBox = { x: framePad, y: framePad, width: blackW - framePad * 2, height: blackCardH - framePad * 2 };
+    const blackAmbientOpts = {
+      width: blackW,
+      height: blackCardH,
+      font: tamilFont,
+      glyphPool: blackWordPool.length > 0 ? blackWordPool : FALLBACK_AMBIENT_WORDS,
+      clearBox: blackClearBox,
+    };
+    drawAmbientLanguageLayer(ctx, {
+      ...blackAmbientOpts,
+      rand: createSeededRandom(episode.episodeNumber * 7 + 1),
+      color: style.colors.slide1ExplanationMutedText,
+    });
+    drawAmbientLanguageLayer(ctx, {
+      ...blackAmbientOpts,
+      rand: createSeededRandom(episode.episodeNumber * 7 + 2),
+      color: style.colors.slide1CardText,
+    });
+    ctx.restore();
   }
   if (hotspots) {
     hotspots.push({

@@ -81,6 +81,23 @@ export function extractTamilGraphemes(text: string): string[] {
   return matches ?? [];
 }
 
+/** Real whole Tamil words (not individual graphemes) found in arbitrary
+ *  Tamil text -- same "sourced from actually loaded content, never
+ *  invented" rule as extractTamilGraphemes above, just at word rather than
+ *  letter granularity, for callers whose own ambient field wants to read
+ *  as words (e.g. the Aathichoodi carousel's Slide 2 black card) rather
+ *  than single letters. Plain whitespace splitting -- Tamil text in this
+ *  app is always space-separated at the word level, same as the
+ *  canon.ts/content-engine.ts text it's sourced from -- filtered to tokens
+ *  that actually contain a Tamil grapheme (drops stray punctuation-only
+ *  tokens). */
+export function extractTamilWords(text: string): string[] {
+  return text
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter((word) => /[அ-ஔக-ஹ]/.test(word));
+}
+
 export interface AmbientClearBox {
   x: number;
   y: number;
