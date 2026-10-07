@@ -92,25 +92,15 @@ function RecordIdPill({ recordId, href }: { recordId: string; href?: string }) {
   );
 }
 
-// The icon badge "emerges" past its row's top/bottom edge -- a dark-teal
-// rounded shape with a soft mint stroke, absolutely positioned inside its
-// (bordered-column) parent so it can overflow that column's own box
-// without affecting row height, holding a smaller mint circular badge
-// with the dark-teal icon inside it (reference: founder-supplied
-// Abyssale-table close-up of the mint-on-teal checkmark badge).
-function EmergingIconBadge({ icon: Icon }: { icon: ComponentType<{ size?: number; strokeWidth?: number; color?: string }> }) {
+// The icon cell fills its column flush -- edge to edge, no overflow past
+// the row's own top/bottom (reference: founder-supplied close-up of a
+// single flush teal row) -- holding a smaller mint circular badge with
+// the dark-teal icon inside it.
+function FlushIconCell({ icon: Icon, isFirst }: { icon: ComponentType<{ size?: number; strokeWidth?: number; color?: string }>; isFirst: boolean }) {
   return (
     <div
-      className="absolute flex items-center justify-center rounded-[20px]"
-      style={{
-        top: -10,
-        bottom: -10,
-        left: 12,
-        right: 12,
-        background: TEAL,
-        border: `1.5px solid ${MINT}66`,
-        zIndex: 1,
-      }}
+      className={`flex w-1/2 items-center justify-center ${isFirst ? "rounded-tl-[16px]" : ""}`}
+      style={{ background: TEAL }}
     >
       <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: MINT }}>
         <Icon size={17} strokeWidth={2} color={TEAL} />
@@ -140,14 +130,9 @@ function ImpactRecordRows({
     <>
       {/* Icon + heading row */}
       <div className="flex" style={isFirst ? undefined : ROW_DIVIDER}>
+        <FlushIconCell icon={icon} isFirst={isFirst} />
         <div
-          className={`relative w-1/2 ${isFirst ? "rounded-tl-[16px]" : ""}`}
-          style={{ background: "#FFFFFF" }}
-        >
-          <EmergingIconBadge icon={icon} />
-        </div>
-        <div
-          className={`flex w-1/2 flex-col items-center justify-center gap-0.5 py-6 ${isFirst ? "rounded-tr-[16px]" : ""}`}
+          className={`flex w-1/2 flex-col items-center justify-center gap-0.5 py-3.5 ${isFirst ? "rounded-tr-[16px]" : ""}`}
           style={{ background: "#FAFAFA" }}
         >
           <span className={`${inter.className} text-[10px]`} style={{ color: "var(--color-muted-foreground)" }}>
