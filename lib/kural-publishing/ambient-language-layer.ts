@@ -119,15 +119,26 @@ export interface AmbientLanguageLayerOptions {
   clearBox?: AmbientClearBox;
 }
 
-function clearingFactor(x: number, y: number, box?: AmbientClearBox): number {
+/** `inflate` grows the box by that many px on every side before measuring
+ *  distance -- callers whose glyphs are drawn CENTERED (textAlign/
+ *  textBaseline "center"/"middle") need this: without it, a glyph's own
+ *  CENTER can clear the box by a hair while its rendered half-width still
+ *  lands on top of whatever the box is protecting (see
+ *  drawLivingLanguageStratum, which passes half its own glyph size here --
+ *  drawStratum above doesn't, unchanged). */
+function clearingFactor(x: number, y: number, box?: AmbientClearBox, inflate = 0): number {
   if (!box) return 1;
   // A soft feather right at the box's own edge, not a buffer scaled to the
   // box's size -- the box (e.g. a card) is typically most of the canvas,
   // so a size-scaled buffer would swallow the entire margin the field
   // actually has room to appear in.
   const feather = Math.min(box.width, box.height) * 0.02 + 6;
-  const dx = Math.max(box.x - x, 0, x - (box.x + box.width));
-  const dy = Math.max(box.y - y, 0, y - (box.y + box.height));
+  const bx = box.x - inflate;
+  const by = box.y - inflate;
+  const bw = box.width + inflate * 2;
+  const bh = box.height + inflate * 2;
+  const dx = Math.max(bx - x, 0, x - (bx + bw));
+  const dy = Math.max(by - y, 0, y - (by + bh));
   const dist = Math.sqrt(dx * dx + dy * dy);
   return Math.min(1, dist / feather);
 }
@@ -266,10 +277,13 @@ export interface LivingLanguageFieldOptions {
   colors: readonly [LivingLanguageColorOption, ...LivingLanguageColorOption[]];
   clearBox?: AmbientClearBox;
   /** Chance (0-1) that an accepted cell draws a Tamil-Brahmi or Vatteluttu
-   *  letterform instead of a contentGlyphs entry -- small by design (an
-   *  accent, not a dominant presence), same weighting philosophy the
-   *  Living Field itself uses for these two scripts against modern Tamil.
-   *  Defaults to 0.12. */
+   *  letterform instead of a contentGlyphs entry. Defaults to 0.3 -- raised
+   *  from an initial 0.12 per explicit founder feedback that the ancient
+   *  scripts needed to actually be noticeable, not just an occasional
+   *  easter egg (the Living Field's own much-lower weighting for these
+   *  scripts suits an animated, ever-shifting field; a single still export
+   *  needs a higher hit rate for the same two scripts to read as present
+   *  at all). */
   ancientScriptChance?: number;
 }
 
@@ -283,29 +297,45 @@ function pickWeightedColor(rand: SeededRandom, colors: LivingLanguageFieldOption
   return colors[colors.length - 1];
 }
 
+/** One already-drawn glyph's centre + effective radius, for the
+ *  cross-stratum overlap check below. */
+interface PlacedGlyph {
+  x: number;
+  y: number;
+  r: number;
+}
+
 function drawLivingLanguageStratum(
   ctx: CanvasRenderingContext2D,
   opts: LivingLanguageFieldOptions,
   cell: number,
   size: number,
   opacityRange: readonly [number, number],
-  breathing: number
+  breathing: number,
+  placed: PlacedGlyph[]
 ): void {
   const { width, height, rand, font, contentGlyphs, colors, clearBox } = opts;
-  const ancientChance = opts.ancientScriptChance ?? 0.12;
+  const ancientChance = opts.ancientScriptChance ?? 0.3;
   const jitter = cell * 0.32;
   const cols = Math.ceil(width / cell);
   const rows = Math.ceil(height / cell);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const [lo, hi] = opacityRange;
+  // Glyphs here are CENTERED (textAlign/textBaseline "center"/"middle"), so
+  // clearingFactor's box needs inflating by roughly half a glyph's own
+  // footprint -- otherwise a cell whose CENTER just clears the box can
+  // still visually overlap it with its own rendered half-width, which is
+  // exactly "words overlapping the readable content" the ambient field
+  // must never do.
+  const clearInflate = size * 0.6 + 4;
   for (let ri = 0; ri < rows; ri++) {
     for (let ci = 0; ci < cols; ci++) {
       const gx = (ci + 0.5) * cell + rand.range(-jitter, jitter);
       const gy = (ri + 0.5) * cell + rand.range(-jitter, jitter);
       if (gx < 2 || gx > width - 2 || gy < 2 || gy > height - 2) continue;
       const density = clusterDensity(gx, gy) * directionalFlow(gx, gy, width, height);
-      const clearing = clearingFactor(gx, gy, clearBox);
+      const clearing = clearingFactor(gx, gy, clearBox, clearInflate);
       if (!rand.chance(Math.min(1, density * 0.5) * clearing)) continue;
 
       // One glyph choice AND one colour choice per accepted cell, in this
@@ -315,13 +345,47 @@ function drawLivingLanguageStratum(
       // each other. A single unified pass is what actually prevents that.
       const useAncient = rand.chance(ancientChance) || contentGlyphs.length === 0;
       const colorChoice = pickWeightedColor(rand, colors);
+      const drawSize = colorChoice.glow ? size * 1.15 : size;
+      const isVatteluttu = useAncient && VATTELUTTU_PATHS.length > 0 && rand.chance(0.5);
+
+      // Measure BEFORE committing to draw -- contentGlyphs is sometimes
+      // whole WORDS (the black card), which can be many times wider than
+      // `size` alone would suggest, so a width-aware overlap check is what
+      // actually keeps longer words from colliding with their neighbours.
+      let glyphText = "";
+      let glyphWidth = drawSize;
+      if (!isVatteluttu) {
+        glyphText = useAncient ? rand.pick(BRAHMI_GLYPHS) : rand.pick(contentGlyphs);
+        ctx.font = `500 ${drawSize}px ${useAncient ? "sans-serif" : font}`;
+        glyphWidth = ctx.measureText(glyphText).width;
+      }
+      const radius = Math.max(glyphWidth, drawSize) / 2;
+
+      // Reject if this glyph's own footprint would overlap an already-
+      // placed one -- `placed` is shared across BOTH depth strata (see
+      // drawLivingLanguageField), so a "near" glyph can't land on top of a
+      // "far" one either. This is the actual fix for words/letters
+      // overlapping EACH OTHER, on top of the clearBox fix above for
+      // overlapping the readable foreground content.
+      const tooClose = placed.some((p) => {
+        const dx = p.x - gx;
+        const dy = p.y - gy;
+        return Math.sqrt(dx * dx + dy * dy) < (p.r + radius) * 0.9;
+      });
+      if (tooClose) continue;
+      placed.push({ x: gx, y: gy, r: radius });
+
       // A "glow" cell deliberately ignores the ambient field's own
       // near-imperceptible opacity formula -- per explicit founder
       // direction these specific letters should actually be seen to glow,
       // not just be a slightly-less-faint member of the same quiet field.
+      // Ancient-script glyphs get a modest visibility bump even when NOT
+      // glowing -- per explicit founder direction they need to actually be
+      // noticed "from all sides", not just technically present at the
+      // same faint weight as everything else.
       const opacity = colorChoice.glow
         ? rand.range(0.45, 0.8) * breathing
-        : Math.max(0.02, (lo + (hi - lo) * Math.min(1, density * 0.6)) * breathing);
+        : Math.max(0.08, (lo + (hi - lo) * Math.min(1, density * 0.6)) * breathing) * (useAncient ? 1.3 : 1);
 
       ctx.save();
       ctx.translate(gx, gy);
@@ -331,11 +395,11 @@ function drawLivingLanguageStratum(
         ctx.shadowColor = colorChoice.color;
         ctx.shadowBlur = size * 1.1;
       }
-      if (useAncient && VATTELUTTU_PATHS.length > 0 && rand.chance(0.5)) {
-        drawVatteluttuGlyph(ctx, rand.pick(VATTELUTTU_PATHS), colorChoice.glow ? size * 1.15 : size);
+      if (isVatteluttu) {
+        drawVatteluttuGlyph(ctx, rand.pick(VATTELUTTU_PATHS), drawSize);
       } else {
-        ctx.font = `500 ${colorChoice.glow ? size * 1.15 : size}px ${useAncient ? "sans-serif" : font}`;
-        ctx.fillText(useAncient ? rand.pick(BRAHMI_GLYPHS) : rand.pick(contentGlyphs), 0, 0);
+        ctx.font = `500 ${drawSize}px ${useAncient ? "sans-serif" : font}`;
+        ctx.fillText(glyphText, 0, 0);
       }
       ctx.restore();
     }
@@ -349,13 +413,24 @@ function drawLivingLanguageStratum(
  *  shape and "breathing" sampling as drawAmbientLanguageLayer, same
  *  clearBox feathering -- just each cell now independently rolls its own
  *  glyph source and colour, in ONE placement pass, rather than requiring
- *  the caller to run multiple same-area passes (which was overlapping). */
+ *  the caller to run multiple same-area passes (which was overlapping).
+ *
+ *  Opacity ranges here are deliberately much higher than
+ *  drawAmbientLanguageLayer's own (which were tuned for a full-bleed page
+ *  background glimpsed at full resolution) -- this field is exported
+ *  straight to Instagram, which recompresses and is mostly viewed small/
+ *  on mobile; founder feedback confirmed the muted-grey words were
+ *  disappearing entirely at that point, not just reading as subtle. */
 export function drawLivingLanguageField(ctx: CanvasRenderingContext2D, opts: LivingLanguageFieldOptions): void {
   const short = Math.min(opts.width, opts.height);
   const breathing = 0.82 + opts.rand.range(0, 0.28);
+  // Shared across BOTH strata below -- see drawLivingLanguageStratum's own
+  // "placed" doc comment -- so a near-stratum glyph can't land on top of a
+  // far-stratum one either.
+  const placed: PlacedGlyph[] = [];
   ctx.save();
-  drawLivingLanguageStratum(ctx, opts, short * 0.09, short * 0.028, [0.025, 0.05], breathing);
-  drawLivingLanguageStratum(ctx, opts, short * 0.16, short * 0.045, [0.035, 0.075], breathing);
+  drawLivingLanguageStratum(ctx, opts, short * 0.09, short * 0.028, [0.1, 0.16], breathing, placed);
+  drawLivingLanguageStratum(ctx, opts, short * 0.16, short * 0.045, [0.16, 0.26], breathing, placed);
   ctx.restore();
   ctx.shadowBlur = 0;
 }
