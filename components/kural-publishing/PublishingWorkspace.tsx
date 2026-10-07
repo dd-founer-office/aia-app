@@ -812,7 +812,19 @@ export default function PublishingWorkspace() {
     setTextOverrides((prev) => ({ ...prev, slide0: { ...prev.slide0, ...patch } }));
   }, []);
   const patchText1 = useCallback((understanding: string) => {
-    setTextOverrides((prev) => ({ ...prev, slide1: { understanding } }));
+    setTextOverrides((prev) => ({ ...prev, slide1: { ...prev.slide1, understanding } }));
+  }, []);
+  // Each explanation paragraph (intro/hero line/supporting line) is its
+  // own independently editable text box, same pattern as
+  // patchText2Paragraph below -- patching index i only touches that
+  // slot's override, leaving the others (and the bulk `understanding`
+  // override it layers on top of) untouched.
+  const patchText1Paragraph = useCallback((index: number, value: string) => {
+    setTextOverrides((prev) => {
+      const paragraphs = [...(prev.slide1?.paragraphs ?? [])];
+      paragraphs[index] = value;
+      return { ...prev, slide1: { ...prev.slide1, paragraphs } };
+    });
   }, []);
   // Each "Family Situation" paragraph is its own independently editable
   // text box -- patching index i only touches that slot's override,
@@ -925,6 +937,36 @@ export default function PublishingWorkspace() {
 
   const getHotspotConfig = useCallback(
     (id: string): HotspotConfig | null => {
+      // Slide 2 (UNDERSTAND)'s explanation -- 3 separate layers per the
+      // Figma source (intro/hero line/supporting line), id
+      // `slide1.body.<index>` (see drawSlide1Understand), not one shared
+      // "slide1.body" block. Each has its own named size field (unlike
+      // slide2's shared bodySize + per-paragraph emphasis.size override
+      // below) since the 3 roles are deliberately different type scales.
+      const explanationMatch = id.match(/^slide1\.body\.(\d+)$/);
+      if (explanationMatch) {
+        const index = Number(explanationMatch[1]);
+        const generated = displayEpisode ? (splitEditorialParagraphs(displayEpisode.understanding)[index] ?? "") : "";
+        const roleLabel = index === 0 ? "intro" : index === 1 ? "hero line" : "supporting line";
+        const sizeField =
+          index === 0
+            ? { label: "Size", value: resolvedStyle.slide1.explanationIntroSize, onChange: (v: number) => patchSlide1("explanationIntroSize", v) }
+            : index === 1
+              ? { label: "Size", value: resolvedStyle.slide1.explanationHeroSize, onChange: (v: number) => patchSlide1("explanationHeroSize", v) }
+              : { label: "Size", value: resolvedStyle.slide1.bodySize, onChange: (v: number) => patchSlide1("bodySize", v) };
+        return {
+          label: `Explanation — ${roleLabel}`,
+          textValue: textOverrides.slide1?.paragraphs?.[index] ?? "",
+          textPlaceholder: generated,
+          onTextChange: (v) => patchText1Paragraph(index, v),
+          sizeFields: [sizeField],
+          fontVar: index === 1 ? "--font-display" : "--font-sans",
+          refSize: sizeField.value,
+          emphasisId: id,
+          emphasis: emphasisOverrides[id] ?? {},
+        };
+      }
+
       // "Family Situation" -- each generated paragraph is its own hotspot,
       // id `slide2.body.<index>` (see drawSlide2Family).
       const paragraphMatch = id.match(/^slide2\.body\.(\d+)$/);
@@ -1031,16 +1073,6 @@ export default function PublishingWorkspace() {
           return {
             label: "Meaning gloss (canonical text — size only)",
             sizeFields: [{ label: "Size", value: resolvedStyle.slide1.meaningSize, onChange: (v) => patchSlide1("meaningSize", v) }],
-          };
-        case "slide1.body":
-          return {
-            label: "Explanation",
-            textValue: textOverrides.slide1?.understanding ?? "",
-            textPlaceholder: displayEpisode?.understanding,
-            onTextChange: patchText1,
-            sizeFields: [{ label: "Size", value: resolvedStyle.slide1.bodySize, onChange: (v) => patchSlide1("bodySize", v) }],
-            fontVar: "--font-serif",
-            refSize: resolvedStyle.slide1.bodySize,
           };
         // The three nested cards (pale outer, teal/green, black) -- size
         // fields here are the card's own insets, not a font/icon size, so
@@ -1189,7 +1221,7 @@ export default function PublishingWorkspace() {
       patchSlide4,
       patchEmphasis,
       patchText0,
-      patchText1,
+      patchText1Paragraph,
       patchText2Paragraph,
       patchText3,
       patchText4,
@@ -2265,11 +2297,20 @@ export default function PublishingWorkspace() {
                       <NumField label="Black card margin top (px)" value={resolvedStyle.slide1.blackCardMarginTop} onChange={(v) => patchSlide1("blackCardMarginTop", v)} disabled={cardsLocked} />
                       <NumField label="Black card margin bottom (px)" value={resolvedStyle.slide1.blackCardMarginBottom} onChange={(v) => patchSlide1("blackCardMarginBottom", v)} disabled={cardsLocked} />
                       <TextAreaField
-                        label="Explanation text override"
+                        label="Explanation text override (bulk — all 3 paragraphs)"
                         value={textOverrides.slide1?.understanding ?? ""}
                         placeholder={displayEpisode.understanding}
                         onChange={patchText1}
                       />
+                      {(["intro", "hero line", "supporting line"] as const).map((roleLabel, i) => (
+                        <TextAreaField
+                          key={i}
+                          label={`Explanation — ${roleLabel} override`}
+                          value={textOverrides.slide1?.paragraphs?.[i] ?? ""}
+                          placeholder={splitEditorialParagraphs(displayEpisode.understanding)[i] ?? ""}
+                          onChange={(v) => patchText1Paragraph(i, v)}
+                        />
+                      ))}
                     </div>
                   </details>
 

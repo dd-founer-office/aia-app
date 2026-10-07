@@ -333,7 +333,13 @@ export interface CarouselStyleOverrides {
  *  than rendering blank. */
 export interface CarouselTextOverrides {
   slide0?: { hook?: string; tagline?: string };
-  slide1?: { understanding?: string };
+  /** `understanding` is a bulk override -- replaces the whole generated
+   *  string before it's split into its 3-paragraph editorial shape (see
+   *  splitEditorialParagraphs). `paragraphs` then overrides individual
+   *  paragraphs on top of that split, by index -- each paragraph (intro/
+   *  hero line/supporting line) is its own separately draggable/editable
+   *  text box (see drawSlide1Understand), same pattern as slide2 below. */
+  slide1?: { understanding?: string; paragraphs?: string[] };
   /** One override slot per generated paragraph, by index -- each paragraph
    *  is its own separately draggable/editable text box (see
    *  drawSlide2Family), so overrides are per-paragraph rather than one
@@ -1517,9 +1523,11 @@ function drawSlide1Understand(
   draw: boolean,
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
+  overrideParagraphs: string[] | undefined,
   hotspots?: CarouselHotspot[]
 ): number {
   void startY;
+  void frame;
   const transliteration = px(style.slide1.transliterationSize, width);
   const tamilRef = px(style.slide1.tamilRefSize, width);
   ctx.textAlign = "left";
@@ -1533,14 +1541,16 @@ function drawSlide1Understand(
   // -- the top one doesn't factor into anything else in this function
   // anymore (greenTop derives from the icon badge, not outerMarginTop) --
   // but both raw values still have to go in together, since the pair
-  // clamp bounds their SUM, not each independently.
+  // clamp bounds their SUM, not each independently. No frame.contentBottom
+  // clamp -- see the matching outerBottom computation in
+  // renderAathichoodiCarouselSlide for why.
   const [, outerMarginBottom] = clampInsetPair(
     px(style.slide1.outerCardMarginTop, width),
     px(style.slide1.outerCardMarginBottom, width),
     canvasHeight,
     px(MIN_OUTER_CARD_SIZE, width)
   );
-  const outerBottom = Math.min(canvasHeight - outerMarginBottom, frame.contentBottom);
+  const outerBottom = canvasHeight - outerMarginBottom;
 
   const outerCardW = width - outerMarginX * 2;
   const greenMarginX = clampInset(px(style.slide1.greenCardMarginX, width), outerCardW, px(MIN_GREEN_CARD_SIZE, width));
@@ -1738,23 +1748,20 @@ function drawSlide1Understand(
   pushHotspot(hotspots, "slide1.cta", ctaX, ctaPillW, ctaY, ctaY + ctaPillH, ctaSize, ctaOffset);
 
   // Explanation -- episode.understanding, split into its existing
-  // 3-paragraph editorial shape (splitEditorialParagraphs), each
-  // paragraph its own size/weight/font per the mockup's type scale, drawn
-  // directly on the light outer card (previously inside the black card).
-  // greenBottom is now the card stack's true (compact) bottom, so there's
-  // real room left here. One hotspot ("slide1.body") spans the whole
-  // block -- clicking it edits episode.understanding as one combined
-  // text, same as before this redesign; only the per-paragraph SIZE
-  // fields (explanationIntroSize/explanationHeroSize/bodySize, sidebar-
-  // only) are independent.
+  // 3-paragraph editorial shape (splitEditorialParagraphs), each paragraph
+  // its own size/weight/font per the mockup's type scale, drawn directly
+  // on the light outer card (previously inside the black card). greenBottom
+  // is now the card stack's true (compact) bottom, so there's real room
+  // left here. Per the Figma source (3 separate text layers, not one
+  // flowed block), each paragraph is its OWN hotspot (slide1.body.0/.1/.2)
+  // with its own drag offset, bold/italic emphasis, and text override --
+  // same pattern as drawSlide2Family's per-paragraph ids -- not one shared
+  // "slide1.body" id moving/editing all three together.
   const introSize = px(style.slide1.explanationIntroSize, width);
   const heroSize = px(style.slide1.explanationHeroSize, width);
   const supportingSize = px(style.slide1.bodySize, width);
-  const explanationEmphasis = emphasisFor(emphases, "slide1.body");
-  const explanationOffset = posFor(positions, "slide1.body");
   const explanationBottom = outerBottom - px(40, width);
   let explanationCursorY = greenBottom + px(45, width);
-  const explanationFirstY = explanationCursorY;
 
   const paragraphs = splitEditorialParagraphs(episode.understanding);
   for (let i = 0; i < paragraphs.length; i++) {
@@ -1763,6 +1770,10 @@ function drawSlide1Understand(
     const isHero = !isFirst && !isLast && i === 1;
     const size = isFirst ? introSize : isLast ? supportingSize : isHero ? heroSize : supportingSize;
     const lineHeight = size * (isHero ? 0.93 : 1.3);
+    const id = `slide1.body.${i}`;
+    const offset = posFor(positions, id);
+    const emphasis = emphasisFor(emphases, id);
+    const text = overrideParagraphs?.[i] || paragraphs[i];
     if (draw) {
       ctx.fillStyle = isLast ? style.colors.slide1ExplanationMutedText : style.colors.slide1ExplanationText;
       if (isHero) {
@@ -1771,16 +1782,17 @@ function drawSlide1Understand(
         } catch {
           /* Canvas2D letterSpacing unsupported -- default tracking is fine */
         }
-        ctx.font = `${styleFor(false, explanationEmphasis)} ${weightFor(400, explanationEmphasis)} ${Math.round(size)}px ${calSansFont}`;
+        ctx.font = `${styleFor(false, emphasis)} ${weightFor(400, emphasis)} ${Math.round(size)}px ${calSansFont}`;
       } else {
-        ctx.font = `${styleFor(false, explanationEmphasis)} ${weightFor(isFirst ? 600 : 500, explanationEmphasis)} ${Math.round(size)}px ${interFont}`;
+        ctx.font = `${styleFor(false, emphasis)} ${weightFor(isFirst ? 600 : 500, emphasis)} ${Math.round(size)}px ${interFont}`;
       }
     }
-    const lines = wrapText(ctx, paragraphs[i], greenW);
+    const lines = wrapText(ctx, text, greenW);
+    const paragraphFirstY = explanationCursorY;
     for (const line of lines) {
       if (explanationCursorY > explanationBottom) break;
       explanationCursorY += lineHeight;
-      if (draw) ctx.fillText(line, greenX + explanationOffset.dx, explanationCursorY + explanationOffset.dy);
+      if (draw) ctx.fillText(line, greenX + offset.dx, explanationCursorY + offset.dy);
     }
     if (draw && isHero) {
       try {
@@ -1789,9 +1801,13 @@ function drawSlide1Understand(
         /* no-op */
       }
     }
-    explanationCursorY += lineHeight * 0.4;
+    pushHotspot(hotspots, id, greenX, greenW, paragraphFirstY, explanationCursorY, size, offset);
+    // The hero line's own trailing gap to the supporting paragraph runs a
+    // little wider than the others (Figma: 19px after the intro, 24px
+    // after the hero, at this 1080 reference scale) -- not proportional to
+    // font size the same way, just how the designer spaced it.
+    explanationCursorY += lineHeight * (isHero ? 0.48 : 0.4);
   }
-  pushHotspot(hotspots, "slide1.body", greenX, greenW, explanationFirstY, explanationCursorY, introSize, explanationOffset);
   return explanationCursorY;
 }
 
@@ -2258,7 +2274,23 @@ function layoutSlide(
         Boolean(invertColors)
       );
     case 1:
-      return drawSlide1Understand(ctx, style, frame, width, canvasHeight, episode, tamilFont, interFont, calSansFont, startY, draw, positions, emphases, hotspots);
+      return drawSlide1Understand(
+        ctx,
+        style,
+        frame,
+        width,
+        canvasHeight,
+        episode,
+        tamilFont,
+        interFont,
+        calSansFont,
+        startY,
+        draw,
+        positions,
+        emphases,
+        text?.slide1?.paragraphs,
+        hotspots
+      );
     case 2:
       return drawSlide2Family(
         ctx,
@@ -2325,10 +2357,12 @@ export function renderAathichoodiCarouselSlide(
     // outer of Slide 2's three nested cards (drawSlide1Understand draws
     // the other two) sits on top of this. See
     // CarouselColors.slide1PageBackground/slide1OuterCardBackground. Its
-    // bottom edge is clamped to frame.contentBottom so it never covers
-    // the footer lockup every slide still draws below that line, even
-    // though the 60px bottom margin alone would, on most formats, land
-    // well past it.
+    // bottom edge is simply outerCardMarginBottom from the canvas edge --
+    // no frame.contentBottom clamp here (that's the generic footer-safe-
+    // area convention every OTHER slide's body text respects, but Slide 2
+    // draws no footer lockup (see the branding condition below), and
+    // clamping to it was silently shrinking this slide's whole card+
+    // explanation area well short of the Figma spec's actual bottom edge).
     ctx.fillStyle = style.colors.slide1PageBackground;
     ctx.fillRect(0, 0, width, height);
     const outerMarginX = clampInset(px(style.slide1.outerCardMarginX, width), width, px(MIN_OUTER_CARD_SIZE, width));
@@ -2338,7 +2372,7 @@ export function renderAathichoodiCarouselSlide(
       height,
       px(MIN_OUTER_CARD_SIZE, width)
     );
-    const outerBottom = Math.min(height - outerMarginBottom, frame.contentBottom);
+    const outerBottom = height - outerMarginBottom;
     // Visual-only nudge, same convention as every other draggable
     // hotspot -- the green/black cards nested on top still anchor to the
     // unoffset margins (recomputed independently in drawSlide1Understand).
