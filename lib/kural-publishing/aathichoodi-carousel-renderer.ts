@@ -45,7 +45,7 @@
 
 import type { ComposedEpisode } from "./aathichoodi/content-engine";
 import { LANGUAGE_CATEGORY_LABELS } from "./aathichoodi/canon";
-import { drawAmbientLanguageLayer, extractTamilGraphemes, extractTamilWords } from "./ambient-language-layer";
+import { drawLivingLanguageField, extractTamilGraphemes, extractTamilWords } from "./ambient-language-layer";
 import { createSeededRandom } from "./seeded-random";
 
 // ---------------------------------------------------------------------------
@@ -1973,29 +1973,38 @@ function drawSlide1Understand(
     // (ambient-language-layer.ts), brought into this card per explicit
     // founder direction. Clipped to the green card's own rounded rect and
     // drawn in its LOCAL coordinate space (translate, not re-derived
-    // offsets) so drawAmbientLanguageLayer's own (0,0)-anchored grid lands
+    // offsets) so drawLivingLanguageField's own (0,0)-anchored grid lands
     // correctly; no clearBox needed -- the black card drawn on top of this
     // later fully occludes its own footprint regardless, so letters only
     // ever end up visible in the green margin around it, which is exactly
     // the intended look. Sourced from this episode's own Tamil line, never
-    // invented, same rule as every other ambient-field caller.
+    // invented, same rule as every other ambient-field caller -- mixed
+    // with occasional Tamil-Brahmi/Vatteluttu letterforms (see
+    // drawLivingLanguageField's own doc comment) and a small glowing-mint
+    // subset per explicit founder direction, in ONE unified placement pass
+    // so these don't overlap each other the way two independent same-area
+    // passes would.
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy, greenW, greenH, greenRadius);
     ctx.clip();
     ctx.translate(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy);
     const greenLetterPool = extractTamilGraphemes(episode.tamilText);
-    drawAmbientLanguageLayer(ctx, {
+    drawLivingLanguageField(ctx, {
       width: greenW,
       height: greenH,
       rand: createSeededRandom(episode.episodeNumber * 7 + 3),
       font: tamilFont,
-      glyphPool: greenLetterPool.length > 0 ? greenLetterPool : FALLBACK_AMBIENT_GLYPHS,
+      contentGlyphs: greenLetterPool.length > 0 ? greenLetterPool : FALLBACK_AMBIENT_GLYPHS,
       // The established mint accent -- hardcoded here rather than reused
       // from an existing style.colors field, same reasoning as
       // drawFooterLockup's own Slide 4 hardcodes: no existing token means
       // "this specific element's mint", just the slide's accent value.
-      color: "#68FFAD",
+      // Mostly flat mint, a smaller glowing-mint subset on top.
+      colors: [
+        { color: "#68FFAD", weight: 8 },
+        { color: "#68FFAD", weight: 2, glow: true },
+      ],
     });
     ctx.restore();
 
@@ -2052,10 +2061,13 @@ function drawSlide1Understand(
     // Tamil/reading/message/CTA stack's own margin, re-used rather than a
     // new invented value), so the words only ever show in the border strip
     // around that content, feathering out via the shared clearingFactor
-    // technique rather than a hard clip. Drawn as two passes -- muted grey
-    // then white, reusing slide1ExplanationMutedText/slide1CardText rather
-    // than new colour tokens -- for the "muted grey and white mixed" look,
-    // each its own seeded pass so the two don't land on identical cells.
+    // technique rather than a hard clip. One unified pass (not one call per
+    // colour -- that gave each colour its own independent position grid,
+    // which is what was landing words on top of each other): muted grey and
+    // white as the base mix (reusing slide1ExplanationMutedText/
+    // slide1CardText rather than new colour tokens), plus a small glowing-
+    // mint subset and occasional Tamil-Brahmi/Vatteluttu letterforms mixed
+    // in, per explicit founder direction (see drawLivingLanguageField).
     const blackCardH = blackBottom - blackTop;
     ctx.save();
     ctx.beginPath();
@@ -2063,23 +2075,18 @@ function drawSlide1Understand(
     ctx.clip();
     ctx.translate(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy);
     const blackWordPool = extractTamilWords(`${episode.tamilText} ${episode.understanding}`);
-    const blackClearBox = { x: framePad, y: framePad, width: blackW - framePad * 2, height: blackCardH - framePad * 2 };
-    const blackAmbientOpts = {
+    drawLivingLanguageField(ctx, {
       width: blackW,
       height: blackCardH,
-      font: tamilFont,
-      glyphPool: blackWordPool.length > 0 ? blackWordPool : FALLBACK_AMBIENT_WORDS,
-      clearBox: blackClearBox,
-    };
-    drawAmbientLanguageLayer(ctx, {
-      ...blackAmbientOpts,
       rand: createSeededRandom(episode.episodeNumber * 7 + 1),
-      color: style.colors.slide1ExplanationMutedText,
-    });
-    drawAmbientLanguageLayer(ctx, {
-      ...blackAmbientOpts,
-      rand: createSeededRandom(episode.episodeNumber * 7 + 2),
-      color: style.colors.slide1CardText,
+      font: tamilFont,
+      contentGlyphs: blackWordPool.length > 0 ? blackWordPool : FALLBACK_AMBIENT_WORDS,
+      clearBox: { x: framePad, y: framePad, width: blackW - framePad * 2, height: blackCardH - framePad * 2 },
+      colors: [
+        { color: style.colors.slide1ExplanationMutedText, weight: 5 },
+        { color: style.colors.slide1CardText, weight: 4 },
+        { color: "#68FFAD", weight: 1.5, glow: true },
+      ],
     });
     ctx.restore();
   }
