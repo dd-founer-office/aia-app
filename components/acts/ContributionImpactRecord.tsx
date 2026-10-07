@@ -64,7 +64,7 @@ const ENTRY_META: { key: keyof ContributionImpactRecordData; number: string; lab
 ];
 
 function RecordIdPill({ recordId, href }: { recordId: string; href?: string }) {
-  const className = `${inter.className} inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-3.5 py-2 transition-opacity hover:opacity-80`;
+  const className = `${inter.className} inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-3.5 py-1.5 transition-opacity hover:opacity-80`;
   const style = { background: MINT };
   const content = (
     <>
@@ -102,8 +102,8 @@ function FlushIconCell({ icon: Icon, isFirst }: { icon: ComponentType<{ size?: n
       className={`flex w-1/2 items-center justify-center ${isFirst ? "rounded-tl-[16px]" : ""}`}
       style={{ background: TEAL }}
     >
-      <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: MINT }}>
-        <Icon size={17} strokeWidth={2} color={TEAL} />
+      <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: MINT }}>
+        <Icon size={16} strokeWidth={2} color={TEAL} />
       </div>
     </div>
   );
@@ -132,7 +132,7 @@ function ImpactRecordRows({
       <div className="flex" style={isFirst ? undefined : ROW_DIVIDER}>
         <FlushIconCell icon={icon} isFirst={isFirst} />
         <div
-          className={`flex w-1/2 flex-col items-center justify-center gap-0.5 py-3.5 ${isFirst ? "rounded-tr-[16px]" : ""}`}
+          className={`flex w-1/2 flex-col items-center justify-center gap-0.5 py-2.5 ${isFirst ? "rounded-tr-[16px]" : ""}`}
           style={{ background: "#FAFAFA" }}
         >
           <span className={`${inter.className} text-[10px]`} style={{ color: "var(--color-muted-foreground)" }}>
@@ -146,7 +146,7 @@ function ImpactRecordRows({
 
       {/* Data row -- label/value on the left, the id pill trailing on the right */}
       <div
-        className={`flex items-center justify-between gap-3 px-5 py-4 ${isLast ? "rounded-b-[16px]" : ""}`}
+        className={`flex items-center justify-between gap-3 px-5 py-3 ${isLast ? "rounded-b-[16px]" : ""}`}
         style={{ background: "#FFFFFF", ...ROW_DIVIDER }}
       >
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -193,7 +193,7 @@ export function ContributionImpactRecord({ data }: { data: ContributionImpactRec
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className={`${inter.className} flex w-full items-center justify-center gap-2.5 rounded-full px-5 py-3.5 text-center transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+        className={`${inter.className} flex w-full items-center justify-center gap-2.5 rounded-full px-5 py-2.5 text-center transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
         style={{ background: TEAL, outlineColor: MINT }}
       >
         <ChevronDown
