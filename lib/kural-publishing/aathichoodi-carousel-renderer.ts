@@ -1450,17 +1450,18 @@ function drawSlide0HeroPanel(ctx: CanvasRenderingContext2D, style: CarouselStyle
  *  the word's own text baseline; `left` is its left edge. Must be called
  *  before the word itself is drawn, so the box sits behind the glyphs.
  *
- *  Top/bottom overshoot halved again per explicit founder direction (the
- *  previous, taller proportions -- needed at the time to clear Tamil
- *  vowel signs above the cap-height without overlapping the previous
- *  wrapped line -- read as too loose once seen live against the founder's
- *  own reference crop). The hero's own lineHeightRatio (see the fitText
- *  call below) is trimmed down to match -- a tighter box needs less
- *  wrapped-line clearance than the one that drove it up to 1.55 in the
- *  first place. */
+ *  Top overshoot was cut too far in a previous pass (halved straight to
+ *  0.55em, chasing a tighter hug) -- confirmed live that it clipped the
+ *  tops of Tamil marks that sit ABOVE the consonant's own cap-height on
+ *  "செய்" specifically: the ெ vowel sign's loop over செ, and the pulli
+ *  (dead-consonant dot) over ய் (NOT a descender -- Tamil pulli sits above
+ *  the letter, not below, unlike a Latin full stop). 0.85em is the
+ *  tightest that still clears both marks with a hair of margin, confirmed
+ *  via a full-resolution crop -- still noticeably tighter than the 1.1em
+ *  this started from, just not as tight as 0.55em turned out to allow. */
 function drawHeroWordHighlight(ctx: CanvasRenderingContext2D, accent: string, left: number, baseline: number, wordWidth: number, fontSize: number): void {
   const padX = fontSize * 0.12;
-  const top = baseline - fontSize * 0.55;
+  const top = baseline - fontSize * 0.85;
   const bottom = baseline + fontSize * 0.16;
   const boxX = left - padX;
   const boxW = wordWidth + padX * 2;
