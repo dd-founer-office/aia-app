@@ -784,7 +784,9 @@ export const DEFAULT_STYLE: CarouselStyle = {
     hookSize: 32,
     taglineSize: 25,
     showBranding: true,
-    ctaSize: 24,
+    // Matches style.slide1.ctaSize (the "Pass It On" pill) -- per explicit
+    // founder direction that the two buttons be the same size.
+    ctaSize: 20,
   },
   // Every value below is read directly off the Figma dev-mode inspector
   // (file H9LpyoKvzC5UanyL360JLs, node 1:3) -- that file's own frame is
@@ -1663,15 +1665,14 @@ function drawSlide0Stop(
   // carries the separation.
   cursorY += hero.lineHeight * 0.7;
 
-  // Black and centred in light mode only, per explicit founder direction
-  // (it still sits on the dark panel there, just a different colour/
-  // alignment than dark mode's mint/left-aligned treatment, which is
-  // unchanged). Weight 500, not 600 -- reduced by 100 per explicit
-  // founder direction (this "supporting line" under the hero headline
-  // reads as too heavy at 600).
+  // Centred in both modes now, per explicit founder direction -- dark
+  // mode used to be left-aligned, but the founder's own reference image
+  // shows it centred same as light mode. Weight 500, not 600 -- reduced
+  // by 100 per explicit founder direction (this "supporting line" under
+  // the hero headline reads as too heavy at 600).
   if (draw) ctx.fillStyle = style.colors.slide0HookText;
-  ctx.textAlign = invertColors ? "center" : "left";
-  const hookX = invertColors ? frame.contentX + frame.contentW / 2 : frame.contentX;
+  ctx.textAlign = "center";
+  const hookX = frame.contentX + frame.contentW / 2;
   const hookSize = px(style.slide0.hookSize, width);
   ctx.font = `${styleFor(false, hookEmphasis)} ${weightFor(500, hookEmphasis)} ${Math.round(hookSize)}px ${calSansFont}`;
   const hookLines = wrapText(ctx, episode.hook, frame.contentW);
@@ -1709,8 +1710,8 @@ function drawSlide0Stop(
     cursorY = Math.max(cursorY, minCursorBeforeFirstLine);
   }
   if (draw) ctx.fillStyle = invertColors ? style.colors.slide0HeroPanelBackground : style.colors.slide0TaglineText;
-  ctx.textAlign = invertColors ? "center" : "left";
-  const taglineX = invertColors ? frame.contentX + frame.contentW / 2 : frame.contentX;
+  ctx.textAlign = "center";
+  const taglineX = frame.contentX + frame.contentW / 2;
   ctx.font = `${styleFor(false, taglineEmphasis)} ${weightFor(400, taglineEmphasis)} ${Math.round(taglineSize)}px ${interFont}`;
   const taglineLines = episode.tagline.split("\n").filter(Boolean);
   const taglineOffset = posFor(positions, "slide0.tagline");
@@ -1725,20 +1726,19 @@ function drawSlide0Stop(
 
   // Dark-mode-only "See How" CTA pill, per the founder's dark-mode Figma
   // pass -- the light-mode source has no button here, so this is gated on
-  // !invertColors. Same mint-pill/dark-teal-text treatment as slide1's
-  // "Pass It On" pill (reusing its colour tokens rather than new ones,
-  // since the Figma reference uses the identical pairing), plus a
-  // rounded-square dark-teal badge with a WHITE arrow glyph (shaft +
-  // chevron, not a solid mint triangle in a circle) -- corrected to match
-  // the founder's close-up reference image of the badge exactly.
+  // !invertColors. Same size, padding and text treatment as slide1's own
+  // "Pass It On" pill now (style.slide0.ctaSize == style.slide1.ctaSize,
+  // same ctaPadX/ctaPadY formula), per explicit founder direction that the
+  // two buttons match -- plus a rounded-square dark-teal badge with a
+  // WHITE arrow glyph (shaft + chevron) the Pass It On pill doesn't have.
   if (!invertColors) {
     const ctaSize = px(style.slide0.ctaSize, width);
     const ctaEmphasis = emphasisFor(emphases, "slide0.cta");
     const ctaLabel = "See How";
     ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(700, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
     const ctaTextWidth = ctx.measureText(ctaLabel).width;
-    const ctaPadX = ctaSize * 0.8;
-    const ctaPadY = ctaSize * 0.45;
+    const ctaPadX = ctaSize * 1.0;
+    const ctaPadY = ctaSize * 0.475;
     const ctaBadgeGap = ctaSize * 0.35;
     const ctaBadgeSize = ctaSize * 0.9;
     const ctaBadgeRadius = ctaBadgeSize * 0.28;
@@ -2566,7 +2566,17 @@ function drawSlide2Family(
     cursorY = cardBottom + px(37, width);
   }
 
-  const generatedParagraphs = splitEditorialParagraphs(episode.familyAngle);
+  // splitEditorialParagraphs splits on EVERY sentence boundary -- fine for
+  // Slide 4/Understand's fixed 3-part editorial shape, but familyAngle
+  // scenarios (scenarios.ts) are often 3 sentences long, which produced a
+  // 3rd muted paragraph here (two supporting lines stacked) instead of
+  // this slide's intended 2-part shape (one mint headline, one muted
+  // supporting line). Collapsing every sentence after the first back into
+  // ONE paragraph restores that shape regardless of how many sentences
+  // the scenario happens to be.
+  const rawParagraphs = splitEditorialParagraphs(episode.familyAngle);
+  const supportText = rawParagraphs.slice(1).join(" ");
+  const generatedParagraphs = supportText ? [rawParagraphs[0], supportText] : rawParagraphs.slice(0, 1);
   for (let i = 0; i < generatedParagraphs.length; i++) {
     if (cursorY > textBottom) break;
     const isHeadline = i === 0;
@@ -2781,12 +2791,15 @@ function drawSlide3Action(
   void frame;
   const generated = splitQuotedAction(episode.todayAction);
   const quoted = overrides?.question || generated.quoted;
-  // Falls back to episode.todayActionSupport only when splitQuotedAction
-  // found no trailing clause of its own -- true for every generated
-  // (non-curated) episode now, per explicit founder direction that every
-  // episode's Slide 3 show a supporting line, not just the hand-curated
-  // ones (see actions.ts's selectAction / content-engine.ts).
-  const after = overrides?.after || generated.after || episode.todayActionSupport || "";
+  // Falls back to episode.simpleMeaning -- the aathichoodi's own plain
+  // modern translation (canon.ts) -- only when splitQuotedAction found no
+  // trailing clause of its own. True for every generated (non-curated)
+  // episode now, per explicit founder direction that every episode's
+  // Slide 3 show a supporting line, not just the hand-curated ones. A
+  // first attempt wrote a bespoke one-off line per action template
+  // (actions.ts), but the founder flagged those as jargon-y; the
+  // aathichoodi's own plain meaning is simpler and needs no new copy.
+  const after = overrides?.after || generated.after || episode.simpleMeaning || "";
 
   // Tag-pill row -- "Language Beliefs/Practices/Management", per the
   // Figma file's later update (node 9:26). Episodes without
@@ -3070,11 +3083,20 @@ function drawSlide4Carry(
   void frame;
   const centerX = width / 2;
 
+  // The mint "reflection line" (episode.childLesson) -- per the founder's
+  // reference image, this slide shows 4 text components: a mint
+  // reflection line and a white "Aram in Action" message up top (both
+  // always present, this slide's own content is never optional), then
+  // the Tamil line and CTA copy in the band below (unchanged). Previously
+  // this slot held episode.aiaConnection and the white slot below was the
+  // optional distantDevotionConnection -- swapped per explicit founder
+  // correction, since aiaConnection is the "Aram in Action" message, not
+  // the reflection.
   const leadId = "slide4.headline";
   const leadOffset = posFor(positions, leadId);
   const leadEmphasis = emphasisFor(emphases, leadId);
   const heroSize = px(leadEmphasis.size ?? style.slide4.heroSize, width);
-  const headline = overrides?.headline || episode.aiaConnection;
+  const headline = overrides?.headline || episode.childLesson;
   const headlineMarginX = px(style.slide4.headlineMarginX, width);
 
   ctx.textAlign = "center";
@@ -3107,7 +3129,15 @@ function drawSlide4Carry(
   }
   pushHotspot(hotspots, leadId, centerX - headlineMarginX, headlineMarginX * 2, headlineFirst + leadLineHeight, cursorY, heroSize, leadOffset);
 
-  if (episode.distantDevotionConnection) {
+  {
+    // The white "Aram in Action" message -- episode.aiaConnection, always
+    // shown now (previously this slot was the optional
+    // distantDevotionConnection, which is unset for most episodes; see
+    // this block's own doc comment above). overrides?.distantDevotionConnection
+    // still wins when the founder has hand-edited this line -- the text
+    // override's own field name is unchanged (so any already-saved
+    // overrides keep applying), only the underlying episode content and
+    // visual role moved.
     const connectionId = "slide4.connection";
     const connectionEmphasis = emphasisFor(emphases, connectionId);
     const connectionSize = px(connectionEmphasis.size ?? style.slide4.supportSize, width);
@@ -3119,7 +3149,8 @@ function drawSlide4Carry(
     // else it's used.
     if (draw) ctx.fillStyle = style.colors.slide4ConnectionText;
     ctx.font = `${styleFor(false, connectionEmphasis)} ${weightFor(400, connectionEmphasis)} ${Math.round(connectionSize)}px ${interFont}`;
-    const lines = wrapText(ctx, episode.distantDevotionConnection, width - headlineMarginX * 2);
+    const connectionText = overrides?.distantDevotionConnection || episode.aiaConnection;
+    const lines = wrapText(ctx, connectionText, width - headlineMarginX * 2);
     const connectionOffset = posFor(positions, connectionId);
     let connectionFirst = 0;
     ctx.textAlign = "center";

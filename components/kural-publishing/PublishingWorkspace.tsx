@@ -1215,14 +1215,14 @@ export default function PublishingWorkspace() {
           };
         }
         case "slide4.headline": {
-          // The whole generated aiaConnection statement now, as ONE
-          // centered headline -- no more lead/trailing-clause split (see
-          // drawSlide4Carry's own doc comment).
+          // episode.childLesson now (mint "reflection line") -- swapped
+          // from aiaConnection per explicit founder correction (see
+          // drawSlide4Carry's own doc comment on this slot).
           const headlineSize = emphasisOverrides["slide4.headline"]?.size ?? resolvedStyle.slide4.heroSize;
           return {
-            label: "Headline",
+            label: "Reflection line",
             textValue: textOverrides.slide4?.headline ?? "",
-            textPlaceholder: displayEpisode?.aiaConnection,
+            textPlaceholder: displayEpisode?.childLesson,
             onTextChange: (v) => patchText4({ headline: v }),
             sizeFields: [{ label: "Size", value: headlineSize, onChange: (v) => patchEmphasis("slide4.headline", { size: v }) }],
             fontVar: "--font-display",
@@ -1230,10 +1230,16 @@ export default function PublishingWorkspace() {
           };
         }
         case "slide4.connection":
+          // episode.aiaConnection now (white "Aram in Action" message),
+          // always shown -- swapped from the optional
+          // distantDevotionConnection, which most episodes never set (see
+          // drawSlide4Carry's own doc comment on this slot). The override
+          // field name (distantDevotionConnection) is unchanged so any
+          // already-saved per-episode overrides keep applying.
           return {
-            label: "Distant Devotion connection line",
+            label: "Aram in Action message",
             textValue: textOverrides.slide4?.distantDevotionConnection ?? "",
-            textPlaceholder: displayEpisode?.distantDevotionConnection,
+            textPlaceholder: displayEpisode?.aiaConnection,
             onTextChange: (v) => patchText4({ distantDevotionConnection: v }),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide4.supportSize, onChange: (v) => patchSlide4("supportSize", v) }],
             fontVar: "--font-serif",
@@ -2526,9 +2532,9 @@ export default function PublishingWorkspace() {
                       <NumField label="Language-category pill text size (px)" value={resolvedStyle.slide4.pillTextSize} onChange={(v) => patchSlide4("pillTextSize", v)} />
                       <CheckField label="Show language-category pill" checked={resolvedStyle.slide4.showLanguagePill} onChange={(v) => patchSlide4("showLanguagePill", v)} />
                       <TextAreaField
-                        label="Headline text override"
+                        label="Reflection line text override"
                         value={textOverrides.slide4?.headline ?? ""}
-                        placeholder={displayEpisode.aiaConnection}
+                        placeholder={displayEpisode.childLesson}
                         onChange={(v) => patchText4({ headline: v })}
                       />
                       <TextField
