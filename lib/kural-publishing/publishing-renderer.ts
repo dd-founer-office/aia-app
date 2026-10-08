@@ -397,7 +397,6 @@ export function renderKuralPublishing(
     colors: [
       { color: COLORS.heritageBronze, weight: 5 },
       { color: COLORS.illuminatedGold, weight: 2 },
-      { color: COLORS.livingCyan, weight: 0.6 },
     ],
   });
 
