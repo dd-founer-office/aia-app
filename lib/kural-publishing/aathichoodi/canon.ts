@@ -343,6 +343,9 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   // that isn't yours, not the broader "position/bribery" framing the old
   // (incorrect) word had implied.
   { episodeNumber: 23, tamilText: "மண் பறித்து உண்ணேல்", simpleMeaning: "Do not seize land that is not rightfully yours.", transliteration: "Man Parithu Unnel", primaryTheme: "honesty", verified: true,
+    // Founder-supplied syllable-level reading (see AathichoodiCanonEntry's
+    // own doc comment on this field).
+    phoneticReading: "maṇ  pa–ṟi–th–thu  uṇ–ṇēl",
     curated: {
       // Only the tag-pill category is curated here -- the Figma dark-mode
       // pass for this episode's Slide 3 is matched by the generated

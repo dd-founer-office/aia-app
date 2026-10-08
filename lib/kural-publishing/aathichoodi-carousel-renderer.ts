@@ -2264,9 +2264,11 @@ function drawSlide1Understand(
     // slide1CardText rather than new colour tokens), plus a small glowing-
     // mint subset and occasional Tamil-Brahmi/Vatteluttu letterforms mixed
     // in, per explicit founder direction (see drawLivingLanguageField).
-    // Light mode only -- same reasoning as the green card's own letter
-    // layer above, the dark mockup's dashed card shows no such texture.
-    if (invertColors) {
+    // Shown in BOTH modes now -- the dashed card is this slide's own
+    // "reading aid" (Tamil hero word + phonetic reading line), and the
+    // founder wants this same ambient Tamil texture behind it in dark mode
+    // too, not just light mode's solid black card.
+    {
       const blackCardH = blackBottom - blackTop;
       ctx.save();
       ctx.beginPath();
