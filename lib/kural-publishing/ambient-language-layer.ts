@@ -449,7 +449,10 @@ export function drawLivingLanguageField(ctx: CanvasRenderingContext2D, opts: Liv
 // opacity is drawn under). Letters only, not whole words, per explicit
 // founder direction ("forget about words, only letters and glyphs for
 // now") -- callers pass extractTamilGraphemes' output, not
-// extractTamilWords'.
+// extractTamilWords'. Tamil-Brahmi/Vatteluttu letterforms are mixed in
+// too (same registry drawLivingLanguageStratum reuses), concentrated
+// toward the field's own outer edge rather than spread evenly -- see
+// ancientScriptChance/outerAncientScriptChance below.
 // ---------------------------------------------------------------------------
 
 export interface GlyphGridColorOption {
@@ -487,6 +490,21 @@ export interface GlyphGridFieldOptions {
    *  ("random opacity for dots": yes in the reference panel). Default
    *  0.45, the panel's own "Amount". */
   amount?: number;
+  /** Base chance (0-1) that a cell right at the clearBox's own edge draws
+   *  a Tamil-Brahmi/Vatteluttu letterform instead of a glyphPool entry.
+   *  Default 0.15. This is the FLOOR, not the overall rate -- see
+   *  outerAncientScriptChance below, which this ramps up to toward the
+   *  card's outer edge, per explicit founder direction that the ancient
+   *  scripts show up "in the outermost layers with a significant
+   *  number", not spread thin and even across the whole field. */
+  ancientScriptChance?: number;
+  /** Chance (0-1) a cell at the FARTHEST point from the clearBox (i.e. the
+   *  field's own outer edge/corners) draws an ancient letterform. Default
+   *  0.85 -- cells ramp from ancientScriptChance up to this as they move
+   *  away from the clearBox, so the ancient scripts read as concentrated
+   *  in the outer ring instead of evenly mixed throughout. Has no effect
+   *  without a clearBox (nothing to measure "outermost" relative to). */
+  outerAncientScriptChance?: number;
 }
 
 export function drawGlyphGridField(ctx: CanvasRenderingContext2D, opts: GlyphGridFieldOptions): void {
@@ -497,15 +515,37 @@ export function drawGlyphGridField(ctx: CanvasRenderingContext2D, opts: GlyphGri
   const dotSize = opts.dotSize ?? 0.5;
   const maskSize = opts.maskSize ?? 0.57;
   const amount = opts.amount ?? 0.45;
+  const ancientChance = opts.ancientScriptChance ?? 0.15;
+  const outerAncientChance = opts.outerAncientScriptChance ?? 0.85;
   const glyphSize = cell * dotSize;
   const blur = cell * maskSize * 0.9;
   const cols = Math.ceil(width / cell) + 1;
   const rows = Math.ceil(height / cell) + 1;
 
+  // How far (x, y) is from the clearBox, normalized against the farthest
+  // any cell in this field can actually be from it (i.e. a corner) -- 0
+  // right at the box's own edge, 1 at that farthest point. Used to ramp
+  // the ancient-script chance up toward the field's own outer edge; see
+  // outerAncientScriptChance's own doc comment.
+  const maxPossibleDist = clearBox
+    ? Math.max(
+        clearBox.x,
+        clearBox.y,
+        width - (clearBox.x + clearBox.width),
+        height - (clearBox.y + clearBox.height),
+        1
+      )
+    : 0;
+  const outerness = (x: number, y: number): number => {
+    if (!clearBox || maxPossibleDist <= 0) return 0;
+    const dx = Math.max(clearBox.x - x, 0, x - (clearBox.x + clearBox.width));
+    const dy = Math.max(clearBox.y - y, 0, y - (clearBox.y + clearBox.height));
+    return Math.min(1, Math.sqrt(dx * dx + dy * dy) / maxPossibleDist);
+  };
+
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `500 ${glyphSize}px ${font}`;
   for (let ri = 0; ri < rows; ri++) {
     // Alternating rows offset by half a cell -- the reference panel's own
     // "dot grid" tiling option, not a plain square grid.
@@ -523,6 +563,10 @@ export function drawGlyphGridField(ctx: CanvasRenderingContext2D, opts: GlyphGri
       const clearing = clearingFactor(gx, gy, clearBox, glyphSize * 0.6);
       if (clearing <= 0) continue;
 
+      const cellAncientChance = ancientChance + (outerAncientChance - ancientChance) * outerness(gx, gy);
+      const useAncient = rand.chance(cellAncientChance);
+      const isVatteluttu = useAncient && VATTELUTTU_PATHS.length > 0 && rand.chance(0.5);
+
       const colorChoice = pickWeightedColor(rand, colors);
       const opacity = rand.range(0.04, amount) * clearing;
       if (opacity <= 0.01) continue;
@@ -533,7 +577,12 @@ export function drawGlyphGridField(ctx: CanvasRenderingContext2D, opts: GlyphGri
       ctx.fillStyle = colorChoice.color;
       ctx.shadowColor = colorChoice.color;
       ctx.shadowBlur = blur;
-      ctx.fillText(rand.pick(glyphPool), 0, 0);
+      if (isVatteluttu) {
+        drawVatteluttuGlyph(ctx, rand.pick(VATTELUTTU_PATHS), glyphSize);
+      } else {
+        ctx.font = `500 ${glyphSize}px ${useAncient ? "sans-serif" : font}`;
+        ctx.fillText(useAncient ? rand.pick(BRAHMI_GLYPHS) : rand.pick(glyphPool), 0, 0);
+      }
       ctx.restore();
     }
   }
