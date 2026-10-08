@@ -2791,15 +2791,13 @@ function drawSlide3Action(
   void frame;
   const generated = splitQuotedAction(episode.todayAction);
   const quoted = overrides?.question || generated.quoted;
-  // Falls back to episode.simpleMeaning -- the aathichoodi's own plain
-  // modern translation (canon.ts) -- only when splitQuotedAction found no
-  // trailing clause of its own. True for every generated (non-curated)
-  // episode now, per explicit founder direction that every episode's
-  // Slide 3 show a supporting line, not just the hand-curated ones. A
-  // first attempt wrote a bespoke one-off line per action template
-  // (actions.ts), but the founder flagged those as jargon-y; the
-  // aathichoodi's own plain meaning is simpler and needs no new copy.
-  const after = overrides?.after || generated.after || episode.simpleMeaning || "";
+  // Falls back to episode.todayActionSupport -- a concrete prompt to help
+  // the parent use THIS question (see actions.ts's own doc comment) --
+  // only when splitQuotedAction found no trailing clause of its own. True
+  // for every generated (non-curated) episode now, per explicit founder
+  // direction that every episode's Slide 3 show a supporting line, same
+  // role curated episodes' own hand-authored trailing clause plays.
+  const after = overrides?.after || generated.after || episode.todayActionSupport || "";
 
   // Tag-pill row -- "Language Beliefs/Practices/Management", per the
   // Figma file's later update (node 9:26). Episodes without

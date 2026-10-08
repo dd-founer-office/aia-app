@@ -1093,6 +1093,11 @@ export default function PublishingWorkspace() {
             fontVar: "--font-serif",
             refSize: resolvedStyle.slide0.taglineSize,
           };
+        case "slide0.cta":
+          return {
+            label: "“See How” CTA button (fixed copy, size only — dark mode only)",
+            sizeFields: [{ label: "Size", value: resolvedStyle.slide0.ctaSize, onChange: (v) => patchSlide0("ctaSize", v) }],
+          };
         case "slide1.tamilRef":
           return {
             label: "Tamil reference (canonical text — size only)",

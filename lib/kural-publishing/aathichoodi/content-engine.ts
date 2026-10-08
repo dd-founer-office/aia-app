@@ -80,6 +80,13 @@ export interface ComposedEpisode {
   familyAngle: string;
   childLesson: string;
   todayAction: string;
+  /** Slide 3's muted "after" line -- a concrete prompt to help the parent
+   *  use todayAction's own question (see actions.ts's own doc comment).
+   *  Unset for curated episodes, whose hand-authored todayAction already
+   *  embeds its own trailing clause directly in that string by
+   *  convention (e.g. episode 22's "Start with whatever they've been
+   *  saying..."). */
+  todayActionSupport?: string;
   aiaConnection: string;
   distantDevotionConnection?: string;
   /** See CuratedEpisodeContent.languageCategory -- threaded straight
@@ -183,6 +190,7 @@ export function composeEpisode(
     familyAngle: scenario.text,
     childLesson: childLesson.text,
     todayAction: action.text,
+    todayActionSupport: "support" in action ? action.support : undefined,
     aiaConnection: aiaConnection.text,
     distantDevotionConnection: curated?.distantDevotionConnection,
     languageCategory: curated?.languageCategory,
