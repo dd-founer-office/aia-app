@@ -287,7 +287,7 @@ export interface LivingLanguageFieldOptions {
   ancientScriptChance?: number;
 }
 
-function pickWeightedColor(rand: SeededRandom, colors: LivingLanguageFieldOptions["colors"]): LivingLanguageColorOption {
+function pickWeightedColor<T extends { weight: number }>(rand: SeededRandom, colors: readonly [T, ...T[]]): T {
   const total = colors.reduce((sum, c) => sum + c.weight, 0);
   let r = rand.range(0, total);
   for (const option of colors) {
@@ -431,6 +431,112 @@ export function drawLivingLanguageField(ctx: CanvasRenderingContext2D, opts: Liv
   ctx.save();
   drawLivingLanguageStratum(ctx, opts, short * 0.09, short * 0.028, [0.1, 0.16], breathing, placed);
   drawLivingLanguageStratum(ctx, opts, short * 0.16, short * 0.045, [0.16, 0.26], breathing, placed);
+  ctx.restore();
+  ctx.shadowBlur = 0;
+}
+
+// ---------------------------------------------------------------------------
+// Glyph grid field -- a regular "dot grid" tiling (polka-dot texture, just
+// with single Tamil letters instead of plain dots) rather than
+// drawLivingLanguageField's organic clustered scatter. Per the founder's
+// own reference (a Figma noise/texture plugin's settings panel): dot-grid
+// tiling (alternating rows offset by half a cell), a soft radial mask per
+// glyph (approximated here with shadowBlur, the same soft-edge technique
+// drawLivingLanguageStratum's own "glow" cells already use), and three
+// numeric controls carried straight over from that panel -- density (the
+// fraction of grid cells that get a glyph), dotSize (glyph size as a
+// fraction of the cell), and amount (the ceiling each glyph's random
+// opacity is drawn under). Letters only, not whole words, per explicit
+// founder direction ("forget about words, only letters and glyphs for
+// now") -- callers pass extractTamilGraphemes' output, not
+// extractTamilWords'.
+// ---------------------------------------------------------------------------
+
+export interface GlyphGridColorOption {
+  color: string;
+  /** Relative weight in the pick -- see pickWeightedColor. */
+  weight: number;
+}
+
+export interface GlyphGridFieldOptions {
+  width: number;
+  height: number;
+  rand: SeededRandom;
+  font: string;
+  /** Single-letter Tamil graphemes (extractTamilGraphemes), never whole
+   *  words -- see this section's own doc comment. */
+  glyphPool: readonly string[];
+  colors: readonly [GlyphGridColorOption, ...GlyphGridColorOption[]];
+  clearBox?: AmbientClearBox;
+  /** Grid spacing in px. Defaults to a dense ~1/16th of the shorter side --
+   *  this is a fine polka-dot texture, not the sparse scatter
+   *  drawLivingLanguageField uses. */
+  cell?: number;
+  /** Fraction (0-1) of grid cells that get a glyph. Default 0.75, the
+   *  reference panel's own "Density (75%)". */
+  density?: number;
+  /** Glyph font-size as a fraction of the cell. Default 0.5, the reference
+   *  panel's own "Dot size". */
+  dotSize?: number;
+  /** Per-glyph soft-edge blur radius as a fraction of the cell. Default
+   *  0.57, the reference panel's own "Mask size" (the selected "radial"
+   *  mask type, approximated via shadowBlur -- Canvas2D has no native
+   *  per-glyph gradient mask). */
+  maskSize?: number;
+  /** Opacity ceiling (0-1) each glyph's randomized opacity is drawn under
+   *  ("random opacity for dots": yes in the reference panel). Default
+   *  0.45, the panel's own "Amount". */
+  amount?: number;
+}
+
+export function drawGlyphGridField(ctx: CanvasRenderingContext2D, opts: GlyphGridFieldOptions): void {
+  const { width, height, rand, font, glyphPool, colors, clearBox } = opts;
+  if (glyphPool.length === 0) return;
+  const cell = opts.cell ?? Math.min(width, height) / 16;
+  const density = opts.density ?? 0.75;
+  const dotSize = opts.dotSize ?? 0.5;
+  const maskSize = opts.maskSize ?? 0.57;
+  const amount = opts.amount ?? 0.45;
+  const glyphSize = cell * dotSize;
+  const blur = cell * maskSize * 0.9;
+  const cols = Math.ceil(width / cell) + 1;
+  const rows = Math.ceil(height / cell) + 1;
+
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `500 ${glyphSize}px ${font}`;
+  for (let ri = 0; ri < rows; ri++) {
+    // Alternating rows offset by half a cell -- the reference panel's own
+    // "dot grid" tiling option, not a plain square grid.
+    const rowOffset = ri % 2 === 1 ? cell / 2 : 0;
+    for (let ci = 0; ci < cols; ci++) {
+      const gx = ci * cell + rowOffset;
+      const gy = ri * cell;
+      if (gx < 0 || gx > width || gy < 0 || gy > height) continue;
+      if (!rand.chance(density)) continue;
+      // Same soft feather toward the readable foreground content that
+      // every other ambient field in this file uses -- glyphs are
+      // centered here too, so inflate by half the glyph's own footprint
+      // (see clearingFactor's own doc comment on why that matters for
+      // centered text).
+      const clearing = clearingFactor(gx, gy, clearBox, glyphSize * 0.6);
+      if (clearing <= 0) continue;
+
+      const colorChoice = pickWeightedColor(rand, colors);
+      const opacity = rand.range(0.04, amount) * clearing;
+      if (opacity <= 0.01) continue;
+
+      ctx.save();
+      ctx.translate(gx, gy);
+      ctx.globalAlpha = opacity;
+      ctx.fillStyle = colorChoice.color;
+      ctx.shadowColor = colorChoice.color;
+      ctx.shadowBlur = blur;
+      ctx.fillText(rand.pick(glyphPool), 0, 0);
+      ctx.restore();
+    }
+  }
   ctx.restore();
   ctx.shadowBlur = 0;
 }

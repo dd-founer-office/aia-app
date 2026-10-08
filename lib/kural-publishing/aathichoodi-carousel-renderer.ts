@@ -45,7 +45,7 @@
 
 import type { ComposedEpisode } from "./aathichoodi/content-engine";
 import { LANGUAGE_CATEGORY_LABELS } from "./aathichoodi/canon";
-import { drawLivingLanguageField, extractTamilGraphemes, extractTamilWords } from "./ambient-language-layer";
+import { drawLivingLanguageField, drawGlyphGridField, extractTamilGraphemes } from "./ambient-language-layer";
 import { createSeededRandom } from "./seeded-random";
 
 // ---------------------------------------------------------------------------
@@ -675,7 +675,6 @@ const MIN_BLACK_CARD_W = 200;
 // canon.ts entry but keeps the field from rendering blank the same way
 // aathichoodi-renderer.ts's own FALLBACK_GLYPHS does for the static cover.
 const FALLBACK_AMBIENT_GLYPHS = ["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"];
-const FALLBACK_AMBIENT_WORDS = ["அறம்", "செய்", "விரும்பு"];
 
 /** Appends a hotspot spanning from the first to the last drawn line's
  *  baseline (a generous, forgiving click target, not pixel-exact) --
@@ -2250,24 +2249,20 @@ function drawSlide1Understand(
       ctx.setLineDash([]);
     }
 
-    // Living-language layer, word granularity, confined to the card's own
-    // edges -- per explicit founder direction, the black card's counterpart
-    // to the green card's letter layer above. clearBox is exactly this
-    // card's own framePad inset (the same gutter that already defines the
-    // Tamil/reading/message/CTA stack's own margin, re-used rather than a
-    // new invented value), so the words only ever show in the border strip
-    // around that content, feathering out via the shared clearingFactor
-    // technique rather than a hard clip. One unified pass (not one call per
-    // colour -- that gave each colour its own independent position grid,
-    // which is what was landing words on top of each other): muted grey and
-    // white as the base mix (reusing slide1ExplanationMutedText/
-    // slide1CardText rather than new colour tokens), plus a small glowing-
-    // mint subset and occasional Tamil-Brahmi/Vatteluttu letterforms mixed
-    // in, per explicit founder direction (see drawLivingLanguageField).
-    // Shown in BOTH modes now -- the dashed card is this slide's own
-    // "reading aid" (Tamil hero word + phonetic reading line), and the
-    // founder wants this same ambient Tamil texture behind it in dark mode
-    // too, not just light mode's solid black card.
+    // Living-language layer, now a "dot grid" of single letters rather
+    // than a scattered word field -- per the founder's own reference (a
+    // Figma noise/texture plugin's settings panel: dot-grid tiling, a soft
+    // radial mask per glyph, 75% density, 0.5 dot size, randomized
+    // opacity -- see drawGlyphGridField's own doc comment for the exact
+    // mapping). Letters only, not words, per explicit founder direction
+    // ("forget about words, only letters and glyphs for now"). clearBox is
+    // exactly this card's own framePad inset (the same gutter that already
+    // defines the Tamil/reading/message/CTA stack's own margin), so the
+    // glyphs only ever show in the border strip around that content.
+    // Shown in BOTH modes -- the dashed card is this slide's own "reading
+    // aid" (Tamil hero word + phonetic reading line), and the founder
+    // wants this ambient Tamil texture behind it in dark mode too, not
+    // just light mode's solid black card.
     {
       const blackCardH = blackBottom - blackTop;
       ctx.save();
@@ -2275,18 +2270,18 @@ function drawSlide1Understand(
       ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackCardH, blackRadius);
       ctx.clip();
       ctx.translate(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy);
-      const blackWordPool = extractTamilWords(`${episode.tamilText} ${episode.understanding}`);
-      drawLivingLanguageField(ctx, {
+      const blackLetterPool = extractTamilGraphemes(`${episode.tamilText}${episode.understanding}`);
+      drawGlyphGridField(ctx, {
         width: blackW,
         height: blackCardH,
         rand: createSeededRandom(episode.episodeNumber * 7 + 1),
         font: tamilFont,
-        contentGlyphs: blackWordPool.length > 0 ? blackWordPool : FALLBACK_AMBIENT_WORDS,
+        glyphPool: blackLetterPool.length > 0 ? blackLetterPool : FALLBACK_AMBIENT_GLYPHS,
         clearBox: { x: framePad, y: framePad, width: blackW - framePad * 2, height: blackCardH - framePad * 2 },
         colors: [
           { color: style.colors.slide1ExplanationMutedText, weight: 5 },
           { color: style.colors.slide1CardText, weight: 4 },
-          { color: "#68FFAD", weight: 1.5, glow: true },
+          { color: "#68FFAD", weight: 1.5 },
         ],
       });
       ctx.restore();
