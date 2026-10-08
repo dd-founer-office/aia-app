@@ -80,6 +80,12 @@ export interface ComposedEpisode {
   familyAngle: string;
   childLesson: string;
   todayAction: string;
+  /** Slide 3's muted "after" supporting line, when todayAction's own text
+   *  has no quoted sentence (or trailing clause) of its own for
+   *  splitQuotedAction to extract -- see actions.ts's selectAction. Unset
+   *  for curated episodes, whose hand-authored todayAction already embeds
+   *  its own trailing clause directly in that string by convention. */
+  todayActionSupport?: string;
   aiaConnection: string;
   distantDevotionConnection?: string;
   /** See CuratedEpisodeContent.languageCategory -- threaded straight
@@ -183,6 +189,7 @@ export function composeEpisode(
     familyAngle: scenario.text,
     childLesson: childLesson.text,
     todayAction: action.text,
+    todayActionSupport: "support" in action ? action.support : undefined,
     aiaConnection: aiaConnection.text,
     distantDevotionConnection: curated?.distantDevotionConnection,
     languageCategory: curated?.languageCategory,

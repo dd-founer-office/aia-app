@@ -429,12 +429,6 @@ export interface Slide4Style {
   /** distantDevotionConnection's own size, when that optional field is
    *  set -- positioned between the headline and the band below. */
   supportSize: number;
-  /** episode.childLesson's size -- the "reflection line" the founder added
-   *  to the Figma file after the initial dark-mode pass, below the
-   *  headline/connection text and above the band. Italic, its own smaller
-   *  size, same muted colour role in both modes (slide1ExplanationMutedText)
-   *  since it's a quiet aside, not the headline's accent colour. */
-  reflectionSize: number;
   /** The CTA copy's size -- now drawn INSIDE the mint band (see
    *  bandMarginTop and friends), not as a plain line below the headline. */
   ctaSize: number;
@@ -737,7 +731,10 @@ export const DEFAULT_STYLE: CarouselStyle = {
     slide0HeroHighlightText: "#FFFFFF",
     slide0TaglineText: "#788485",
     calSansText: "#FFFFFF",
-    slide0HookText: "#788485",
+    // White in dark mode, per explicit founder direction (image reference:
+    // the question itself reads white, bold -- only the tagline underneath
+    // stays muted grey). Light mode (#000000, INVERTED_COLORS) unchanged.
+    slide0HookText: "#FFFFFF",
     slide0EyebrowText: "#FFFFFF",
     slide1PageBackground: "#FFFFFF",
     // Dark-mode values below per the founder's dark-mode Figma pass
@@ -859,7 +856,6 @@ export const DEFAULT_STYLE: CarouselStyle = {
     headlineMarginTop: 321,
     headlineMarginX: 136,
     supportSize: 25,
-    reflectionSize: 22,
     ctaSize: 40,
     tamilSize: 54,
     bandMarginTop: 707,
@@ -1731,8 +1727,10 @@ function drawSlide0Stop(
   // pass -- the light-mode source has no button here, so this is gated on
   // !invertColors. Same mint-pill/dark-teal-text treatment as slide1's
   // "Pass It On" pill (reusing its colour tokens rather than new ones,
-  // since the Figma reference uses the identical pairing), plus a small
-  // circular right-arrow badge matching the reference image.
+  // since the Figma reference uses the identical pairing), plus a
+  // rounded-square dark-teal badge with a WHITE arrow glyph (shaft +
+  // chevron, not a solid mint triangle in a circle) -- corrected to match
+  // the founder's close-up reference image of the badge exactly.
   if (!invertColors) {
     const ctaSize = px(style.slide0.ctaSize, width);
     const ctaEmphasis = emphasisFor(emphases, "slide0.cta");
@@ -1742,8 +1740,9 @@ function drawSlide0Stop(
     const ctaPadX = ctaSize * 0.8;
     const ctaPadY = ctaSize * 0.45;
     const ctaBadgeGap = ctaSize * 0.35;
-    const ctaBadgeDiameter = ctaSize * 0.85;
-    const ctaPillW = ctaPadX + ctaTextWidth + ctaBadgeGap + ctaBadgeDiameter + ctaPadX * 0.7;
+    const ctaBadgeSize = ctaSize * 0.9;
+    const ctaBadgeRadius = ctaBadgeSize * 0.28;
+    const ctaPillW = ctaPadX + ctaTextWidth + ctaBadgeGap + ctaBadgeSize + ctaPadX * 0.7;
     const ctaPillH = ctaSize + ctaPadY * 2;
     const ctaRadius = px(8, width);
     const ctaOffset = posFor(positions, "slide0.cta");
@@ -1760,20 +1759,36 @@ function drawSlide0Stop(
       ctx.fillText(ctaLabel, ctaX + ctaPadX, ctaY + ctaPillH / 2 + ctaSize * 0.03);
       ctx.textBaseline = "alphabetic";
 
-      const badgeCx = ctaX + ctaPadX + ctaTextWidth + ctaBadgeGap + ctaBadgeDiameter / 2;
-      const badgeCy = ctaY + ctaPillH / 2;
+      const badgeX = ctaX + ctaPadX + ctaTextWidth + ctaBadgeGap;
+      const badgeY = ctaY + (ctaPillH - ctaBadgeSize) / 2;
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
+      ctx.shadowBlur = ctaBadgeSize * 0.2;
+      ctx.shadowOffsetY = ctaBadgeSize * 0.05;
       ctx.fillStyle = style.colors.slide1CtaPillText;
       ctx.beginPath();
-      ctx.arc(badgeCx, badgeCy, ctaBadgeDiameter / 2, 0, Math.PI * 2);
+      ctx.roundRect(badgeX, badgeY, ctaBadgeSize, ctaBadgeSize, ctaBadgeRadius);
       ctx.fill();
-      const arrowSize = ctaBadgeDiameter * 0.34;
-      ctx.fillStyle = style.colors.slide1CtaPillBackground;
+      ctx.restore();
+
+      const badgeCx = badgeX + ctaBadgeSize / 2;
+      const badgeCy = badgeY + ctaBadgeSize / 2;
+      const h = ctaBadgeSize * 0.5;
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = Math.max(1, ctaBadgeSize * 0.12);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      const tipX = badgeCx + h * 0.42;
+      const armX = tipX - h * 0.42;
       ctx.beginPath();
-      ctx.moveTo(badgeCx - arrowSize * 0.45, badgeCy - arrowSize * 0.6);
-      ctx.lineTo(badgeCx + arrowSize * 0.65, badgeCy);
-      ctx.lineTo(badgeCx - arrowSize * 0.45, badgeCy + arrowSize * 0.6);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(badgeCx - h * 0.42, badgeCy);
+      ctx.lineTo(tipX, badgeCy);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(armX, badgeCy - h * 0.42);
+      ctx.lineTo(tipX, badgeCy);
+      ctx.lineTo(armX, badgeCy + h * 0.42);
+      ctx.stroke();
     }
     cursorY += ctaPillH;
     pushHotspot(hotspots, "slide0.cta", ctaX, ctaPillW, ctaY, ctaY + ctaPillH, ctaSize, ctaOffset);
@@ -2426,7 +2441,8 @@ function drawSlide2Family(
   emphases: CarouselTextEmphases | undefined,
   overrideParagraphs: string[] | undefined,
   hotspots?: CarouselHotspot[],
-  familyImage?: HTMLImageElement | null
+  familyImage?: HTMLImageElement | null,
+  invertColors?: boolean
 ): number {
   // Self-positioning from the top margin, same as drawSlide1Understand --
   // the card is flush under the top margin, not vertically balanced, so
@@ -2494,18 +2510,26 @@ function drawSlide2Family(
     }
 
     if (draw) {
-      // Flush square top corners, rounded only at the bottom -- traced as
-      // one path, reused for the drop shadow, the clipped photo, and the
-      // border stroke so all three stay pixel-identical.
+      // Flush square top corners, rounded only at the bottom, in LIGHT
+      // mode (episode 22's established build, unchanged). In dark mode,
+      // per explicit founder direction, all four corners round -- so this
+      // just uses roundRect's own all-corners form there instead of the
+      // hand-traced partial-round path. Still one path fn, reused for the
+      // drop shadow, the clipped photo, and the border stroke so all
+      // three stay pixel-identical.
       const photoPath = () => {
         ctx.beginPath();
-        ctx.moveTo(photoX, photoTop);
-        ctx.lineTo(photoX + photoW, photoTop);
-        ctx.lineTo(photoX + photoW, photoBottom - photoRadius);
-        ctx.arcTo(photoX + photoW, photoBottom, photoX + photoW - photoRadius, photoBottom, photoRadius);
-        ctx.lineTo(photoX + photoRadius, photoBottom);
-        ctx.arcTo(photoX, photoBottom, photoX, photoBottom - photoRadius, photoRadius);
-        ctx.closePath();
+        if (invertColors) {
+          ctx.moveTo(photoX, photoTop);
+          ctx.lineTo(photoX + photoW, photoTop);
+          ctx.lineTo(photoX + photoW, photoBottom - photoRadius);
+          ctx.arcTo(photoX + photoW, photoBottom, photoX + photoW - photoRadius, photoBottom, photoRadius);
+          ctx.lineTo(photoX + photoRadius, photoBottom);
+          ctx.arcTo(photoX, photoBottom, photoX, photoBottom - photoRadius, photoRadius);
+          ctx.closePath();
+        } else {
+          ctx.roundRect(photoX, photoTop, photoW, photoBottom - photoTop, photoRadius);
+        }
       };
 
       ctx.save();
@@ -2757,7 +2781,12 @@ function drawSlide3Action(
   void frame;
   const generated = splitQuotedAction(episode.todayAction);
   const quoted = overrides?.question || generated.quoted;
-  const after = overrides?.after || generated.after;
+  // Falls back to episode.todayActionSupport only when splitQuotedAction
+  // found no trailing clause of its own -- true for every generated
+  // (non-curated) episode now, per explicit founder direction that every
+  // episode's Slide 3 show a supporting line, not just the hand-curated
+  // ones (see actions.ts's selectAction / content-engine.ts).
+  const after = overrides?.after || generated.after || episode.todayActionSupport || "";
 
   // Tag-pill row -- "Language Beliefs/Practices/Management", per the
   // Figma file's later update (node 9:26). Episodes without
@@ -3101,32 +3130,6 @@ function drawSlide4Carry(
     }
     pushHotspot(hotspots, connectionId, centerX - headlineMarginX, headlineMarginX * 2, connectionFirst, cursorY, connectionSize, connectionOffset);
   }
-
-  // "Reflection line" -- episode.childLesson, added to the Figma file
-  // after the initial dark-mode pass (founder: "we have added one
-  // reflection line"). A quiet italic aside below the headline/connection
-  // text, its own muted colour in both modes (slide1ExplanationMutedText,
-  // same token Slide 1's supporting paragraph already uses for this role)
-  // rather than slide4ConnectionText's mode-inverted white/muted pairing,
-  // since this is a different, quieter voice than the connection line.
-  if (episode.childLesson) {
-    const reflectionId = "slide4.reflection";
-    const reflectionEmphasis = emphasisFor(emphases, reflectionId);
-    const reflectionSize = px(reflectionEmphasis.size ?? style.slide4.reflectionSize, width);
-    cursorY += leadLineHeight * 0.5;
-    if (draw) ctx.fillStyle = style.colors.slide1ExplanationMutedText;
-    ctx.font = `${styleFor(true, reflectionEmphasis)} ${weightFor(400, reflectionEmphasis)} ${Math.round(reflectionSize)}px ${interFont}`;
-    const reflectionLines = wrapText(ctx, episode.childLesson, width - headlineMarginX * 2);
-    const reflectionOffset = posFor(positions, reflectionId);
-    let reflectionFirst = 0;
-    ctx.textAlign = "center";
-    for (const line of reflectionLines) {
-      cursorY += reflectionSize * style.layout.bodyLineHeight;
-      if (reflectionFirst === 0) reflectionFirst = cursorY;
-      if (draw) ctx.fillText(line, centerX + reflectionOffset.dx, cursorY + reflectionOffset.dy);
-    }
-    pushHotspot(hotspots, reflectionId, centerX - headlineMarginX, headlineMarginX * 2, reflectionFirst, cursorY, reflectionSize, reflectionOffset);
-  }
   ctx.textAlign = "left";
 
   // "Sheet" band -- full canvas width, rounded only at the top corners,
@@ -3338,7 +3341,8 @@ function layoutSlide(
         emphases,
         text?.slide2?.paragraphs,
         hotspots,
-        familyImage
+        familyImage,
+        Boolean(invertColors)
       );
     case 3:
       return drawSlide3Action(ctx, style, frame, width, episode, interFont, calSansFont, startY, draw, positions, emphases, text?.slide3, hotspots, practiceIcon);
