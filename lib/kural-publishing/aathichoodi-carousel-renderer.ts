@@ -2255,14 +2255,19 @@ function drawSlide1Understand(
     // radial mask per glyph, 75% density, 0.5 dot size, randomized
     // opacity -- see drawGlyphGridField's own doc comment for the exact
     // mapping). Letters only, not words, per explicit founder direction
-    // ("forget about words, only letters and glyphs for now"). clearBox is
-    // exactly this card's own framePad inset (the same gutter that already
-    // defines the Tamil/reading/message/CTA stack's own margin), so the
-    // glyphs only ever show in the border strip around that content.
-    // Shown in BOTH modes -- the dashed card is this slide's own "reading
-    // aid" (Tamil hero word + phonetic reading line), and the founder
-    // wants this ambient Tamil texture behind it in dark mode too, not
-    // just light mode's solid black card.
+    // ("forget about words, only letters and glyphs for now").
+    //
+    // clearBox is narrower than the card's own framePad inset (NOT the
+    // same box the text content wraps to) -- the actual centred Tamil
+    // ref/reading/message/CTA stack is itself much narrower than that
+    // full-width inset, so using the wider box left the whole left/right
+    // side of the card empty at every height in between the top and
+    // bottom bands (glyphs only ever appeared where the clearBox's own
+    // vertical extent didn't reach). A safely-narrower width here just
+    // lets glyphs fill that unused side margin instead -- harmless even
+    // where real content runs wider than this estimate, since the actual
+    // text is drawn afterward, on top, fully opaque (see below), not
+    // alpha-blended over this layer.
     {
       const blackCardH = blackBottom - blackTop;
       ctx.save();
@@ -2271,13 +2276,14 @@ function drawSlide1Understand(
       ctx.clip();
       ctx.translate(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy);
       const blackLetterPool = extractTamilGraphemes(`${episode.tamilText}${episode.understanding}`);
+      const glyphClearW = blackW * 0.58;
       drawGlyphGridField(ctx, {
         width: blackW,
         height: blackCardH,
         rand: createSeededRandom(episode.episodeNumber * 7 + 1),
         font: tamilFont,
         glyphPool: blackLetterPool.length > 0 ? blackLetterPool : FALLBACK_AMBIENT_GLYPHS,
-        clearBox: { x: framePad, y: framePad, width: blackW - framePad * 2, height: blackCardH - framePad * 2 },
+        clearBox: { x: (blackW - glyphClearW) / 2, y: framePad, width: glyphClearW, height: blackCardH - framePad * 2 },
         colors: [
           { color: style.colors.slide1ExplanationMutedText, weight: 5 },
           { color: style.colors.slide1CardText, weight: 4 },
