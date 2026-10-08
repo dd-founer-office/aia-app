@@ -139,11 +139,32 @@ export interface CarouselColors {
   /** Slide 5's own inline "PRACTICES"-style category pill (distinct
    *  component from Slide 4's tagPill row above -- see Slide4Style.
    *  showLanguagePill's own doc comment), per the Figma file's later
-   *  update (node 12:46): bright yellow fill, dark text. Not mode-
-   *  dependent, same reasoning as every other slide1/slide3 colour
-   *  here. */
+   *  update (node 12:46): bright yellow fill, dark text in LIGHT mode.
+   *  Inverted in dark mode per the founder's dark-mode Figma pass (dark
+   *  teal fill, mint text) -- genuinely mode-dependent now, despite the
+   *  "not mode-dependent" claim this doc comment originally made. */
   languagePillBackground: string;
   languagePillText: string;
+  /** Slide 5 (Carry It Forward)'s own bottom "sheet" band -- mint in light
+   *  mode (the look built first, see drawSlide4Carry's own doc comment),
+   *  dark teal in dark mode per the founder's dark-mode Figma pass
+   *  (node 12:46's later dark variant) -- i.e. the OPPOSITE pairing from
+   *  slide1GreenCardBackground's own light/dark values, so it needs its
+   *  own dedicated token rather than reusing that one. slide4BandText is
+   *  the Tamil line/CTA copy colour drawn on top of it, inverted to
+   *  match (dark teal on the light-mode mint band, white on the dark-mode
+   *  teal band). */
+  slide4BandBackground: string;
+  slide4BandText: string;
+  /** Slide 5's OPTIONAL distantDevotionConnection support line (shown
+   *  under the main aiaConnection headline only when that field is set) --
+   *  muted grey in light mode, white in dark mode per the founder's dark-
+   *  mode Figma pass. Its own token rather than reusing
+   *  slide1ExplanationMutedText (which stays flat muted-grey in both
+   *  modes everywhere else it's used) or slide1ExplanationText (whose
+   *  dark-mode value is white but whose light-mode value is black, not
+   *  muted grey). */
+  slide4ConnectionText: string;
   /** Slide 2's full-bleed page background (replacing the usual dark
    *  gradient/white field there) -- plain white, per explicit founder
    *  direction and the attached reference image (a nested-card UI
@@ -190,12 +211,25 @@ export interface CarouselColors {
   /** The manuscript icon's own colour inside slide1IconBadgeBackground
    *  above -- dark teal, for contrast against the white badge. */
   slide1IconBadgeIconColor: string;
-  /** Slide 2's "explanation" copy (the Avvaiyar's-wisdom paragraph),
-   *  drawn directly on slide1OuterCardBackground below the card stack --
-   *  plain black for the intro/headline, given its own slide1-scoped name
-   *  since slide1's colours don't change with invertColors (see
-   *  slide1PageBackground's own doc comment). */
+  /** Slide 2's "explanation" copy (the Avvaiyar's-wisdom paragraph) and
+   *  the equivalent primary headline/question text on Slide 3/4/5 (Family
+   *  Situation's scenario headline, Ask-Your-Child's question, Carry-It-
+   *  Forward's aiaConnection headline is NOT this one -- see
+   *  slide1ExplanationIntroText below) -- black in light mode, per the
+   *  founder's dark-mode Figma pass now genuinely white in dark mode (NOT
+   *  flat across modes any more, despite this field's own name/doc
+   *  history suggesting otherwise). */
   slide1ExplanationText: string;
+  /** The smaller "accent label" role that sits ABOVE slide1ExplanationText
+   *  in the same slides (Slide 2's own "Avvaiyar puts it plainly:" intro
+   *  line, Slide 4's "ASK YOUR CHILD TODAY" label) -- and, on the slides
+   *  with no separate label at all, the role the single headline itself
+   *  plays (Slide 3/Family Situation's scenario headline, Slide 5/Carry-
+   *  It-Forward's aiaConnection headline). Black in light mode (same as
+   *  slide1ExplanationText there -- the two are visually identical in
+   *  light mode, this is a separate field only because dark mode splits
+   *  them), mint in dark mode per the founder's dark-mode Figma pass. */
+  slide1ExplanationIntroText: string;
   /** The muted grey used for BOTH the message panel's copy inside the
    *  black card and the explanation's last (supporting) paragraph below
    *  it -- the Figma mockup uses the identical value in both places. */
@@ -695,30 +729,39 @@ export const DEFAULT_STYLE: CarouselStyle = {
     slide0HookText: "#788485",
     slide0EyebrowText: "#FFFFFF",
     slide1PageBackground: "#FFFFFF",
-    slide1OuterCardBackground: "#EAF2F2",
+    // Dark-mode values below per the founder's dark-mode Figma pass
+    // (5-slide "Dark" frame set) -- Slides 2-5 previously had no real dark
+    // variant at all (their page background was unconditionally painted
+    // white regardless of invertColors; see renderAathichoodiCarouselSlide's
+    // own slideIndex===1/2/3/4 blocks). This is the first pass where these
+    // tokens' DEFAULT_STYLE (dark) and INVERTED_COLORS (light) values
+    // genuinely diverge instead of just being the same value duplicated in
+    // both places pending a dark design that didn't exist yet.
+    slide1OuterCardBackground: "#062023",
     slide1GreenCardBackground: "#0A363A",
-    slide1CardBackground: "#222226",
-    slide1CardBorder: "#3A3A3A",
+    slide1CardBackground: "#134A45",
+    slide1CardBorder: "#68FFAD",
     slide1CardText: "#FFFFFF",
-    slide1IconBadgeBackground: "rgba(255, 255, 255, 0.8)",
+    slide1IconBadgeBackground: "#68FFAD",
     slide1IconBadgeIconColor: "#0A363A",
-    slide1ExplanationText: "#000000",
+    slide1ExplanationText: "#FFFFFF",
+    slide1ExplanationIntroText: "#68FFAD",
     slide1ExplanationMutedText: "#788485",
     slide1CtaPillBackground: "#68FFAD",
     slide1CtaPillText: "#0A363A",
-    // Figma Slide 4 redesign -- same pale badge + dark icon as Slide 2's
-    // manuscript-icon badge (slide1IconBadgeBackground/IconColor), now on
-    // this slide's own light panel too, not mode-dependent.
-    slide3IconCardBackground: "rgba(255, 255, 255, 0.8)",
+    slide3IconCardBackground: "#68FFAD",
     slide3IconColor: "#0A363A",
-    tagPillInactiveBackground: "#FFFFFF",
-    tagPillInactiveBorder: "#000000",
+    tagPillInactiveBackground: "#0A363A",
+    tagPillInactiveBorder: "#335356",
     tagPillInactiveText: "#788485",
     tagPillActiveBackground: "#000000",
     tagPillActiveBorder: "#000000",
     tagPillActiveText: "#FFFFFF",
-    languagePillBackground: "#FFF267",
-    languagePillText: "#0A363A",
+    languagePillBackground: "#0A363A",
+    languagePillText: "#68FFAD",
+    slide4BandBackground: "#68FFAD",
+    slide4BandText: "#0A363A",
+    slide4ConnectionText: "#FFFFFF",
   },
   layout: {
     marginX: 0.093,
@@ -877,6 +920,7 @@ export const INVERTED_COLORS: CarouselColors = {
   slide1IconBadgeBackground: "rgba(255, 255, 255, 0.8)",
   slide1IconBadgeIconColor: "#0A363A",
   slide1ExplanationText: "#000000",
+  slide1ExplanationIntroText: "#000000",
   slide1ExplanationMutedText: "#788485",
   slide1CtaPillBackground: "#68FFAD",
   slide1CtaPillText: "#0A363A",
@@ -890,6 +934,9 @@ export const INVERTED_COLORS: CarouselColors = {
   tagPillActiveText: "#FFFFFF",
   languagePillBackground: "#FFF267",
   languagePillText: "#0A363A",
+  slide4BandBackground: "#0A363A",
+  slide4BandText: "#FFFFFF",
+  slide4ConnectionText: "#788485",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -1391,15 +1438,20 @@ function drawFooterLockup(
 
   // The badge is now live-drawn text (see drawLogoBadge), not an
   // uploaded image -- it no longer waits on opts.logoImage to have loaded.
-  // Slide 4's own badge always wants mint-bg/dark-teal-text regardless of
-  // invertColors -- its band is always dark teal now (drawSlide4Carry),
-  // never mode-dependent, so the badge shouldn't flip with the toggle
-  // either; style.colors.logoBadgeBackground/Text stay mode-aware for
-  // Slide 1, which still alternates light/dark.
+  // Slide 4's own badge colours now flip with invertColors, same as its
+  // band (drawSlide4Carry): mint-bg/dark-teal-text in light mode (the
+  // dark-teal band from episode 22's build), dark-teal-bg/mint-text in
+  // dark mode per the founder's explicit instruction (the band itself is
+  // mint there, so the badge needs the inverse to still read as its own
+  // distinct shape against it). style.colors.logoBadgeBackground/Text
+  // stay mode-aware for Slide 1, which uses its own existing pairing.
   const logoOffset = posFor(positions, "footer.logo");
   const isSlide4ForLogo = opts.slideIndex === 4;
+  const invertColorsForFooter = Boolean(opts.design?.invertColors);
   const logoColors: CarouselColors = isSlide4ForLogo
-    ? { ...style.colors, logoBadgeBackground: "#68FFAD", logoBadgeText: "#0A363A" }
+    ? invertColorsForFooter
+      ? { ...style.colors, logoBadgeBackground: "#68FFAD", logoBadgeText: "#0A363A" }
+      : { ...style.colors, logoBadgeBackground: "#0A363A", logoBadgeText: "#68FFAD" }
     : style.colors;
   drawLogoBadge(ctx, logoColors, calSansFont, logoX + logoOffset.dx, rowY + logoOffset.dy, logoRadius);
   if (hotspots) {
@@ -1416,25 +1468,28 @@ function drawFooterLockup(
   const textEndX = frame.contentX + frame.contentW;
   const brandNameOffset = posFor(positions, "footer.brandName");
   const brandNameEmphasis = emphasisFor(emphases, "footer.brandName");
-  // Slide 4 always wants white now -- its band turned dark teal (see
-  // drawSlide4Carry), and white is the pairing the Tamil line/CTA copy on
-  // that same band already use. (An earlier pass hardcoded #0A363A here
-  // for a mint band; confirmed live that white is the one that keeps
-  // contrast now the band itself is dark.) Slide 1 keeps the mode-aware
-  // style.colors.textPrimary/textSecondary tokens instead of a hardcoded
-  // value: Slide 1's default mode is still a dark background (unlike
-  // Slide 4), and white-on-white would be invisible there in light/
-  // inverted mode -- those tokens already resolve to the right color for
-  // both of Slide 1's own modes without this footer needing to special-
-  // case slideIndex itself. Not style.colors.textPrimary/textSecondary for
-  // Slide 4, though -- those are ALSO the generic in-canvas-edit-textarea
-  // fallback colors (PublishingWorkspace.tsx), shared across every slide's
-  // text fields; changing them globally to white would make that
-  // textarea's own typed text invisible on Slide 1's light/inverted mode
-  // whenever ANY field there is being edited, not just this footer.
+  // Slide 4's wordmark/handle colour matches its own band text
+  // (slide4BandText, drawSlide4Carry) -- white on the light-mode dark-teal
+  // band, dark teal on the dark-mode mint band, per the founder's dark-
+  // mode Figma pass. Hardcoded here rather than reading style.colors.
+  // slide4BandText directly only to keep this function's own existing
+  // isSlide4 branch shape; the values are identical to that token either
+  // way. Slide 1 keeps the mode-aware style.colors.textPrimary/
+  // textSecondary tokens instead of a hardcoded value: Slide 1's default
+  // mode is still a dark background (unlike Slide 4), and white-on-white
+  // would be invisible there in light/inverted mode -- those tokens
+  // already resolve to the right color for both of Slide 1's own modes
+  // without this footer needing to special-case slideIndex itself. Not
+  // style.colors.textPrimary/textSecondary for Slide 4, though -- those
+  // are ALSO the generic in-canvas-edit-textarea fallback colors
+  // (PublishingWorkspace.tsx), shared across every slide's text fields;
+  // changing them globally would make that textarea's own typed text
+  // invisible on Slide 1's light/inverted mode whenever ANY field there is
+  // being edited, not just this footer.
   const isSlide4 = opts.slideIndex === 4;
+  const slide4FooterText = invertColorsForFooter ? "#FFFFFF" : "#0A363A";
   ctx.textAlign = "left";
-  ctx.fillStyle = isSlide4 ? "#FFFFFF" : style.colors.textPrimary;
+  ctx.fillStyle = isSlide4 ? slide4FooterText : style.colors.textPrimary;
   ctx.font = `${styleFor(false, brandNameEmphasis)} ${weightFor(700, brandNameEmphasis)} ${Math.round(brandName)}px ${interFont}`;
   const brandNameY = rowY - textBlockHeight / 2 + brandName;
   ctx.fillText(opts.brandingWordmark.replace("AiA — ", ""), textX + brandNameOffset.dx, brandNameY + brandNameOffset.dy);
@@ -1442,7 +1497,7 @@ function drawFooterLockup(
   if (opts.brandingHandle) {
     const handleOffset = posFor(positions, "footer.handle");
     const handleEmphasis = emphasisFor(emphases, "footer.handle");
-    ctx.fillStyle = isSlide4 ? "#FFFFFF" : style.colors.textSecondary;
+    ctx.fillStyle = isSlide4 ? slide4FooterText : style.colors.textSecondary;
     ctx.font = `${styleFor(false, handleEmphasis)} ${weightFor(400, handleEmphasis)} ${Math.round(handle)}px ${interFont}`;
     const handleY = rowY + textBlockHeight / 2 - handle * 0.25;
     ctx.fillText(`@${opts.brandingHandle}`, textX + handleOffset.dx, handleY + handleOffset.dy);
@@ -1856,7 +1911,8 @@ function drawSlide1Understand(
   emphases: CarouselTextEmphases | undefined,
   overrideParagraphs: string[] | undefined,
   hotspots?: CarouselHotspot[],
-  manuscriptIcon?: HTMLImageElement | null
+  manuscriptIcon?: HTMLImageElement | null,
+  invertColors?: boolean
 ): number {
   void startY;
   void frame;
@@ -1984,50 +2040,63 @@ function drawSlide1Understand(
   // stay put even if a card's own background is dragged away from them.
   const greenCardOffset = posFor(positions, "slide1.greenCard");
   if (draw) {
-    ctx.fillStyle = style.colors.slide1GreenCardBackground;
-    ctx.beginPath();
-    ctx.roundRect(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy, greenW, greenH, greenRadius);
-    ctx.fill();
+    // Per the founder's dark-mode Figma pass (5-slide "Dark" frame set),
+    // this whole nested pale-outer/green-card/black-card stack collapses
+    // in dark mode to a single card floating directly on the page (see
+    // the dashed-border card below) -- no green wrapper at all, confirmed
+    // against the dark mockup (plain page colour right up to the card's
+    // own edge, no second nested rect visible). invertColors === light
+    // mode keeps the full nested-card stack exactly as built for episode
+    // 22. The hotspot stays registered either way (see below) so the
+    // drag/resize UI doesn't lose this element switching modes, even
+    // though dark mode draws nothing for it to grab visually.
+    if (invertColors) {
+      ctx.fillStyle = style.colors.slide1GreenCardBackground;
+      ctx.beginPath();
+      ctx.roundRect(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy, greenW, greenH, greenRadius);
+      ctx.fill();
 
-    // Living-language layer, letter granularity, mint -- the same shared
-    // ambient-field system the KKA cover and Distant Devotion already use
-    // (ambient-language-layer.ts), brought into this card per explicit
-    // founder direction. Clipped to the green card's own rounded rect and
-    // drawn in its LOCAL coordinate space (translate, not re-derived
-    // offsets) so drawLivingLanguageField's own (0,0)-anchored grid lands
-    // correctly; no clearBox needed -- the black card drawn on top of this
-    // later fully occludes its own footprint regardless, so letters only
-    // ever end up visible in the green margin around it, which is exactly
-    // the intended look. Sourced from this episode's own Tamil line, never
-    // invented, same rule as every other ambient-field caller -- mixed
-    // with occasional Tamil-Brahmi/Vatteluttu letterforms (see
-    // drawLivingLanguageField's own doc comment) and a small glowing-mint
-    // subset per explicit founder direction, in ONE unified placement pass
-    // so these don't overlap each other the way two independent same-area
-    // passes would.
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy, greenW, greenH, greenRadius);
-    ctx.clip();
-    ctx.translate(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy);
-    const greenLetterPool = extractTamilGraphemes(episode.tamilText);
-    drawLivingLanguageField(ctx, {
-      width: greenW,
-      height: greenH,
-      rand: createSeededRandom(episode.episodeNumber * 7 + 3),
-      font: tamilFont,
-      contentGlyphs: greenLetterPool.length > 0 ? greenLetterPool : FALLBACK_AMBIENT_GLYPHS,
-      // The established mint accent -- hardcoded here rather than reused
-      // from an existing style.colors field, same reasoning as
-      // drawFooterLockup's own Slide 4 hardcodes: no existing token means
-      // "this specific element's mint", just the slide's accent value.
-      // Mostly flat mint, a smaller glowing-mint subset on top.
-      colors: [
-        { color: "#68FFAD", weight: 8 },
-        { color: "#68FFAD", weight: 2, glow: true },
-      ],
-    });
-    ctx.restore();
+      // Living-language layer, letter granularity, mint -- the same shared
+      // ambient-field system the KKA cover and Distant Devotion already use
+      // (ambient-language-layer.ts), brought into this card per explicit
+      // founder direction. Clipped to the green card's own rounded rect and
+      // drawn in its LOCAL coordinate space (translate, not re-derived
+      // offsets) so drawLivingLanguageField's own (0,0)-anchored grid lands
+      // correctly; no clearBox needed -- the black card drawn on top of this
+      // later fully occludes its own footprint regardless, so letters only
+      // ever end up visible in the green margin around it, which is exactly
+      // the intended look. Sourced from this episode's own Tamil line, never
+      // invented, same rule as every other ambient-field caller -- mixed
+      // with occasional Tamil-Brahmi/Vatteluttu letterforms (see
+      // drawLivingLanguageField's own doc comment) and a small glowing-mint
+      // subset per explicit founder direction, in ONE unified placement pass
+      // so these don't overlap each other the way two independent same-area
+      // passes would. Light mode only -- the dark mockup shows no such
+      // texture around the dashed card, just plain page colour.
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy, greenW, greenH, greenRadius);
+      ctx.clip();
+      ctx.translate(greenX + greenCardOffset.dx, greenTop + greenCardOffset.dy);
+      const greenLetterPool = extractTamilGraphemes(episode.tamilText);
+      drawLivingLanguageField(ctx, {
+        width: greenW,
+        height: greenH,
+        rand: createSeededRandom(episode.episodeNumber * 7 + 3),
+        font: tamilFont,
+        contentGlyphs: greenLetterPool.length > 0 ? greenLetterPool : FALLBACK_AMBIENT_GLYPHS,
+        // The established mint accent -- hardcoded here rather than reused
+        // from an existing style.colors field, same reasoning as
+        // drawFooterLockup's own Slide 4 hardcodes: no existing token means
+        // "this specific element's mint", just the slide's accent value.
+        // Mostly flat mint, a smaller glowing-mint subset on top.
+        colors: [
+          { color: "#68FFAD", weight: 8 },
+          { color: "#68FFAD", weight: 2, glow: true },
+        ],
+      });
+      ctx.restore();
+    }
 
     ctx.fillStyle = style.colors.slide1IconBadgeBackground;
     ctx.beginPath();
@@ -2060,20 +2129,41 @@ function drawSlide1Understand(
 
   const blackCardOffset = posFor(positions, "slide1.blackCard");
   if (draw) {
-    ctx.save();
-    ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
-    ctx.shadowBlur = px(16, width);
-    ctx.shadowOffsetY = px(5, width);
-    ctx.fillStyle = style.colors.slide1CardBackground;
-    ctx.beginPath();
-    ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackBottom - blackTop, blackRadius);
-    ctx.fill();
-    ctx.restore();
+    // Light mode: solid near-black card, drop shadow, solid subtle-grey
+    // border -- unchanged from episode 22's build. Dark mode: per the
+    // founder's dark-mode Figma pass, a lighter-teal "glass" card with a
+    // DASHED mint border and no shadow (a shadow cast onto an
+    // already-dark page reads as pointless noise, and the mockup shows
+    // none) -- slide1CardBackground/slide1CardBorder are already the
+    // right colour for whichever mode via style.colors, only the shadow/
+    // dash treatment itself needs to branch here.
+    if (invertColors) {
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+      ctx.shadowBlur = px(16, width);
+      ctx.shadowOffsetY = px(5, width);
+      ctx.fillStyle = style.colors.slide1CardBackground;
+      ctx.beginPath();
+      ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackBottom - blackTop, blackRadius);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.fillStyle = style.colors.slide1CardBackground;
+      ctx.beginPath();
+      ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackBottom - blackTop, blackRadius);
+      ctx.fill();
+    }
     ctx.strokeStyle = style.colors.slide1CardBorder;
     ctx.lineWidth = Math.max(1, px(1, width));
+    if (!invertColors) {
+      ctx.setLineDash([px(8, width), px(6, width)]);
+    }
     ctx.beginPath();
     ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackBottom - blackTop, blackRadius);
     ctx.stroke();
+    if (!invertColors) {
+      ctx.setLineDash([]);
+    }
 
     // Living-language layer, word granularity, confined to the card's own
     // edges -- per explicit founder direction, the black card's counterpart
@@ -2089,27 +2179,31 @@ function drawSlide1Understand(
     // slide1CardText rather than new colour tokens), plus a small glowing-
     // mint subset and occasional Tamil-Brahmi/Vatteluttu letterforms mixed
     // in, per explicit founder direction (see drawLivingLanguageField).
-    const blackCardH = blackBottom - blackTop;
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackCardH, blackRadius);
-    ctx.clip();
-    ctx.translate(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy);
-    const blackWordPool = extractTamilWords(`${episode.tamilText} ${episode.understanding}`);
-    drawLivingLanguageField(ctx, {
-      width: blackW,
-      height: blackCardH,
-      rand: createSeededRandom(episode.episodeNumber * 7 + 1),
-      font: tamilFont,
-      contentGlyphs: blackWordPool.length > 0 ? blackWordPool : FALLBACK_AMBIENT_WORDS,
-      clearBox: { x: framePad, y: framePad, width: blackW - framePad * 2, height: blackCardH - framePad * 2 },
-      colors: [
-        { color: style.colors.slide1ExplanationMutedText, weight: 5 },
-        { color: style.colors.slide1CardText, weight: 4 },
-        { color: "#68FFAD", weight: 1.5, glow: true },
-      ],
-    });
-    ctx.restore();
+    // Light mode only -- same reasoning as the green card's own letter
+    // layer above, the dark mockup's dashed card shows no such texture.
+    if (invertColors) {
+      const blackCardH = blackBottom - blackTop;
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackCardH, blackRadius);
+      ctx.clip();
+      ctx.translate(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy);
+      const blackWordPool = extractTamilWords(`${episode.tamilText} ${episode.understanding}`);
+      drawLivingLanguageField(ctx, {
+        width: blackW,
+        height: blackCardH,
+        rand: createSeededRandom(episode.episodeNumber * 7 + 1),
+        font: tamilFont,
+        contentGlyphs: blackWordPool.length > 0 ? blackWordPool : FALLBACK_AMBIENT_WORDS,
+        clearBox: { x: framePad, y: framePad, width: blackW - framePad * 2, height: blackCardH - framePad * 2 },
+        colors: [
+          { color: style.colors.slide1ExplanationMutedText, weight: 5 },
+          { color: style.colors.slide1CardText, weight: 4 },
+          { color: "#68FFAD", weight: 1.5, glow: true },
+        ],
+      });
+      ctx.restore();
+    }
   }
   if (hotspots) {
     hotspots.push({
@@ -2192,7 +2286,11 @@ function drawSlide1Understand(
     const emphasis = emphasisFor(emphases, id);
     const text = overrideParagraphs?.[i] || paragraphs[i];
     if (draw) {
-      ctx.fillStyle = isLast ? style.colors.slide1ExplanationMutedText : style.colors.slide1ExplanationText;
+      ctx.fillStyle = isLast
+        ? style.colors.slide1ExplanationMutedText
+        : isFirst
+          ? style.colors.slide1ExplanationIntroText
+          : style.colors.slide1ExplanationText;
       if (isHero) {
         try {
           ctx.letterSpacing = `${Math.round(px(2.16, width))}px`;
@@ -2389,7 +2487,11 @@ function drawSlide2Family(
     const size = px(emphasis.size ?? (isHeadline ? style.slide2.headlineSize : style.slide2.bodySize), width);
     const lineHeight = size * (isHeadline ? 1.25 : 1.3);
     if (draw) {
-      ctx.fillStyle = isHeadline ? style.colors.slide1ExplanationText : style.colors.slide1ExplanationMutedText;
+      // isHeadline uses the "intro/accent" role (slide1ExplanationIntroText)
+      // rather than slide1ExplanationText -- black in light mode either
+      // way (identical today), but per the founder's dark-mode Figma pass
+      // this slide's own headline is mint in dark mode, not white.
+      ctx.fillStyle = isHeadline ? style.colors.slide1ExplanationIntroText : style.colors.slide1ExplanationMutedText;
       if (isHeadline) {
         try {
           ctx.letterSpacing = `${Math.round(px(1.6, width))}px`;
@@ -2749,7 +2851,11 @@ function drawSlide3Action(
   if (style.slide3.sectionHeadingText) {
     if (draw) {
       ctx.textAlign = "left";
-      ctx.fillStyle = style.colors.slide1ExplanationText;
+      // "intro/accent" role (slide1ExplanationIntroText), not
+      // slide1ExplanationText -- black in light mode either way, mint in
+      // dark mode per the founder's dark-mode Figma pass (the question
+      // text just below stays on slide1ExplanationText, white in dark).
+      ctx.fillStyle = style.colors.slide1ExplanationIntroText;
       try {
         ctx.letterSpacing = `${Math.round(px(-2, width))}px`;
       } catch {
@@ -2874,7 +2980,10 @@ function drawSlide4Carry(
 
   ctx.textAlign = "center";
   if (draw) {
-    ctx.fillStyle = style.colors.slide1ExplanationText;
+    // "intro/accent" role (slide1ExplanationIntroText) -- black in light
+    // mode (same as slide1ExplanationText there), mint in dark mode per
+    // the founder's dark-mode Figma pass.
+    ctx.fillStyle = style.colors.slide1ExplanationIntroText;
     try {
       ctx.letterSpacing = `${Math.round(px(2.16, width))}px`;
     } catch {
@@ -2904,7 +3013,12 @@ function drawSlide4Carry(
     const connectionEmphasis = emphasisFor(emphases, connectionId);
     const connectionSize = px(connectionEmphasis.size ?? style.slide4.supportSize, width);
     cursorY += leadLineHeight * 0.5;
-    if (draw) ctx.fillStyle = style.colors.slide1ExplanationMutedText;
+    // Its own token (slide4ConnectionText), not slide1ExplanationMutedText
+    // -- muted grey in light mode (same value, unchanged look) but white
+    // in dark mode per the founder's dark-mode Figma pass, where
+    // slide1ExplanationMutedText itself stays flat muted-grey everywhere
+    // else it's used.
+    if (draw) ctx.fillStyle = style.colors.slide4ConnectionText;
     ctx.font = `${styleFor(false, connectionEmphasis)} ${weightFor(400, connectionEmphasis)} ${Math.round(connectionSize)}px ${interFont}`;
     const lines = wrapText(ctx, episode.distantDevotionConnection, width - headlineMarginX * 2);
     const connectionOffset = posFor(positions, connectionId);
@@ -2919,19 +3033,21 @@ function drawSlide4Carry(
   }
   ctx.textAlign = "left";
 
-  // Dark-teal "sheet" band -- full canvas width, rounded only at the top
-  // corners, anchored to the canvas bottom edge (see Slide4Style.
-  // bandMarginTop's own doc comment for why this isn't content-driven
-  // like every other card in this redesign). Dark teal, not mint, per the
-  // Figma file's later update (node 12:46) -- reuses
-  // slide1GreenCardBackground's own value (same dark teal Slide 2's
-  // middle card uses), with the Tamil line/CTA copy below turned white
-  // (slide1CardText, also reused) to match.
+  // "Sheet" band -- full canvas width, rounded only at the top corners,
+  // anchored to the canvas bottom edge (see Slide4Style.bandMarginTop's
+  // own doc comment for why this isn't content-driven like every other
+  // card in this redesign). Dark teal in light mode (episode 22's build),
+  // MINT in dark mode -- the opposite pairing, per the founder's dark-mode
+  // Figma pass (node 12:46's later dark variant) -- so this uses its own
+  // dedicated slide4BandBackground token rather than reusing
+  // slide1GreenCardBackground (which stays flat dark-teal everywhere else
+  // it's used, e.g. Slide 2's photo card). slide4BandText (the Tamil
+  // line/CTA copy colour, below) is inverted to match.
   const bandTop = px(style.slide4.bandMarginTop, width);
   const bandH = canvasHeight - bandTop;
   const bandOffset = posFor(positions, "slide4.band");
   if (draw) {
-    ctx.fillStyle = style.colors.slide1GreenCardBackground;
+    ctx.fillStyle = style.colors.slide4BandBackground;
     ctx.beginPath();
     ctx.roundRect(bandOffset.dx, bandTop + bandOffset.dy, width, bandH, [px(24, width), px(24, width), 0, 0]);
     ctx.fill();
@@ -2954,7 +3070,7 @@ function drawSlide4Carry(
   const tamilSize = px(tamilEmphasis.size ?? style.slide4.tamilSize, width);
   if (draw) {
     ctx.textAlign = "left";
-    ctx.fillStyle = style.colors.slide1CardText;
+    ctx.fillStyle = style.colors.slide4BandText;
     try {
       ctx.letterSpacing = `${Math.round(px(2.16, width))}px`;
     } catch {
@@ -2983,7 +3099,7 @@ function drawSlide4Carry(
   ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(500, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
   if (draw) {
     ctx.textAlign = "left";
-    ctx.fillStyle = style.colors.slide1CardText;
+    ctx.fillStyle = style.colors.slide4BandText;
   }
   const ctaLines = wrapText(ctx, ctaCopy, width - ctaPadX * 2);
   const ctaLineHeight = ctaSize * 1.3;
@@ -3107,7 +3223,8 @@ function layoutSlide(
         emphases,
         text?.slide1?.paragraphs,
         hotspots,
-        manuscriptIcon
+        manuscriptIcon,
+        Boolean(invertColors)
       );
     case 2:
       return drawSlide2Family(
@@ -3173,7 +3290,19 @@ export function renderAathichoodiCarouselSlide(
   const hotspots: CarouselHotspot[] = [];
 
   drawSurface(ctx, width, height, style.colors);
-  if (slideIndex === 1) {
+  // Slides 2-5 (slideIndex 1-4) previously painted an unconditional white
+  // (or, for slideIndex 1/2, white-plus-a-pale-nested-card) page here
+  // regardless of invertColors -- there was no real dark variant for any
+  // of them until the founder's dark-mode Figma pass (5-slide "Dark" frame
+  // set). In dark mode now, none of that light-mode page dressing is
+  // drawn at all: drawSurface above already painted the correct dark-teal
+  // field (style.colors.background), and each slide's own draw function
+  // (drawSlide1Understand/drawSlide2Family/drawSlide3Action/
+  // drawSlide4Carry) now reads mode-aware style.colors tokens for
+  // whatever it draws on top of that. Light mode (invertColors) keeps
+  // every one of these blocks exactly as built for episode 22.
+  const invertColorsForPage = Boolean(opts.design?.invertColors);
+  if (slideIndex === 1 && invertColorsForPage) {
     // Full-bleed white page, replacing the usual dark/white field -- the
     // outer of Slide 2's three nested cards (drawSlide1Understand draws
     // the other two) sits on top of this. See
@@ -3216,7 +3345,7 @@ export function renderAathichoodiCarouselSlide(
       height: outerBottom - outerMarginTop,
     });
   }
-  if (slideIndex === 2) {
+  if (slideIndex === 2 && invertColorsForPage) {
     // Same full-bleed pale page + rounded outer card pattern as Slide 2
     // (UNDERSTAND) above, own margin fields (Slide2Style.outerCardMarginX/
     // Top/Bottom) so each slide's card is independently adjustable.
@@ -3253,7 +3382,7 @@ export function renderAathichoodiCarouselSlide(
       height: outerBottom - outerMarginTop,
     });
   }
-  if (slideIndex === 3) {
+  if (slideIndex === 3 && invertColorsForPage) {
     // Plain white page, per the Figma redesign (file H9LpyoKvzC5UanyL360JLs,
     // node 9:26) -- no separate outer/pale wrapping card like Slide 2/
     // Slide 2 above, just this slide's own single light panel
@@ -3261,7 +3390,7 @@ export function renderAathichoodiCarouselSlide(
     ctx.fillStyle = style.colors.slide1PageBackground;
     ctx.fillRect(0, 0, width, height);
   }
-  if (slideIndex === 4) {
+  if (slideIndex === 4 && invertColorsForPage) {
     // Plain white page, per the Figma redesign (file H9LpyoKvzC5UanyL360JLs,
     // node 12:46) -- drawSlide4Carry draws the mint band directly on this,
     // same "just white, no wrapping card" pattern as Slide 4 above.
