@@ -505,6 +505,15 @@ export interface GlyphGridFieldOptions {
    *  in the outer ring instead of evenly mixed throughout. Has no effect
    *  without a clearBox (nothing to measure "outermost" relative to). */
   outerAncientScriptChance?: number;
+  /** Font for the Brahmi branch of the ancient-script mix. Defaults to
+   *  "sans-serif" (the system font, which renders Tamil-Brahmi's real
+   *  Unicode block as tofu/boxes on most viewers -- an accepted, pre-
+   *  existing limitation elsewhere in this app, see living-field/
+   *  glyphs.ts). Callers that have a real Brahmi-capable web font loaded
+   *  (e.g. publishing-renderer.ts's brahmiFont, Next/font's Noto Sans
+   *  Brahmi) should pass it here instead, so Brahmi actually renders
+   *  rather than falling back to tofu. */
+  ancientFont?: string;
 }
 
 export function drawGlyphGridField(ctx: CanvasRenderingContext2D, opts: GlyphGridFieldOptions): void {
@@ -517,6 +526,7 @@ export function drawGlyphGridField(ctx: CanvasRenderingContext2D, opts: GlyphGri
   const amount = opts.amount ?? 0.45;
   const ancientChance = opts.ancientScriptChance ?? 0.15;
   const outerAncientChance = opts.outerAncientScriptChance ?? 0.85;
+  const ancientFont = opts.ancientFont ?? "sans-serif";
   const glyphSize = cell * dotSize;
   const blur = cell * maskSize * 0.9;
   const cols = Math.ceil(width / cell) + 1;
@@ -580,7 +590,7 @@ export function drawGlyphGridField(ctx: CanvasRenderingContext2D, opts: GlyphGri
       if (isVatteluttu) {
         drawVatteluttuGlyph(ctx, rand.pick(VATTELUTTU_PATHS), glyphSize);
       } else {
-        ctx.font = `500 ${glyphSize}px ${useAncient ? "sans-serif" : font}`;
+        ctx.font = `500 ${glyphSize}px ${useAncient ? ancientFont : font}`;
         ctx.fillText(useAncient ? rand.pick(BRAHMI_GLYPHS) : rand.pick(glyphPool), 0, 0);
       }
       ctx.restore();
