@@ -265,6 +265,11 @@ export interface Slide0Style {
    *  own edit), same pattern as the hook. */
   taglineSize: number;
   showBranding: boolean;
+  /** The dark-mode-only "See How" CTA pill under the tagline (per the
+   *  founder's dark-mode Figma pass) -- font size only, same mint-pill/
+   *  dark-teal-text treatment as slide1's "Pass It On" pill. Not shown in
+   *  light mode, which has no button in the Figma source. */
+  ctaSize: number;
 }
 export interface Slide1Style {
   /** The black card's static tagline ("Some words deserve to travel from
@@ -424,6 +429,12 @@ export interface Slide4Style {
   /** distantDevotionConnection's own size, when that optional field is
    *  set -- positioned between the headline and the band below. */
   supportSize: number;
+  /** episode.childLesson's size -- the "reflection line" the founder added
+   *  to the Figma file after the initial dark-mode pass, below the
+   *  headline/connection text and above the band. Italic, its own smaller
+   *  size, same muted colour role in both modes (slide1ExplanationMutedText)
+   *  since it's a quiet aside, not the headline's accent colour. */
+  reflectionSize: number;
   /** The CTA copy's size -- now drawn INSIDE the mint band (see
    *  bandMarginTop and friends), not as a plain line below the headline. */
   ctaSize: number;
@@ -776,6 +787,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     hookSize: 32,
     taglineSize: 25,
     showBranding: true,
+    ctaSize: 24,
   },
   // Every value below is read directly off the Figma dev-mode inspector
   // (file H9LpyoKvzC5UanyL360JLs, node 1:3) -- that file's own frame is
@@ -847,6 +859,7 @@ export const DEFAULT_STYLE: CarouselStyle = {
     headlineMarginTop: 321,
     headlineMarginX: 136,
     supportSize: 25,
+    reflectionSize: 22,
     ctaSize: 40,
     tamilSize: 54,
     bandMarginTop: 707,
@@ -1714,6 +1727,58 @@ function drawSlide0Stop(
   ctx.textAlign = "left";
   pushHotspot(hotspots, "slide0.tagline", frame.contentX, frame.contentW, taglineFirst, cursorY, taglineSize, taglineOffset);
 
+  // Dark-mode-only "See How" CTA pill, per the founder's dark-mode Figma
+  // pass -- the light-mode source has no button here, so this is gated on
+  // !invertColors. Same mint-pill/dark-teal-text treatment as slide1's
+  // "Pass It On" pill (reusing its colour tokens rather than new ones,
+  // since the Figma reference uses the identical pairing), plus a small
+  // circular right-arrow badge matching the reference image.
+  if (!invertColors) {
+    const ctaSize = px(style.slide0.ctaSize, width);
+    const ctaEmphasis = emphasisFor(emphases, "slide0.cta");
+    const ctaLabel = "See How";
+    ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(700, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
+    const ctaTextWidth = ctx.measureText(ctaLabel).width;
+    const ctaPadX = ctaSize * 0.8;
+    const ctaPadY = ctaSize * 0.45;
+    const ctaBadgeGap = ctaSize * 0.35;
+    const ctaBadgeDiameter = ctaSize * 0.85;
+    const ctaPillW = ctaPadX + ctaTextWidth + ctaBadgeGap + ctaBadgeDiameter + ctaPadX * 0.7;
+    const ctaPillH = ctaSize + ctaPadY * 2;
+    const ctaRadius = px(8, width);
+    const ctaOffset = posFor(positions, "slide0.cta");
+    cursorY += ctaSize * 1.1;
+    const ctaY = cursorY + ctaOffset.dy;
+    const ctaX = frame.contentX + (frame.contentW - ctaPillW) / 2 + ctaOffset.dx;
+    if (draw) {
+      ctx.fillStyle = style.colors.slide1CtaPillBackground;
+      ctx.beginPath();
+      ctx.roundRect(ctaX, ctaY, ctaPillW, ctaPillH, ctaRadius);
+      ctx.fill();
+      ctx.fillStyle = style.colors.slide1CtaPillText;
+      ctx.textBaseline = "middle";
+      ctx.fillText(ctaLabel, ctaX + ctaPadX, ctaY + ctaPillH / 2 + ctaSize * 0.03);
+      ctx.textBaseline = "alphabetic";
+
+      const badgeCx = ctaX + ctaPadX + ctaTextWidth + ctaBadgeGap + ctaBadgeDiameter / 2;
+      const badgeCy = ctaY + ctaPillH / 2;
+      ctx.fillStyle = style.colors.slide1CtaPillText;
+      ctx.beginPath();
+      ctx.arc(badgeCx, badgeCy, ctaBadgeDiameter / 2, 0, Math.PI * 2);
+      ctx.fill();
+      const arrowSize = ctaBadgeDiameter * 0.34;
+      ctx.fillStyle = style.colors.slide1CtaPillBackground;
+      ctx.beginPath();
+      ctx.moveTo(badgeCx - arrowSize * 0.45, badgeCy - arrowSize * 0.6);
+      ctx.lineTo(badgeCx + arrowSize * 0.65, badgeCy);
+      ctx.lineTo(badgeCx - arrowSize * 0.45, badgeCy + arrowSize * 0.6);
+      ctx.closePath();
+      ctx.fill();
+    }
+    cursorY += ctaPillH;
+    pushHotspot(hotspots, "slide0.cta", ctaX, ctaPillW, ctaY, ctaY + ctaPillH, ctaSize, ctaOffset);
+  }
+
   return cursorY;
 }
 
@@ -2156,7 +2221,12 @@ function drawSlide1Understand(
     ctx.strokeStyle = style.colors.slide1CardBorder;
     ctx.lineWidth = Math.max(1, px(1, width));
     if (!invertColors) {
-      ctx.setLineDash([px(8, width), px(6, width)]);
+      // Dash/gap measured directly off the founder's dark-mode Figma
+      // screenshot for this slide (pixel-sampled: ~18px dash / ~11px gap
+      // at the screenshot's own scale, which translates to ~42/26 at the
+      // 1080px reference width px() scales against) -- was 8/6, visibly
+      // too fine next to the reference's bolder dashed outline.
+      ctx.setLineDash([px(42, width), px(26, width)]);
     }
     ctx.beginPath();
     ctx.roundRect(blackX + blackCardOffset.dx, blackTop + blackCardOffset.dy, blackW, blackBottom - blackTop, blackRadius);
@@ -3030,6 +3100,32 @@ function drawSlide4Carry(
       if (draw) ctx.fillText(line, centerX + connectionOffset.dx, cursorY + connectionOffset.dy);
     }
     pushHotspot(hotspots, connectionId, centerX - headlineMarginX, headlineMarginX * 2, connectionFirst, cursorY, connectionSize, connectionOffset);
+  }
+
+  // "Reflection line" -- episode.childLesson, added to the Figma file
+  // after the initial dark-mode pass (founder: "we have added one
+  // reflection line"). A quiet italic aside below the headline/connection
+  // text, its own muted colour in both modes (slide1ExplanationMutedText,
+  // same token Slide 1's supporting paragraph already uses for this role)
+  // rather than slide4ConnectionText's mode-inverted white/muted pairing,
+  // since this is a different, quieter voice than the connection line.
+  if (episode.childLesson) {
+    const reflectionId = "slide4.reflection";
+    const reflectionEmphasis = emphasisFor(emphases, reflectionId);
+    const reflectionSize = px(reflectionEmphasis.size ?? style.slide4.reflectionSize, width);
+    cursorY += leadLineHeight * 0.5;
+    if (draw) ctx.fillStyle = style.colors.slide1ExplanationMutedText;
+    ctx.font = `${styleFor(true, reflectionEmphasis)} ${weightFor(400, reflectionEmphasis)} ${Math.round(reflectionSize)}px ${interFont}`;
+    const reflectionLines = wrapText(ctx, episode.childLesson, width - headlineMarginX * 2);
+    const reflectionOffset = posFor(positions, reflectionId);
+    let reflectionFirst = 0;
+    ctx.textAlign = "center";
+    for (const line of reflectionLines) {
+      cursorY += reflectionSize * style.layout.bodyLineHeight;
+      if (reflectionFirst === 0) reflectionFirst = cursorY;
+      if (draw) ctx.fillText(line, centerX + reflectionOffset.dx, cursorY + reflectionOffset.dy);
+    }
+    pushHotspot(hotspots, reflectionId, centerX - headlineMarginX, headlineMarginX * 2, reflectionFirst, cursorY, reflectionSize, reflectionOffset);
   }
   ctx.textAlign = "left";
 

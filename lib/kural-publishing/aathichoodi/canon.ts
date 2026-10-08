@@ -342,7 +342,18 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   // updated to match: this line is specifically about not seizing land
   // that isn't yours, not the broader "position/bribery" framing the old
   // (incorrect) word had implied.
-  { episodeNumber: 23, tamilText: "மண் பறித்து உண்ணேல்", simpleMeaning: "Do not seize land that is not rightfully yours.", transliteration: "Man Parithu Unnel", primaryTheme: "honesty", verified: true },
+  { episodeNumber: 23, tamilText: "மண் பறித்து உண்ணேல்", simpleMeaning: "Do not seize land that is not rightfully yours.", transliteration: "Man Parithu Unnel", primaryTheme: "honesty", verified: true,
+    curated: {
+      // Only the tag-pill category is curated here -- the Figma dark-mode
+      // pass for this episode's Slide 3 is matched by the generated
+      // hook/understanding/action copy already, so every other field is
+      // left to fall back to the generated content (per-field fallback,
+      // see content-engine.ts). "Beliefs" fits this line's actual content
+      // -- not taking what isn't yours is a value, not a routine practice
+      // or a managed behaviour like the other two pills.
+      languageCategory: "beliefs",
+    },
+  },
   { episodeNumber: 24, tamilText: "இயல்பு அலாதன செய்யேல்", simpleMeaning: "Do not act against good, natural conduct.", transliteration: "Iyalbu Alathana Seyyel", primaryTheme: "character", verified: true },
   { episodeNumber: 25, tamilText: "அரவம் ஆட்டேல்", simpleMeaning: "Do not handle or provoke a snake.", transliteration: "Aravam Aattel", primaryTheme: "character", verified: true,
     // Curated: uncurated, this composes from the character pool's "do
