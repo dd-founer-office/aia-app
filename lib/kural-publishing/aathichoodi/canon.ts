@@ -357,7 +357,17 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       languageCategory: "beliefs",
     },
   },
-  { episodeNumber: 24, tamilText: "இயல்பு அலாதன செய்யேல்", simpleMeaning: "Do not act against good, natural conduct.", transliteration: "Iyalbu Alathana Seyyel", primaryTheme: "character", verified: true },
+  { episodeNumber: 24, tamilText: "இயல்பு அலாதன செய்யேல்", simpleMeaning: "Do not act against good, natural conduct.", transliteration: "Iyalbu Alathana Seyyel", primaryTheme: "character", verified: true,
+    curated: {
+      // Only the tag-pill category is curated here, same pattern as
+      // episode 23's own curated block -- every other field falls back to
+      // the generated content. Per explicit founder direction: this line
+      // is about holding to good, natural conduct as a value, not a
+      // specific routine practice or a managed behaviour, so "beliefs"
+      // fits.
+      languageCategory: "beliefs",
+    },
+  },
   { episodeNumber: 25, tamilText: "அரவம் ஆட்டேல்", simpleMeaning: "Do not handle or provoke a snake.", transliteration: "Aravam Aattel", primaryTheme: "character", verified: true,
     // Curated: uncurated, this composes from the character pool's "do
     // right when unseen" angle -- the actual line is about not provoking

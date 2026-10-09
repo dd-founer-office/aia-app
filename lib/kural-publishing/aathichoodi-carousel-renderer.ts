@@ -1731,14 +1731,18 @@ function drawSlide0Stop(
   ctx.textAlign = "left";
   pushHotspot(hotspots, "slide0.tagline", frame.contentX, frame.contentW, taglineFirst, cursorY, taglineSize, taglineOffset);
 
-  // Dark-mode-only "See How" CTA pill, per the founder's dark-mode Figma
-  // pass -- the light-mode source has no button here, so this is gated on
-  // !invertColors. Same size, padding and text treatment as slide1's own
+  // "See How" CTA pill -- shown in both colour modes per explicit
+  // direction (previously dark-mode only, per the founder's earlier
+  // dark-mode Figma pass; the light-mode source just hadn't had a button
+  // here yet). Same size, padding and text treatment as slide1's own
   // "Pass It On" pill now (style.slide0.ctaSize == style.slide1.ctaSize,
   // same ctaPadX/ctaPadY formula), per explicit founder direction that the
   // two buttons match -- plus a rounded-square dark-teal badge with a
   // WHITE arrow glyph (shaft + chevron) the Pass It On pill doesn't have.
-  if (!invertColors) {
+  // slide1CtaPillBackground/Text are already mode-invariant (mint fill,
+  // dark-teal text in both DEFAULT_STYLE and INVERTED_COLORS), so no new
+  // colour branching is needed for the light-mode appearance.
+  {
     const ctaSize = px(style.slide0.ctaSize, width);
     const ctaEmphasis = emphasisFor(emphases, "slide0.cta");
     const ctaLabel = "See How";
@@ -3536,7 +3540,7 @@ function buildLivingThreadLayers(
           radius: 0,
           surface: "white",
           accents: [anchor(groundRect, 0.931, 0.895)],
-          keepOut: keepOutFrom(["slide0.hook", "slide0.tagline", ...footerIds]),
+          keepOut: keepOutFrom(["slide0.hook", "slide0.tagline", "slide0.cta", ...footerIds]),
         });
       } else {
         layers.push({
