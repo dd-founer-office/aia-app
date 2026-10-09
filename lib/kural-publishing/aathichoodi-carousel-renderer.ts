@@ -1871,22 +1871,24 @@ function drawFileIconOrFallback(
 }
 
 /** A palm-leaf manuscript mark -- two stacked bound bundles of leaves
- *  (each a rounded bar with two cord-dots, joined top-to-bottom by the
- *  cord itself), a fanned top edge suggesting loose leaves, and a few
- *  short "new/notable" dashes radiating off the top-right corner -- per
- *  the Figma Slide 2 redesign's reference icon. Hand-drawn with plain
- *  Canvas2D primitives, same convention as every other icon in this file
- *  (the circular "AiA" wordmark, the lightbulb). `size` is the icon's
- *  overall width/height; (cx, cy) is its centre. */
+ *  (each a rounded bar with two cord eyelets, joined top-to-bottom by the
+ *  cord itself), a fanned top edge suggesting loose leaves, and a
+ *  shadow/duplicate card peeking out behind the bottom bar (a stacked-box
+ *  look) -- per the founder's own newly-supplied reference icon
+ *  (manuscript-icon.png, this file's real asset; this is only the brief-
+ *  window fallback before that image has loaded, see
+ *  drawFileIconOrFallback). Hand-drawn with plain Canvas2D primitives,
+ *  same convention as every other icon in this file (the circular "AiA"
+ *  wordmark, the lightbulb). `size` is the icon's overall width/height;
+ *  (cx, cy) is its centre. */
 function drawManuscriptIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, color: string): void {
   const s = size / 2;
   ctx.save();
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
-  // Bumped from 0.05 -- per explicit founder direction, weight should
-  // match the attached "practice" icon's own bolder stroke (see
-  // drawPracticeIcon).
-  ctx.lineWidth = Math.max(2, size * 0.09);
+  // Bumped again (from 0.09) -- per explicit founder direction against the
+  // newly-supplied reference icon ("increase the weight").
+  ctx.lineWidth = Math.max(2, size * 0.1);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
@@ -1897,7 +1899,14 @@ function drawManuscriptIcon(ctx: CanvasRenderingContext2D, cx: number, cy: numbe
   const topBarY = cy - barH * 1.05;
   const bottomBarY = cy + barH * 0.08;
   const dotInset = barW * 0.22;
-  const dotR = Math.max(1.5, size * 0.04);
+  const dotR = Math.max(1.5, size * 0.045);
+
+  // Shadow/duplicate card behind the bottom bar -- the stacked-box look
+  // from the reference icon's own bottom-left offset outline.
+  const shadowOffset = size * 0.045;
+  ctx.beginPath();
+  ctx.roundRect(barX - shadowOffset, bottomBarY + shadowOffset, barW, barH, barRadius);
+  ctx.stroke();
 
   // Fanned loose-leaf edge above the top bar -- 3 overlapping strokes
   // sweeping up toward the top-right, like a stack of leaves splayed open.
@@ -1917,8 +1926,8 @@ function drawManuscriptIcon(ctx: CanvasRenderingContext2D, cx: number, cy: numbe
   ctx.roundRect(barX, bottomBarY, barW, barH, barRadius);
   ctx.stroke();
 
-  // Binding cord -- two vertical lines joining a dot on the top bar to
-  // the matching dot on the bottom bar.
+  // Binding cord -- two vertical lines joining an eyelet (a ring, not a
+  // filled dot) on the top bar to the matching eyelet on the bottom bar.
   for (const dx of [-dotInset, dotInset]) {
     const dotX = cx + dx;
     const topDotY = topBarY + barH / 2;
@@ -1929,21 +1938,9 @@ function drawManuscriptIcon(ctx: CanvasRenderingContext2D, cx: number, cy: numbe
     ctx.stroke();
     ctx.beginPath();
     ctx.arc(dotX, topDotY, dotR, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.stroke();
     ctx.beginPath();
     ctx.arc(dotX, bottomDotY, dotR, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // "New/notable" sparkle dashes off the top-right corner.
-  const sparkleOrigin = { x: barX + barW * 0.98, y: topBarY - barH * 0.5 };
-  const sparkleAngles = [-1.3, -0.95, -0.55, -0.15];
-  for (const angle of sparkleAngles) {
-    const innerR = size * 0.12;
-    const outerR = size * 0.26;
-    ctx.beginPath();
-    ctx.moveTo(sparkleOrigin.x + Math.cos(angle) * innerR, sparkleOrigin.y + Math.sin(angle) * innerR);
-    ctx.lineTo(sparkleOrigin.x + Math.cos(angle) * outerR, sparkleOrigin.y + Math.sin(angle) * outerR);
     ctx.stroke();
   }
 
