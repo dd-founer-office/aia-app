@@ -168,6 +168,14 @@ export const DD_BRANDING_HANDLE = "distant_devotion";
 export const MANUSCRIPT_ICON_PATH = "/aathichoodi/manuscript-icon.png";
 export const PRACTICE_ICON_PATH = "/aathichoodi/practice-icon.png";
 
+/** The Living Thread ambient pattern layer's tile asset (see
+ *  aathichoodi-carousel-renderer.ts's own "Living Thread" section) -- a
+ *  white-on-transparent mask of the compound AiA diamond motif, tinted and
+ *  tiled at render time, never recoloured ahead of time. Same "fixed,
+ *  app-wide asset, loaded once" pattern as MANUSCRIPT_ICON_PATH/
+ *  PRACTICE_ICON_PATH above. aathichoodi-carousel template only. */
+export const LIVING_THREAD_TILE_PATH = "/aathichoodi/living-thread-tile.png";
+
 /** 6-Second Story's own brand signature text -- locked copy from the brief,
  *  kept separate from DD_BRANDING_WORDMARK/HANDLE above since this format's
  *  renderer draws a wordmark + tagline pair, not a wordmark + @handle.
@@ -247,6 +255,11 @@ interface KuralHeroCanvasProps {
    *  (see the renderer's drawFileIconOrFallback) until loaded. */
   manuscriptIcon?: HTMLImageElement | null;
   practiceIcon?: HTMLImageElement | null;
+  /** aathichoodi-carousel template only: the Living Thread ambient
+   *  pattern's tile asset -- see LIVING_THREAD_TILE_PATH above. Ignored by
+   *  every other template. Null/undefined (not yet loaded) simply skips
+   *  the layer for this render. */
+  livingThreadTile?: HTMLImageElement | null;
   /** INTERNAL, development-only. Live-preview only, KKA template only.
    *  Defaults to false. */
   debugFormationLogic?: boolean;
@@ -273,6 +286,7 @@ export default function KuralHeroCanvas({
   familyImage,
   manuscriptIcon,
   practiceIcon,
+  livingThreadTile,
   debugFormationLogic = false,
   format,
   slideIndex = 0,
@@ -315,6 +329,7 @@ export default function KuralHeroCanvas({
           familyImage: familyImage ?? null,
           manuscriptIcon: manuscriptIcon ?? null,
           practiceIcon: practiceIcon ?? null,
+          livingThreadTile: livingThreadTile ?? null,
           brandingWordmark: branding ? BRANDING_WORDMARK : undefined,
           brandingHandle: branding ? BRANDING_HANDLE : undefined,
           design: carouselDesign,
@@ -383,7 +398,7 @@ export default function KuralHeroCanvas({
     return () => {
       cancelled = true;
     };
-  }, [template, content, generation, logoImage, familyImage, manuscriptIcon, practiceIcon, debugFormationLogic, width, height, branding, slideIndex, carouselDesign, onCarouselHotspots]);
+  }, [template, content, generation, logoImage, familyImage, manuscriptIcon, practiceIcon, livingThreadTile, debugFormationLogic, width, height, branding, slideIndex, carouselDesign, onCarouselHotspots]);
 
   // distant-devotion-6sec only: a real requestAnimationFrame loop driving
   // the MOMENT -> CURIOSITY -> INSIGHT -> FEELING sequence, looping every
@@ -589,7 +604,8 @@ export async function renderAathichoodiCarouselAssetForExport(
   carouselDesign?: CarouselDesignOverrides,
   familyImage?: HTMLImageElement | null,
   manuscriptIcon?: HTMLImageElement | null,
-  practiceIcon?: HTMLImageElement | null
+  practiceIcon?: HTMLImageElement | null,
+  livingThreadTile?: HTMLImageElement | null
 ): Promise<Blob | null> {
   return renderAathichoodiCarouselSlideForExport(
     episode,
@@ -602,6 +618,7 @@ export async function renderAathichoodiCarouselAssetForExport(
     carouselDesign,
     familyImage,
     manuscriptIcon,
-    practiceIcon
+    practiceIcon,
+    livingThreadTile
   );
 }

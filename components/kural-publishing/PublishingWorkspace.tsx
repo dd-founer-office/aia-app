@@ -55,6 +55,7 @@ import KuralHeroCanvas, {
   DISTANT_DEVOTION_LOGO_PATH,
   MANUSCRIPT_ICON_PATH,
   PRACTICE_ICON_PATH,
+  LIVING_THREAD_TILE_PATH,
   ASSET_FORMATS,
   formatsForTemplate,
   renderAssetForExport,
@@ -468,6 +469,10 @@ export default function PublishingWorkspace() {
   // files now, not a hand-vectored approximation.
   const [manuscriptIconImage, setManuscriptIconImage] = useState<HTMLImageElement | null>(null);
   const [practiceIconImage, setPracticeIconImage] = useState<HTMLImageElement | null>(null);
+  // The Living Thread ambient pattern layer's tile asset -- same "load
+  // once from a public path" pattern as manuscriptIconImage/
+  // practiceIconImage above, not per-episode state.
+  const [livingThreadTileImage, setLivingThreadTileImage] = useState<HTMLImageElement | null>(null);
   const [selectedFormatIds, setSelectedFormatIds] = useState<string[]>(() => {
     const formats = formatsForTemplate(getContentType("kka").template);
     return formats[0] ? [formats[0].id] : [];
@@ -711,6 +716,22 @@ export default function PublishingWorkspace() {
       // but fails silently rather than crashing, same standing rule.
     };
     img.src = PRACTICE_ICON_PATH;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) setLivingThreadTileImage(img);
+    };
+    img.onerror = () => {
+      // Should not happen -- this asset is confirmed present on disk --
+      // but fails silently rather than crashing, same standing rule.
+    };
+    img.src = LIVING_THREAD_TILE_PATH;
     return () => {
       cancelled = true;
     };
@@ -1796,7 +1817,8 @@ export default function PublishingWorkspace() {
               carouselDesign,
               familyImageElement,
               manuscriptIconImage,
-              practiceIconImage
+              practiceIconImage,
+              livingThreadTileImage
             );
             if (!blob) continue;
             results.push({
@@ -1890,6 +1912,7 @@ export default function PublishingWorkspace() {
     ddLogoImage,
     manuscriptIconImage,
     practiceIconImage,
+    livingThreadTileImage,
     isSixSecond,
     sixSecondStory,
     sixSecondImageElement,
@@ -3113,6 +3136,7 @@ export default function PublishingWorkspace() {
             }
             manuscriptIcon={effectiveTemplate === "aathichoodi-carousel" ? manuscriptIconImage : undefined}
             practiceIcon={effectiveTemplate === "aathichoodi-carousel" ? practiceIconImage : undefined}
+            livingThreadTile={effectiveTemplate === "aathichoodi-carousel" ? livingThreadTileImage : undefined}
             format={previewFormat}
             slideIndex={activeSlideIndex}
             carouselDesign={effectiveTemplate === "aathichoodi-carousel" ? carouselDesign : undefined}

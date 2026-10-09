@@ -47,6 +47,7 @@ import type { ComposedEpisode } from "./aathichoodi/content-engine";
 import { LANGUAGE_CATEGORY_LABELS } from "./aathichoodi/canon";
 import { drawLivingLanguageField, drawGlyphGridField, extractTamilGraphemes } from "./ambient-language-layer";
 import { createSeededRandom } from "./seeded-random";
+import { drawLivingThread, type LivingThreadLayer, type LTSurfaceType } from "./living-thread";
 
 // ---------------------------------------------------------------------------
 // Design system -- fully overridable. DEFAULT_STYLE is the founder-approved
@@ -1066,6 +1067,13 @@ export interface RenderCarouselSlideOptions {
    *  drawFileIconOrFallback. */
   manuscriptIcon?: HTMLImageElement | null;
   practiceIcon?: HTMLImageElement | null;
+  /** The Living Thread ambient pattern layer's tile asset (see
+   *  LIVING_THREAD_TILE_PATH in KuralHeroCanvas.tsx) -- a fixed, app-wide
+   *  asset, not per-episode, loaded once the same way manuscriptIcon/
+   *  practiceIcon above are. Null/undefined (not yet loaded) simply skips
+   *  the layer for this render, same "no placeholder" convention as every
+   *  other optional image here -- see applyLivingThread below. */
+  livingThreadTile?: HTMLImageElement | null;
   /** Live design/text overrides -- see the module doc comment. Omit for
    *  the founder-approved default look. */
   design?: CarouselDesignOverrides;
@@ -2788,7 +2796,9 @@ function drawSlide3Action(
   emphases: CarouselTextEmphases | undefined,
   overrides: { before?: string; question?: string; after?: string } | undefined,
   hotspots?: CarouselHotspot[],
-  practiceIcon?: HTMLImageElement | null
+  practiceIcon?: HTMLImageElement | null,
+  livingThreadTile?: HTMLImageElement | null,
+  invertColors?: boolean
 ): number {
   void startY;
   void frame;
@@ -2927,6 +2937,24 @@ function drawSlide3Action(
     ctx.beginPath();
     ctx.roundRect(panelX + panelOffset.dx, panelTop + panelOffset.dy, panelW, panelH, panelRadius);
     ctx.fill();
+
+    // Living Thread -- drawn immediately after this panel's own fill (not
+    // from the dispatcher, unlike Slides 1/2/3's outer-card layers) since
+    // this panel's background is repainted here, mid-draw, every render;
+    // a layer drawn any earlier would just be erased by the fill above.
+    // Icon/text below paint over it naturally, same "paint order is the
+    // real protection, keepOut is just a bonus" reasoning as every other
+    // Living Thread call site -- see living-thread.ts's own doc comment.
+    if (livingThreadTile) {
+      const panelRect = { x: panelX + panelOffset.dx, y: panelTop + panelOffset.dy, width: panelW, height: panelH };
+      drawLivingThread(ctx, livingThreadTile, width, {
+        rect: panelRect,
+        radius: panelRadius,
+        surface: invertColors ? "pale-green" : "dark-green",
+        accents: [{ x: panelRect.x + panelRect.width * 0.971, y: panelRect.y + panelRect.height * 0.905 }],
+        keepOut: [],
+      });
+    }
   }
   if (hotspots) {
     hotspots.push({
@@ -3078,7 +3106,9 @@ function drawSlide4Carry(
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
   overrides: { headline?: string; support?: string; ctaCopy?: string; distantDevotionConnection?: string } | undefined,
-  hotspots?: CarouselHotspot[]
+  hotspots?: CarouselHotspot[],
+  livingThreadTile?: HTMLImageElement | null,
+  invertColors?: boolean
 ): number {
   void startY;
   void frame;
@@ -3182,6 +3212,27 @@ function drawSlide4Carry(
     ctx.beginPath();
     ctx.roundRect(bandOffset.dx, bandTop + bandOffset.dy, width, bandH, [px(24, width), px(24, width), 0, 0]);
     ctx.fill();
+
+    // Living Thread -- drawn immediately after this band's own fill, same
+    // "the fill happens mid-draw here, not from the dispatcher" reasoning
+    // as Slide 3's panel (see its own comment). Light mode only: in dark
+    // mode this band is mint (slide4BandBackground above), a surface
+    // colour the Living Thread's 3-surface rule table doesn't cover -- see
+    // buildLivingThreadLayers' own doc comment. seamAnchor must match the
+    // dispatcher's own ground-layer anchor exactly (same rect, same (u,v))
+    // so the two layers' tile grids align into one continuous diamond
+    // crossing the seam, per the handover brief's own section 5.3.
+    if (livingThreadTile && invertColors) {
+      const bandRect = { x: bandOffset.dx, y: bandTop + bandOffset.dy, width, height: bandH };
+      const seamAnchor = { x: bandRect.x + bandRect.width * 0.981, y: bandRect.y + bandRect.height * -0.026 };
+      drawLivingThread(ctx, livingThreadTile, width, {
+        rect: bandRect,
+        radius: [px(24, width), px(24, width), 0, 0],
+        surface: "dark-green",
+        accents: [seamAnchor, { x: bandRect.x + bandRect.width * 0.926, y: bandRect.y + bandRect.height * 0.868 }],
+        keepOut: [],
+      });
+    }
   }
   if (hotspots) {
     hotspots.push({ id: "slide4.band", x: bandOffset.dx, y: bandTop + bandOffset.dy, width, height: bandH });
@@ -3316,7 +3367,8 @@ function layoutSlide(
   familyImage?: HTMLImageElement | null,
   invertColors?: boolean,
   manuscriptIcon?: HTMLImageElement | null,
-  practiceIcon?: HTMLImageElement | null
+  practiceIcon?: HTMLImageElement | null,
+  livingThreadTile?: HTMLImageElement | null
 ): number {
   switch (slideIndex) {
     case 0:
@@ -3377,7 +3429,24 @@ function layoutSlide(
         Boolean(invertColors)
       );
     case 3:
-      return drawSlide3Action(ctx, style, frame, width, episode, interFont, calSansFont, startY, draw, positions, emphases, text?.slide3, hotspots, practiceIcon);
+      return drawSlide3Action(
+        ctx,
+        style,
+        frame,
+        width,
+        episode,
+        interFont,
+        calSansFont,
+        startY,
+        draw,
+        positions,
+        emphases,
+        text?.slide3,
+        hotspots,
+        practiceIcon,
+        livingThreadTile,
+        Boolean(invertColors)
+      );
     case 4:
     default:
       return drawSlide4Carry(
@@ -3395,8 +3464,183 @@ function layoutSlide(
         positions,
         emphases,
         text?.slide4,
-        hotspots
+        hotspots,
+        livingThreadTile,
+        Boolean(invertColors)
       );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Living Thread -- see living-thread.ts's own doc comment for the full
+// mechanics. Everything below is this carousel's own mapping from "which
+// slide, which colour mode" to the actual surface boxes/anchors/keep-out
+// rects that module needs, built from this renderer's own real layout
+// geometry (hotspot rects already computed elsewhere in this file, plus a
+// few page-level rects this file already knows directly) -- never
+// hardcoded fractions of a surface that might drift from how that surface
+// is actually drawn.
+// ---------------------------------------------------------------------------
+
+/** Per the handover brief's own section 7 anchor table, resolved against
+ *  whatever surface box actually exists for a given (slide, colour mode)
+ *  pair -- most surfaces only exist in light/inverted mode (a separate
+ *  pale/white card or page section); in dark/default mode that card never
+ *  gets its own background fill (see each slideIndex's own comment in
+ *  renderAathichoodiCarouselSlide), so the same anchor fractions are
+ *  resolved against the full dark-green canvas instead, per explicit
+ *  founder direction ("both modes, same anchors"). Slide 4's band is the
+ *  one exception: in dark mode its own background is mint (slide4BandBackground),
+ *  a surface colour the brief's 3-surface rule table (dark-green/pale-
+ *  green/white) never covers -- that one layer is skipped there rather
+ *  than guessing an unspecified thread-on-mint combination; the slide's
+ *  other (ground) layer still applies. */
+function buildLivingThreadLayers(
+  style: CarouselStyle,
+  width: number,
+  height: number,
+  slideIndex: number,
+  invertColors: boolean,
+  find: (id: string) => CarouselHotspot | undefined
+): LivingThreadLayer[] {
+  const layers: LivingThreadLayer[] = [];
+  const fullCanvas = { x: 0, y: 0, width, height };
+  const anchor = (rect: { x: number; y: number; width: number; height: number }, u: number, v: number) => ({
+    x: rect.x + u * rect.width,
+    y: rect.y + v * rect.height,
+  });
+  const rectOf = (h: CarouselHotspot | undefined) => (h ? { x: h.x, y: h.y, width: h.width, height: h.height } : null);
+  const keepOutFrom = (ids: string[]) =>
+    ids
+      .map((id) => find(id))
+      .filter((h): h is CarouselHotspot => Boolean(h))
+      .map((h) => ({ x: h.x, y: h.y, width: h.width, height: h.height }));
+  const footerIds = ["footer.logo", "footer.brandName", "footer.handle"];
+
+  switch (slideIndex) {
+    case 0: {
+      // Cover -- light/inverted mode has two real surfaces (the dark
+      // header panel, the white cover-ground below it); dark mode is one
+      // full-bleed dark-green canvas, so both accents land on it together.
+      if (invertColors) {
+        const panelBottom = height * SLIDE0_HERO_PANEL_HEIGHT_FRACTION;
+        const panelRadius = px(24, width);
+        const headerRect = { x: 0, y: 0, width, height: panelBottom };
+        layers.push({
+          rect: headerRect,
+          radius: [0, 0, panelRadius, panelRadius],
+          surface: "dark-green",
+          accents: [anchor(headerRect, 0.926, 0.13)],
+          keepOut: keepOutFrom(["header.eyebrow", "slide0.hero", ...footerIds]),
+        });
+        const groundRect = { x: 0, y: panelBottom, width, height: height - panelBottom };
+        layers.push({
+          rect: groundRect,
+          radius: 0,
+          surface: "white",
+          accents: [anchor(groundRect, 0.931, 0.895)],
+          keepOut: keepOutFrom(["slide0.hook", "slide0.tagline", ...footerIds]),
+        });
+      } else {
+        layers.push({
+          rect: fullCanvas,
+          radius: 0,
+          surface: "dark-green",
+          accents: [anchor(fullCanvas, 0.926, 0.13), anchor(fullCanvas, 0.931, 0.895)],
+          keepOut: keepOutFrom(["header.eyebrow", "slide0.hero", "slide0.hook", "slide0.tagline", "slide0.cta", ...footerIds]),
+        });
+      }
+      break;
+    }
+    case 1: {
+      // Understand/Wisdom -- the pale outer card (light mode) or the full
+      // canvas (dark mode, where the outer/green wrapper never draws).
+      // Either way, keepOut covers the icon badge + the floating card
+      // (which carries its own, unrelated ambient Tamil-letter field --
+      // left untouched, see drawSlide1Understand) + the explanation body.
+      const outer = invertColors ? rectOf(find("slide1.outerCard")) : fullCanvas;
+      if (outer) {
+        layers.push({
+          rect: outer,
+          radius: invertColors ? px(28, width) : 0,
+          surface: invertColors ? "pale-green" : "dark-green",
+          accents: [anchor(outer, 0.933, 0.055), anchor(outer, 0.057, 0.963)],
+          keepOut: keepOutFrom(["slide1.icon", "slide1.blackCard", "slide1.body.0", "slide1.body.1", "slide1.body.2"]),
+        });
+      }
+      break;
+    }
+    case 2: {
+      // Scene/Family -- same pale-outer-card/full-canvas split as Slide 1.
+      // The photo + its frame are kept out whole, per the brief's own
+      // "untouched" direction for Slide 2.
+      const outer = invertColors ? rectOf(find("slide2.outerCard")) : fullCanvas;
+      if (outer) {
+        layers.push({
+          rect: outer,
+          radius: invertColors ? px(28, width) : 0,
+          surface: invertColors ? "pale-green" : "dark-green",
+          accents: [anchor(outer, 0.966, 0.973)],
+          keepOut: keepOutFrom(["slide2.photoCard", "slide2.body.0", "slide2.body.1"]),
+        });
+      }
+      break;
+    }
+    // case 3 (Ask) isn't handled here -- its panel's own background is
+    // repainted mid-draw inside drawSlide3Action itself every render (not
+    // a one-time page-level fill like Slides 1/2's outer card), so a layer
+    // drawn from this dispatcher-level pass would just be erased by that
+    // later fill. See drawSlide3Action's own Living Thread call site,
+    // right after that fill, instead.
+    case 4: {
+      // Practice/Carry -- only the ground (above the band) is handled
+      // here; the band's own background is ALSO repainted mid-draw (same
+      // reasoning as Slide 3's panel above), so its layer is drawn inside
+      // drawSlide4Carry itself, right after that fill -- see its own call
+      // site. The two layers still share one seam anchor (handover brief
+      // section 5.3): this function resolves it against the same band
+      // rect drawSlide4Carry uses, so both tile grids align.
+      const band = rectOf(find("slide4.band"));
+      if (band) {
+        const groundRect = { x: 0, y: 0, width, height: band.y };
+        const seamAnchor = anchor(band, 0.981, -0.026);
+        const groundSurface: LTSurfaceType = invertColors ? "white" : "dark-green";
+        layers.push({
+          rect: groundRect,
+          radius: 0,
+          surface: groundSurface,
+          accents: [seamAnchor],
+          keepOut: keepOutFrom(["slide4.headline", "slide4.connection"]),
+        });
+      }
+      break;
+    }
+  }
+  return layers;
+}
+
+/** Draws every Living Thread layer for this slide, directly onto `ctx`,
+ *  using whatever content geometry `knownHotspots` already carries --
+ *  see this file's own call site in renderAathichoodiCarouselSlide for how
+ *  that's assembled (the page-level surface rects already pushed by this
+ *  point, plus a dedicated pixel-free pre-pass collecting everything
+ *  else). No-ops per layer when fewer than one accent resolved (shouldn't
+ *  happen given buildLivingThreadLayers above, but drawLivingThread
+ *  already guards it too). */
+function applyLivingThread(
+  ctx: CanvasRenderingContext2D,
+  tile: HTMLImageElement,
+  style: CarouselStyle,
+  width: number,
+  height: number,
+  slideIndex: number,
+  invertColors: boolean,
+  knownHotspots: CarouselHotspot[]
+): void {
+  const find = (id: string) => knownHotspots.find((h) => h.id === id);
+  const layers = buildLivingThreadLayers(style, width, height, slideIndex, invertColors, find);
+  for (const layer of layers) {
+    drawLivingThread(ctx, tile, width, layer);
   }
 }
 
@@ -3562,6 +3806,53 @@ export function renderAathichoodiCarouselSlide(
   const slack = Math.max(0, available - contentHeight);
   const balancedStartY = frame.contentTop + slack * style.layout.verticalBalanceBias;
 
+  if (opts.livingThreadTile) {
+    // Pixel-free (mostly) geometry pre-pass: the SAME header/layout/footer
+    // calls the real sequence below makes, at the real balancedStartY, just
+    // to learn exactly where this slide's own content boxes will land --
+    // see applyLivingThread's own doc comment. layoutSlide itself paints
+    // nothing here (draw=false); drawHeader/drawFooterLockup have no such
+    // flag and do paint, but idempotently (solid fills at a fixed,
+    // deterministic position) -- the real calls below repaint the same
+    // pixels on top regardless, so this costs one harmless extra paint,
+    // never a visible difference.
+    const ltHotspots: CarouselHotspot[] = [];
+    drawHeader(ctx, style, frame, width, height, slideIndex, calSansFont, positions, emphases, ltHotspots);
+    layoutSlide(
+      ctx,
+      style,
+      frame,
+      width,
+      height,
+      episode,
+      slideIndex,
+      tamilFont,
+      interFont,
+      calSansFont,
+      balancedStartY,
+      false,
+      positions,
+      emphases,
+      text,
+      ltHotspots,
+      opts.familyImage,
+      opts.design?.invertColors,
+      opts.manuscriptIcon,
+      opts.practiceIcon
+    );
+    drawFooterLockup(ctx, style, frame, width, height, calSansFont, interFont, opts, positions, emphases, ltHotspots);
+    applyLivingThread(
+      ctx,
+      opts.livingThreadTile,
+      style,
+      width,
+      height,
+      slideIndex,
+      Boolean(opts.design?.invertColors),
+      [...hotspots, ...ltHotspots]
+    );
+  }
+
   drawHeader(ctx, style, frame, width, height, slideIndex, calSansFont, positions, emphases, hotspots);
 
   layoutSlide(
@@ -3584,7 +3875,8 @@ export function renderAathichoodiCarouselSlide(
     opts.familyImage,
     opts.design?.invertColors,
     opts.manuscriptIcon,
-    opts.practiceIcon
+    opts.practiceIcon,
+    opts.livingThreadTile
   );
 
   drawFooterLockup(ctx, style, frame, width, height, calSansFont, interFont, opts, positions, emphases, hotspots);
@@ -3603,7 +3895,8 @@ export async function renderAathichoodiCarouselSlideForExport(
   design?: CarouselDesignOverrides,
   familyImage?: HTMLImageElement | null,
   manuscriptIcon?: HTMLImageElement | null,
-  practiceIcon?: HTMLImageElement | null
+  practiceIcon?: HTMLImageElement | null,
+  livingThreadTile?: HTMLImageElement | null
 ): Promise<Blob | null> {
   const canvas = document.createElement("canvas");
   canvas.width = format.width;
@@ -3629,6 +3922,7 @@ export async function renderAathichoodiCarouselSlideForExport(
     familyImage,
     manuscriptIcon,
     practiceIcon,
+    livingThreadTile,
     brandingWordmark: format.branding ? brandingWordmark : undefined,
     brandingHandle: format.branding ? brandingHandle : undefined,
     design,
