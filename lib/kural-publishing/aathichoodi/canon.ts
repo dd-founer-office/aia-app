@@ -398,16 +398,20 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
     // Curated: uncurated, this composes from the character pool's "do
     // right when unseen" angle -- the actual line is about not provoking
     // needless danger, a different idea entirely. languageCategory/
-    // aiaConnection added under the strategy-alignment review (2026),
-    // using the founder's own benchmark script for this episode as
-    // creative reference, not copied verbatim -- the rest of this block
-    // (hookOverride/understanding/familyAngle/todayAction/childLesson) is
-    // unchanged, already-approved prose from an earlier pass.
+    // aiaConnection added under the strategy-alignment review (2026); a
+    // later pass (same review cycle) also found familyAngle/todayAction
+    // below were both single-clause strings with no second sentence/colon
+    // and no text after the closing quote -- Slide 2/Slide 3's own muted
+    // "supporting line" text has nothing to draw from in that shape (see
+    // splitEditorialParagraphs/splitQuotedAction in
+    // aathichoodi-carousel-renderer.ts), so neither slide was showing one.
+    // Both extended with a second clause/trailing line below; the
+    // original first sentence in each is unchanged.
     curated: {
       hookOverride: "Does your child know that some risks just aren't worth taking, even to show off?",
       understanding: "Avvaiyar's wisdom here is literal: don't play with a snake. It isn't really about snakes — it's about not provoking danger just to prove you're brave or because it seems exciting.",
-      familyAngle: "Your child wants to try something clearly risky — climbing somewhere unsafe, teasing an unfamiliar dog, daring a friend to do something dangerous — just because it feels exciting in the moment.",
-      todayAction: "The next time your child wants to try something risky today just for a thrill, ask together: \"Is this worth the risk, or just the excitement?\"",
+      familyAngle: "Your child wants to try something clearly risky — climbing somewhere unsafe, teasing an unfamiliar dog, daring a friend to do something dangerous — just because it feels exciting in the moment. That urge to prove something isn't really about the risk itself — it's about being seen as brave.",
+      todayAction: "The next time your child wants to try something risky today just for a thrill, ask together: \"Is this worth the risk, or just the excitement?\" Help them name the difference out loud, rather than deciding it for them.",
       childLesson: "Being brave doesn't mean taking every risk. Knowing which risks aren't worth it is its own kind of wisdom.",
       aiaConnection: "Growing up isn't only learning what to try. It's learning when to step back.",
       languageCategory: "management",
@@ -419,12 +423,15 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
     // anger/screen-time angle -- the actual line is about bodily
     // self-care through proper rest, same drift pattern as episode 16.
     // languageCategory/aiaConnection added under the strategy-alignment
-    // review (2026) -- see episode 25's own comment for the pattern.
+    // review (2026); a later pass (same review cycle) also found
+    // todayAction below had nothing after its closing quote, so Slide 3's
+    // muted supporting line had nothing to draw from -- see episode 25's
+    // own comment for why.
     curated: {
       hookOverride: "Does your child take rest as seriously as they take play?",
       understanding: "Avvaiyar's wisdom here is simple: rest your body properly, with real care, not however's convenient. Taking care of your body through good rest is its own quiet discipline, easy to skip when there's always something more exciting to do.",
       familyAngle: "Your child wants to stay up late one more time, again, even though they're clearly tired. Choosing proper rest over squeezing in one more thing is exactly what this line is about.",
-      todayAction: "Tonight, help your child wind down for proper rest at a reasonable time, and name it: \"Taking care of your body matters, even when staying up feels more fun.\"",
+      todayAction: "Tonight, help your child wind down for proper rest at a reasonable time, and name it: \"Taking care of your body matters, even when staying up feels more fun.\" Say it warmly, not as a scold — the goal is noticing, not nagging.",
       childLesson: "Resting well isn't lazy. It's how you take care of yourself so you can actually show up tomorrow.",
       aiaConnection: "Rest isn't something a child should have to earn after a perfect day. A good day also needs a gentle ending.",
       languageCategory: "management",
@@ -470,9 +477,18 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   },
   { episodeNumber: 29, tamilText: "இளமையில் கல்", simpleMeaning: "Learn while you are young.", transliteration: "Ilamaiyil Kal", primaryTheme: "education", verified: true,
     curated: {
-      familyAngle: "Homework fatigue and busy schedules can make learning feel like a chore instead of a gift while there's still time for it.",
+      // familyAngle/todayAction extended in the strategy-alignment review
+      // (2026): both were single-clause strings, so Slide 2/Slide 3's
+      // muted supporting line had nothing to draw from -- see episode 25's
+      // own comment for why. todayAction also had no quoted portion at
+      // all (splitQuotedAction's whole-string fallback, see actions.ts's
+      // own doc comment on why that reads as a confusing parent
+      // instruction dressed up as a question) -- now gives Slide 3's
+      // highlighted panel an actual short phrase, matching how every
+      // other "learning"-mechanism entry in the actions.ts pool is shaped.
+      familyAngle: "Homework fatigue and busy schedules can make learning feel like a chore instead of a gift while there's still time for it. It's easy to let curiosity wait for a less busy week that never quite arrives.",
       childLesson: "The years when learning comes easiest don't come back — what you build now, you carry for life.",
-      todayAction: "Spend fifteen unhurried minutes today learning something new together — a word, a skill, a story.",
+      todayAction: "Spend fifteen unhurried minutes today learning something new together: \"Let's find out something neither of us knows yet.\" Follow their curiosity, even if it's not what you expected to explore.",
       aiaConnection: "A mind shaped early toward learning is more likely to grow into a life shaped toward action.",
       recommendedCta: "SAVE",
       // languageCategory/actionMechanism added under the strategy-alignment

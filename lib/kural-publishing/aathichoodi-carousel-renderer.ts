@@ -875,7 +875,13 @@ export const DEFAULT_STYLE: CarouselStyle = {
     // drawFooterLockup's own isSlide4 branch) -- mint-on-mint had no
     // contrast at all, confirmed live.
     showBranding: true,
-    showLanguagePill: true,
+    // Turned off per explicit direction: the inline "MANAGEMENT"/
+    // "BELIEFS"/"PRACTICES" pill on Slide 5 (distinct from Slide 3's own
+    // 3-pill category selector, which stays) read as redundant there.
+    // Still a real, working CarouselDesignOverrides field -- editable back
+    // on via the Design Controls panel's "Show language-category pill"
+    // checkbox (PublishingWorkspace.tsx), not removed from the code.
+    showLanguagePill: false,
     pillTextSize: 20,
     pillPadX: 16,
     pillPadY: 10,
