@@ -47,6 +47,16 @@
  * palette, not DD's terracotta card look), and its own localStorage key
  * (distant-devotion-6sec-store.ts). Nothing about the existing
  * "distant-devotion"/"distant-devotion-carousel" templates changes.
+ *
+ * "dd-carousel" ("DD- Carousel" in this selector) is a FIFTH, independent
+ * content system -- a single directly-editable Tamil headline + English
+ * support line, its own minimal data model (dd-carousel-slide1-types.ts)
+ * and its own renderer (dd-carousel-slide1-renderer.ts, the deep heritage-
+ * red/bright-orange panel look from the founder's Figma reference). It is
+ * selected and shown directly in the workspace -- no prompt-compile/paste
+ * step -- and defaults to the exact reference example so the design is
+ * visible immediately on selection. Nothing about any other content type
+ * or template changes.
  */
 
 export type TemplateId =
@@ -55,7 +65,8 @@ export type TemplateId =
   | "aathichoodi-carousel"
   | "distant-devotion"
   | "distant-devotion-carousel"
-  | "distant-devotion-6sec";
+  | "distant-devotion-6sec"
+  | "dd-carousel";
 
 export type ContentTypeId =
   | "aathichoodi"
@@ -66,7 +77,8 @@ export type ContentTypeId =
   | "announcement"
   | "custom"
   | "distant-devotion"
-  | "distant-devotion-6sec";
+  | "distant-devotion-6sec"
+  | "dd-carousel";
 
 export interface ContentTypeConfig {
   id: ContentTypeId;
@@ -89,6 +101,7 @@ export const CONTENT_TYPES: readonly ContentTypeConfig[] = [
   { id: "custom", label: "Custom", template: "aathichoodi" },
   { id: "distant-devotion", label: "Distant Devotion", template: "distant-devotion-carousel" },
   { id: "distant-devotion-6sec", label: "Distant Devotion — 6-Second Story", template: "distant-devotion-6sec" },
+  { id: "dd-carousel", label: "DD- Carousel", template: "dd-carousel" },
 ];
 
 export function getContentType(id: ContentTypeId): ContentTypeConfig {

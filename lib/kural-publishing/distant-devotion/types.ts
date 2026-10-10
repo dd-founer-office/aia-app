@@ -154,21 +154,6 @@ export interface DdPublicContent {
   hashtags?: readonly string[];
   captionOpener?: string;
   captionCloser?: string;
-  /** Optional, additive. A single Tamil-language sentence (kural, proverb,
-   *  saying, or short line) that an asset may supply when it genuinely has
-   *  real Tamil source/scene text worth showing as the dominant visual on
-   *  Carousel Slide 1 -- see distant-devotion-renderer.ts's Slide 1 panel
-   *  template. At most one short phrase may be wrapped in **double
-   *  asterisks** to mark it for inline visual emphasis (rendered as
-   *  highlighted text, not literal asterisks). Omitted for assets with no
-   *  such line -- Slide 1 then renders from `hook` exactly as before this
-   *  field existed, so every pre-existing asset (including Episode 22) is
-   *  unaffected. */
-  tamilHeadline?: string;
-  /** Optional, additive. A short (ideally two-line) English paraphrase or
-   *  translation shown beneath `tamilHeadline` on the Slide 1 panel.
-   *  Ignored unless `tamilHeadline` is also present. */
-  supportingLine?: string;
 }
 
 /** Internal-only strategic + safety metadata. Never rendered publicly; the

@@ -77,6 +77,10 @@ import {
   saveSixSecondStory,
 } from "@/lib/kural-publishing/distant-devotion-6sec-store";
 import { DD_SLIDE_LABELS } from "@/lib/kural-publishing/distant-devotion-renderer";
+import {
+  DEFAULT_DD_CAROUSEL_SLIDE1_CONTENT,
+  type DdCarouselSlide1Content,
+} from "@/lib/kural-publishing/dd-carousel-slide1-types";
 import type {
   WorldId,
   ContentMode as DdContentMode,
@@ -329,6 +333,10 @@ function buildSixSecondFilename(story: SixSecondStory, format: AssetFormat): str
   return `distant-devotion-6sec-${slugify(story.pillar)}-${slugify(story.topic || "story")}-${format.id}.png`;
 }
 
+function buildDdCarouselSlide1Filename(content: DdCarouselSlide1Content, format: AssetFormat): string {
+  return `dd-carousel-${slugify(content.englishSupport || "slide1")}-${format.id}.png`;
+}
+
 interface GeneratedAsset {
   formatId: string;
   label: string;
@@ -559,12 +567,16 @@ export default function PublishingWorkspace() {
   // distant-devotion-6sec-types.ts's doc comment for why.
   const [sixSecondStory, setSixSecondStory] = useState<SixSecondStory>(() => loadSixSecondStory());
   const [loadedSixSecondImage, setLoadedSixSecondImage] = useState<{ src: string; img: HTMLImageElement } | null>(null);
+  const [ddCarouselSlide1Content, setDdCarouselSlide1Content] = useState<DdCarouselSlide1Content>(
+    DEFAULT_DD_CAROUSEL_SLIDE1_CONTENT
+  );
 
   const contentTypeConfig = getContentType(contentTypeId);
   const template = contentTypeConfig.template;
   const isSeriesType = contentTypeId === "aathichoodi-series";
   const isDistantDevotion = contentTypeId === "distant-devotion";
   const isSixSecond = contentTypeId === "distant-devotion-6sec";
+  const isDdCarouselSlide1 = contentTypeId === "dd-carousel";
   const effectiveTemplate: TemplateId = isSeriesType
     ? seriesFormat === "static"
       ? "aathichoodi"
@@ -599,9 +611,11 @@ export default function PublishingWorkspace() {
       ? ddParsedAsset ?? DEFAULT_DD_COMPOSED_ASSET
       : isSixSecond
         ? sixSecondStory
-        : template === "kka"
-          ? kuralContent
-          : aathichoodiContent;
+        : isDdCarouselSlide1
+          ? ddCarouselSlide1Content
+          : template === "kka"
+            ? kuralContent
+            : aathichoodiContent;
 
   // Derived-state resets, computed during render rather than in an effect --
   // see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
@@ -1888,13 +1902,15 @@ export default function PublishingWorkspace() {
                 ? buildSeriesStaticFilename(composedEpisode, format)
                 : isDistantDevotion && ddParsedAsset
                   ? buildDistantDevotionFilename(ddParsedAsset, format)
-                  : buildFilename(
-                      contentTypeId,
-                      template,
-                      kuralContent,
-                      aathichoodiContent,
-                      format
-                    ),
+                  : isDdCarouselSlide1
+                    ? buildDdCarouselSlide1Filename(ddCarouselSlide1Content, format)
+                    : buildFilename(
+                        contentTypeId,
+                        template,
+                        kuralContent,
+                        aathichoodiContent,
+                        format
+                      ),
           });
         }
       }
@@ -1926,6 +1942,8 @@ export default function PublishingWorkspace() {
     kuralContent,
     aathichoodiContent,
     carouselDesign,
+    isDdCarouselSlide1,
+    ddCarouselSlide1Content,
   ]);
 
   const handleCompileDdPrompt = useCallback(() => {
@@ -2077,6 +2095,13 @@ export default function PublishingWorkspace() {
   const handleRemoveSixSecondImage = useCallback(() => {
     setSixSecondStory((prev) => ({ ...prev, visualDataUrl: null }));
   }, []);
+
+  const handleDdCarouselSlide1FieldChange = useCallback(
+    <K extends keyof DdCarouselSlide1Content>(key: K, value: DdCarouselSlide1Content[K]) => {
+      setDdCarouselSlide1Content((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
 
   // The prompt reflects whatever's CURRENTLY on Slide 3 -- the founder's
   // own paragraph text overrides where set, the generated scenario
@@ -2919,6 +2944,35 @@ export default function PublishingWorkspace() {
               <option value="DRAFT">Draft</option>
               <option value="READY">Ready</option>
             </select>
+          </label>
+        </div>
+        ) : isDdCarouselSlide1 ? (
+        <div className="flex flex-col gap-4">
+          <p className="text-[10px] text-[var(--color-muted-foreground)]">
+            Deep heritage-red panel with a bright-orange Tamil headline, per the Figma reference. Shown directly below
+            — no compile/paste step. Wrap at most one short phrase in **double asterisks** to highlight it.
+          </p>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Tamil headline — wrap a phrase in **asterisks** to highlight it
+            </span>
+            <textarea
+              value={ddCarouselSlide1Content.tamilHeadline}
+              onChange={(e) => handleDdCarouselSlide1FieldChange("tamilHeadline", e.target.value)}
+              rows={4}
+              className="font-tamil-sans rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              English supporting line (shown beneath the Tamil headline)
+            </span>
+            <textarea
+              value={ddCarouselSlide1Content.englishSupport}
+              onChange={(e) => handleDdCarouselSlide1FieldChange("englishSupport", e.target.value)}
+              rows={2}
+              className="rounded-[var(--radius-photo)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-foreground)] outline-none focus:border-[var(--color-primary)]"
+            />
           </label>
         </div>
         ) : (

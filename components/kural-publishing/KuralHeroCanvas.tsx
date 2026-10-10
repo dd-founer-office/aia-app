@@ -56,8 +56,13 @@ import {
   renderDistantDevotion6SecForExport,
   SIX_SECOND_EXPORT_FRAME,
 } from "@/lib/kural-publishing/distant-devotion-6sec-renderer";
+import {
+  renderDdCarouselSlide1,
+  renderDdCarouselSlide1ForExport,
+} from "@/lib/kural-publishing/dd-carousel-slide1-renderer";
 import type { DdComposedAsset } from "@/lib/kural-publishing/distant-devotion/types";
 import type { SixSecondStory } from "@/lib/kural-publishing/distant-devotion-6sec-types";
+import type { DdCarouselSlide1Content } from "@/lib/kural-publishing/dd-carousel-slide1-types";
 import type { AathichoodiContent, TemplateId } from "@/lib/kural-publishing/content-types";
 import type { ComposedEpisode } from "@/lib/kural-publishing/aathichoodi/content-engine";
 
@@ -69,7 +74,8 @@ export type AssetContent =
   | AathichoodiContent
   | ComposedEpisode
   | DdComposedAsset
-  | SixSecondStory;
+  | SixSecondStory
+  | DdCarouselSlide1Content;
 
 export { DD_CAROUSEL_SLIDE_COUNT };
 
@@ -101,6 +107,9 @@ export const ASSET_FORMATS: readonly AssetFormat[] = [
   // Distant Devotion's own carousel master format, listed first among its
   // templates for the same reason as above -- see formatsForTemplate.
   { id: "distant-devotion-carousel-4x5", label: "Distant Devotion Carousel (4:5)", width: 1080, height: 1350, branding: true, templates: ["distant-devotion-carousel"] },
+  // DD- Carousel Slide 1's own master format, same reasoning -- listed
+  // first among its templates so formatsForTemplate defaults to it.
+  { id: "dd-carousel-4x5", label: "DD- Carousel (4:5)", width: 1080, height: 1350, branding: false, templates: ["dd-carousel"] },
   { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "distant-devotion", "distant-devotion-carousel"] },
   { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "distant-devotion", "distant-devotion-carousel"] },
   { id: "whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: true, templates: ["kka", "aathichoodi", "aathichoodi-carousel", "distant-devotion", "distant-devotion-carousel"] },
@@ -113,6 +122,12 @@ export const ASSET_FORMATS: readonly AssetFormat[] = [
   // only to this template, per the brief's "create a dedicated format
   // entry... do not alter existing format definitions unnecessarily."
   { id: "distant-devotion-6sec-story", label: "Distant Devotion — 6-Second Story (9:16)", width: 1080, height: 1920, branding: true, templates: ["distant-devotion-6sec"] },
+  // DD- Carousel's own social sizes, scoped only to this template -- no
+  // branding/logo on this format (the Figma reference has none).
+  { id: "dd-carousel-instagram-post", label: "Instagram Post", width: 1080, height: 1080, branding: false, templates: ["dd-carousel"] },
+  { id: "dd-carousel-instagram-story", label: "Instagram Story", width: 1080, height: 1920, branding: false, templates: ["dd-carousel"] },
+  { id: "dd-carousel-whatsapp-status", label: "WhatsApp Status", width: 1080, height: 1920, branding: false, templates: ["dd-carousel"] },
+  { id: "dd-carousel-facebook-post", label: "Facebook Post", width: 1200, height: 630, branding: false, templates: ["dd-carousel"] },
 ];
 
 /** Formats available for a given template, "KKA Cover"/original landscape
@@ -366,6 +381,14 @@ export default function KuralHeroCanvas({
         // by the dedicated requestAnimationFrame effect below, not this
         // single-paint-then-stop effect every other template uses.
         return;
+      } else if (template === "dd-carousel") {
+        renderDdCarouselSlide1(ctx, {
+          width,
+          height,
+          content: content as DdCarouselSlide1Content,
+          tamilFont: fonts.tamilFont,
+          sansFont: fonts.sansFont,
+        });
       } else {
         renderAathichoodi(ctx, {
           width,
@@ -531,6 +554,16 @@ export async function renderAssetForExport(
       logoImage,
       brandingWordmark: format.branding ? DD_BRANDING_WORDMARK : undefined,
       brandingHandle: format.branding ? DD_BRANDING_HANDLE : undefined,
+    });
+  }
+  if (template === "dd-carousel") {
+    const fonts = resolveAllFonts();
+    return renderDdCarouselSlide1ForExport({
+      width: format.width,
+      height: format.height,
+      content: content as DdCarouselSlide1Content,
+      tamilFont: fonts.tamilFont,
+      sansFont: fonts.sansFont,
     });
   }
   return renderAathichoodiForExport(
