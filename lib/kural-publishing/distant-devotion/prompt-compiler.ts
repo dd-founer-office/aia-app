@@ -184,9 +184,23 @@ matching exactly this shape:
     "cta": "string (omit entirely if treatment is SAFETY_CAPPED)",
     "hashtags": ["string", "string", "string"],
     "caption_opener": "string (optional)",
-    "caption_closer": "string (optional)"
+    "caption_closer": "string (optional)",
+    "tamil_headline": "string (optional -- see below)",
+    "supporting_line": "string (optional -- see below)"
   }
 }
+
+OPTIONAL TAMIL HEADLINE PAIR -- include tamil_headline/supporting_line only
+when this asset has a genuine Tamil-language sentence (a kural line, a
+proverb, a saying, or a short original Tamil line this asset is actually
+built from) worth showing as the dominant visual on the carousel's first
+slide. If you include it: tamil_headline is that one Tamil sentence, with
+at most one short phrase wrapped in **double asterisks** to mark it for
+visual emphasis (do not emphasize more than one phrase, and never emphasize
+a whole sentence); supporting_line is a short English paraphrase or
+translation of it, written to read naturally across two short lines. Omit
+both fields entirely for any asset that has no such Tamil line -- do not
+force a Tamil line onto content that does not genuinely have one.
 `.trim();
 
 function describeSource(brief: DdBrief, history: DistantDevotionHistory): string {

@@ -159,6 +159,8 @@ export function parseDistantDevotionResponse(raw: string): ParseResult {
         hashtags: Array.isArray(pub.hashtags) ? pub.hashtags.filter((h): h is string => typeof h === "string") : undefined,
         captionOpener: typeof pub.caption_opener === "string" ? pub.caption_opener : undefined,
         captionCloser: typeof pub.caption_closer === "string" ? pub.caption_closer : undefined,
+        tamilHeadline: typeof pub.tamil_headline === "string" && pub.tamil_headline.trim() ? pub.tamil_headline : undefined,
+        supportingLine: typeof pub.supporting_line === "string" && pub.supporting_line.trim() ? pub.supporting_line : undefined,
       },
     },
   };
