@@ -27,6 +27,22 @@ const CLASSROOM_MARKERS = ["lesson number", "grammar", "syllabus", "homework ass
 const FAMILY_ACTOR_MARKERS = ["child", "sibling", "parent", "grandparent", "grandmother", "grandfather", "cousin", "your"];
 const GENERIC_OPENERS = ["every family", "every parent", "every child", "families often", "many families"];
 const HARD_SELL_MARKERS = ["buy now", "book now", "join our service", "sign up now", "limited time", "act now"];
+/** Fragments of the pre-2026 AIA_CONNECTIONS template (see voice.ts's own
+ *  doc comment on that rewrite) -- every pre-rewrite entry contained at
+ *  least one of these. Kept here as a regression guard: if a future edit
+ *  (hand or curated) ever reintroduces this sentence shape, this check
+ *  catches it rather than letting the formula quietly creep back in. */
+const FORMULAIC_CLOSING_MARKERS = [
+  "isn't something your child learns in theory",
+  "means little until it's",
+  "means little until it is",
+  "is one thing. aram in action",
+  "only becomes real once it's lived",
+  "only becomes real once it is lived",
+  "only becomes real once it's practiced",
+  "is just words until it's lived",
+  "is just a sentence until it's lived",
+];
 
 export function runQualityChecks(
   episode: ComposedEpisode,
@@ -95,6 +111,14 @@ export function runQualityChecks(
   if (HARD_SELL_MARKERS.some((marker) => aiaLower.includes(marker))) {
     warnings.push("AiA connection reads like a sales pitch — soften the language.");
   }
+  // Regression guard against the pre-2026 three-sentence-template formula
+  // (see voice.ts's own doc comment) -- this should never fire against the
+  // current AIA_CONNECTIONS pool or the curated episodes added alongside
+  // it, but catches it immediately if a future edit reintroduces that
+  // shape by hand.
+  if (FORMULAIC_CLOSING_MARKERS.some((marker) => aiaLower.includes(marker))) {
+    warnings.push("AiA connection matches the old repetitive closing-line formula — rewrite as its own sentence, not an instance of a shared template.");
+  }
 
   // Repetition against recent history (heuristic proxy for "is this
   // emotionally different from recent episodes" -- exact rotation is
@@ -102,6 +126,27 @@ export function runQualityChecks(
   // where a pool ran out of fresh options and had to repeat).
   if (historyBeforeThisEpisode.recentCtaTypes.filter((t) => t === episode.cta.type).length >= 3) {
     warnings.push("This CTA type has been used often in recent episodes — consider variety.");
+  }
+
+  // Action-mechanism repetition -- the strategy-alignment review's "don't
+  // force every episode into Ask Your Child Today" rule, made checkable.
+  // Skipped (not warned) when this episode's own mechanism isn't tagged
+  // yet (an un-tagged curated episode) -- nothing to compare.
+  if (
+    episode.actionMechanism &&
+    historyBeforeThisEpisode.recentActionMechanisms.filter((m) => m === episode.actionMechanism).length >= 3
+  ) {
+    warnings.push(`This action mechanism ("${episode.actionMechanism}") has been used often in recent episodes — consider a different kind of action (routine, observation, giving, learning, reflection, challenge).`);
+  }
+
+  // Missing nFLP stream -- informational, not a defect: classification is
+  // deliberately progressive (see CuratedEpisodeContent.languageCategory's
+  // own doc comment), so most episodes are expected to be unset for now.
+  // Surfaced so an editor reviewing a specific episode sees it needs
+  // classifying, rather than it silently falling back to the design
+  // system's default Slide 3 heading forever.
+  if (!episode.languageCategory) {
+    warnings.push("No nFLP stream (languageCategory) classified yet for this episode — Slide 3 falls back to the default heading. Classify when ready; don't guess.");
   }
 
   // Soft "feels like AiA, not a Tamil class" proxy.

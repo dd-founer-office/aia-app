@@ -44,7 +44,7 @@
  */
 
 import type { ComposedEpisode } from "./aathichoodi/content-engine";
-import { LANGUAGE_CATEGORY_LABELS } from "./aathichoodi/canon";
+import { LANGUAGE_CATEGORY_LABELS, SLIDE3_ACTION_HEADING_LABELS } from "./aathichoodi/canon";
 import { drawLivingLanguageField, drawGlyphGridField, extractTamilGraphemes } from "./ambient-language-layer";
 import { createSeededRandom } from "./seeded-random";
 import { drawLivingThread, type LivingThreadLayer, type LTSurfaceType } from "./living-thread";
@@ -2874,14 +2874,22 @@ function drawSlide3Action(
     }
   }
 
-  // Heading -- "ASK YOUR CHILD TODAY" by default, a fixed design-system
-  // label (see Slide3Style.sectionHeadingText), not episode content. Lives
-  // inside the panel's own bottom-up content stack now (see below), not as
-  // a page-level element above it -- per the Figma file's later update.
+  // Heading -- per the strategy-alignment review (2026), now responds to
+  // the episode's own nFLP stream (RETHINK THIS TODAY / ASK YOUR CHILD
+  // TODAY / TRY THIS FAMILY ROUTINE -- see SLIDE3_ACTION_HEADING_LABELS).
+  // An episode with no languageCategory classified yet falls back to the
+  // design system's original fixed label (Slide3Style.sectionHeadingText),
+  // same as before this review -- not episode content in that case either.
+  // Lives inside the panel's own bottom-up content stack now (see below),
+  // not as a page-level element above it -- per the Figma file's later
+  // update.
   const headingId = "slide3.sectionHeading";
   const headingOffset = posFor(positions, headingId);
   const headingEmphasis = emphasisFor(emphases, headingId);
   const headingSize = px(style.slide3.sectionHeadingSize, width);
+  const headingText = episode.languageCategory
+    ? SLIDE3_ACTION_HEADING_LABELS[episode.languageCategory]
+    : style.slide3.sectionHeadingText;
 
   // Panel -- its own margin fields (independent of the generic frame
   // margin), content-driven height (icon + question + supporting line +
@@ -2912,7 +2920,7 @@ function drawSlide3Action(
   let innerCursorY = panelPadY;
   if (hasIcon) innerCursorY += iconSize + px(29, width);
   const headingTop = innerCursorY;
-  if (style.slide3.sectionHeadingText) innerCursorY += headingSize + px(42, width);
+  if (headingText) innerCursorY += headingSize + px(42, width);
   const questionTop = innerCursorY;
   innerCursorY += quoteLines.length * quoteLineHeight;
   innerCursorY += px(36, width);
@@ -2990,7 +2998,7 @@ function drawSlide3Action(
     );
   }
 
-  if (style.slide3.sectionHeadingText) {
+  if (headingText) {
     if (draw) {
       ctx.textAlign = "left";
       // "intro/accent" role (slide1ExplanationIntroText), not
@@ -3004,7 +3012,7 @@ function drawSlide3Action(
         /* Canvas2D letterSpacing unsupported -- default tracking is fine */
       }
       ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(headingSize)}px ${interFont}`;
-      ctx.fillText(style.slide3.sectionHeadingText, panelX + panelPadX + headingOffset.dx, panelTop + headingTop + headingSize + headingOffset.dy);
+      ctx.fillText(headingText, panelX + panelPadX + headingOffset.dx, panelTop + headingTop + headingSize + headingOffset.dy);
       try {
         ctx.letterSpacing = "0px";
       } catch {
@@ -3012,7 +3020,7 @@ function drawSlide3Action(
       }
     }
     ctx.font = `${styleFor(false, headingEmphasis)} ${weightFor(600, headingEmphasis)} ${Math.round(headingSize)}px ${interFont}`;
-    const headingWidth = ctx.measureText(style.slide3.sectionHeadingText).width;
+    const headingWidth = ctx.measureText(headingText).width;
     pushHotspot(
       hotspots,
       headingId,

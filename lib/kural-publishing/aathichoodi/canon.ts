@@ -67,6 +67,7 @@
 
 import type { ThemeId } from "./themes";
 import type { CtaTypeId } from "./cta";
+import type { ActionMechanismId } from "./actions";
 
 export interface CuratedEpisodeContent {
   /** Each field below is independently optional -- an episode can curate
@@ -94,14 +95,25 @@ export interface CuratedEpisodeContent {
   hookOverride?: string;
   /** Optional language-development category, per the Figma redesign's new
    *  3-pill selector on Slide 4 (one pill shown active/filled) and matching
-   *  footnote on Slide 5. This is a new, hand-authored editorial
+   *  footnote on Slide 5, and (per the strategy-alignment review, 2026)
+   *  also the Slide 3 heading text (RETHINK THIS TODAY / ASK YOUR CHILD
+   *  TODAY / TRY THIS FAMILY ROUTINE -- see
+   *  aathichoodi-carousel-renderer.ts). This is a hand-authored editorial
    *  classification -- there is no mechanical way to derive it from
-   *  primaryTheme or any other existing field, and no taxonomy has been
-   *  worked out yet for the other 108 episodes, so it's left undefined
-   *  (Slide 4/5 simply omit the pill row/footnote) everywhere except
-   *  episode 22 for now. See LANGUAGE_CATEGORY_LABELS below for display
-   *  text. */
+   *  primaryTheme or any other existing field. Being classified
+   *  progressively, episode by episode, as each one gets real editorial
+   *  attention -- never guessed or defaulted; an episode with no value here
+   *  simply falls back to the design system's original fixed Slide 3
+   *  heading and omits the pill row/footnote. See LANGUAGE_CATEGORY_LABELS
+   *  below for display text. */
   languageCategory?: "beliefs" | "practices" | "management";
+  /** Optional override for the composed action's mechanism tag (see
+   *  ActionMechanismId in actions.ts) -- a curated todayAction doesn't come
+   *  from the pool, so it has no mechanism of its own unless hand-tagged
+   *  here. Used only by the "repetitive actions" quality check
+   *  (quality-check.ts); omitting it just means that check skips this
+   *  episode rather than guessing. */
+  actionMechanism?: ActionMechanismId;
 }
 
 /** Display labels for CuratedEpisodeContent.languageCategory, matching the
@@ -111,6 +123,20 @@ export const LANGUAGE_CATEGORY_LABELS: Record<NonNullable<CuratedEpisodeContent[
   beliefs: "Language Beliefs",
   practices: "Language Practices",
   management: "Language Management",
+};
+
+/** Slide 3's own heading text, per nFLP stream -- the strategy-alignment
+ *  review (2026)'s explicit action-label requirement. Distinct from
+ *  LANGUAGE_CATEGORY_LABELS above (the tag-pill row's own "Language X"
+ *  copy): this is the imperative instruction shown above the question
+ *  itself. An episode with no languageCategory falls back to the design
+ *  system's original fixed heading (Slide3Style.sectionHeadingText,
+ *  "ASK YOUR CHILD TODAY") -- see aathichoodi-carousel-renderer.ts's own
+ *  call site. */
+export const SLIDE3_ACTION_HEADING_LABELS: Record<NonNullable<CuratedEpisodeContent["languageCategory"]>, string> = {
+  beliefs: "RETHINK THIS TODAY",
+  practices: "ASK YOUR CHILD TODAY",
+  management: "TRY THIS FAMILY ROUTINE",
 };
 
 export interface AathichoodiCanonEntry {
@@ -371,29 +397,77 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
   { episodeNumber: 25, tamilText: "அரவம் ஆட்டேல்", simpleMeaning: "Do not handle or provoke a snake.", transliteration: "Aravam Aattel", primaryTheme: "character", verified: true,
     // Curated: uncurated, this composes from the character pool's "do
     // right when unseen" angle -- the actual line is about not provoking
-    // needless danger, a different idea entirely.
+    // needless danger, a different idea entirely. languageCategory/
+    // aiaConnection added under the strategy-alignment review (2026),
+    // using the founder's own benchmark script for this episode as
+    // creative reference, not copied verbatim -- the rest of this block
+    // (hookOverride/understanding/familyAngle/todayAction/childLesson) is
+    // unchanged, already-approved prose from an earlier pass.
     curated: {
       hookOverride: "Does your child know that some risks just aren't worth taking, even to show off?",
       understanding: "Avvaiyar's wisdom here is literal: don't play with a snake. It isn't really about snakes — it's about not provoking danger just to prove you're brave or because it seems exciting.",
       familyAngle: "Your child wants to try something clearly risky — climbing somewhere unsafe, teasing an unfamiliar dog, daring a friend to do something dangerous — just because it feels exciting in the moment.",
       todayAction: "The next time your child wants to try something risky today just for a thrill, ask together: \"Is this worth the risk, or just the excitement?\"",
       childLesson: "Being brave doesn't mean taking every risk. Knowing which risks aren't worth it is its own kind of wisdom.",
+      aiaConnection: "Growing up isn't only learning what to try. It's learning when to step back.",
+      languageCategory: "management",
+      actionMechanism: "question",
     },
   },
   { episodeNumber: 26, tamilText: "இலவம் பஞ்சில் துயில்", simpleMeaning: "Sleep on a cotton-soft bed (rest with proper care for your body).", transliteration: "Ilavam Panjil Thuyil", primaryTheme: "self-control", verified: true,
     // Curated: uncurated, this composes from the self-control pool's
     // anger/screen-time angle -- the actual line is about bodily
     // self-care through proper rest, same drift pattern as episode 16.
+    // languageCategory/aiaConnection added under the strategy-alignment
+    // review (2026) -- see episode 25's own comment for the pattern.
     curated: {
       hookOverride: "Does your child take rest as seriously as they take play?",
       understanding: "Avvaiyar's wisdom here is simple: rest your body properly, with real care, not however's convenient. Taking care of your body through good rest is its own quiet discipline, easy to skip when there's always something more exciting to do.",
       familyAngle: "Your child wants to stay up late one more time, again, even though they're clearly tired. Choosing proper rest over squeezing in one more thing is exactly what this line is about.",
       todayAction: "Tonight, help your child wind down for proper rest at a reasonable time, and name it: \"Taking care of your body matters, even when staying up feels more fun.\"",
       childLesson: "Resting well isn't lazy. It's how you take care of yourself so you can actually show up tomorrow.",
+      aiaConnection: "Rest isn't something a child should have to earn after a perfect day. A good day also needs a gentle ending.",
+      languageCategory: "management",
+      actionMechanism: "routine",
     },
   },
-  { episodeNumber: 27, tamilText: "வஞ்சகம் பேசேல்", simpleMeaning: "Never speak with deceit.", transliteration: "Vanjagam Pesel", primaryTheme: "honesty", verified: true },
-  { episodeNumber: 28, tamilText: "அழகு அலாதன செய்யேல்", simpleMeaning: "Do not do disgraceful things.", transliteration: "Azhagu Alathana Seyyel", primaryTheme: "character", verified: true },
+  { episodeNumber: 27, tamilText: "வஞ்சகம் பேசேல்", simpleMeaning: "Never speak with deceit.", transliteration: "Vanjagam Pesel", primaryTheme: "honesty", verified: true,
+    // Curated under the strategy-alignment review (2026), using the
+    // founder's own benchmark script for this episode as creative
+    // reference -- own wording throughout, not copied verbatim.
+    curated: {
+      hookOverride: "What happens to trust when the truth becomes inconvenient?",
+      understanding: "Avvaiyar's wisdom here is direct: never speak with deceit. Not just avoiding outright lies — refusing to shape the truth into whatever sounds better in the moment.",
+      familyAngle: "Your child breaks something at home while no one's watching, and has a few seconds to decide: stay quiet and hope it goes unnoticed, or come find you and say what happened.",
+      todayAction: "Tonight, make it safe to tell you the truth first: \"What would make it easier to come tell me next time, even if it's something you broke?\" Listen to the whole answer before you respond to the mistake itself.",
+      childLesson: "Trust isn't built in the moments honesty is easy. It's built in the ones where it costs something.",
+      aiaConnection: "A home where honesty is safe to bring is one your child will keep coming back to, mistake or not.",
+      languageCategory: "practices",
+      actionMechanism: "question",
+      recommendedCta: "PARENT_REFLECTION",
+    },
+  },
+  { episodeNumber: 28, tamilText: "அழகு அலாதன செய்யேல்", simpleMeaning: "Do not do disgraceful things.", transliteration: "Azhagu Alathana Seyyel", primaryTheme: "character", verified: true,
+    // Curated under the strategy-alignment review (2026), using the
+    // founder's own benchmark script for this episode as creative
+    // reference -- own wording throughout, not copied verbatim. A
+    // "beliefs"-stream episode: todayAction is deliberately a question the
+    // PARENT asks themselves, not one posed to the child (see
+    // SLIDE3_ACTION_HEADING_LABELS' "RETHINK THIS TODAY") -- still phrased
+    // with a quoted question so splitQuotedAction (the renderer) extracts
+    // it into Slide 3's highlighted panel the normal way.
+    curated: {
+      hookOverride: "Would your child still do the right thing if you weren't the one keeping score?",
+      understanding: "Avvaiyar's wisdom here is about what happens offstage: don't do shameful things, even unseen. Not because you'd be caught, but because what you'd allow yourself to do in private is who you actually are.",
+      familyAngle: "A group leaves a mess behind after an activity your child was part of. Nobody's watching, nobody's asking them to clean it up — it would be easy to just walk away with everyone else.",
+      todayAction: "Before correcting your child today, rethink it yourself first: \"Is this only right because someone's watching?\" Notice what you excuse or quietly let slide when nobody's checking — children learn from that as much as from what you say.",
+      childLesson: "What you'd do with nobody watching is closer to who you really are than what you do for an audience.",
+      aiaConnection: "Character isn't a performance for your child to copy — it's a practice they'll only trust if they see it when the room is empty too.",
+      languageCategory: "beliefs",
+      actionMechanism: "reflection",
+      recommendedCta: "COMMENT",
+    },
+  },
   { episodeNumber: 29, tamilText: "இளமையில் கல்", simpleMeaning: "Learn while you are young.", transliteration: "Ilamaiyil Kal", primaryTheme: "education", verified: true,
     curated: {
       familyAngle: "Homework fatigue and busy schedules can make learning feel like a chore instead of a gift while there's still time for it.",
@@ -401,10 +475,54 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       todayAction: "Spend fifteen unhurried minutes today learning something new together — a word, a skill, a story.",
       aiaConnection: "A mind shaped early toward learning is more likely to grow into a life shaped toward action.",
       recommendedCta: "SAVE",
+      // languageCategory/actionMechanism added under the strategy-alignment
+      // review (2026) -- the rest of this block is unchanged.
+      languageCategory: "practices",
+      actionMechanism: "learning",
     },
   },
-  { episodeNumber: 30, tamilText: "அறனை மறவேல்", simpleMeaning: "Never forget righteousness.", transliteration: "Aranai Maravel", primaryTheme: "character", verified: true },
-  { episodeNumber: 31, tamilText: "அனந்தல் ஆடேல்", simpleMeaning: "Do not indulge in excessive sleep.", transliteration: "Anandhal Aadel", primaryTheme: "self-control", verified: true },
+  { episodeNumber: 30, tamilText: "அறனை மறவேல்", simpleMeaning: "Never forget righteousness.", transliteration: "Aranai Maravel", primaryTheme: "character", verified: true,
+    // Curated under the strategy-alignment review (2026), using the
+    // founder's own benchmark script for this episode as creative
+    // reference. That script frames this line specifically around
+    // charitable giving; simpleMeaning above (righteousness/virtue more
+    // broadly) is left untouched since it's the already-provenanced
+    // canonical gloss -- the curated fields below explore giving as ONE
+    // concrete, relatable expression of that broader virtue, not a
+    // restatement of the verse's own meaning (see this file's standing
+    // rule: keep the original teaching distinct from the modern
+    // application).
+    curated: {
+      hookOverride: "Does your child see doing right as a value, or just a rule to follow?",
+      understanding: "Avvaiyar's wisdom here is broad: never forget virtue. Not one good deed to check off, but something to carry into everything — including the ordinary chances to give that come up along the way.",
+      familyAngle: "Your family is getting ready for a celebration — food, gifts, excitement to share. In the middle of the planning, there's a quiet opening: could a small part of that go to someone who has less?",
+      todayAction: "Pick one act of giving to do together this week: \"What's one thing we could share with someone who needs it more than we do?\" Let your child help choose, not just watch.",
+      childLesson: "Virtue isn't one big gesture remembered forever. It's showing up for it in the small, ordinary chances, over and over.",
+      aiaConnection: "Children forget most of what we tell them about virtue. They remember who we helped, and that we let them help too.",
+      languageCategory: "management",
+      actionMechanism: "giving",
+      recommendedCta: "SHARE",
+    },
+  },
+  { episodeNumber: 31, tamilText: "அனந்தல் ஆடேல்", simpleMeaning: "Do not indulge in excessive sleep.", transliteration: "Anandhal Aadel", primaryTheme: "self-control", verified: true,
+    // Curated under the strategy-alignment review (2026), using the
+    // founder's own benchmark script for this episode as creative
+    // reference -- own wording throughout, not copied verbatim. That
+    // script also cautions against framing persistent tiredness as
+    // laziness; todayAction/childLesson here stay about the evening
+    // routine, not about judging the child's morning behaviour.
+    curated: {
+      hookOverride: "Is your child's slow morning about needing rest, or about putting off the day?",
+      understanding: "Avvaiyar's wisdom here is practical: don't indulge in excessive sleep. Not a warning against rest itself, but against using it to avoid the day ahead.",
+      familyAngle: "The morning is already moving — bags need packing, breakfast is waiting — and your child keeps finding one more reason to stay under the covers. Some mornings that's genuine tiredness. Most mornings, it's something else.",
+      todayAction: "Tonight, make tomorrow morning easier before it starts: \"What's one thing we can get ready tonight so tomorrow isn't a scramble?\" Agree on a realistic bedtime and lay out what the morning needs.",
+      childLesson: "A calm morning isn't won by rushing harder at 7am. It's decided the night before.",
+      aiaConnection: "A gentler start to the day is a small, repeatable practice — exactly the kind Aram in Action is built around.",
+      languageCategory: "management",
+      actionMechanism: "routine",
+      recommendedCta: "TRY_TODAY",
+    },
+  },
   { episodeNumber: 32, tamilText: "கடிவது மற", simpleMeaning: "Let go of the urge to scold or rebuke in anger.", transliteration: "Kadivathu Mara", primaryTheme: "self-control", verified: true },
   { episodeNumber: 33, tamilText: "காப்பது விரதம்", simpleMeaning: "Standing by a vow you've undertaken, without abandoning it, is itself a sacred discipline.", transliteration: "Kaappathu Viratham", primaryTheme: "generosity", verified: true },
   { episodeNumber: 34, tamilText: "கிழமைப்பட வாழ்", simpleMeaning: "Live so that your body and wealth are of use to others.", transliteration: "Kizhamaipada Vaazh", primaryTheme: "responsibility", verified: true,

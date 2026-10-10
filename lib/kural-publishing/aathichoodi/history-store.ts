@@ -20,6 +20,12 @@ export interface SeriesHistory {
   lastEpisodeNumber: number;
   recentScenarioIds: string[];
   recentActionIds: string[];
+  /** The last few chosen action mechanisms (see ActionMechanismId in
+   *  actions.ts) -- lets quality-check.ts flag an episode whose action
+   *  mechanism repeats too often in a row (e.g. five straight "ask your
+   *  child" episodes), the strategy-alignment review's "don't force every
+   *  episode into Ask Your Child Today" rule made checkable. */
+  recentActionMechanisms: string[];
   recentChildLessonIds: string[];
   recentAiaConnectionIds: string[];
   recentCtaTypes: string[];
@@ -50,6 +56,7 @@ export const EMPTY_HISTORY: SeriesHistory = {
   lastEpisodeNumber: 0,
   recentScenarioIds: [],
   recentActionIds: [],
+  recentActionMechanisms: [],
   recentChildLessonIds: [],
   recentAiaConnectionIds: [],
   recentCtaTypes: [],

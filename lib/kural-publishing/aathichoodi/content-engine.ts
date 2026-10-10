@@ -49,7 +49,7 @@ import { selectTagline } from "./taglines";
 import { selectHashtags } from "./hashtags";
 import { selectCaptionOpener, selectCaptionCloser, selectCaptionCta } from "./caption-copy";
 import { selectScenario } from "./scenarios";
-import { selectAction } from "./actions";
+import { selectAction, type ActionMechanismId } from "./actions";
 import { selectChildLesson, selectAiaConnection, matchAiaConnectionId } from "./voice";
 import { composeUnderstanding } from "./understanding";
 import { classifyCta, type CtaSelection } from "./cta";
@@ -87,6 +87,11 @@ export interface ComposedEpisode {
    *  convention (e.g. episode 22's "Start with whatever they've been
    *  saying..."). */
   todayActionSupport?: string;
+  /** See ActionMechanismId in actions.ts -- the chosen action's mechanism,
+   *  from the pool entry or a curated episode's own actionMechanism
+   *  override. Unset only for a curated episode that hasn't been tagged
+   *  yet; quality-check.ts's repetition check simply skips those. */
+  actionMechanism?: ActionMechanismId;
   aiaConnection: string;
   distantDevotionConnection?: string;
   /** See CuratedEpisodeContent.languageCategory -- threaded straight
@@ -144,7 +149,7 @@ export function composeEpisode(
     ? { id: "curated", text: curated.familyAngle }
     : selectScenario(theme, episodeNumber, history.recentScenarioIds);
   const action = curated?.todayAction
-    ? { id: "curated", text: curated.todayAction }
+    ? { id: "curated", text: curated.todayAction, mechanism: curated.actionMechanism }
     : selectAction(theme, episodeNumber, history.recentActionIds);
   const childLesson = curated?.childLesson
     ? { id: "curated", text: curated.childLesson }
@@ -191,6 +196,7 @@ export function composeEpisode(
     childLesson: childLesson.text,
     todayAction: action.text,
     todayActionSupport: "support" in action ? action.support : undefined,
+    actionMechanism: action.mechanism,
     aiaConnection: aiaConnection.text,
     distantDevotionConnection: curated?.distantDevotionConnection,
     languageCategory: curated?.languageCategory,
@@ -207,6 +213,9 @@ export function composeEpisode(
     lastEpisodeNumber: episodeNumber,
     recentScenarioIds: clampRecent([...history.recentScenarioIds, scenario.id]),
     recentActionIds: clampRecent([...history.recentActionIds, action.id]),
+    recentActionMechanisms: action.mechanism
+      ? clampRecent([...history.recentActionMechanisms, action.mechanism])
+      : history.recentActionMechanisms,
     recentChildLessonIds: clampRecent([...history.recentChildLessonIds, childLesson.id]),
     recentAiaConnectionIds: clampRecent([...history.recentAiaConnectionIds, aiaConnection.id]),
     recentCtaTypes: clampRecent([...history.recentCtaTypes, cta.type]),
