@@ -512,7 +512,9 @@ export interface CarouselStyleOverrides {
  *  clearing a field in the editor reverts to the engine's own copy rather
  *  than rendering blank. */
 export interface CarouselTextOverrides {
-  slide0?: { hook?: string; tagline?: string };
+  /** ctaLabel overrides the "See How" CTA pill's label -- previously
+   *  hardcoded with no override slot at all (see drawSlide0Stop). */
+  slide0?: { hook?: string; tagline?: string; ctaLabel?: string };
   /** `understanding` is a bulk override -- replaces the whole generated
    *  string before it's split into its 3-paragraph editorial shape (see
    *  splitEditorialParagraphs). `paragraphs` then overrides individual
@@ -527,8 +529,14 @@ export interface CarouselTextOverrides {
   slide2?: { paragraphs?: string[] };
   /** todayAction's generated copy splits into a lead-in, the highlighted
    *  question, and a trailing line (see splitQuotedAction) -- each is its
-   *  own separately draggable/editable text box (see drawSlide3Action). */
-  slide3?: { before?: string; question?: string; after?: string };
+   *  own separately draggable/editable text box (see drawSlide3Action).
+   *  sectionHeading overrides the panel's own heading line -- normally
+   *  derived from episode.languageCategory via SLIDE3_ACTION_HEADING_LABELS
+   *  (falling back to Slide3Style.sectionHeadingText when no
+   *  languageCategory is set) -- so a specific episode's heading can be
+   *  hand-edited without that derivation ever winning over an explicit
+   *  override. */
+  slide3?: { before?: string; question?: string; after?: string; sectionHeading?: string };
   /** aiaConnection's generated copy splits at an em dash into a heavier
    *  lead clause and a lighter trailing clause (see drawSlide4Carry) --
    *  each is its own separately draggable/editable text box, same pattern
@@ -1606,6 +1614,7 @@ function drawSlide0Stop(
   draw: boolean,
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
+  overrides: { ctaLabel?: string } | undefined,
   hotspots?: CarouselHotspot[],
   invertColors?: boolean
 ): number {
@@ -1751,7 +1760,7 @@ function drawSlide0Stop(
   {
     const ctaSize = px(style.slide0.ctaSize, width);
     const ctaEmphasis = emphasisFor(emphases, "slide0.cta");
-    const ctaLabel = "See How";
+    const ctaLabel = overrides?.ctaLabel || "See How";
     ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(700, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
     const ctaTextWidth = ctx.measureText(ctaLabel).width;
     const ctaPadX = ctaSize * 1.0;
@@ -2801,7 +2810,7 @@ function drawSlide3Action(
   draw: boolean,
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
-  overrides: { before?: string; question?: string; after?: string } | undefined,
+  overrides: { before?: string; question?: string; after?: string; sectionHeading?: string } | undefined,
   hotspots?: CarouselHotspot[],
   practiceIcon?: HTMLImageElement | null,
   livingThreadTile?: HTMLImageElement | null,
@@ -2886,16 +2895,19 @@ function drawSlide3Action(
   // An episode with no languageCategory classified yet falls back to the
   // design system's original fixed label (Slide3Style.sectionHeadingText),
   // same as before this review -- not episode content in that case either.
-  // Lives inside the panel's own bottom-up content stack now (see below),
-  // not as a page-level element above it -- per the Figma file's later
-  // update.
+  // overrides?.sectionHeading always wins over both of those -- previously
+  // the click-to-edit hotspot here wrote to style.slide3.sectionHeadingText
+  // (via patchSlide3), which this ternary never even read once an episode
+  // had a languageCategory, so edits silently had no effect. Lives inside
+  // the panel's own bottom-up content stack now (see below), not as a
+  // page-level element above it -- per the Figma file's later update.
   const headingId = "slide3.sectionHeading";
   const headingOffset = posFor(positions, headingId);
   const headingEmphasis = emphasisFor(emphases, headingId);
   const headingSize = px(style.slide3.sectionHeadingSize, width);
-  const headingText = episode.languageCategory
-    ? SLIDE3_ACTION_HEADING_LABELS[episode.languageCategory]
-    : style.slide3.sectionHeadingText;
+  const headingText =
+    overrides?.sectionHeading ||
+    (episode.languageCategory ? SLIDE3_ACTION_HEADING_LABELS[episode.languageCategory] : style.slide3.sectionHeadingText);
 
   // Panel -- its own margin fields (independent of the generic frame
   // margin), content-driven height (icon + question + supporting line +
@@ -3401,6 +3413,7 @@ function layoutSlide(
         draw,
         positions,
         emphases,
+        text?.slide0,
         hotspots,
         Boolean(invertColors)
       );

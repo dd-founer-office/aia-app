@@ -114,7 +114,7 @@ import {
   type TemplateId,
   type AathichoodiContent,
 } from "@/lib/kural-publishing/content-types";
-import { TOTAL_EPISODES } from "@/lib/kural-publishing/aathichoodi/canon";
+import { TOTAL_EPISODES, SLIDE3_ACTION_HEADING_LABELS } from "@/lib/kural-publishing/aathichoodi/canon";
 import {
   composeEpisode,
   nextEpisodeNumber,
@@ -874,7 +874,7 @@ export default function PublishingWorkspace() {
     setStyleOverrides((prev) => ({ ...prev, slide4: { ...prev.slide4, [key]: value } }));
   }, []);
 
-  const patchText0 = useCallback((patch: { hook?: string; tagline?: string }) => {
+  const patchText0 = useCallback((patch: { hook?: string; tagline?: string; ctaLabel?: string }) => {
     setTextOverrides((prev) => ({ ...prev, slide0: { ...prev.slide0, ...patch } }));
   }, []);
   const patchText1 = useCallback((understanding: string) => {
@@ -903,7 +903,7 @@ export default function PublishingWorkspace() {
       return { ...prev, slide2: { paragraphs } };
     });
   }, []);
-  const patchText3 = useCallback((patch: { before?: string; question?: string; after?: string }) => {
+  const patchText3 = useCallback((patch: { before?: string; question?: string; after?: string; sectionHeading?: string }) => {
     setTextOverrides((prev) => ({ ...prev, slide3: { ...prev.slide3, ...patch } }));
   }, []);
   const patchText4 = useCallback(
@@ -1091,15 +1091,28 @@ export default function PublishingWorkspace() {
             fontVar: "--font-sans",
             refSize: resolvedStyle.slide2.sectionHeadingSize,
           };
-        case "slide3.sectionHeading":
+        case "slide3.sectionHeading": {
+          // Normally derived from episode.languageCategory (RETHINK THIS
+          // TODAY / ASK YOUR CHILD TODAY / TRY THIS FAMILY ROUTINE), falling
+          // back to the style-level sectionHeadingText only when no
+          // languageCategory is set -- this hotspot used to write to that
+          // style field directly (patchSlide3), which the renderer no
+          // longer reads once an episode has a languageCategory, so edits
+          // silently had no effect. Now a real per-episode text override,
+          // same pattern as the question/after boxes below.
+          const generated = displayEpisode?.languageCategory
+            ? SLIDE3_ACTION_HEADING_LABELS[displayEpisode.languageCategory]
+            : resolvedStyle.slide3.sectionHeadingText;
           return {
             label: "Section heading",
-            textValue: resolvedStyle.slide3.sectionHeadingText,
-            onTextChange: (v) => patchSlide3("sectionHeadingText", v),
+            textValue: textOverrides.slide3?.sectionHeading ?? "",
+            textPlaceholder: generated,
+            onTextChange: (v) => patchText3({ sectionHeading: v }),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide3.sectionHeadingSize, onChange: (v) => patchSlide3("sectionHeadingSize", v) }],
             fontVar: "--font-sans",
             refSize: resolvedStyle.slide3.sectionHeadingSize,
           };
+        }
         case "slide0.hero":
           return {
             label: "Tamil hero (canonical text — size only)",
@@ -1130,7 +1143,10 @@ export default function PublishingWorkspace() {
           };
         case "slide0.cta":
           return {
-            label: "“See How” CTA button (fixed copy, size only — dark mode only)",
+            label: "CTA button",
+            textValue: textOverrides.slide0?.ctaLabel ?? "",
+            textPlaceholder: "See How",
+            onTextChange: (v) => patchText0({ ctaLabel: v }),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide0.ctaSize, onChange: (v) => patchSlide0("ctaSize", v) }],
           };
         case "slide1.tamilRef":
@@ -2411,6 +2427,13 @@ export default function PublishingWorkspace() {
                         checked={resolvedStyle.slide0.showBranding}
                         onChange={(v) => patchSlide0("showBranding", v)}
                       />
+                      <NumField label="“See How” CTA size (px)" value={resolvedStyle.slide0.ctaSize} onChange={(v) => patchSlide0("ctaSize", v)} />
+                      <TextField
+                        label="“See How” CTA text override"
+                        value={textOverrides.slide0?.ctaLabel ?? ""}
+                        placeholder="See How"
+                        onChange={(v) => patchText0({ ctaLabel: v })}
+                      />
                     </div>
                   </details>
 
@@ -2538,7 +2561,7 @@ export default function PublishingWorkspace() {
                       Slide 4 — TODAY&apos;S ACTION
                     </summary>
                     <div className="mt-2 flex flex-col gap-1.5">
-                      <TextField label="Heading (fixed, all episodes)" value={resolvedStyle.slide3.sectionHeadingText} onChange={(v) => patchSlide3("sectionHeadingText", v)} />
+                      <TextField label="Heading default (episodes with no language category only)" value={resolvedStyle.slide3.sectionHeadingText} onChange={(v) => patchSlide3("sectionHeadingText", v)} />
                       <NumField label="Heading size (px)" value={resolvedStyle.slide3.sectionHeadingSize} onChange={(v) => patchSlide3("sectionHeadingSize", v)} />
                       <NumField label="Question size (px)" value={resolvedStyle.slide3.questionSize} onChange={(v) => patchSlide3("questionSize", v)} />
                       <NumField label="Supporting line size (px)" value={resolvedStyle.slide3.bodySize} onChange={(v) => patchSlide3("bodySize", v)} />
@@ -2549,6 +2572,16 @@ export default function PublishingWorkspace() {
                       <NumField label="Panel corner radius (px)" value={resolvedStyle.slide3.panelRadius} onChange={(v) => patchSlide3("panelRadius", v)} />
                       <CheckField label="Show action icon (bulb)" checked={resolvedStyle.slide3.showActionIcon} onChange={(v) => patchSlide3("showActionIcon", v)} />
                       <CheckField label="Show language-category tag row" checked={resolvedStyle.slide3.showTagRow} onChange={(v) => patchSlide3("showTagRow", v)} />
+                      <TextAreaField
+                        label="Heading override (this episode — wins over the language-category default above)"
+                        value={textOverrides.slide3?.sectionHeading ?? ""}
+                        placeholder={
+                          displayEpisode.languageCategory
+                            ? SLIDE3_ACTION_HEADING_LABELS[displayEpisode.languageCategory]
+                            : resolvedStyle.slide3.sectionHeadingText
+                        }
+                        onChange={(v) => patchText3({ sectionHeading: v })}
+                      />
                       <TextAreaField
                         label="Question override (highlighted panel)"
                         value={textOverrides.slide3?.question ?? ""}
