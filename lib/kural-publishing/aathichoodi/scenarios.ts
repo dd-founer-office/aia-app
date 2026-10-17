@@ -8,10 +8,22 @@
  * a real family actor (your child, a sibling, a grandparent, a parent) and
  * one concrete moment, short enough that a parent can picture it happening
  * in their own house. No "or" hedging between two different scenes -- one
- * scene, described plainly. The tie-back sentence is baked into each
- * template individually (not a shared mechanical suffix), so the closing
- * line varies naturally across the pool instead of reading as a formula.
- * Two-plus variants per theme; selection is anti-repetition (selection.ts).
+ * scene, described plainly. Two-plus variants per theme; selection is
+ * anti-repetition (selection.ts).
+ *
+ * VOICE PASS (2026, against the Episodes 25-31 creative-benchmark PDF):
+ * the benchmark's "THE MOMENT" slide stays purely inside the scene --
+ * short, present-tense beats, no explicit callback to "this Aathichoodi."
+ * This pool's entries used to all end on a mechanical tie-back clause
+ * ("...is this Aathichoodi, quietly at work" / "...is character, choosing
+ * itself") -- a repeated structural tic the benchmark doesn't use at all.
+ * character/self-control/generosity/responsibility/community have been
+ * rewritten to drop that tic and tighten toward the benchmark's shorter,
+ * more cinematic pacing (episodes 32-38's themes, the first week this
+ * voice pass covers). family/gratitude/devotion/speech/education/honesty
+ * are NOT yet rewritten -- still the earlier voice -- and will be, the
+ * same way, once a week's batch needs them (see the aathichoodi-week
+ * skill's own doc comment on this generate -> review -> refine loop).
  */
 
 import { pickFresh, type Pickable } from "./selection";
@@ -23,26 +35,26 @@ interface ScenarioTemplate extends Pickable {
 }
 
 const SCENARIOS: readonly ScenarioTemplate[] = [
-  { id: "character-1", theme: "character", text: "Your child finds a stray coin on the classroom floor. No teacher saw it fall, no one's asking. What they do with it — pocket it, or hand it in — is character, quietly deciding itself." },
-  { id: "character-2", theme: "character", text: "Your child gets away with a small shortcut on a school project. Nobody catches it, nobody asks. Whether they mention it anyway is where this Aathichoodi actually lives." },
-  { id: "character-3", theme: "character", text: "Your child is handed extra change at the store — enough that no cashier would notice. Whether they mention it is this Aathichoodi, decided in about five seconds." },
-  { id: "character-4", theme: "character", text: "Two kids get blamed for something only one of them did, and your child was the only witness. What they say next is character, not commentary." },
-  { id: "character-5", theme: "character", text: "Your child could join in mocking someone the group has decided to pick on today. Standing apart from that, even quietly, is exactly what today's line asks for." },
-  { id: "character-6", theme: "character", text: "Nobody would know if your child skipped the hardest part of an assignment to check. Doing it anyway is character, choosing itself when it's inconvenient." },
+  { id: "character-1", theme: "character", text: "A stray coin sits on the classroom floor. No teacher saw it fall, and nobody's asking. Pocketing it would be easy — and nobody would ever know the difference." },
+  { id: "character-2", theme: "character", text: "Your child finds a shortcut on a school project that nobody would catch. The grade wouldn't change. Only your child would ever know it was taken." },
+  { id: "character-3", theme: "character", text: "A cashier hands back too much change. It's a small enough amount that no one would notice. It's also the whole decision, settled in about five seconds." },
+  { id: "character-4", theme: "character", text: "Two classmates get blamed for something only one of them actually did, and your child is the only one who saw it happen. Speaking up costs something. Staying quiet costs something else." },
+  { id: "character-5", theme: "character", text: "The group has decided to pick on someone today, and joining in is the easy way to stay in. Standing apart, even quietly, is its own kind of cost." },
+  { id: "character-6", theme: "character", text: "Nobody is checking the hardest part of today's assignment. Skipping it wouldn't even be noticed. Doing it anyway happens for an audience of one." },
 
-  { id: "self-control-1", theme: "self-control", text: "A sibling knocks over something your child spent an hour building — by accident. There's a few seconds where anger could win, or not. That pause is exactly what today's line is about." },
-  { id: "self-control-2", theme: "self-control", text: "It's the fifth \"five more minutes\" of screen time tonight. How calmly the sixth \"no\" gets handled, on both sides, is this Aathichoodi being tested in real time." },
-  { id: "self-control-3", theme: "self-control", text: "Your child loses a close game in front of everyone. There's a window — a few seconds — before they decide how to react. That window is this Aathichoodi, playing out live." },
-  { id: "self-control-4", theme: "self-control", text: "Your child wants dessert before dinner, again, and the answer is no, again. How they handle 'no' tonight says as much as any lecture could." },
-  { id: "self-control-5", theme: "self-control", text: "A sibling teases your child right where it stings. The urge to snap back is instant. What happens in the half-second after is exactly what today's line is about." },
-  { id: "self-control-6", theme: "self-control", text: "Your child is exhausted and everything feels unfair tonight. Whether they can name that out loud instead of melting down is self-control, still being learned." },
+  { id: "self-control-1", theme: "self-control", text: "A sibling knocks over something your child spent an hour building. It was an accident — but for a second, that doesn't matter. What happens in that second is the whole thing." },
+  { id: "self-control-2", theme: "self-control", text: "It's the fifth \"five more minutes\" tonight. The sixth \"no\" is coming. How it lands, from either side, is already being decided." },
+  { id: "self-control-3", theme: "self-control", text: "Your child loses a close game in front of everyone. There's a window — a few seconds, maybe less — before the reaction sets in." },
+  { id: "self-control-4", theme: "self-control", text: "Dessert before dinner, again. The answer is still no. Tonight's version of that argument is already starting to write itself." },
+  { id: "self-control-5", theme: "self-control", text: "A sibling finds the exact thing that stings and says it anyway. The urge to fire back is instant. The half-second after it isn't." },
+  { id: "self-control-6", theme: "self-control", text: "Everything feels unfair tonight, and your child is exhausted enough to show it. Whether it turns into words or a meltdown is still an open question." },
 
-  { id: "generosity-1", theme: "generosity", text: "Your child has exactly one favorite snack left, and a friend is visibly hungry. Splitting it without being asked is this Aathichoodi, in miniature." },
-  { id: "generosity-2", theme: "generosity", text: "A classmate forgot their pencil case again. Your child notices before the teacher does, and slides one across without a word." },
-  { id: "generosity-3", theme: "generosity", text: "Your child has saved up for something they really want, and a sibling is short on their own savings for something smaller. Chipping in anyway is this Aathichoodi, in real time." },
-  { id: "generosity-4", theme: "generosity", text: "A friend at school is clearly having a hard week. Your child could let it pass, or bring them something small tomorrow. That choice starts tonight, at home." },
-  { id: "generosity-5", theme: "generosity", text: "Your child's team wins, and the other team is visibly disappointed. Whether your child stays to say something kind instead of celebrating loudly is generosity, in a different form." },
-  { id: "generosity-6", theme: "generosity", text: "There's exactly one good seat left, and your child gets there first. Offering it to someone else costs them something real — that's exactly what makes it count." },
+  { id: "generosity-1", theme: "generosity", text: "One favorite snack left, and a friend is visibly hungry. Splitting it costs something real — and happens without being asked." },
+  { id: "generosity-2", theme: "generosity", text: "A classmate has forgotten their pencil case again. Your child notices before the teacher does, and slides one across without a word." },
+  { id: "generosity-3", theme: "generosity", text: "Your child has been saving for something they want, and a sibling is short for something smaller. Chipping in costs the thing they've been waiting for." },
+  { id: "generosity-4", theme: "generosity", text: "A friend is quietly having a hard week. Noticing is easy. Bringing them something tomorrow is the part that actually counts." },
+  { id: "generosity-5", theme: "generosity", text: "Your child's team wins, and the other side is visibly deflated. Celebrating is the natural move. Saying something kind instead is a different one." },
+  { id: "generosity-6", theme: "generosity", text: "The last good seat, and your child got there first. Giving it up costs the thing they just won." },
 
   { id: "family-1", theme: "family", text: "Your child's grandparent tells the same story for the third time this month. Whether your child listens like it's the first time is where this Aathichoodi shows up." },
   { id: "family-2", theme: "family", text: "It's been a long day, and a parent looks it. Your child, without being asked, brings a glass of water and just sits down beside them." },
@@ -58,19 +70,19 @@ const SCENARIOS: readonly ScenarioTemplate[] = [
   { id: "gratitude-5", theme: "gratitude", text: "A sibling gave up something they wanted so your child could have their turn. Whether your child notices that sacrifice at all is exactly what today's line is testing." },
   { id: "gratitude-6", theme: "gratitude", text: "Your child is retelling a proud moment and leaves out the person who helped them get there. Adding that person back into the story is gratitude, in the details." },
 
-  { id: "responsibility-1", theme: "responsibility", text: "Your child's room is clean enough to pass a glance, but the closet tells another story. Finishing the job properly, with no one checking, is this Aathichoodi." },
-  { id: "responsibility-2", theme: "responsibility", text: "Your child is given one small job — feeding the dog, watering a plant — and does it without being reminded twice. That reliability is built one repetition at a time." },
-  { id: "responsibility-3", theme: "responsibility", text: "Your child agrees to a chore, then gets distracted halfway through. Whether they come back and finish it later, unprompted, is this Aathichoodi, tested by boredom." },
-  { id: "responsibility-4", theme: "responsibility", text: "Your child borrows something from a friend and it gets a little damaged. Telling the friend before they notice is responsibility, chosen the hard way." },
-  { id: "responsibility-5", theme: "responsibility", text: "It's your child's turn to set up for a group activity, and nobody's checking. Doing it properly anyway, not just enough to pass, is this Aathichoodi at work." },
-  { id: "responsibility-6", theme: "responsibility", text: "Your child promises to help with something tomorrow, then forgets by morning. How they handle that slip — excuse it, or own it — is responsibility, still forming." },
+  { id: "responsibility-1", theme: "responsibility", text: "The room looks clean enough to pass a glance. The closet tells a different story. Nobody's going to open it today except your child." },
+  { id: "responsibility-2", theme: "responsibility", text: "One small job — feeding the dog, watering the plant — no reminder needed this time. That's not an accident. It's a rep." },
+  { id: "responsibility-3", theme: "responsibility", text: "A chore gets started, then abandoned halfway for something more interesting. Whether it gets finished later, unprompted, is still undecided." },
+  { id: "responsibility-4", theme: "responsibility", text: "Something borrowed came back a little damaged. Mentioning it before anyone notices costs more than staying quiet would." },
+  { id: "responsibility-5", theme: "responsibility", text: "It's your child's turn to set up for the group, and nobody's checking. Doing it properly anyway, not just enough to pass, is a choice nobody will see." },
+  { id: "responsibility-6", theme: "responsibility", text: "A promise made yesterday is already half-forgotten by morning. What happens next — an excuse, or an admission — is still being decided." },
 
-  { id: "community-1", theme: "community", text: "A new kid sits alone at lunch again. Your child could stay with their usual group, or not. That choice is this Aathichoodi, playing out in a cafeteria." },
-  { id: "community-2", theme: "community", text: "Your child is deciding which friend to invite over this weekend. Who they pick, and why, says more about this value than any conversation could." },
-  { id: "community-3", theme: "community", text: "A group project needs one more person, and the one left over isn't anyone's first pick. Whether your child speaks up for them is this Aathichoodi, decided by the group." },
-  { id: "community-4", theme: "community", text: "Your child's neighborhood is doing a small cleanup, and it's genuinely optional. Showing up anyway, for no reward, is community, chosen freely." },
-  { id: "community-5", theme: "community", text: "An older neighbor could use a hand carrying something inside. Your child notices before anyone asks them to help. That noticing is this Aathichoodi, quietly at work." },
-  { id: "community-6", theme: "community", text: "Your child's team loses because of one teammate's mistake. Whether your child includes them in the conversation afterward kindly, or lets them stand alone, says something real." },
+  { id: "community-1", theme: "community", text: "A new kid sits alone again today. Staying with the usual group is easier. Walking over isn't." },
+  { id: "community-2", theme: "community", text: "It's time to pick who gets invited this weekend. The name chosen says more than any conversation about it would." },
+  { id: "community-3", theme: "community", text: "A group project needs one more person, and the one left over isn't anyone's first pick. Someone has to say something." },
+  { id: "community-4", theme: "community", text: "The neighborhood cleanup is genuinely optional today — no one's checking who shows up. Showing up anyway means something different because of that." },
+  { id: "community-5", theme: "community", text: "An older neighbor is struggling with something heavy. Noticing before being asked is the first half of this. Offering is the second." },
+  { id: "community-6", theme: "community", text: "A teammate's mistake cost the game. Including them in the conversation afterward, instead of letting them stand alone, is the harder option — and the one that matters." },
 
   { id: "devotion-1", theme: "devotion", text: "Before dinner, your family pauses for a moment everyone's done a thousand times. Tonight, your child actually means it instead of rushing through it." },
   { id: "devotion-2", theme: "devotion", text: "Your child asks why the family still keeps an old tradition nobody's explained to them. The answer you give shapes what devotion means to them for years." },

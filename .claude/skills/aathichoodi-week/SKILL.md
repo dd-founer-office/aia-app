@@ -85,3 +85,38 @@ Editing those is a real code change to the shared content engine — treat it
 with the same care as any other change to this codebase (read the
 surrounding file's doc comments first, they explain a lot of prior
 decisions), not something to rush through inside this skill's flow.
+
+## The ongoing voice-alignment loop (2026-)
+
+The founder is working the generator's voice toward a creative-benchmark
+PDF (originally "Aathichoodi Episodes 25-31 Creative Benchmarks") in
+weekly increments, not one giant rewrite. The agreed process, repeated
+every week:
+
+1. Generate the upcoming week with this skill, as usual.
+2. The founder reviews it and gives feedback — specific lines that don't
+   match the benchmark voice, mismatches, repeats, anything.
+3. Only AFTER that review/approval, make the corresponding pool edits
+   (same files as above) so future generations already reflect it — not
+   before, and not speculatively ahead of what's actually been reviewed.
+4. Scope each pass to the themes the upcoming week actually touches
+   (`getCanonEntry(n).primaryTheme` for each episode in range), not all 11
+   themes at once — smaller, reviewable passes beat one sweeping rewrite
+   nobody's checked yet. Keep each pool's variant COUNT the same when
+   rewriting (don't shrink a theme's pool while changing its voice) so
+   anti-repetition quality doesn't regress.
+
+As of this note, `scenarios.ts` has had one such pass (character,
+self-control, generosity, responsibility, community — the themes episodes
+32-38 needed), dropping a mechanical "...is this Aathichoodi" tie-back
+clause that the benchmark PDF never uses, in favor of its tighter,
+present-tense, no-explicit-callback scene pacing. `family`, `gratitude`,
+`devotion`, `speech`, `education`, `honesty` have NOT had this pass yet —
+they're still in the earlier voice, and should get the same treatment
+once a week's batch first needs them (step 4 above), after review.
+
+When this skill's output draws from a theme that hasn't been voice-aligned
+yet, no need to call that out unprompted every time — the founder knows
+this is incremental. Only flag it if asked directly, or if a mix of
+aligned/unaligned themes in the same week would make the inconsistency
+visibly jarring.
