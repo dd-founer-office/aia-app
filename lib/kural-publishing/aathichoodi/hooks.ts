@@ -29,7 +29,7 @@ const HOOKS: readonly HookTemplate[] = [
 
   { id: "self-control-1", theme: "self-control", text: "Has your child learned to pause before reacting?" },
   { id: "self-control-2", theme: "self-control", text: "Does your child know patience is a strength, not a weakness?" },
-  { id: "self-control-3", theme: "self-control", text: "Has your child learned that a feeling passing through doesn't mean it has to win?" },
+  { id: "self-control-3", theme: "self-control", text: "Has your child learned that a feeling can pass without controlling what they do next?" },
   { id: "self-control-4", theme: "self-control", text: "Does your child know that saying no to themselves is a kind of strength?" },
   { id: "self-control-5", theme: "self-control", text: "Have you shown them how to wait, even when waiting is hard?" },
   { id: "self-control-6", theme: "self-control", text: "Does your child know that calm is something you practice, not something you're born with?" },

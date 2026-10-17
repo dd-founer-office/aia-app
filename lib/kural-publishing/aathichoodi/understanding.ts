@@ -22,12 +22,17 @@ interface Opener extends Pickable {
   text: string;
 }
 
+/** Every opener names Avvaiyar directly, per explicit founder direction --
+ *  two earlier entries ("This line carries a quiet truth:" / "The lesson
+ *  is small, but it runs deep:") didn't, so a parent reading them had no
+ *  sense of whose wisdom this actually is. Rewritten to name her plainly,
+ *  same wise-but-approachable register as the other four. */
 const OPENERS: readonly Opener[] = [
   { id: "opener-1", text: "Avvaiyar begins with a powerful idea:" },
   { id: "opener-2", text: "Avvaiyar's wisdom here is simple:" },
-  { id: "opener-3", text: "This line carries a quiet truth:" },
+  { id: "opener-3", text: "Avvaiyar's message here is clear:" },
   { id: "opener-4", text: "Here's what Avvaiyar wants every child to carry:" },
-  { id: "opener-5", text: "The lesson is small, but it runs deep:" },
+  { id: "opener-5", text: "Avvaiyar teaches us this:" },
   { id: "opener-6", text: "Avvaiyar puts it plainly:" },
 ];
 
@@ -46,12 +51,12 @@ const REFRAMINGS: readonly Reframing[] = [
   { id: "character-5", theme: "character", text: "Good character isn't a performance for approval. It's a habit that holds even when the applause disappears." },
   { id: "character-6", theme: "character", text: "The version of a child that shows up when it's inconvenient is the one that's actually real." },
 
-  { id: "self-control-1", theme: "self-control", text: "What matters isn't the feeling itself, but the pause between feeling it and acting on it — a pause a child can learn." },
-  { id: "self-control-2", theme: "self-control", text: "Self-control isn't suppressing a feeling. It's learning that the feeling will pass, even when it doesn't feel like it will." },
-  { id: "self-control-3", theme: "self-control", text: "A child who can wait isn't suppressing who they are — they're discovering they're bigger than the urge of the moment." },
-  { id: "self-control-4", theme: "self-control", text: "Self-control looks like nothing happening, which is exactly why it's so easy for a parent to miss when it's working." },
-  { id: "self-control-5", theme: "self-control", text: "Every time a child chooses to wait instead of react, that pause gets a little easier to find the next time." },
-  { id: "self-control-6", theme: "self-control", text: "The goal isn't a child who never feels the urge — it's one who's learned the urge isn't in charge." },
+  { id: "self-control-1", theme: "self-control", text: "What matters most isn't the feeling — it's the pause before acting on it. A child can learn to pause." },
+  { id: "self-control-2", theme: "self-control", text: "Self-control doesn't mean hiding a feeling. It means knowing the feeling will pass, even when it doesn't feel that way." },
+  { id: "self-control-3", theme: "self-control", text: "A child who can wait isn't hiding how they feel — they're learning they are stronger than that feeling." },
+  { id: "self-control-4", theme: "self-control", text: "Self-control is quiet. Nothing seems to happen — which is exactly why it's easy for a parent to miss it working." },
+  { id: "self-control-5", theme: "self-control", text: "Every time a child waits instead of reacting, waiting gets a little easier the next time." },
+  { id: "self-control-6", theme: "self-control", text: "The goal isn't a child who never feels angry. It's a child who learns that the anger doesn't get to decide what they do." },
 
   { id: "generosity-1", theme: "generosity", text: "Giving isn't about having extra — it's a decision a child makes before checking what's left for themselves." },
   { id: "generosity-2", theme: "generosity", text: "A generous child isn't born knowing how to share. They learn it by watching someone choose to give first." },
