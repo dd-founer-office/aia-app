@@ -995,6 +995,7 @@ function applyTextOverrides(episode: ComposedEpisode, text?: CarouselTextOverrid
     ...episode,
     hook: text.slide0?.hook || episode.hook,
     tagline: text.slide0?.tagline || episode.tagline,
+    ctaLabel: text.slide0?.ctaLabel || episode.ctaLabel,
     understanding: text.slide1?.understanding || episode.understanding,
     distantDevotionConnection: text.slide4?.distantDevotionConnection || episode.distantDevotionConnection,
     cta: ctaCopy ? { ...episode.cta, copy: ctaCopy } : episode.cta,
@@ -1614,7 +1615,6 @@ function drawSlide0Stop(
   draw: boolean,
   positions: CarouselPositions | undefined,
   emphases: CarouselTextEmphases | undefined,
-  overrides: { ctaLabel?: string } | undefined,
   hotspots?: CarouselHotspot[],
   invertColors?: boolean
 ): number {
@@ -1760,7 +1760,7 @@ function drawSlide0Stop(
   {
     const ctaSize = px(style.slide0.ctaSize, width);
     const ctaEmphasis = emphasisFor(emphases, "slide0.cta");
-    const ctaLabel = overrides?.ctaLabel || "See How";
+    const ctaLabel = episode.ctaLabel;
     ctx.font = `${styleFor(false, ctaEmphasis)} ${weightFor(700, ctaEmphasis)} ${Math.round(ctaSize)}px ${interFont}`;
     const ctaTextWidth = ctx.measureText(ctaLabel).width;
     const ctaPadX = ctaSize * 1.0;
@@ -3413,7 +3413,6 @@ function layoutSlide(
         draw,
         positions,
         emphases,
-        text?.slide0,
         hotspots,
         Boolean(invertColors)
       );

@@ -77,6 +77,10 @@ export interface ComposedEpisode {
    *  tomorrow.") -- per-episode now, not fixed design copy (see
    *  taglines.ts). "\n" separates the two lines. */
   tagline: string;
+  /** Slide 1's "See How"-style CTA button label -- paired with `tagline`
+   *  (same pool entry, see taglines.ts), so it echoes that couplet's own
+   *  verb/keyword instead of a fixed generic label on every episode. */
+  ctaLabel: string;
   familyAngle: string;
   childLesson: string;
   todayAction: string;
@@ -192,6 +196,7 @@ export function composeEpisode(
     themeLabel: themeLabel(theme),
     hook: hook.text,
     tagline: tagline.text,
+    ctaLabel: tagline.ctaLabel,
     familyAngle: scenario.text,
     childLesson: childLesson.text,
     todayAction: action.text,

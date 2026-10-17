@@ -1145,7 +1145,7 @@ export default function PublishingWorkspace() {
           return {
             label: "CTA button",
             textValue: textOverrides.slide0?.ctaLabel ?? "",
-            textPlaceholder: "See How",
+            textPlaceholder: displayEpisode?.ctaLabel,
             onTextChange: (v) => patchText0({ ctaLabel: v }),
             sizeFields: [{ label: "Size", value: resolvedStyle.slide0.ctaSize, onChange: (v) => patchSlide0("ctaSize", v) }],
           };
@@ -2427,11 +2427,11 @@ export default function PublishingWorkspace() {
                         checked={resolvedStyle.slide0.showBranding}
                         onChange={(v) => patchSlide0("showBranding", v)}
                       />
-                      <NumField label="“See How” CTA size (px)" value={resolvedStyle.slide0.ctaSize} onChange={(v) => patchSlide0("ctaSize", v)} />
+                      <NumField label="CTA button size (px)" value={resolvedStyle.slide0.ctaSize} onChange={(v) => patchSlide0("ctaSize", v)} />
                       <TextField
-                        label="“See How” CTA text override"
+                        label="CTA text override (defaults to a label paired with this episode's tagline)"
                         value={textOverrides.slide0?.ctaLabel ?? ""}
-                        placeholder="See How"
+                        placeholder={displayEpisode.ctaLabel}
                         onChange={(v) => patchText0({ ctaLabel: v })}
                       />
                     </div>

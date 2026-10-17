@@ -87,7 +87,7 @@ function renderEpisodeMarkdown(episode: ComposedEpisode): string {
   lines.push("**Slide 1 — STOP**");
   lines.push(`- Hook: ${episode.hook}`);
   lines.push(`- Tagline: ${episode.tagline.replace(/\n/g, " / ")}`);
-  lines.push(`- CTA button: See How`);
+  lines.push(`- CTA button: ${episode.ctaLabel}`);
   lines.push("");
   lines.push("**Slide 2 — UNDERSTAND**");
   lines.push(`- ${understandingLines.join("\n- ")}`);
