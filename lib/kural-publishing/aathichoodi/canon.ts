@@ -114,6 +114,24 @@ export interface CuratedEpisodeContent {
    *  (quality-check.ts); omitting it just means that check skips this
    *  episode rather than guessing. */
   actionMechanism?: ActionMechanismId;
+  /** Optional hand-authored override for Slide 1's tagline (the muted
+   *  line under the hook) and its paired CTA button label -- explicit
+   *  founder direction that both must build on THIS episode's own hook
+   *  (creating curiosity toward the next slide), not a generic theme-pool
+   *  line. When tagline is set but ctaLabel isn't, the button falls back
+   *  to "See How". When tagline is omitted, both still come from the
+   *  theme pool (taglines.ts) as normal -- same per-field-independent
+   *  pattern as every other curated field here. */
+  tagline?: string;
+  ctaLabel?: string;
+  /** Optional hand-authored override for Slide 5's own CTA copy (distinct
+   *  from recommendedCta above, which only locks the CTA *type* -- the
+   *  copy for a given type is otherwise one fixed template shared by
+   *  every episode of that type, see cta.ts's CTA_TYPES). Set this
+   *  alongside recommendedCta when an episode's call to action should
+   *  reference its own content specifically, not just its type's generic
+   *  phrasing. */
+  recommendedCtaCopy?: string;
 }
 
 /** Display labels for CuratedEpisodeContent.languageCategory, matching the
@@ -539,8 +557,46 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       recommendedCta: "TRY_TODAY",
     },
   },
-  { episodeNumber: 32, tamilText: "கடிவது மற", simpleMeaning: "Let go of the urge to scold or rebuke in anger.", transliteration: "Kadivathu Mara", primaryTheme: "self-control", verified: true },
-  { episodeNumber: 33, tamilText: "காப்பது விரதம்", simpleMeaning: "Standing by a vow you've undertaken, without abandoning it, is itself a sacred discipline.", transliteration: "Kaappathu Viratham", primaryTheme: "generosity", verified: true },
+  { episodeNumber: 32, tamilText: "கடிவது மற", simpleMeaning: "Never hurt someone with your words, especially in anger.", transliteration: "Kadivathu Mara", primaryTheme: "self-control", verified: true,
+    // Curated per founder review (2026 voice-alignment week): "never hurt
+    // with your words" is the founder-approved rendering of this line,
+    // closer to real-world application than a literal "give up anger"
+    // gloss -- scolding in anger is, in practice, hurting with words.
+    curated: {
+      hookOverride: "Do angry words ever come out before you can stop them?",
+      tagline: "There's one small habit that can change how every argument ends.",
+      ctaLabel: "See How",
+      understanding: "Avvaiyar begins with a powerful idea: never hurt someone with your words, especially in anger. Angry words come out fast, but they stay with people a long time — a short pause before you speak can save you from saying something you don't mean.",
+      familyAngle: "Your child is upset and snaps something sharp at a sibling without thinking. The words come out faster than the anger that caused them. What happens next — an apology, or silence — teaches as much as the moment itself.",
+      todayAction: "The next time anger rises in your home today, agree on one phrase to use before harsh words come out: \"I need a minute before I say this.\" Practice the phrase once in a calm moment, so it's ready when you actually need it.",
+      actionMechanism: "routine",
+      childLesson: "Angry words hurt even after the anger is gone.",
+      aiaConnection: "A pause before angry words is a small thing — but it's one of the most powerful habits a family can build together.",
+      languageCategory: "management",
+      recommendedCta: "TRY_TODAY",
+      recommendedCtaCopy: "Don't just read it — try this phrase with your family before the day ends.",
+    },
+  },
+  { episodeNumber: 33, tamilText: "காப்பது விரதம்", simpleMeaning: "Keeping a promise you made, all the way through, is itself a kind of discipline.", transliteration: "Kaappathu Viratham", primaryTheme: "generosity", verified: true,
+    // Curated: uncurated, this composes from the generosity pool's "give
+    // something away" angle -- the actual line is about staying with a
+    // commitment you've made, closer to discipline/follow-through than
+    // giving.
+    curated: {
+      hookOverride: "Does your child keep a promise even after the excitement of making it fades?",
+      tagline: "What happens after the excitement fades says more than the promise itself.",
+      ctaLabel: "Find Out",
+      understanding: "Avvaiyar's message here is clear: keep a promise you made, without giving up on it. It's easy to promise something. Staying with it, especially once it stops being exciting, is where the real discipline is.",
+      familyAngle: "Your child signs up for something — a class, a team, a project — and a few weeks in, the excitement wears off. Whether they keep going anyway is exactly what this line is about.",
+      todayAction: "Ask your child tonight: \"Is there something you promised to do that you've been putting off?\" If they name something, help them take just the next small step tonight, not the whole thing.",
+      actionMechanism: "question",
+      childLesson: "A promise is easy to make. Keeping it, once it's no longer exciting, is what actually counts.",
+      aiaConnection: "Aram in Action is built on exactly this — not just deciding to live a value, but staying with it.",
+      languageCategory: "practices",
+      recommendedCta: "TRY_TODAY",
+      recommendedCtaCopy: "Don't just read it — ask your child this tonight.",
+    },
+  },
   { episodeNumber: 34, tamilText: "கிழமைப்பட வாழ்", simpleMeaning: "Live so that your body and wealth are of use to others.", transliteration: "Kizhamaipada Vaazh", primaryTheme: "responsibility", verified: true,
     // Curated: uncurated, this composes from the responsibility pool's
     // "finish your chores properly" angle -- the actual line is about
@@ -548,28 +604,87 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
     // service than task-completion.
     curated: {
       hookOverride: "Does your child know that what they have and what they can do is meant to help others too?",
+      tagline: "The things your child is good at were never meant to stay just theirs.",
+      ctaLabel: "See Why",
       understanding: "Avvaiyar's wisdom here is simple: live so that your body and what you have are actually useful to others — not just to yourself. What you can do, and what you own, means more when it helps someone besides you.",
       familyAngle: "Your child is strong, skilled, or has something useful, and a neighbor or classmate could really use that help. Offering it, instead of keeping it just for themselves, is exactly what this line means.",
       todayAction: "Ask your child today: \"Is there something you're good at, or something you have, that could help someone else this week?\"",
+      actionMechanism: "question",
       childLesson: "What you can do, and what you have, means more when you use it to help someone else too.",
+      aiaConnection: "Reliability isn't built in one big test. It's built in ordinary, forgettable tasks like today's.",
+      languageCategory: "practices",
+      recommendedCta: "SAVE",
     },
   },
-  { episodeNumber: 35, tamilText: "கீழ்மை அகற்று", simpleMeaning: "Remove base or unworthy conduct from yourself.", transliteration: "Keezhmai Agatru", primaryTheme: "character", verified: true },
-  { episodeNumber: 36, tamilText: "குணமது கைவிடேல்", simpleMeaning: "Never let go of good character.", transliteration: "Gunamathu Kaividel", primaryTheme: "character", verified: true },
+  { episodeNumber: 35, tamilText: "கீழ்மை அகற்று", simpleMeaning: "Get rid of behavior that's beneath you — not just manage it better, drop it completely.", transliteration: "Keezhmai Agatru", primaryTheme: "character", verified: true,
+    // Curated per founder review (2026 voice-alignment week).
+    curated: {
+      hookOverride: "Does your child know some habits are worth dropping completely, not just hiding better?",
+      tagline: "Hiding a habit and ending one are not the same thing.",
+      ctaLabel: "See the Difference",
+      understanding: "Here's what Avvaiyar wants every child to carry: remove behavior that's unworthy of you. Some habits don't need to be hidden better — they need to end.",
+      familyAngle: "Your child has picked up a small habit — teasing, name-calling, cutting corners — that they know isn't really who they want to be. It would be easy to just do it more quietly. Choosing to actually stop is what this line asks for.",
+      todayAction: "Ask your child today: \"Is there a habit you've picked up that you'd be proud to just stop doing?\" Let them name it themselves — it lands differently than if you name it for them.",
+      actionMechanism: "question",
+      childLesson: "Some habits don't need managing. They need to end.",
+      aiaConnection: "Letting go of a bad habit, not just hiding it better, is character actually changing.",
+      languageCategory: "practices",
+      recommendedCta: "COMMENT",
+      recommendedCtaCopy: "Comment below: what's one habit your family has worked on letting go of?",
+    },
+  },
+  { episodeNumber: 36, tamilText: "குணமது கைவிடேல்", simpleMeaning: "Once you've built good character, don't let it slip away.", transliteration: "Gunamathu Kaividel", primaryTheme: "character", verified: true,
+    // Curated per founder review (2026 voice-alignment week).
+    curated: {
+      hookOverride: "Is your child holding onto their good habits even when it gets harder to keep them up?",
+      tagline: "Good character can slip away faster than it was built.",
+      ctaLabel: "See How",
+      understanding: "Avvaiyar teaches us this: never let go of good character, once you have it. Building good character takes time. Losing it can happen fast, if you stop paying attention.",
+      familyAngle: "Your child has been doing well — honest, kind, following through — and a bad day makes it easier to let one of those slip. Noticing that slip, and getting back to it, is exactly what this line means.",
+      todayAction: "Tonight, when you notice it, say it out loud: \"I've noticed you keep doing that — don't stop.\" Be specific about what you noticed — vague praise is easy to forget.",
+      actionMechanism: "observation",
+      childLesson: "Good character isn't locked in once you have it. It needs to be kept up, like anything else worth having.",
+      aiaConnection: "Noticing and naming a good habit in the moment is exactly how character gets reinforced, not just hoped for.",
+      languageCategory: "management",
+      recommendedCta: "TRY_TODAY",
+      recommendedCtaCopy: "Don't just read it — notice and say it out loud today.",
+    },
+  },
   { episodeNumber: 37, tamilText: "கூடிப் பிரியேல்", simpleMeaning: "Having befriended someone good, do not abandon them.", transliteration: "Koodi Piriyel", primaryTheme: "community", verified: true,
     // Curated: uncurated, this composes from the community pool's
     // "welcome new people in" angle -- the actual line is about loyalty
     // to a good friendship you already have, a different idea.
     curated: {
       hookOverride: "Does your child stick with a good friend, even when a newer, more exciting friendship shows up?",
+      tagline: "The friendships worth keeping rarely feel urgent — until they're gone.",
+      ctaLabel: "See Why",
       understanding: "Avvaiyar's wisdom here is about loyalty: once you've found a good friend, don't just drop them. Making a good friend is only half of it — staying one is the harder, more important half.",
       familyAngle: "Your child makes a new, more exciting friend and starts drifting away from an old, genuinely good one without really meaning to. Noticing that drift, and making the effort to stay close anyway, is exactly what this line is about.",
       todayAction: "Ask your child today: \"Is there a good friend you haven't checked in with in a while? Reach out to them today.\"",
+      actionMechanism: "question",
       childLesson: "Making a good friend is easy. Staying one takes more effort — and it's worth it.",
       aiaConnection: "A friendship worth having is worth keeping — Aram in Action is about actually following through on the values we claim to have, loyalty included.",
+      languageCategory: "practices",
+      recommendedCta: "TRY_TODAY",
+      recommendedCtaCopy: "Don't just read it — reach out to that friend before the day ends.",
     },
   },
-  { episodeNumber: 38, tamilText: "கெடுப்பது ஒழி", simpleMeaning: "Give up the habit of ruining others.", transliteration: "Keduppathu Ozhi", primaryTheme: "character", verified: true },
+  { episodeNumber: 38, tamilText: "கெடுப்பது ஒழி", simpleMeaning: "Stop any habit of putting others down or causing them harm.", transliteration: "Keduppathu Ozhi", primaryTheme: "character", verified: true,
+    // Curated per founder review (2026 voice-alignment week).
+    curated: {
+      hookOverride: "Does your child know that putting someone else down never actually lifts them up?",
+      tagline: "It feels like it helps, for about five seconds.",
+      ctaLabel: "Find Out Why",
+      understanding: "Avvaiyar puts it plainly: give up any habit of hurting or ruining others. Tearing someone else down never actually makes anyone better — it just leaves two people worse off.",
+      familyAngle: "Your child notices a friend or sibling struggling at something, and for a second, making fun of it feels like it would feel good. Choosing not to is exactly what this line is about.",
+      todayAction: "The next time your child is tempted to put someone down today, ask: \"Would saying that make things better, or just make you feel bigger for a second?\" Ask it as a real question, not a trap — the point is for them to actually think about it.",
+      actionMechanism: "question",
+      childLesson: "Putting someone else down never actually lifts you up. It just costs someone else something.",
+      aiaConnection: "Choosing not to tear someone else down, even when it's easy, is character showing up exactly when it's inconvenient.",
+      languageCategory: "beliefs",
+      recommendedCta: "PARENT_REFLECTION",
+    },
+  },
   { episodeNumber: 39, tamilText: "கேள்வி முயல்", simpleMeaning: "Make effort to listen to and learn from the wise.", transliteration: "Kelvi Muyal", primaryTheme: "education", verified: true },
   { episodeNumber: 40, tamilText: "கைவினை கரவேல்", simpleMeaning: "Do not hide the craft/skill your hands know.", transliteration: "Kaivinai Karavel", primaryTheme: "responsibility", verified: true,
     // Curated: uncurated, this composes from the responsibility pool's

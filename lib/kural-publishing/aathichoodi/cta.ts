@@ -81,15 +81,22 @@ export interface CtaSelection {
  *  editor already decided it deliberately). Otherwise: a real AiA
  *  initiative or Distant Devotion service match is preferred (the brief's
  *  "only when there is a genuine connection" rule), falling back to the
- *  theme's generic pool with anti-repetition rotation. */
+ *  theme's generic pool with anti-repetition rotation.
+ *
+ *  curatedCopy optionally overrides the type's own fixed copyTemplate --
+ *  without it, every episode sharing a curated type gets the exact same
+ *  on-slide CTA sentence (the template has no per-episode variation), so
+ *  an editor who wants the CTA to reference this specific episode's
+ *  content sets both curatedOverride and curatedCopy together. */
 export function classifyCta(
   theme: ThemeId,
   simpleMeaning: string,
   recentCtaTypes: readonly CtaTypeId[],
-  curatedOverride?: CtaTypeId
+  curatedOverride?: CtaTypeId,
+  curatedCopy?: string
 ): CtaSelection {
   if (curatedOverride) {
-    return { type: curatedOverride, copy: fillCopy(curatedOverride, simpleMeaning) };
+    return { type: curatedOverride, copy: curatedCopy ?? fillCopy(curatedOverride, simpleMeaning) };
   }
 
   const initiative = findMatchingInitiative(theme);

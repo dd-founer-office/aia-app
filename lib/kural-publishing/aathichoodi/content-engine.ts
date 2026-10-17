@@ -146,7 +146,9 @@ export function composeEpisode(
   const hook = curated?.hookOverride
     ? { id: "curated", text: curated.hookOverride }
     : selectHook(theme, episodeNumber, history.recentHookIds);
-  const tagline = selectTagline(theme, episodeNumber, history.recentTaglineIds);
+  const tagline = curated?.tagline
+    ? { id: "curated", text: curated.tagline, ctaLabel: curated.ctaLabel ?? "See How" }
+    : selectTagline(theme, episodeNumber, history.recentTaglineIds);
   const hashtags = selectHashtags(theme, episodeNumber, history.recentReachHashtagIds);
 
   const scenario = curated?.familyAngle
@@ -174,7 +176,8 @@ export function composeEpisode(
     theme,
     entry.simpleMeaning,
     history.recentCtaTypes as CtaSelection["type"][],
-    curated?.recommendedCta
+    curated?.recommendedCta,
+    curated?.recommendedCtaCopy
   );
 
   // Caption-only copy -- deliberately its own writing (caption-copy.ts),
