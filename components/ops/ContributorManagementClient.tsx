@@ -312,6 +312,9 @@ export function ContributorManagementClient({ data }: { data: ContributorManagem
         <Link href="/ops/partners" className="text-sm text-[var(--color-muted-foreground)] underline">
           Partners
         </Link>
+        <Link href="/ops/proof-of-act" className="text-sm text-[var(--color-muted-foreground)] underline">
+          Proof of Act
+        </Link>
       </div>
 
       {/* Header */}
