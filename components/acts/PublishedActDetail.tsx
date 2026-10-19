@@ -8,6 +8,7 @@ import { ActTestimonial } from "@/components/acts/ActTestimonial";
 import { ActTheAct } from "@/components/acts/ActTheAct";
 import { ActEvidence } from "@/components/acts/ActEvidence";
 import { ContributionImpactRecord } from "@/components/acts/ContributionImpactRecord";
+import { ActReflection } from "@/components/acts/ActReflection";
 import type { PublishedActSummary } from "@/lib/published-acts";
 import type { ActFeedItem } from "@/lib/acts-feed";
 import type { EvidenceTraceItem } from "@/components/acts/living-trace/types";
@@ -158,6 +159,13 @@ export function PublishedActDetail({
           </Button>
         </Link>
       )}
+
+      {/* Reflection ("And Something Stays") -- what this Act meant to the
+          contributor personally, deliberately separate from the
+          Contribution Impact Record's accountability layer above it (see
+          ActReflection.tsx). Same scoping as the rest of this Act's
+          content: only rendered here for now. */}
+      {isAnnadhanamElders && <ActReflection />}
 
       {/* Related Acts (CA-011 Section 8) -- same cause preferred, newest
           first, hidden entirely when none exist. */}
