@@ -38,9 +38,26 @@ export async function sendActProofAction(formData: FormData): Promise<{ error?: 
   const storyOutcome = (formData.get("story_outcome") as string | null)?.trim() || null;
   const testimonialQuote = (formData.get("testimonial_quote") as string | null)?.trim() || null;
   const testimonialAttribution = (formData.get("testimonial_attribution") as string | null)?.trim() || null;
+  const testimonialVideoUrlRaw = (formData.get("testimonial_video_url") as string | null)?.trim() || null;
   const reflection = (formData.get("reflection") as string | null)?.trim() || null;
   const contributorId = (formData.get("contributor_id") as string | null)?.trim() || null;
   const recipientNameRaw = (formData.get("recipient_name") as string | null)?.trim() || null;
+
+  // Evidence photos, each already uploaded client-side (see
+  // components/ops/ActProofMediaUpload.tsx) -- this field only ever
+  // carries the resulting public URLs + captions, never a file.
+  const evidenceItemsRaw = (formData.get("evidence_items") as string | null) || "[]";
+  let evidenceItems: { photoUrl: string; caption: string | null }[] = [];
+  try {
+    const parsed = JSON.parse(evidenceItemsRaw);
+    if (Array.isArray(parsed)) {
+      evidenceItems = parsed
+        .filter((item): item is { photoUrl: string; caption: string | null } => typeof item?.photoUrl === "string" && item.photoUrl.trim().length > 0)
+        .map((item) => ({ photoUrl: item.photoUrl.trim(), caption: typeof item.caption === "string" ? item.caption.trim() || null : null }));
+    }
+  } catch {
+    return { error: "Evidence photos could not be read. Try removing and re-adding them." };
+  }
 
   if (!actTitle) return { error: "Act title is required." };
   if (!actDate || Number.isNaN(Date.parse(actDate))) return { error: "A valid act date is required." };
@@ -50,6 +67,12 @@ export async function sendActProofAction(formData: FormData): Promise<{ error?: 
   if (!contributorId && !recipientNameRaw) return { error: "Select a contributor or enter a recipient name." };
   if (heroImageUrlRaw && !isValidHttpUrl(heroImageUrlRaw)) {
     return { error: "Photo URL must be a valid http(s) link, or left blank." };
+  }
+  if (testimonialVideoUrlRaw && !isValidHttpUrl(testimonialVideoUrlRaw)) {
+    return { error: "Video URL must be a valid http(s) link, or left blank." };
+  }
+  for (const item of evidenceItems) {
+    if (!isValidHttpUrl(item.photoUrl)) return { error: "One of the evidence photos has an invalid URL." };
   }
 
   const supabase = await getSupabaseServerClient();
@@ -86,11 +109,30 @@ export async function sendActProofAction(formData: FormData): Promise<{ error?: 
       story_outcome: storyOutcome,
       testimonial_quote: testimonialQuote,
       testimonial_attribution: testimonialAttribution,
+      testimonial_video_url: testimonialVideoUrlRaw,
       reflection,
     })
     .select("id")
     .single();
   if (proofError || !proof) return { error: proofError?.message ?? "Failed to save the Proof of Act." };
 
-  return { proofId: proof.id as string };
+  const proofId = proof.id as string;
+
+  if (evidenceItems.length > 0) {
+    const { error: evidenceError } = await supabase.from("act_proof_evidence").insert(
+      evidenceItems.map((item, index) => ({
+        proof_id: proofId,
+        photo_url: item.photoUrl,
+        caption: item.caption,
+        position: index,
+      }))
+    );
+    // The proof itself is already saved at this point -- an evidence
+    // insert failure is surfaced rather than silently dropped, since the
+    // operator would otherwise believe photos they just uploaded made it
+    // into the shared page when they didn't.
+    if (evidenceError) return { error: `Proof saved, but evidence photos failed to save: ${evidenceError.message}`, proofId };
+  }
+
+  return { proofId };
 }

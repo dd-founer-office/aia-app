@@ -52,7 +52,9 @@ export default async function ProofOfActViewerPage({ params }: { params: Promise
         storyOutcome={proof.storyOutcome}
         testimonialQuote={proof.testimonialQuote}
         testimonialAttribution={proof.testimonialAttribution}
+        testimonialVideoUrl={proof.testimonialVideoUrl}
         reflection={proof.reflection}
+        evidence={proof.evidence}
         recipientName={proof.recipientName ?? "you"}
         createdByName={proof.createdByName}
         createdAtDisplay={formatCreatedAt(proof.createdAtIso)}

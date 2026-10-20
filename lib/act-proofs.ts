@@ -25,11 +25,19 @@ export interface ActProofRecord {
   storyOutcome: string | null;
   testimonialQuote: string | null;
   testimonialAttribution: string | null;
+  testimonialVideoUrl: string | null;
   reflection: string | null;
+  evidence: ActProofEvidenceItem[];
   contributorId: string | null;
   recipientName: string | null;
   createdByName: string;
   createdAtIso: string;
+}
+
+export interface ActProofEvidenceItem {
+  id: string;
+  photoUrl: string;
+  caption: string | null;
 }
 
 /** Operator-side recipient picker option -- real contributor identity
@@ -110,11 +118,17 @@ export async function getActProofForViewer(id: string): Promise<ActProofRecord |
   const { data: proof } = await supabase
     .from("act_proofs")
     .select(
-      "id, act_title, act_date, cause, organization, landmark, description, outcome_summary, hero_image_url, story_situation, story_action, story_outcome, testimonial_quote, testimonial_attribution, reflection, contributor_id, recipient_name, created_by, created_at"
+      "id, act_title, act_date, cause, organization, landmark, description, outcome_summary, hero_image_url, story_situation, story_action, story_outcome, testimonial_quote, testimonial_attribution, testimonial_video_url, reflection, contributor_id, recipient_name, created_by, created_at"
     )
     .eq("id", id)
     .maybeSingle();
   if (!proof) return null;
+
+  const { data: evidenceRows } = await supabase
+    .from("act_proof_evidence")
+    .select("id, photo_url, caption")
+    .eq("proof_id", id)
+    .order("position", { ascending: true });
 
   let contributorName: string | null = null;
   if (proof.contributor_id) {
@@ -147,7 +161,13 @@ export async function getActProofForViewer(id: string): Promise<ActProofRecord |
     storyOutcome: proof.story_outcome as string | null,
     testimonialQuote: proof.testimonial_quote as string | null,
     testimonialAttribution: proof.testimonial_attribution as string | null,
+    testimonialVideoUrl: proof.testimonial_video_url as string | null,
     reflection: proof.reflection as string | null,
+    evidence: (evidenceRows ?? []).map((row) => ({
+      id: row.id as string,
+      photoUrl: row.photo_url as string,
+      caption: row.caption as string | null,
+    })),
     contributorId: proof.contributor_id as string | null,
     recipientName: contributorName ?? (proof.recipient_name as string | null),
     createdByName: (creator?.display_name as string | undefined) ?? "AiA Operations",

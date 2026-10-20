@@ -7,9 +7,16 @@ import { Button } from "@/components/shared/Button";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { BottomSheet } from "@/components/shared/BottomSheet";
 import { ActProofCard } from "@/components/acts/ActProofCard";
+import { ActProofMediaUpload } from "@/components/ops/ActProofMediaUpload";
 import { CAUSES } from "@/types/participation";
 import { sendActProofAction } from "@/lib/act-proofs-actions";
 import type { ProofRecipientCandidate } from "@/lib/act-proofs";
+
+interface EvidenceDraft {
+  key: string;
+  photoUrl: string;
+  caption: string;
+}
 
 function inputClass() {
   return "rounded-[var(--radius-button)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]";
@@ -75,7 +82,9 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
   const [storyOutcome, setStoryOutcome] = useState("");
   const [testimonialQuote, setTestimonialQuote] = useState("");
   const [testimonialAttribution, setTestimonialAttribution] = useState("");
+  const [testimonialVideoUrl, setTestimonialVideoUrl] = useState("");
   const [reflection, setReflection] = useState("");
+  const [evidenceDrafts, setEvidenceDrafts] = useState<EvidenceDraft[]>([]);
 
   const [recipientMode, setRecipientMode] = useState<RecipientMode>("contributor");
   const [contributorId, setContributorId] = useState("");
@@ -111,9 +120,16 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
     formData.set("story_outcome", storyOutcome.trim());
     formData.set("testimonial_quote", testimonialQuote.trim());
     formData.set("testimonial_attribution", testimonialAttribution.trim());
+    formData.set("testimonial_video_url", testimonialVideoUrl.trim());
     formData.set("reflection", reflection.trim());
     formData.set("contributor_id", recipientMode === "contributor" ? contributorId : "");
     formData.set("recipient_name", recipientMode === "name" ? recipientName.trim() : "");
+    formData.set(
+      "evidence_items",
+      JSON.stringify(
+        evidenceDrafts.filter((d) => d.photoUrl).map((d) => ({ photoUrl: d.photoUrl, caption: d.caption.trim() || null }))
+      )
+    );
 
     const result = await sendActProofAction(formData);
     setIsPending(false);
@@ -141,7 +157,9 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
     setStoryOutcome("");
     setTestimonialQuote("");
     setTestimonialAttribution("");
+    setTestimonialVideoUrl("");
     setReflection("");
+    setEvidenceDrafts([]);
     setRecipientMode("contributor");
     setContributorId("");
     setRecipientName("");
@@ -259,10 +277,14 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
             <input value={outcomeSummary} onChange={(e) => setOutcomeSummary(e.target.value)} className={inputClass()} placeholder="e.g. 45 elders served" />
           </label>
 
-          <label className="flex flex-col gap-1 text-sm">
-            Photo URL <span className="text-[var(--color-muted-foreground)]">(optional)</span>
-            <input value={heroImageUrl} onChange={(e) => setHeroImageUrl(e.target.value)} className={inputClass()} placeholder="https://…" />
-          </label>
+          <ActProofMediaUpload
+            label="Photo (optional)"
+            accept="image/*"
+            maxSizeMb={8}
+            value={heroImageUrl}
+            onChange={setHeroImageUrl}
+            kind="image"
+          />
         </Card>
       </section>
 
@@ -290,6 +312,14 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
       <section>
         <SectionHeader title="Testimonial (optional)" />
         <Card className="mt-3 flex flex-col gap-3">
+          <ActProofMediaUpload
+            label="Video (optional)"
+            accept="video/mp4,video/quicktime,video/webm"
+            maxSizeMb={60}
+            value={testimonialVideoUrl}
+            onChange={setTestimonialVideoUrl}
+            kind="video"
+          />
           <label className="flex flex-col gap-1 text-sm">
             Quote
             <textarea value={testimonialQuote} onChange={(e) => setTestimonialQuote(e.target.value)} rows={2} className={`${inputClass()} resize-none`} placeholder="Something said by someone involved" />
@@ -298,6 +328,48 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
             Attribution <span className="text-[var(--color-muted-foreground)]">(optional)</span>
             <input value={testimonialAttribution} onChange={(e) => setTestimonialAttribution(e.target.value)} className={inputClass()} placeholder="e.g. Annai Aravindar Karunai Illam" />
           </label>
+        </Card>
+      </section>
+
+      <section>
+        <SectionHeader title="Evidence photos (optional)" />
+        <Card className="mt-3 flex flex-col gap-4">
+          {evidenceDrafts.map((draft, index) => (
+            <div key={draft.key} className="flex flex-col gap-2 border-b border-[var(--color-border)] pb-4 last:border-0 last:pb-0">
+              <ActProofMediaUpload
+                label={`Photo ${index + 1}`}
+                accept="image/*"
+                maxSizeMb={8}
+                value={draft.photoUrl}
+                onChange={(url) =>
+                  setEvidenceDrafts((prev) => prev.map((d) => (d.key === draft.key ? { ...d, photoUrl: url } : d)))
+                }
+                kind="image"
+              />
+              <input
+                value={draft.caption}
+                onChange={(e) =>
+                  setEvidenceDrafts((prev) => prev.map((d) => (d.key === draft.key ? { ...d, caption: e.target.value } : d)))
+                }
+                className={inputClass()}
+                placeholder="Caption (optional)"
+              />
+              <button
+                type="button"
+                onClick={() => setEvidenceDrafts((prev) => prev.filter((d) => d.key !== draft.key))}
+                className="self-start text-xs text-[var(--color-muted-foreground)] underline"
+              >
+                Remove photo
+              </button>
+            </div>
+          ))}
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => setEvidenceDrafts((prev) => [...prev, { key: `${Date.now()}-${prev.length}`, photoUrl: "", caption: "" }])}
+          >
+            Add a photo
+          </Button>
         </Card>
       </section>
 
@@ -388,7 +460,9 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
             storyOutcome={storyOutcome || null}
             testimonialQuote={testimonialQuote || null}
             testimonialAttribution={testimonialAttribution || null}
+            testimonialVideoUrl={testimonialVideoUrl || null}
             reflection={reflection || null}
+            evidence={evidenceDrafts.filter((d) => d.photoUrl).map((d) => ({ id: d.key, photoUrl: d.photoUrl, caption: d.caption || null }))}
           />
         </div>
       </section>
@@ -433,7 +507,9 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
             storyOutcome={storyOutcome || null}
             testimonialQuote={testimonialQuote || null}
             testimonialAttribution={testimonialAttribution || null}
+            testimonialVideoUrl={testimonialVideoUrl || null}
             reflection={reflection || null}
+            evidence={evidenceDrafts.filter((d) => d.photoUrl).map((d) => ({ id: d.key, photoUrl: d.photoUrl, caption: d.caption || null }))}
           />
 
           {error && <p className="text-sm" style={{ color: "var(--color-error)" }}>{error}</p>}
