@@ -12,13 +12,10 @@ function formatCreatedAt(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
-// Proof of Act's contributor-facing view, reached from a "proof_of_act"
-// notification's link. Same access-control convention the real Act
-// Detail page uses (/acts/[id]/page.tsx): no manual signed-in check here
-// -- getActProofForViewer() relies entirely on RLS (select_own_act_proof
-// / operators_full_access_act_proofs), so a wrong viewer or a signed-out
-// visitor just gets null back, rendered identically to "doesn't exist"
-// via notFound() either way.
+// Proof of Act's public viewer -- a deliberately shareable, unlisted link
+// (see lib/act-proofs.ts's own comment on getActProofForViewer). No
+// sign-in check: this is reached from a link the operator pastes
+// somewhere themselves (e.g. WhatsApp), not from an in-app notification.
 export default async function ProofOfActViewerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const proof = await getActProofForViewer(id);
@@ -50,7 +47,13 @@ export default async function ProofOfActViewerPage({ params }: { params: Promise
         description={proof.description}
         outcomeSummary={proof.outcomeSummary}
         heroImageUrl={proof.heroImageUrl}
-        contributorName={proof.contributorName}
+        storySituation={proof.storySituation}
+        storyAction={proof.storyAction}
+        storyOutcome={proof.storyOutcome}
+        testimonialQuote={proof.testimonialQuote}
+        testimonialAttribution={proof.testimonialAttribution}
+        reflection={proof.reflection}
+        recipientName={proof.recipientName ?? "you"}
         createdByName={proof.createdByName}
         createdAtDisplay={formatCreatedAt(proof.createdAtIso)}
       />

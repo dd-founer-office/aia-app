@@ -2,11 +2,13 @@ import { getSupabaseServerClient } from "@/lib/supabase/server-client";
 import { getOperatorAuthState } from "@/lib/operator";
 
 /**
- * Proof of Act -- a manually-entered record an operator shares with one
- * contributor, for an act that isn't necessarily a real mission/evidence
- * record in this app (see the act_proofs table's own comment). Kept
- * entirely separate from missions/mission_publications: nothing here
- * implies the Impact Assurance verification a real published Act carries.
+ * Proof of Act -- a manually-entered record an operator shares as a
+ * public, unlisted link (/proof/<id>) for an act that isn't necessarily a
+ * real mission/evidence record in this app (see the act_proofs table's
+ * own comment). Kept entirely separate from missions/mission_publications:
+ * nothing here implies the Impact Assurance verification a real published
+ * Act carries. Delivery is manual (the operator pastes the link wherever
+ * they like, e.g. WhatsApp) -- not an in-app notification.
  */
 export interface ActProofRecord {
   id: string;
@@ -18,8 +20,14 @@ export interface ActProofRecord {
   description: string;
   outcomeSummary: string | null;
   heroImageUrl: string | null;
-  contributorId: string;
-  contributorName: string;
+  storySituation: string | null;
+  storyAction: string | null;
+  storyOutcome: string | null;
+  testimonialQuote: string | null;
+  testimonialAttribution: string | null;
+  reflection: string | null;
+  contributorId: string | null;
+  recipientName: string | null;
   createdByName: string;
   createdAtIso: string;
 }
@@ -29,8 +37,10 @@ export interface ActProofRecord {
  *  to address, never a free-text/typed-in identity. lifetimeParticipations
  *  is shown alongside each option as an extra sanity signal (a contributor
  *  with real participation history vs. a brand-new signup), not a hard
- *  filter -- see lib/act-proofs.ts's own getProofRecipientCandidates()
- *  comment for why this stays a signal rather than a gate. */
+ *  filter -- see getProofRecipientCandidates()'s own comment for why this
+ *  stays a signal rather than a gate. An operator can also type a free-text
+ *  recipient name instead, for people without a contributor account at
+ *  all -- see lib/act-proofs-actions.ts. */
 export interface ProofRecipientCandidate {
   id: string;
   name: string;
@@ -85,16 +95,13 @@ export async function getProofRecipientCandidates(): Promise<ProofRecipientCandi
 }
 
 /**
- * Fetches one Proof of Act for display -- no explicit access check here,
- * same convention the real Act Detail page's data layer uses: RLS
- * (select_own_act_proof / operators_full_access_act_proofs) already
- * restricts the underlying row to its intended contributor's own session
- * or an operator, so an unauthorized request simply gets no row back
- * rather than needing a second manual check. The caller (the contributor-
- * facing page) treats null as "not found," identically whether that's
- * because the id doesn't exist or because this viewer isn't allowed to
- * see it -- never distinguishing the two, so a wrong id can't be used to
- * probe for real ones.
+ * Fetches one Proof of Act for display -- public read (public_read_act_proof
+ * RLS policy): this is a deliberately shareable, unlisted link the operator
+ * sends manually (e.g. WhatsApp), not gated behind sign-in. A missing id
+ * returns null, rendered by the caller as notFound() the same way a real
+ * missing row would be -- never distinguishing "doesn't exist" from
+ * anything else, since nothing here is access-restricted in the first
+ * place.
  */
 export async function getActProofForViewer(id: string): Promise<ActProofRecord | null> {
   const supabase = await getSupabaseServerClient();
@@ -102,16 +109,22 @@ export async function getActProofForViewer(id: string): Promise<ActProofRecord |
 
   const { data: proof } = await supabase
     .from("act_proofs")
-    .select("id, act_title, act_date, cause, organization, landmark, description, outcome_summary, hero_image_url, contributor_id, created_by, created_at")
+    .select(
+      "id, act_title, act_date, cause, organization, landmark, description, outcome_summary, hero_image_url, story_situation, story_action, story_outcome, testimonial_quote, testimonial_attribution, reflection, contributor_id, recipient_name, created_by, created_at"
+    )
     .eq("id", id)
     .maybeSingle();
   if (!proof) return null;
 
-  const { data: contributor } = await supabase
-    .from("contributors")
-    .select("display_name")
-    .eq("id", proof.contributor_id as string)
-    .maybeSingle();
+  let contributorName: string | null = null;
+  if (proof.contributor_id) {
+    const { data: contributor } = await supabase
+      .from("contributors")
+      .select("display_name")
+      .eq("id", proof.contributor_id as string)
+      .maybeSingle();
+    contributorName = (contributor?.display_name as string | undefined) ?? null;
+  }
 
   const { data: creator } = await supabase
     .from("operators")
@@ -129,8 +142,14 @@ export async function getActProofForViewer(id: string): Promise<ActProofRecord |
     description: proof.description as string,
     outcomeSummary: proof.outcome_summary as string | null,
     heroImageUrl: proof.hero_image_url as string | null,
-    contributorId: proof.contributor_id as string,
-    contributorName: (contributor?.display_name as string | undefined) ?? "you",
+    storySituation: proof.story_situation as string | null,
+    storyAction: proof.story_action as string | null,
+    storyOutcome: proof.story_outcome as string | null,
+    testimonialQuote: proof.testimonial_quote as string | null,
+    testimonialAttribution: proof.testimonial_attribution as string | null,
+    reflection: proof.reflection as string | null,
+    contributorId: proof.contributor_id as string | null,
+    recipientName: contributorName ?? (proof.recipient_name as string | null),
     createdByName: (creator?.display_name as string | undefined) ?? "AiA Operations",
     createdAtIso: proof.created_at as string,
   };

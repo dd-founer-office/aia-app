@@ -13,18 +13,13 @@ function isValidHttpUrl(value: string): boolean {
 }
 
 /**
- * Sends a manually-entered Proof of Act to one contributor. Two inserts,
- * sequential -- same style lib/publishing-actions.ts's own publishAction
- * already uses for its multi-step writes, no transaction wrapper:
- *   1. act_proofs -- the proof itself, immutable once created (no update/
- *      edit path exists; a mistake means creating a corrected one).
- *   2. notifications (type: proof_of_act) -- the one real delivery
- *      mechanism this app has (in-app only, see that table's own
- *      comment). No email/SMS/push is sent or implied here or anywhere
- *      else in this codebase.
- * Both only ever happen together, on explicit confirm -- nothing is
- * persisted while the operator is still filling out or previewing the
- * form.
+ * Saves a manually-entered Proof of Act as a public, unlisted link
+ * (/proof/<id>) -- immutable once created (no update/edit path exists; a
+ * mistake means creating a corrected one). The operator shares the link
+ * themselves (e.g. pasting it into WhatsApp); nothing here sends an
+ * email, SMS, push, or in-app notification. Nothing is persisted while
+ * the operator is still filling out or previewing the form -- only on
+ * explicit confirm.
  */
 export async function sendActProofAction(formData: FormData): Promise<{ error?: string; proofId?: string }> {
   const auth = await getOperatorAuthState();
@@ -38,14 +33,21 @@ export async function sendActProofAction(formData: FormData): Promise<{ error?: 
   const description = (formData.get("description") as string | null)?.trim() ?? "";
   const outcomeSummary = (formData.get("outcome_summary") as string | null)?.trim() || null;
   const heroImageUrlRaw = (formData.get("hero_image_url") as string | null)?.trim() || null;
-  const contributorId = (formData.get("contributor_id") as string | null) ?? "";
+  const storySituation = (formData.get("story_situation") as string | null)?.trim() || null;
+  const storyAction = (formData.get("story_action") as string | null)?.trim() || null;
+  const storyOutcome = (formData.get("story_outcome") as string | null)?.trim() || null;
+  const testimonialQuote = (formData.get("testimonial_quote") as string | null)?.trim() || null;
+  const testimonialAttribution = (formData.get("testimonial_attribution") as string | null)?.trim() || null;
+  const reflection = (formData.get("reflection") as string | null)?.trim() || null;
+  const contributorId = (formData.get("contributor_id") as string | null)?.trim() || null;
+  const recipientNameRaw = (formData.get("recipient_name") as string | null)?.trim() || null;
 
   if (!actTitle) return { error: "Act title is required." };
   if (!actDate || Number.isNaN(Date.parse(actDate))) return { error: "A valid act date is required." };
   if (!cause) return { error: "Cause is required." };
   if (!organization) return { error: "Organization is required." };
   if (!description) return { error: "Description is required." };
-  if (!contributorId) return { error: "Select a recipient." };
+  if (!contributorId && !recipientNameRaw) return { error: "Select a contributor or enter a recipient name." };
   if (heroImageUrlRaw && !isValidHttpUrl(heroImageUrlRaw)) {
     return { error: "Photo URL must be a valid http(s) link, or left blank." };
   }
@@ -56,15 +58,21 @@ export async function sendActProofAction(formData: FormData): Promise<{ error?: 
   // Real recipient identity, not a trusted client value -- re-resolved
   // here from contributors rather than taking the form's own display
   // name/email along for the ride, so the stored row can't drift from
-  // whichever contributor_id actually gets used.
-  const { data: contributor } = await supabase.from("contributors").select("id").eq("id", contributorId).maybeSingle();
-  if (!contributor) return { error: "That contributor could not be found." };
+  // whichever contributor_id actually gets used. A free-text recipient
+  // name is only ever used when no real contributor_id was selected.
+  let resolvedContributorId: string | null = null;
+  if (contributorId) {
+    const { data: contributor } = await supabase.from("contributors").select("id").eq("id", contributorId).maybeSingle();
+    if (!contributor) return { error: "That contributor could not be found." };
+    resolvedContributorId = contributorId;
+  }
 
   const { data: proof, error: proofError } = await supabase
     .from("act_proofs")
     .insert({
       created_by: auth.operator.operatorId,
-      contributor_id: contributorId,
+      contributor_id: resolvedContributorId,
+      recipient_name: resolvedContributorId ? null : recipientNameRaw,
       act_title: actTitle,
       act_date: actDate,
       cause,
@@ -73,28 +81,16 @@ export async function sendActProofAction(formData: FormData): Promise<{ error?: 
       description,
       outcome_summary: outcomeSummary,
       hero_image_url: heroImageUrlRaw,
+      story_situation: storySituation,
+      story_action: storyAction,
+      story_outcome: storyOutcome,
+      testimonial_quote: testimonialQuote,
+      testimonial_attribution: testimonialAttribution,
+      reflection,
     })
     .select("id")
     .single();
   if (proofError || !proof) return { error: proofError?.message ?? "Failed to save the Proof of Act." };
 
-  const proofId = proof.id as string;
-
-  const { error: notificationError } = await supabase.from("notifications").insert({
-    contributor_id: contributorId,
-    type: "proof_of_act",
-    title: "A Proof of Act has been shared with you",
-    body: actTitle,
-    link: `/proof/${proofId}`,
-  });
-  // The proof itself is already saved and real at this point -- a
-  // notification failure is surfaced, not silently swallowed, since
-  // without it the contributor has no way to discover the proof exists
-  // (same "best-effort, but this one matters" judgment call
-  // publishAction's own act_published fan-out makes, just the other way:
-  // that one has many recipients and partial delivery is still useful,
-  // this one has exactly one recipient and partial delivery is not).
-  if (notificationError) return { error: `Proof saved, but the notification failed to send: ${notificationError.message}` };
-
-  return { proofId };
+  return { proofId: proof.id as string };
 }

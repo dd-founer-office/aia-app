@@ -24,11 +24,37 @@ function formatDateDisplay(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
+type RecipientMode = "contributor" | "name";
+
+function CopyLinkButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API can be unavailable (older browsers, non-HTTPS) --
+      // the link is still shown as selectable text either way.
+    }
+  }
+
+  return (
+    <Button variant="secondary" className="w-full" onClick={handleCopy}>
+      {copied ? "Copied!" : "Copy link"}
+    </Button>
+  );
+}
+
 /**
  * OP-010 Proof of Act's entry point. An operator manually enters an act's
  * details (not pulled from a real mission -- see act_proofs' own
- * comment), picks a recipient, reviews an exact preview of what gets
- * sent, and confirms. Nothing is persisted until that confirm step.
+ * comment), picks or names a recipient, reviews an exact preview of what
+ * gets shared, and confirms. Nothing is persisted until that confirm
+ * step. The result is a public, unlisted link (/proof/<id>) the operator
+ * shares themselves -- no notification, email, or SMS is sent by this
+ * app.
  *
  * Three-stage flow (form -> confirm -> sent), matching the "explicit
  * confirmation before sending" requirement without inventing a new UI
@@ -44,16 +70,28 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
   const [description, setDescription] = useState("");
   const [outcomeSummary, setOutcomeSummary] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [storySituation, setStorySituation] = useState("");
+  const [storyAction, setStoryAction] = useState("");
+  const [storyOutcome, setStoryOutcome] = useState("");
+  const [testimonialQuote, setTestimonialQuote] = useState("");
+  const [testimonialAttribution, setTestimonialAttribution] = useState("");
+  const [reflection, setReflection] = useState("");
+
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>("contributor");
   const [contributorId, setContributorId] = useState("");
+  const [recipientName, setRecipientName] = useState("");
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentProofId, setSentProofId] = useState<string | null>(null);
+  const [sentOrigin, setSentOrigin] = useState("");
 
   const selectedRecipient = useMemo(() => recipients.find((r) => r.id === contributorId) ?? null, [recipients, contributorId]);
+  const recipientLabel = recipientMode === "contributor" ? selectedRecipient?.name : recipientName.trim();
 
-  const canReview = Boolean(actTitle.trim() && actDate && cause && organization.trim() && description.trim() && contributorId);
+  const hasRecipient = recipientMode === "contributor" ? Boolean(contributorId) : Boolean(recipientName.trim());
+  const canReview = Boolean(actTitle.trim() && actDate && cause && organization.trim() && description.trim() && hasRecipient);
 
   async function handleConfirmSend() {
     setIsPending(true);
@@ -68,7 +106,14 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
     formData.set("description", description.trim());
     formData.set("outcome_summary", outcomeSummary.trim());
     formData.set("hero_image_url", heroImageUrl.trim());
-    formData.set("contributor_id", contributorId);
+    formData.set("story_situation", storySituation.trim());
+    formData.set("story_action", storyAction.trim());
+    formData.set("story_outcome", storyOutcome.trim());
+    formData.set("testimonial_quote", testimonialQuote.trim());
+    formData.set("testimonial_attribution", testimonialAttribution.trim());
+    formData.set("reflection", reflection.trim());
+    formData.set("contributor_id", recipientMode === "contributor" ? contributorId : "");
+    formData.set("recipient_name", recipientMode === "name" ? recipientName.trim() : "");
 
     const result = await sendActProofAction(formData);
     setIsPending(false);
@@ -79,6 +124,7 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
     }
     setConfirmOpen(false);
     setSentProofId(result.proofId ?? null);
+    setSentOrigin(typeof window !== "undefined" ? window.location.origin : "");
   }
 
   function handleSendAnother() {
@@ -90,12 +136,23 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
     setDescription("");
     setOutcomeSummary("");
     setHeroImageUrl("");
+    setStorySituation("");
+    setStoryAction("");
+    setStoryOutcome("");
+    setTestimonialQuote("");
+    setTestimonialAttribution("");
+    setReflection("");
+    setRecipientMode("contributor");
     setContributorId("");
+    setRecipientName("");
     setSentProofId(null);
     setError(null);
   }
 
   if (sentProofId) {
+    const proofUrl = `${sentOrigin}/proof/${sentProofId}`;
+    const whatsappHref = `https://wa.me/?text=${encodeURIComponent(proofUrl)}`;
+
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 pb-16 pt-8">
         <div className="flex items-center gap-3">
@@ -104,16 +161,27 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
           </Link>
         </div>
         <Card className="flex flex-col gap-3 text-center">
-          <p className="text-lg font-semibold leading-snug">Proof of Act sent</p>
+          <p className="text-lg font-semibold leading-snug">Proof of Act saved</p>
           <p className="text-sm text-[var(--color-muted-foreground)]">
-            A notification now points {selectedRecipient?.name ?? "the contributor"} to this proof. In-app only -- no
-            email or SMS was sent.
+            This is a public link — anyone who has it can open it, no sign-in required. Send it to{" "}
+            {recipientLabel || "the recipient"} yourself (e.g. WhatsApp); nothing was sent automatically.
           </p>
+          <p className="break-all rounded-[var(--radius-button)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-xs text-[var(--color-foreground)]">
+            {proofUrl}
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <CopyLinkButton url={proofUrl} />
+            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="w-full">
+              <Button variant="primary" className="w-full">
+                Share via WhatsApp
+              </Button>
+            </a>
+          </div>
           <Link href={`/proof/${sentProofId}`} target="_blank" className="text-sm text-[var(--color-primary)] underline">
             View it as they&apos;ll see it →
           </Link>
-          <Button className="mt-1 w-full" onClick={handleSendAnother}>
-            Send another
+          <Button className="mt-1 w-full" variant="secondary" onClick={handleSendAnother}>
+            Create another
           </Button>
         </Card>
       </div>
@@ -134,8 +202,8 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
       <div>
         <h1 className="text-xl font-semibold leading-tight tracking-tight text-[var(--color-foreground)]">Proof of Act</h1>
         <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-          Manually record an act and share it with one contributor. This doesn&apos;t need to be a published Act already
-          in the app -- the entered details are what gets shown, with no Verified badge or claim.
+          Manually record an act and get a public link to share yourself (e.g. WhatsApp). This doesn&apos;t need to be a
+          published Act already in the app — the entered details are what gets shown, with no Verified badge or claim.
         </p>
       </div>
 
@@ -199,24 +267,107 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
       </section>
 
       <section>
-        <SectionHeader title="Recipient" />
+        <SectionHeader title="Story (optional)" />
+        <Card className="mt-3 flex flex-col gap-3">
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            Fill in all three to show a Story section on the proof — leave any one blank and it won&apos;t appear.
+          </p>
+          <label className="flex flex-col gap-1 text-sm">
+            Situation
+            <textarea value={storySituation} onChange={(e) => setStorySituation(e.target.value)} rows={2} className={`${inputClass()} resize-none`} placeholder="What was the problem or need" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Action
+            <textarea value={storyAction} onChange={(e) => setStoryAction(e.target.value)} rows={2} className={`${inputClass()} resize-none`} placeholder="What was done" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Outcome
+            <textarea value={storyOutcome} onChange={(e) => setStoryOutcome(e.target.value)} rows={2} className={`${inputClass()} resize-none`} placeholder="What happened as a result" />
+          </label>
+        </Card>
+      </section>
+
+      <section>
+        <SectionHeader title="Testimonial (optional)" />
         <Card className="mt-3 flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm">
-            Contributor
-            <select value={contributorId} onChange={(e) => setContributorId(e.target.value)} className={selectClass()}>
-              <option value="">Select a contributor…</option>
-              {recipients.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} ({r.email || "no email on file"}) · {r.lifetimeParticipations} lifetime participation
-                  {r.lifetimeParticipations === 1 ? "" : "s"}
-                </option>
-              ))}
-            </select>
+            Quote
+            <textarea value={testimonialQuote} onChange={(e) => setTestimonialQuote(e.target.value)} rows={2} className={`${inputClass()} resize-none`} placeholder="Something said by someone involved" />
           </label>
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            Only real contributor accounts are selectable, never a typed-in name or email. The next step shows exactly
-            who you&apos;re about to send to before anything is saved.
-          </p>
+          <label className="flex flex-col gap-1 text-sm">
+            Attribution <span className="text-[var(--color-muted-foreground)]">(optional)</span>
+            <input value={testimonialAttribution} onChange={(e) => setTestimonialAttribution(e.target.value)} className={inputClass()} placeholder="e.g. Annai Aravindar Karunai Illam" />
+          </label>
+        </Card>
+      </section>
+
+      <section>
+        <SectionHeader title="Reflection (optional)" />
+        <Card className="mt-3 flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-sm">
+            What this act meant
+            <textarea value={reflection} onChange={(e) => setReflection(e.target.value)} rows={3} className={`${inputClass()} resize-none`} placeholder="A personal reflection" />
+          </label>
+        </Card>
+      </section>
+
+      <section>
+        <SectionHeader title="Recipient" />
+        <Card className="mt-3 flex flex-col gap-3">
+          <div className="flex gap-2 text-sm">
+            <button
+              type="button"
+              onClick={() => setRecipientMode("contributor")}
+              className="rounded-[var(--radius-button)] border px-3 py-1.5"
+              style={{
+                borderColor: recipientMode === "contributor" ? "var(--color-primary)" : "var(--color-border)",
+                color: recipientMode === "contributor" ? "var(--color-primary)" : "var(--color-muted-foreground)",
+              }}
+            >
+              Contributor account
+            </button>
+            <button
+              type="button"
+              onClick={() => setRecipientMode("name")}
+              className="rounded-[var(--radius-button)] border px-3 py-1.5"
+              style={{
+                borderColor: recipientMode === "name" ? "var(--color-primary)" : "var(--color-border)",
+                color: recipientMode === "name" ? "var(--color-primary)" : "var(--color-muted-foreground)",
+              }}
+            >
+              Name only
+            </button>
+          </div>
+
+          {recipientMode === "contributor" ? (
+            <>
+              <label className="flex flex-col gap-1 text-sm">
+                Contributor
+                <select value={contributorId} onChange={(e) => setContributorId(e.target.value)} className={selectClass()}>
+                  <option value="">Select a contributor…</option>
+                  {recipients.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({r.email || "no email on file"}) · {r.lifetimeParticipations} lifetime participation
+                      {r.lifetimeParticipations === 1 ? "" : "s"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                A real contributor account, shown with their participation history as a sanity check before you confirm.
+              </p>
+            </>
+          ) : (
+            <>
+              <label className="flex flex-col gap-1 text-sm">
+                Recipient name
+                <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className={inputClass()} placeholder="e.g. a volunteer without an app account" />
+              </label>
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                For someone without a contributor account. The link is still public once created — sharing it is on you.
+              </p>
+            </>
+          )}
         </Card>
       </section>
 
@@ -232,6 +383,12 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
             description={description}
             outcomeSummary={outcomeSummary || null}
             heroImageUrl={heroImageUrl || null}
+            storySituation={storySituation || null}
+            storyAction={storyAction || null}
+            storyOutcome={storyOutcome || null}
+            testimonialQuote={testimonialQuote || null}
+            testimonialAttribution={testimonialAttribution || null}
+            reflection={reflection || null}
           />
         </div>
       </section>
@@ -247,17 +404,18 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
           setConfirmOpen(true);
         }}
       >
-        Review &amp; send
+        Review &amp; save
       </Button>
 
       <BottomSheet open={confirmOpen} onClose={() => !isPending && setConfirmOpen(false)}>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-base font-semibold text-[var(--color-foreground)]">Confirm before sending</p>
+            <p className="text-base font-semibold text-[var(--color-foreground)]">Confirm before saving</p>
             <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-              This creates an in-app notification for{" "}
-              <span className="font-medium text-[var(--color-foreground)]">{selectedRecipient?.name}</span> (
-              {selectedRecipient?.email || "no email on file"}) linking to the proof below. No email or SMS is sent.
+              This creates a <span className="font-medium text-[var(--color-foreground)]">public link</span> for the proof
+              below, addressed to{" "}
+              <span className="font-medium text-[var(--color-foreground)]">{recipientLabel || "the recipient"}</span>.
+              Nothing is sent automatically — you&apos;ll share the link yourself.
             </p>
           </div>
 
@@ -270,6 +428,12 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
             description={description}
             outcomeSummary={outcomeSummary || null}
             heroImageUrl={heroImageUrl || null}
+            storySituation={storySituation || null}
+            storyAction={storyAction || null}
+            storyOutcome={storyOutcome || null}
+            testimonialQuote={testimonialQuote || null}
+            testimonialAttribution={testimonialAttribution || null}
+            reflection={reflection || null}
           />
 
           {error && <p className="text-sm" style={{ color: "var(--color-error)" }}>{error}</p>}
@@ -279,7 +443,7 @@ export function ProofOfActClient({ recipients }: { recipients: ProofRecipientCan
               Back to edit
             </Button>
             <Button variant="primary" className="flex-1" onClick={handleConfirmSend} disabled={isPending}>
-              {isPending ? "Sending…" : "Confirm & send"}
+              {isPending ? "Saving…" : "Confirm & save"}
             </Button>
           </div>
         </div>
