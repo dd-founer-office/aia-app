@@ -1,6 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server-client";
 
-export type NotificationType = "act_published" | "participation_reminder" | "continuity_reminder";
+export type NotificationType = "act_published" | "participation_reminder" | "continuity_reminder" | "proof_of_act";
 
 export interface NotificationRow {
   id: string;

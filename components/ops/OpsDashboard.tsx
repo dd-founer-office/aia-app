@@ -123,6 +123,9 @@ export function OpsDashboard({ data }: { data: OpsDashboardData }) {
             <Link href="/ops/contributors" className="text-sm text-[var(--color-primary)]">
               Contributors
             </Link>
+            <Link href="/ops/proof-of-act" className="text-sm text-[var(--color-primary)]">
+              Proof of Act
+            </Link>
           </div>
         </div>
         <Card className="mt-3 flex flex-col gap-4">
