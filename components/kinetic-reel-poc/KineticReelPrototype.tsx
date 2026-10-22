@@ -21,10 +21,17 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { drawKineticReelFrame } from "@/lib/kural-publishing/kinetic-reel-poc/renderer";
 import { KINETIC_REEL_DURATION_SEC, KINETIC_REEL_STAGES } from "@/lib/kural-publishing/kinetic-reel-poc/script";
+// Read-only reuse of the SAME font-resolution helper every production
+// template already uses (reads --font-tamil-sans/--font-tamil-serif off
+// the document, with the same fallback convention) -- does not modify
+// KuralHeroCanvas.tsx, just imports its one pure, side-effect-free utility
+// so this isolated prototype doesn't duplicate that fallback-chain logic.
+import { resolveAllFonts } from "@/components/kural-publishing/KuralHeroCanvas";
 
 const CANVAS_WIDTH = 1080;
 const CANVAS_HEIGHT = 1920;
 const TAMIL_FALLBACK = "'Noto Sans Tamil','Nirmala UI','Tamil Sangam MN','Tamil MN',sans-serif";
+const TAMIL_SERIF_FALLBACK = "'Noto Serif Tamil','Tamil Sangam MN','Tamil MN',serif";
 
 type ExportState = "idle" | "recording" | "done" | "error";
 
@@ -44,6 +51,7 @@ function stageAt(elapsedSec: number) {
 export default function KineticReelPrototype() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const tamilFontRef = useRef<string>(TAMIL_FALLBACK);
+  const tamilSerifFontRef = useRef<string>(TAMIL_SERIF_FALLBACK);
   const rafIdRef = useRef<number | null>(null);
   const startTsRef = useRef<number>(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -66,6 +74,7 @@ export default function KineticReelPrototype() {
       height: CANVAS_HEIGHT,
       elapsedSec: sec,
       tamilFont: tamilFontRef.current,
+      tamilSerifFont: tamilSerifFontRef.current,
     });
     setElapsedSec(sec);
   }, []);
@@ -78,14 +87,16 @@ export default function KineticReelPrototype() {
     document.fonts.ready
       .then(() => {
         if (!mountedRef.current) return;
-        const value = getComputedStyle(document.documentElement).getPropertyValue("--font-tamil-sans").trim();
-        tamilFontRef.current = value ? `${value}, ${TAMIL_FALLBACK}` : TAMIL_FALLBACK;
+        const fonts = resolveAllFonts();
+        tamilFontRef.current = fonts.tamilFont;
+        tamilSerifFontRef.current = fonts.tamilSerifFont;
         setFontsReady(true);
         renderAt(0);
       })
       .catch(() => {
         if (!mountedRef.current) return;
         tamilFontRef.current = TAMIL_FALLBACK;
+        tamilSerifFontRef.current = TAMIL_SERIF_FALLBACK;
         setFontsReady(true);
         renderAt(0);
       });
