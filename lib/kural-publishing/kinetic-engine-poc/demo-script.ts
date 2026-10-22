@@ -29,6 +29,18 @@
  * oversized and blurred, each composition's own focal word starts far
  * more extreme (18x / 35x) -- escalating toward the second, climactic
  * composition, same as the reference's own escalation toward "but."
+ *
+ * Every word also carries a THIRD keyframe: after settling, it keeps
+ * slowly drifting (rotation and position both) for the rest of its
+ * composition, on "linear" easing so it reads as a continuous creep,
+ * not another pop. This is the engine-level approximation of what the
+ * source video does with one shared, continuously-keyframed master Null
+ * (confirmed on screen: a Y Rotation value and a total rotation around
+ * 570 degrees accumulating across the whole build) -- this engine has
+ * no shared group transform, so each word's own drift keyframe stands
+ * in for it. Composition B's drift is roughly 2x Composition A's, so
+ * the tilt reads as escalating across the two compositions, same
+ * direction as the reference's own build toward "but."
  */
 
 import type { KineticScript } from "../kinetic-engine/types";
@@ -65,6 +77,7 @@ export function buildDemoScript(fontFamily: string, width: number, height: numbe
             keyframes: [
               { atSec: 0, x: 540, y: -250, rotationRad: -0.3, scaleX: 18, scaleY: 18, opacity: 0, blurPx: 20 },
               { atSec: 1.0, x: 540, y: 640, rotationRad: -0.08, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "easeOutBack" },
+              { atSec: 5.5, x: 560, y: 610, rotationRad: -0.22, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "linear" },
             ],
           },
           {
@@ -77,6 +90,7 @@ export function buildDemoScript(fontFamily: string, width: number, height: numbe
             keyframes: [
               { atSec: 0.35, x: -200, y: 860, rotationRad: 0.6, scaleX: 6, scaleY: 6, opacity: 0, blurPx: 10 },
               { atSec: 1.2, x: 330, y: 860, rotationRad: 0.18, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "easeOutCubic" },
+              { atSec: 5.5, x: 300, y: 880, rotationRad: 0.34, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "linear" },
             ],
           },
           {
@@ -89,6 +103,7 @@ export function buildDemoScript(fontFamily: string, width: number, height: numbe
             keyframes: [
               { atSec: 0.6, x: 1280, y: 980, rotationRad: -0.45, scaleX: 6.5, scaleY: 6.5, opacity: 0, blurPx: 10 },
               { atSec: 1.6, x: 760, y: 980, rotationRad: -0.14, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "easeOutCubic" },
+              { atSec: 5.5, x: 790, y: 955, rotationRad: -0.3, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "linear" },
             ],
           },
         ],
@@ -117,6 +132,7 @@ export function buildDemoScript(fontFamily: string, width: number, height: numbe
             keyframes: [
               { atSec: 0, x: 1300, y: 2300, rotationRad: 0.4, scaleX: 35, scaleY: 35, opacity: 0, blurPx: 24 },
               { atSec: 1.1, x: 560, y: 1220, rotationRad: 0.22, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "easeOutBack" },
+              { atSec: 5.5, x: 600, y: 1180, rotationRad: 0.58, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "linear" },
             ],
           },
           {
@@ -129,6 +145,7 @@ export function buildDemoScript(fontFamily: string, width: number, height: numbe
             keyframes: [
               { atSec: 0.3, x: 540, y: -150, rotationRad: -0.5, scaleX: 6, scaleY: 6, opacity: 0, blurPx: 10 },
               { atSec: 1.3, x: 330, y: 380, rotationRad: -0.2, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "easeOutCubic" },
+              { atSec: 5.5, x: 300, y: 410, rotationRad: -0.52, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "linear" },
             ],
           },
           {
@@ -141,6 +158,7 @@ export function buildDemoScript(fontFamily: string, width: number, height: numbe
             keyframes: [
               { atSec: 0.55, x: 1300, y: -150, rotationRad: 0.55, scaleX: 6.5, scaleY: 6.5, opacity: 0, blurPx: 10 },
               { atSec: 1.6, x: 760, y: 340, rotationRad: 0.3, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "easeOutCubic" },
+              { atSec: 5.5, x: 800, y: 300, rotationRad: 0.62, scaleX: 1, scaleY: 1, opacity: 1, blurPx: 0, easing: "linear" },
             ],
           },
         ],
