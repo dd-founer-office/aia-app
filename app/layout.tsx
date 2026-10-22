@@ -17,7 +17,10 @@ const dmSans = DM_Sans({
 
 const notoSansTamil = Noto_Sans_Tamil({
   subsets: ["tamil"],
-  weight: ["400", "500"],
+  // 700 added for the kinetic typography engine's word-weight hierarchy
+  // (focal vs. supporting words) -- same family, no new dependency; see
+  // lib/kural-publishing/kinetic-engine/.
+  weight: ["400", "500", "700"],
   variable: "--font-tamil-sans",
 });
 
