@@ -22,12 +22,17 @@ interface Opener extends Pickable {
   text: string;
 }
 
+// Founder voice-alignment pass: every opener now explicitly names
+// Avvaiyar -- "this line carries a quiet truth" and "the lesson is
+// small but runs deep" read as generic enough to belong to any wisdom
+// text, losing the series' own anchor. The variation across the pool
+// is in HOW each one names her, not whether it does.
 const OPENERS: readonly Opener[] = [
   { id: "opener-1", text: "Avvaiyar begins with a powerful idea:" },
   { id: "opener-2", text: "Avvaiyar's wisdom here is simple:" },
-  { id: "opener-3", text: "This line carries a quiet truth:" },
+  { id: "opener-3", text: "Avvaiyar's own words carry a quiet truth here:" },
   { id: "opener-4", text: "Here's what Avvaiyar wants every child to carry:" },
-  { id: "opener-5", text: "The lesson is small, but it runs deep:" },
+  { id: "opener-5", text: "Avvaiyar keeps this lesson small, but it runs deep:" },
   { id: "opener-6", text: "Avvaiyar puts it plainly:" },
 ];
 
