@@ -58,13 +58,23 @@ export default function AnnadhanamForEldersSharePage() {
         ctaLabel="Your Aram in Action"
       />
 
-      {/* Testimonial and Evidence carry their own py-10; -my-10 cancels it
-          so every section sits exactly one gap-10 apart. */}
-      <div className="-my-10">
-        <ActTestimonial />
+      {/* Curtain: the testimonial stays pinned while the teal card rises
+          over it and covers it (the same idea as the hero, where the teal
+          covers the pinned photo). The pin lasts exactly as long as this
+          wrapper, which ends with the card, so nothing pinned can show
+          through below it. The testimonial's own py-10 provides the gap
+          above and below; -mt-10 cancels the flex gap above. */}
+      <div className="relative -mt-10">
+        <div className="sticky top-0 z-0">
+          <ActTestimonial />
+        </div>
+        <div className="relative z-10 [&>section]:shadow-[0_-14px_36px_rgba(10,54,58,0.16)]">
+          <ActTheAct actId={ANNADHANAM_ELDERS_ACT_ID} />
+        </div>
       </div>
 
-      <ActTheAct actId={ANNADHANAM_ELDERS_ACT_ID} />
+      {/* Evidence carries its own py-10; -my-10 cancels it so every section
+          sits exactly one gap-10 apart. */}
 
       <div className="-my-10">
         <ActEvidence organization={ANNADHANAM_ELDERS_HERO.organization} evidence={ANNADHANAM_ELDERS_EVIDENCE} />
