@@ -32,6 +32,10 @@ const nextFrame = () =>
   new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 export const TESTIMONIAL_ID = "act-testimonial";
+// Dispatched on the testimonial section the moment the real play button has
+// taken over from the flying clone: the section starts its own loader (which
+// autoplays the video when it completes) in response.
+export const TESTIMONIAL_READY_EVENT = "aia:testimonial-ready";
 
 function jumpTo(top: number) {
   // `instant` isn't in every lib.dom.d.ts yet; a plain scrollTo with the
@@ -56,6 +60,9 @@ export async function playTestimonialTransition(
   }
 
   const from = cta.getBoundingClientRect();
+  // If the button never appeared (the visitor moved on early), the clone
+  // fades in as it flies instead of popping into view.
+  const wasShown = cta.dataset.shown === "true";
 
   // 1. Cover, and lift the button onto the cover.
   const overlay = document.createElement("div");
@@ -120,15 +127,15 @@ export async function playTestimonialTransition(
       [
         {
           transform: "translate(0px, 0px) scale(1)",
-          backgroundColor: "#68FFAD",
-          color: TEAL,
-          borderColor: "rgba(255, 255, 255, 0)",
+          opacity: wasShown ? 1 : 0,
+        },
+        {
+          offset: 0.3,
+          opacity: 1,
         },
         {
           transform: `translate(${p.left - from.left}px, ${p.top - from.top}px) scale(${scale})`,
-          backgroundColor: TEAL,
-          color: "#FFFFFF",
-          borderColor: "rgba(255, 255, 255, 0.55)",
+          opacity: 1,
         },
       ],
       { duration: SHRINK_MS, easing: SHRINK_EASE, fill: "forwards" },
@@ -145,6 +152,7 @@ export async function playTestimonialTransition(
     });
     await wait(60);
     clone.remove();
+    section.dispatchEvent(new CustomEvent(TESTIMONIAL_READY_EVENT));
     await wait(REST_AT_MS - SHRINK_MS - 60);
     section.dataset.reveal = "all";
     await wait(END_AT_MS - REST_AT_MS);

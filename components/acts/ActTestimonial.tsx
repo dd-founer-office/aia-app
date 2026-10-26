@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import localFont from "next/font/local";
 import { Play } from "lucide-react";
+import { TESTIMONIAL_READY_EVENT } from "@/components/acts/testimonialTransition";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -48,7 +49,15 @@ interface LockableScreenOrientation {
 // Hooks for the collage -> testimonial transition (see
 // testimonialTransition.ts). The `data-reveal` attribute is only ever set
 // while that transition runs, so on every other page these rules are inert.
+// After the collage -> testimonial transition lands, the video's play button
+// shows a slow loader ring; when it completes the video starts by itself
+// (pressing the button starts it at once). Only the transition arms this, so
+// the same section on any other page never autoplays.
+const AUTOPLAY_MS = 4000;
+
 const REVEAL_CSS = `
+  .aia-tm-ring-progress { animation: aia-tm-ring-fill ${AUTOPLAY_MS}ms linear both; }
+  @keyframes aia-tm-ring-fill { from { stroke-dashoffset: 201.06; } to { stroke-dashoffset: 0; } }
   .aia-tm-head, .aia-tm-rest { transition: opacity 500ms ease, translate 600ms cubic-bezier(0.22, 1, 0.36, 1); }
   .aia-tm-play { transition: opacity 120ms ease; }
   #act-testimonial[data-reveal="hidden"] .aia-tm-head { opacity: 0; translate: 0 16px; }
@@ -57,7 +66,13 @@ const REVEAL_CSS = `
   @media (prefers-reduced-motion: reduce) { .aia-tm-head, .aia-tm-rest, .aia-tm-play { transition: none; } }
 `;
 
-function PlayButton({ onClick }: { onClick: () => void }) {
+function PlayButton({
+  onClick,
+  armed,
+}: {
+  onClick: () => void;
+  armed: boolean;
+}) {
   return (
     <button
       type="button"
@@ -74,6 +89,36 @@ function PlayButton({ onClick }: { onClick: () => void }) {
         border: "2px solid rgba(255, 255, 255, 0.55)",
       }}
     >
+      {armed && (
+        <svg
+          className="pointer-events-none absolute"
+          style={{ left: -10, top: -10, width: 68, height: 68 }}
+          viewBox="0 0 68 68"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle
+            cx="34"
+            cy="34"
+            r="32"
+            stroke={MINT}
+            strokeOpacity="0.25"
+            strokeWidth="3"
+          />
+          <circle
+            className="aia-tm-ring-progress"
+            cx="34"
+            cy="34"
+            r="32"
+            stroke={MINT}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray="201.06"
+            strokeDashoffset="201.06"
+            transform="rotate(-90 34 34)"
+          />
+        </svg>
+      )}
       <Play
         size={20}
         color="#FFFFFF"
@@ -103,7 +148,48 @@ function PlayButton({ onClick }: { onClick: () => void }) {
  */
 export function ActTestimonial() {
   const videoRef = useRef<FullscreenVideoElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  // True while the play button's autoplay loader is running.
+  const [armed, setArmed] = useState(false);
+  const visibleRef = useRef(false);
+
+  // Armed by the transition; cancelled if the section scrolls away.
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const onReady = () => setArmed(true);
+    section.addEventListener(TESTIMONIAL_READY_EVENT, onReady);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visibleRef.current = entry.intersectionRatio >= 0.5;
+        if (!visibleRef.current) setArmed(false);
+      },
+      { threshold: [0, 0.5, 1] },
+    );
+    observer.observe(section);
+    return () => {
+      section.removeEventListener(TESTIMONIAL_READY_EVENT, onReady);
+      observer.disconnect();
+    };
+  }, []);
+
+  // When the loader completes, play the video -- with sound if the browser
+  // allows it (a press earlier in the visit counts), muted otherwise (the
+  // native controls that appear once it plays can unmute it).
+  useEffect(() => {
+    if (!armed) return;
+    const timer = setTimeout(() => {
+      setArmed(false);
+      const video = videoRef.current;
+      if (!video || !visibleRef.current) return;
+      video.play().catch(() => {
+        video.muted = true;
+        video.play().catch(() => {});
+      });
+    }, AUTOPLAY_MS);
+    return () => clearTimeout(timer);
+  }, [armed]);
 
   useEffect(() => {
     function onFullscreenChange() {
@@ -172,6 +258,7 @@ export function ActTestimonial() {
   return (
     <section
       id="act-testimonial"
+      ref={sectionRef}
       className="-mx-5 flex flex-col items-center gap-8 px-5 py-10 text-center"
       style={{ background: "#FFFFFF" }}
     >
@@ -203,13 +290,16 @@ export function ActTestimonial() {
           preload="none"
           playsInline
           controls={isPlaying}
-          onPlay={() => setIsPlaying(true)}
+          onPlay={() => {
+            setIsPlaying(true);
+            setArmed(false);
+          }}
           onPause={() => setIsPlaying(false)}
         >
           <source src={VIDEO_SRC} type="video/mp4" />
         </video>
 
-        {!isPlaying && <PlayButton onClick={playInline} />}
+        {!isPlaying && <PlayButton onClick={playInline} armed={armed} />}
       </div>
 
       {/* Reference's structure is quote-left / button-right in one row,
