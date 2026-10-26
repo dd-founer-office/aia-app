@@ -88,6 +88,25 @@ const ANNADHANAM_STORY_MOMENTS: StoryMoment[] = [
   },
 ];
 
+// Staged entrance, played once as the card arrives: the heading rises, the
+// description follows, the photo opens like an iris, and the chips pop in one
+// after another. The hidden state only exists once the page has hydrated and
+// the card is still below the fold (data-care), so without JS -- or for a card
+// already on screen -- everything is simply visible. The attribute is dropped
+// again once the entrance has played, so the chips' own colour transitions are
+// never delayed afterwards.
+const CARE_CSS = `
+  .care-h, .care-p { transition: opacity 600ms ease, translate 700ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .care-p { transition-delay: 120ms; }
+  .care-photo { transition: clip-path 1000ms cubic-bezier(0.22, 1, 0.36, 1) 250ms; }
+  .care-chip { transition: opacity 450ms ease, translate 500ms cubic-bezier(0.22, 1, 0.36, 1), scale 500ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms ease, color 150ms ease; transition-delay: calc(750ms + var(--i) * 110ms), calc(750ms + var(--i) * 110ms), calc(750ms + var(--i) * 110ms), 0ms, 0ms; }
+  [data-care="hidden"] .care-h, [data-care="hidden"] .care-p { opacity: 0; translate: 0 16px; }
+  [data-care="hidden"] .care-photo { clip-path: circle(0% at 50% 50%); }
+  [data-care="revealed"] .care-photo { clip-path: circle(85% at 50% 50%); }
+  [data-care="hidden"] .care-chip { opacity: 0; translate: 0 10px; scale: 0.92; }
+`;
+const CARE_REVEAL_DONE_MS = 1900;
+
 function subscribeToReducedMotionChanges(onChange: () => void): () => void {
   const query = window.matchMedia("(prefers-reduced-motion: reduce)");
   query.addEventListener("change", onChange);
@@ -143,7 +162,7 @@ function MomentPhoto({
   }, [activeIndex, moments]);
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
+    <div className="care-photo relative w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
       {layers.map((layer, index) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -172,10 +191,12 @@ function MomentPhoto({
  */
 function MomentChip({
   title,
+  index,
   isSelected,
   onSelect,
 }: {
   title: string;
+  index: number;
   isSelected: boolean;
   onSelect: () => void;
 }) {
@@ -185,11 +206,12 @@ function MomentChip({
       onClick={onSelect}
       aria-pressed={isSelected}
       aria-label={`View the "${title}" moment of this Act`}
-      className={`${inter.className} flex min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] px-1.5 py-2.5 leading-none transition-colors`}
+      className={`${inter.className} care-chip flex min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] px-1.5 py-2.5 leading-none transition-colors`}
       style={{
         // Fluid so all the chips always fit one row (the row is a size
         // container, see ActTheAct).
         fontSize: "clamp(10.5px, 4.3cqw, 12.5px)",
+        ["--i" as string]: index,
         background: isSelected ? CHIP_SELECTED_BG : CHIP_UNSELECTED_BG,
         color: isSelected ? "#FFFFFF" : "rgba(255, 255, 255, 0.7)",
         fontWeight: isSelected ? 600 : 500,
@@ -234,21 +256,59 @@ export function ActTheAct({ actId }: { actId: string }) {
   );
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // The staged entrance (see CARE_CSS): hide once the card is known to be
+  // below the fold, reveal when it has risen ~25% into view.
+  const sectionRef = useRef<HTMLElement>(null);
+  const [care, setCare] = useState<"hidden" | "revealed" | undefined>(undefined);
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || reducedMotion) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let started = false;
+    let hidden = false;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!started) {
+          started = true;
+          if (entry.isIntersecting) {
+            observer.disconnect(); // already on screen: no entrance
+            return;
+          }
+          hidden = true;
+          setCare("hidden");
+          return;
+        }
+        if (hidden && entry.isIntersecting) {
+          setCare("revealed");
+          observer.disconnect();
+          timer = setTimeout(() => setCare(undefined), CARE_REVEAL_DONE_MS);
+        }
+      },
+      { rootMargin: "0px 0px -25% 0px" }
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, [reducedMotion]);
+
   if (storyMoments.length === 0) return null;
 
   const activeMoment = storyMoments[activeIndex];
 
   return (
-    <section className="rounded-[16px] px-5 py-6" style={{ background: TEAL }}>
+    <section ref={sectionRef} data-care={care} className="rounded-[16px] px-5 py-6" style={{ background: TEAL }}>
+      <style>{CARE_CSS}</style>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2.5 text-left">
+        <div className="flex flex-col gap-2.5 text-center">
           <h2
-            className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
+            className={`${calSans.className} care-h m-0 text-[24px] font-bold leading-[1.15]`}
             style={{ color: MINT, letterSpacing: "-0.3px" }}
           >
             {heading}
           </h2>
-          <p className={`${inter.className} m-0 text-[14px] leading-[1.55]`} style={{ color: "rgba(255, 255, 255, 0.82)" }}>
+          <p className={`${inter.className} care-p m-0 text-[14px] leading-[1.55]`} style={{ color: "rgba(255, 255, 255, 0.82)" }}>
             {activeMoment.description}
           </p>
         </div>
@@ -260,6 +320,7 @@ export function ActTheAct({ actId }: { actId: string }) {
             <MomentChip
               key={moment.title}
               title={moment.title}
+              index={index}
               isSelected={index === activeIndex}
               onSelect={() => setActiveIndex(index)}
             />
