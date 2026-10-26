@@ -1,5 +1,6 @@
 import localFont from "next/font/local";
 import { ActSnapshot } from "@/components/acts/ActSnapshot";
+import { ScrollCue } from "@/components/acts/ScrollCue";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -52,7 +53,14 @@ function ActHeroContent({
   showEyebrow: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-2.5 px-5 pb-6 pt-6">
+    <div
+      className="flex flex-col gap-2.5 px-5 pb-[76px] pt-6"
+      // The photo (square, full hero width) + this block fill exactly one
+      // small-viewport screen, so the snapshot below only appears on
+      // scroll. 488px = the page's max-w-md (448) + its two -mx-5 bleeds;
+      // 28px = the panel's overlap onto the photo (-mt-7 below).
+      style={{ minHeight: "calc(100svh - min(100vw, 488px) + 28px)" }}
+    >
       {showEyebrow && (
         <span
           className={`${inter.className} uppercase`}
@@ -119,6 +127,7 @@ export function ActDetailHero({
 }) {
   return (
     <div className="-mx-5 -mt-6">
+      <ScrollCue targetId="act-snapshot" />
       {/* The photo is pinned (sticky) at the top of the viewport, and the
           teal panel -- pulled up over its bottom edge by -mt-7 -- scrolls
           up over it, so the photo is covered as the visitor scrolls. The
@@ -128,7 +137,9 @@ export function ActDetailHero({
       </div>
       <div className="relative z-10 -mt-7 rounded-[12px]" style={{ background: TEAL }}>
         <ActHeroContent cause={cause} title={title} description={description} showEyebrow={showEyebrow} />
-        <ActSnapshot actId={actId} />
+        <div id="act-snapshot">
+          <ActSnapshot actId={actId} />
+        </div>
       </div>
       {/* White backing under the panel's rounded bottom corners, so the
           pinned photo can't show through the notch while it scrolls. */}

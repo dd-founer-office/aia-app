@@ -43,11 +43,11 @@ interface BoxSpec {
 // rather than a doubled one.
 const ICON_TOP_LEFT: BoxSpec = { left: 0, top: 0, width: 36.09, height: 30.69 };
 const DETAIL_TOP_LEFT: BoxSpec = { left: 0, top: 30.69, width: 36.09, height: 30.13 };
-const ICON_TOP_MID: BoxSpec = { left: 41.09, top: 0, width: 29.34, height: 41.29 };
+const ICON_TOP_MID: BoxSpec = { left: 41.09, top: 0, width: 20.61, height: 41.29 };
 // Same width/height as ICON_TOP_MID (the "left side" vertical box it's
 // joined to), positioned flush against its right edge with zero gap --
 // replaces what used to be two stacked square boxes here.
-const DETAIL_TOP_RIGHT: BoxSpec = { left: ICON_TOP_MID.left + ICON_TOP_MID.width, top: 0, width: 29.34, height: 41.29 };
+const DETAIL_TOP_RIGHT: BoxSpec = { left: ICON_TOP_MID.left + ICON_TOP_MID.width, top: 0, width: 38.07, height: 41.29 };
 const CENTER: BoxSpec = { left: 41.09, top: 45.76, width: 15.95, height: 14.84 };
 // Equal heights -- split the pair's combined span (45.76 to 100) evenly
 // so both boxes in this column match.
@@ -216,7 +216,7 @@ function TextBar({ children }: { children: ReactNode }) {
         background: MINT,
         color: TEAL,
         fontWeight: 600,
-        fontSize: 10,
+        fontSize: "clamp(8px, 3.1cqw, 10px)",
         lineHeight: 1.25,
         padding: "2px 6px",
         borderRadius: 5,
@@ -242,7 +242,7 @@ function SnapshotDetailBox({
 }) {
   return (
     <div
-      className={`flex flex-col justify-center gap-1.5 px-3 ${align === "center" ? "items-center" : "items-start"}`}
+      className={`flex flex-col justify-center gap-1.5 px-2 ${align === "center" ? "items-center" : "items-start"}`}
       style={{ ...boxStyle(box), ...edgeStyle(roundedEdges), ...motionStyle(motion) }}
     >
       {children}
@@ -332,7 +332,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
     // Outer padding is 1.5x the original px-5/pb-7/pt-1 (20/28/4px), per
     // request to increase the collage's outer space by 50%.
     <div className="px-[30px] pb-[42px] pt-[6px]">
-      <div ref={containerRef} className="relative mx-auto w-full" style={{ aspectRatio: "859 / 896" }}>
+      <div ref={containerRef} className="relative mx-auto w-full" style={{ aspectRatio: "859 / 896", containerType: "inline-size" }}>
         {/* Date */}
         <SnapshotIconBox
           box={ICON_TOP_LEFT}
@@ -394,7 +394,14 @@ export function ActSnapshot({ actId }: { actId: string }) {
           motion={pairMotion(3, PARTNER_ICON_SWAP)}
         />
         <SnapshotDetailBox box={DETAIL_BOTTOM_WIDE} roundedEdges="bottom" motion={pairMotion(3, PARTNER_TEXT_SWAP)}>
-          <TextBar>{isAnnadhanamElders ? "Annai Aravindhar Karunai Illam" : "Iyal Impact Foundation"}</TextBar>
+          {isAnnadhanamElders ? (
+            <>
+              <TextBar>Annai Aravindhar</TextBar>
+              <TextBar>Karunai Illam</TextBar>
+            </>
+          ) : (
+            <TextBar>Iyal Impact Foundation</TextBar>
+          )}
         </SnapshotDetailBox>
       </div>
     </div>
