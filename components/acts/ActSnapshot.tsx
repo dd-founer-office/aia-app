@@ -31,7 +31,6 @@ const MINT = "#68FFAD";
 // share an edge their borders overlap exactly, and two translucent borders
 // would stack into a brighter line.
 const MINT_BORDER = "#28765F";
-const MINT_FILL = "rgba(104, 255, 173, 0.62)";
 
 // Geometry measured directly from the reference image (1080x1142; content
 // bounding box 110,117 to 969,1013 -- 859x896) and expressed as
@@ -264,7 +263,7 @@ const SNAPSHOT_CSS = `
 `;
 
 type IconComponent = ComponentType<{
-  size?: number;
+  size?: number | string;
   strokeWidth?: number;
   color?: string;
 }>;
@@ -373,7 +372,20 @@ function IconBox(
       className="flex items-center justify-center"
       zIndex={1}
     >
-      <Icon size={32} strokeWidth={1.75} color={MINT_FILL} />
+      {/* The icon sits in a small filled mint tile with softly rounded
+          corners (same family as the AiA tile); the tile scales with the
+          collage width. */}
+      <span
+        className="flex items-center justify-center"
+        style={{
+          width: "clamp(30px, 11cqw, 44px)",
+          height: "clamp(30px, 11cqw, 44px)",
+          background: MINT,
+          borderRadius: 8,
+        }}
+      >
+        <Icon size="58%" strokeWidth={2} color={TEAL} />
+      </span>
     </SnapshotBox>
   );
 }
