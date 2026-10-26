@@ -55,7 +55,7 @@ export default function AnnadhanamForEldersSharePage() {
         showEyebrow={false}
         imageObjectPosition="96% center"
         highlightWord="Care"
-        ctaLabel="See Aram in Action"
+        ctaLabel="Your Aram in Action"
       />
 
       {/* Testimonial and Evidence carry their own py-10; -my-10 cancels it

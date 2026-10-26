@@ -27,8 +27,10 @@ const inter = localFont({
 // opacities, rather than introducing a second green.
 const TEAL = "#0A363A";
 const MINT = "#68FFAD";
-const MINT_BORDER = "rgba(104, 255, 173, 0.32)";
-const MINT_FILL = "rgba(104, 255, 173, 0.62)";
+// MINT at 32% over TEAL, as an opaque colour: where two boxes of a pair
+// share an edge their borders overlap exactly, and two translucent borders
+// would stack into a brighter line.
+const MINT_BORDER = "#28765F";
 
 // Geometry measured directly from the reference image (1080x1142; content
 // bounding box 110,117 to 969,1013 -- 859x896) and expressed as
@@ -46,9 +48,10 @@ interface BoxSpec {
 // box: slot A is where it sits when the collage first assembles and slot B
 // is where it ends up after its pair swaps places (the idle stage of the
 // reference video). A box's DOM position is always its A slot; the swap is
-// a translate from A to B. Every stacked pair sits edge-to-edge with zero
-// space between, and a stacked pair's lower box omits its top border so the
-// seam reads as one line (see `edge` / the --bt0/--bt1 variables below).
+// a translate from A to B. Every pair sits edge-to-edge with zero space
+// between; each box keeps a full outline, and the two boxes of a pair
+// overlap by exactly one line width (see SEAM_OVERLAP_PX) so their shared
+// edge reads as a single line rather than two.
 //
 // Date (stacked): A = icon over text, B = text over icon.
 const DATE_ICON_A: BoxSpec = { left: 0, top: 0, width: 36.09, height: 30.69 };
@@ -153,6 +156,10 @@ function boxStyle(box: BoxSpec): CSSProperties {
 }
 
 const BOX_RADIUS = 12;
+const BORDER_PX = 1.75;
+// Each box of a pair reaches half a line width into its partner, so the two
+// borders land on exactly the same pixels.
+const SEAM_OVERLAP_PX = BORDER_PX / 2;
 
 // useSyncExternalStore (not useState+useEffect) reads prefers-reduced-motion
 // correctly on the very first client render -- an effect-based setState
@@ -176,7 +183,7 @@ const EXIT_RATIO = 0.25;
 // ---- The reference video's timeline (all ms from the moment the panel is
 // on screen; read frame by frame off the recording) ----------------------
 //
-// 1. 0-400      the AiA tile sits alone.
+// 1. 0-400      the AiA tile grows in on its own (mirroring how it leaves).
 // 2. 400-2100   outlined boxes appear: icon boxes grow in first (date,
 //               location, act), the wide partner text box at the bottom,
 //               then each partner box slides out from behind its icon.
@@ -214,17 +221,17 @@ const SNAPSHOT_CSS = `
   .aia-o { }
   .aia-m, .aia-i { inset: 0; }
   .aia-m { position: absolute; }
-  .aia-i { position: absolute; opacity: 0; border-top-color: var(--bt0); }
+  .aia-i { position: absolute; opacity: 0; }
   .aia-bar { transform-origin: left center; }
 
-  .aia-snap[data-stage="static"] .aia-i { opacity: 1; border-top-color: var(--bt1); }
+  .aia-snap[data-stage="static"] .aia-i { opacity: 1; }
   .aia-snap[data-stage="static"] .aia-m { translate: var(--tx) var(--ty); }
 
   .aia-snap:is([data-stage="play"], [data-stage="exit"]) .aia-i[data-enter="grow"] {
-    animation: aia-grow 280ms ${EASE_OUT} var(--d) both, aia-edge ${SWAP_MS}ms linear var(--sw) both;
+    animation: aia-grow 280ms ${EASE_OUT} var(--d) both;
   }
   .aia-snap:is([data-stage="play"], [data-stage="exit"]) .aia-i[data-enter="emerge"] {
-    animation: aia-emerge 320ms ${EASE_OUT} var(--d) both, aia-edge ${SWAP_MS}ms linear var(--sw) both;
+    animation: aia-emerge 320ms ${EASE_OUT} var(--d) both;
   }
   .aia-snap:is([data-stage="play"], [data-stage="exit"]) .aia-m {
     animation: aia-swap ${SWAP_MS}ms ${EASE_IN_OUT} var(--sw) both;
@@ -235,6 +242,11 @@ const SNAPSHOT_CSS = `
   .aia-snap[data-stage="exit"] .aia-o {
     animation: aia-exit 250ms cubic-bezier(0.55, 0, 0.8, 0.4) var(--xd) both;
   }
+  .aia-c { opacity: 0; scale: 0.5; }
+  .aia-snap[data-stage="static"] .aia-c { opacity: 1; scale: 1; }
+  .aia-snap[data-stage="play"] .aia-c {
+    animation: aia-ai-in ${AIA_OUT_MS}ms ${EASE_IN_OUT} both;
+  }
   .aia-snap[data-stage="exit"] .aia-c {
     animation: aia-ai-out ${AIA_OUT_MS}ms ${EASE_IN_OUT} ${AIA_OUT_DELAY_MS}ms both;
   }
@@ -242,16 +254,16 @@ const SNAPSHOT_CSS = `
   @keyframes aia-grow { from { scale: 0.2; opacity: 0; } to { scale: 1; opacity: 1; } }
   @keyframes aia-emerge { from { translate: var(--ex) var(--ey); opacity: 0; } to { translate: 0% 0%; opacity: 1; } }
   @keyframes aia-swap { from { translate: 0% 0%; } to { translate: var(--tx) var(--ty); } }
-  @keyframes aia-edge { 0%, 49.99% { border-top-color: var(--bt0); } 50%, 100% { border-top-color: var(--bt1); } }
   @keyframes aia-bar-in { from { scale: 0 1; opacity: 0; } to { scale: 1 1; opacity: 1; } }
   @keyframes aia-exit { to { translate: var(--cx) var(--cy); scale: 0.55; opacity: 0; } }
-  @keyframes aia-ai-out { to { scale: 0.5; opacity: 0; } }
+  @keyframes aia-ai-in { from { scale: 0.5; opacity: 0; } to { scale: 1; opacity: 1; } }
+  @keyframes aia-ai-out { from { scale: 1; opacity: 1; } to { scale: 0.5; opacity: 0; } }
 
   @media (prefers-reduced-motion: reduce) { .aia-snap * { animation: none !important; } }
 `;
 
 type IconComponent = ComponentType<{
-  size?: number;
+  size?: number | string;
   strokeWidth?: number;
   color?: string;
 }>;
@@ -272,9 +284,9 @@ function offset(
 interface BoxProps {
   a: BoxSpec;
   b: BoxSpec;
-  // Where this box sits in its pair while the collage first assembles; the
-  // lower box of a stacked pair omits its top border (flipped mid-swap).
-  edge: "upper" | "lower" | "side";
+  // Which axis this box touches its partner along: "y" for a stacked pair,
+  // "x" for the side-by-side location pair.
+  seam: "x" | "y";
   swapAt: number;
   exitOrder: number;
   // Grows in place, or slides out from behind its partner's A slot.
@@ -291,7 +303,7 @@ interface BoxProps {
 function SnapshotBox({
   a,
   b,
-  edge,
+  seam,
   swapAt,
   exitOrder,
   enter,
@@ -312,8 +324,6 @@ function SnapshotBox({
     ((CENTER.top + CENTER.height / 2 - (b.top + b.height / 2)) / a.height) *
     100 *
     0.35;
-  const bt0 = edge === "lower" ? "transparent" : MINT_BORDER;
-  const bt1 = edge === "upper" ? "transparent" : MINT_BORDER;
 
   const vars = {
     "--tx": `${swap.x}%`,
@@ -326,8 +336,6 @@ function SnapshotBox({
     "--sw": `${swapAt}ms`,
     "--xd": `${exitOrder * EXIT_PAIR_STAGGER_MS}ms`,
     "--bd": `${barsAt ?? 0}ms`,
-    "--bt0": bt0,
-    "--bt1": bt1,
   } as CSSProperties;
 
   return (
@@ -337,8 +345,11 @@ function SnapshotBox({
           className={`aia-i ${className}`}
           data-enter={enter.kind}
           style={{
-            border: `1.75px solid ${MINT_BORDER}`,
-            borderTopColor: "var(--bt0)",
+            border: `${BORDER_PX}px solid ${MINT_BORDER}`,
+            inset:
+              seam === "y"
+                ? `${-SEAM_OVERLAP_PX}px 0`
+                : `0 ${-SEAM_OVERLAP_PX}px`,
             borderRadius: BOX_RADIUS,
           }}
         >
@@ -361,7 +372,20 @@ function IconBox(
       className="flex items-center justify-center"
       zIndex={1}
     >
-      <Icon size={32} strokeWidth={1.75} color={MINT_FILL} />
+      {/* The icon sits in a small filled mint tile with softly rounded
+          corners (same family as the AiA tile); the tile scales with the
+          collage width. */}
+      <span
+        className="flex items-center justify-center"
+        style={{
+          width: "clamp(30px, 11cqw, 44px)",
+          height: "clamp(30px, 11cqw, 44px)",
+          background: MINT,
+          borderRadius: 8,
+        }}
+      >
+        <Icon size="58%" strokeWidth={2} color={TEAL} />
+      </span>
     </SnapshotBox>
   );
 }
@@ -587,7 +611,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
         <IconBox
           a={DATE_ICON_A}
           b={DATE_ICON_B}
-          edge="upper"
+          seam="y"
           swapAt={5400}
           exitOrder={2}
           enter={{ kind: "grow", at: 400 }}
@@ -596,7 +620,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
         <DetailBox
           a={DATE_TEXT_A}
           b={DATE_TEXT_B}
-          edge="lower"
+          seam="y"
           swapAt={5400}
           exitOrder={2}
           enter={{ kind: "emerge", at: 1000, from: DATE_ICON_A }}
@@ -610,7 +634,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
         <IconBox
           a={LOC_ICON_A}
           b={LOC_ICON_B}
-          edge="side"
+          seam="x"
           swapAt={3400}
           exitOrder={0}
           enter={{ kind: "grow", at: 500 }}
@@ -619,7 +643,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
         <DetailBox
           a={LOC_TEXT_A}
           b={LOC_TEXT_B}
-          edge="side"
+          seam="x"
           swapAt={3400}
           exitOrder={0}
           enter={{ kind: "emerge", at: 1000, from: LOC_ICON_A }}
@@ -646,7 +670,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
         <DetailBox
           a={ACT_TEXT_A}
           b={ACT_TEXT_B}
-          edge="upper"
+          seam="y"
           swapAt={6400}
           exitOrder={3}
           enter={{ kind: "emerge", at: 1400, from: ACT_ICON_A }}
@@ -668,7 +692,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
         <IconBox
           a={ACT_ICON_A}
           b={ACT_ICON_B}
-          edge="lower"
+          seam="y"
           swapAt={6400}
           exitOrder={3}
           enter={{ kind: "grow", at: 850 }}
@@ -679,7 +703,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
         <IconBox
           a={WIDE_ICON_A}
           b={WIDE_ICON_B}
-          edge="upper"
+          seam="y"
           swapAt={4400}
           exitOrder={1}
           enter={{ kind: "emerge", at: 1900, from: WIDE_TEXT_A }}
@@ -688,7 +712,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
         <DetailBox
           a={WIDE_TEXT_A}
           b={WIDE_TEXT_B}
-          edge="lower"
+          seam="y"
           swapAt={4400}
           exitOrder={1}
           enter={{ kind: "grow", at: 700 }}
