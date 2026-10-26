@@ -150,11 +150,11 @@ export function ActReflection() {
     <div className="flex flex-col gap-4">
       <section className="rounded-[16px] px-5 py-6" style={{ background: TEAL }}>
         <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-2 text-center">
+          <div className="flex flex-col gap-2.5 text-center">
             <h2 className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`} style={{ color: MINT }}>
               And Something Stays
             </h2>
-            <p className={`${inter.className} m-0 text-[14px] leading-[1.5]`} style={{ color: "rgba(255, 255, 255, 0.78)" }}>
+            <p className={`${inter.className} m-0 text-[14px] leading-[1.55]`} style={{ color: "rgba(255, 255, 255, 0.78)" }}>
               Take a moment to capture what this act mean to you.
             </p>
           </div>

@@ -151,7 +151,7 @@ export function ActTestimonial() {
     >
       <div className="flex flex-col gap-2.5 px-2">
         <h2
-          className={`${calSans.className} m-0 text-[26px] font-bold leading-[1.15]`}
+          className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
           style={{ color: TEAL, letterSpacing: "-0.3px" }}
         >
           They say it better

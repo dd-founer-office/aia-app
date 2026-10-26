@@ -71,7 +71,7 @@ function EvidenceRecord({
     >
       <RecordIconBadge icon={icon} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className={`${inter.className}`} style={{ fontSize: 9, fontWeight: 500, color: "var(--color-muted-foreground)" }}>
+        <span className={`${inter.className}`} style={{ fontSize: 11, fontWeight: 500, color: "var(--color-muted-foreground)" }}>
           {label}
         </span>
         {children}
@@ -193,7 +193,7 @@ export function ActEvidence({
 
       <div className="relative flex flex-col gap-2.5 px-2" style={{ zIndex: 1 }}>
         <h2
-          className={`${calSans.className} m-0 text-[26px] font-bold leading-[1.15]`}
+          className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
           style={{ color: TEAL, letterSpacing: "-0.3px" }}
         >
           Every moment leaves a trace.
@@ -217,7 +217,7 @@ export function ActEvidence({
               <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
                 {earliest.captureDateLong}
               </p>
-              <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
+              <p className={`${inter.className} m-0 text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
                 {earliest.captureTimeWithOffset}
               </p>
             </>
@@ -225,7 +225,7 @@ export function ActEvidence({
             // Genuinely missing on the stored evidence row -- never
             // reconstructed. See lib/published-acts.ts's captureDateLong/
             // captureTimeWithOffset comment.
-            <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
+            <p className={`${inter.className} m-0 text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
               Capture time unavailable
             </p>
           )}
@@ -245,7 +245,7 @@ export function ActEvidence({
               href={mapsUrl!}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${inter.className} m-0 text-[9px]`}
+              className={`${inter.className} m-0 text-[11px]`}
               style={{ color: PRIMARY }}
             >
               {earliest.trust.lat!.toFixed(4)}, {earliest.trust.lng!.toFixed(4)}
@@ -261,7 +261,7 @@ export function ActEvidence({
           </p>
           {/* No role/title field exists on the mission record -- omitted
               rather than invented. */}
-          <p className={`${inter.className} m-0 text-[9px]`} style={{ color: "var(--color-muted-foreground)" }}>
+          <p className={`${inter.className} m-0 text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
             {organization}
           </p>
         </EvidenceRecord>
