@@ -208,7 +208,7 @@ const ENTRY_SETTLED_MS = 2400;
 // fills over READ_MS -- the visitor's reading time -- and the page moves on
 // by itself when it completes (pressing it or scrolling moves on sooner).
 const ANIMATION_DONE_MS = 6400 + SWAP_MS + 80;
-const READ_MS = 5000;
+const READ_MS = 6000;
 const EXIT_PAIR_STAGGER_MS = 100;
 const AIA_OUT_DELAY_MS = 850;
 const AIA_OUT_MS = 350;
@@ -292,7 +292,7 @@ const SNAPSHOT_CSS = `
   }
   .aia-panel[data-stage="exit"] .aia-cta-ring, .aia-panel[data-stage="static"] .aia-cta-ring { display: none; }
   @keyframes aia-cta-in { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
-  @keyframes aia-ring-fill { from { stroke-dashoffset: 201.06; } to { stroke-dashoffset: 0; } }
+  @keyframes aia-ring-fill { from { stroke-dashoffset: 157.08; } to { stroke-dashoffset: 0; } }
 
   @media (prefers-reduced-motion: reduce) { .aia-snap *, .aia-panel * { animation: none !important; } }
 `;
@@ -864,30 +864,23 @@ export function ActSnapshot({ actId }: { actId: string }) {
         >
           <svg
             className="aia-cta-ring pointer-events-none absolute"
-            style={{ left: -10, top: -10, width: 68, height: 68 }}
-            viewBox="0 0 68 68"
+            style={{ left: -2, top: -2, width: 52, height: 52 }}
+            viewBox="0 0 52 52"
             fill="none"
             aria-hidden="true"
           >
-            <circle
-              cx="34"
-              cy="34"
-              r="32"
-              stroke={MINT}
-              strokeOpacity="0.25"
-              strokeWidth="3"
-            />
+            {/* No separate ring: the button's own grey outline is the
+                track, and this white arc sweeps along it. */}
             <circle
               className="aia-cta-ring-progress"
-              cx="34"
-              cy="34"
-              r="32"
-              stroke={MINT}
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeDasharray="201.06"
-              strokeDashoffset="201.06"
-              transform="rotate(-90 34 34)"
+              cx="26"
+              cy="26"
+              r="25"
+              stroke="#FFFFFF"
+              strokeWidth="2"
+              strokeDasharray="157.08"
+              strokeDashoffset="157.08"
+              transform="rotate(-90 26 26)"
             />
           </svg>
           <Play

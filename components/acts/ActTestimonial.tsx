@@ -53,11 +53,11 @@ interface LockableScreenOrientation {
 // shows a slow loader ring; when it completes the video starts by itself
 // (pressing the button starts it at once). Only the transition arms this, so
 // the same section on any other page never autoplays.
-const AUTOPLAY_MS = 4000;
+const AUTOPLAY_MS = 6000;
 
 const REVEAL_CSS = `
   .aia-tm-ring-progress { animation: aia-tm-ring-fill ${AUTOPLAY_MS}ms linear both; }
-  @keyframes aia-tm-ring-fill { from { stroke-dashoffset: 201.06; } to { stroke-dashoffset: 0; } }
+  @keyframes aia-tm-ring-fill { from { stroke-dashoffset: 157.08; } to { stroke-dashoffset: 0; } }
   .aia-tm-head, .aia-tm-rest { transition: opacity 500ms ease, translate 600ms cubic-bezier(0.22, 1, 0.36, 1); }
   .aia-tm-play { transition: opacity 120ms ease; }
   #act-testimonial[data-reveal="hidden"] .aia-tm-head { opacity: 0; translate: 0 16px; }
@@ -92,30 +92,23 @@ function PlayButton({
       {armed && (
         <svg
           className="pointer-events-none absolute"
-          style={{ left: -10, top: -10, width: 68, height: 68 }}
-          viewBox="0 0 68 68"
+          style={{ left: -2, top: -2, width: 52, height: 52 }}
+          viewBox="0 0 52 52"
           fill="none"
           aria-hidden="true"
         >
-          <circle
-            cx="34"
-            cy="34"
-            r="32"
-            stroke={MINT}
-            strokeOpacity="0.25"
-            strokeWidth="3"
-          />
+          {/* The button's own grey outline is the track; this white arc
+              sweeps along it. */}
           <circle
             className="aia-tm-ring-progress"
-            cx="34"
-            cy="34"
-            r="32"
-            stroke={MINT}
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray="201.06"
-            strokeDashoffset="201.06"
-            transform="rotate(-90 34 34)"
+            cx="26"
+            cy="26"
+            r="25"
+            stroke="#FFFFFF"
+            strokeWidth="2"
+            strokeDasharray="157.08"
+            strokeDashoffset="157.08"
+            transform="rotate(-90 26 26)"
           />
         </svg>
       )}
