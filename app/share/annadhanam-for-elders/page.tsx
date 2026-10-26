@@ -18,6 +18,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: ANNADHANAM_ELDERS_HERO.title.replace("\n", " "),
     description: ANNADHANAM_ELDERS_HERO.description,
+    url: "/share/annadhanam-for-elders",
+    type: "article",
+    images: [{ url: ANNADHANAM_ELDERS_HERO.heroImageUrl, width: 1040, height: 480 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: ANNADHANAM_ELDERS_HERO.title.replace("\n", " "),
+    description: ANNADHANAM_ELDERS_HERO.description,
     images: [ANNADHANAM_ELDERS_HERO.heroImageUrl],
   },
 };

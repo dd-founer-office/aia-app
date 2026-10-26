@@ -94,7 +94,7 @@ function SidePhoto({ src }: { src: string }) {
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" className="h-full w-full object-cover" />
+      <img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
     </div>
   );
 }
@@ -126,7 +126,7 @@ function EvidencePhotoRow({ photos }: { photos: string[] }) {
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={center} alt="" className="h-full w-full object-cover" />
+        <img src={center} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
       </div>
 
       {right && <SidePhoto src={right} />}

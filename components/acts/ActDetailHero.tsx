@@ -24,7 +24,14 @@ function ActHeroImage({ src, alt, objectPosition }: { src: string | null; alt: s
     <div className="w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={alt} className="h-full w-full object-cover" style={{ objectPosition }} />
+        <img
+          src={src}
+          alt={alt}
+          fetchPriority="high"
+          decoding="async"
+          className="h-full w-full object-cover"
+          style={{ objectPosition }}
+        />
       ) : (
         // Existing (previously unused) fallback token, --color-photo-placeholder.
         <div className="h-full w-full" style={{ background: "var(--color-photo-placeholder)" }} />
@@ -110,7 +117,7 @@ export function ActDetailHero({
 }) {
   return (
     <div className="-mx-5 -mt-6">
-      <ActHeroImage src={heroImageUrl} alt={title} objectPosition={imageObjectPosition} />
+      <ActHeroImage src={heroImageUrl} alt={title.replace(/\s*\n\s*/g, " ")} objectPosition={imageObjectPosition} />
       <div className="rounded-[12px]" style={{ background: TEAL }}>
         <ActHeroContent cause={cause} title={title} description={description} showEyebrow={showEyebrow} />
         <ActSnapshot actId={actId} />
