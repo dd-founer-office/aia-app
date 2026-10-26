@@ -18,7 +18,7 @@ import type { ContributionImpactRecordData } from "@/components/acts/Contributio
 export const ANNADHANAM_ELDERS_ACT_ID = "aeab2bfe-8619-4b11-8f2b-7ad16c301d42";
 
 export const ANNADHANAM_ELDERS_HERO = {
-  title: "Some Meals Are Served to Feed.\nSome Are Served to Remind Us We Care.",
+  title: "Some Meals Are Served to Feed.\nSome Are Served to Remind Us We Care",
   description:
     "Because sometimes, the most meaningful thing we can give someone is the feeling that they are remembered.",
   heroImageUrl: "/mock/annadhanam-shared.jpg",
