@@ -129,9 +129,18 @@ function readReducedMotionOnServer(): boolean {
   return false;
 }
 
+const ENTER_RATIO = 0.9;
+const EXIT_RATIO = 0.25;
 const PAIR_COUNT = 4;
-const STAGGER_MS = 90;
-const DURATION_MS = 650;
+// Paced to the reference video: the AiA tile lands first, then the four
+// pairs follow one after another (~2s end to end); on exit the pairs go
+// in reverse and the AiA tile leaves last.
+const CENTER_ENTER_DELAY_MS = 0;
+const PAIRS_START_MS = 350;
+const PAIR_ENTER_STAGGER_MS = 250;
+const PAIR_EXIT_STAGGER_MS = 140;
+const CENTER_EXIT_DELAY_MS = 500;
+const DURATION_MS = 800;
 // A calm, slightly snappy ease-out (no bounce/elastic) for the
 // "editorial, premium, precise" motion character.
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -172,7 +181,7 @@ function motionStyle({ entered, reducedMotion, swap, delayMs, scale }: Motion): 
 // the entrance played at random.
 function pairDelay(index: number, entered: boolean, reducedMotion: boolean): number {
   if (reducedMotion) return 0;
-  return (entered ? index : PAIR_COUNT - 1 - index) * STAGGER_MS;
+  return entered ? PAIRS_START_MS + index * PAIR_ENTER_STAGGER_MS : (PAIR_COUNT - 1 - index) * PAIR_EXIT_STAGGER_MS;
 }
 
 type IconComponent = ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;
@@ -288,7 +297,7 @@ function SnapshotCenter({ motion }: { motion: Motion }) {
  */
 export function ActSnapshot({ actId }: { actId: string }) {
   const isAnnadhanamElders = actId === ANNADHANAM_ELDERS_ACT_ID;
-  const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useSyncExternalStore(
     subscribeToReducedMotionChanges,
     readReducedMotionOnClient,
@@ -303,11 +312,24 @@ export function ActSnapshot({ actId }: { actId: string }) {
 
   useEffect(() => {
     if (reducedMotion) return;
-    const node = containerRef.current;
+    const node = panelRef.current;
     if (!node) return;
-    const observer = new IntersectionObserver(([entry]) => setIntersecting(entry.isIntersecting), {
-      threshold: 0.25,
-    });
+    // The collage lives in a full-screen panel; play only once (almost)
+    // the whole panel is on screen, so the full screen always appears
+    // first, and reverse only once it has mostly left -- two thresholds, so
+    // it doesn't flicker around a single boundary. On a viewport shorter
+    // than the panel the full ratio can't be reached, so the entry bar
+    // scales down to what is reachable (never below half).
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const reachable = Math.min(1, window.innerHeight / entry.boundingClientRect.height);
+        const enterAt = Math.max(0.5, Math.min(ENTER_RATIO, reachable * ENTER_RATIO));
+        setIntersecting((was) =>
+          entry.intersectionRatio >= enterAt ? true : entry.intersectionRatio < EXIT_RATIO ? false : was
+        );
+      },
+      { threshold: Array.from({ length: 21 }, (_, i) => i / 20) }
+    );
     observer.observe(node);
     return () => observer.disconnect();
   }, [reducedMotion]);
@@ -316,23 +338,24 @@ export function ActSnapshot({ actId }: { actId: string }) {
     return { entered, reducedMotion, swap, delayMs: pairDelay(index, entered, reducedMotion) };
   }
 
-  // The center mark is the capstone: it settles in only after every
-  // pair has, and on exit it's the first thing to go -- a subtle scale
+  // The center mark leads: it settles in first, before any pair, and on
+  // exit it's the last thing to go -- a subtle scale
   // (never a translate, it doesn't have a "swap" partner) keeps it
   // "calm" rather than a dramatic pop.
   const centerMotion: Motion = {
     entered,
     reducedMotion,
     swap: { x: 0, y: 0 },
-    delayMs: reducedMotion ? 0 : entered ? PAIR_COUNT * STAGGER_MS : 0,
+    delayMs: reducedMotion ? 0 : entered ? CENTER_ENTER_DELAY_MS : CENTER_EXIT_DELAY_MS,
     scale: entered ? 1 : 0.92,
   };
 
   return (
     // Outer padding is 1.5x the original px-5/pb-7/pt-1 (20/28/4px), per
     // request to increase the collage's outer space by 50%.
-    <div className="px-[30px] pb-[42px] pt-[6px]">
-      <div ref={containerRef} className="relative mx-auto w-full" style={{ aspectRatio: "859 / 896", containerType: "inline-size" }}>
+    // min-h-[100svh] + centered: the collage owns one whole screen.
+    <div ref={panelRef} className="flex min-h-[100svh] items-center px-[30px] py-[42px]">
+      <div className="relative mx-auto w-full" style={{ aspectRatio: "859 / 896", containerType: "inline-size" }}>
         {/* Date */}
         <SnapshotIconBox
           box={ICON_TOP_LEFT}
