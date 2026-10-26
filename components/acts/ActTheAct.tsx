@@ -31,6 +31,9 @@ interface StoryMoment {
   title: string;
   image: string;
   description: string;
+  // CSS object-position for the 4:5 frame; the photos come in different
+  // shapes (some wide landscape), so each picks the part that matters.
+  focus?: string;
 }
 
 // The Act's own execution photographs. Only moments the real photos
@@ -66,19 +69,22 @@ const ANNADHANAM_DESCRIPTION =
   "A simple intention became a meal prepared with care, served with dignity, and shared with our elders.";
 const ANNADHANAM_STORY_MOMENTS: StoryMoment[] = [
   {
-    title: "Prepared.",
+    title: "Prepared",
     image: "/mock/annadhanam-prepared.jpg",
     description: ANNADHANAM_DESCRIPTION,
+    focus: "46% 50%",
   },
   {
-    title: "Served.",
+    title: "Served",
     image: "/mock/annadhanam-served-woman.jpg",
     description: ANNADHANAM_DESCRIPTION,
+    focus: "50% 38%",
   },
   {
-    title: "Shared.",
+    title: "Shared",
     image: "/mock/annadhanam-shared.jpg",
     description: ANNADHANAM_DESCRIPTION,
+    focus: "93% 50%",
   },
 ];
 
@@ -98,6 +104,7 @@ interface PhotoLayer {
   src: string;
   alt: string;
   visible: boolean;
+  position: string;
 }
 
 /**
@@ -118,8 +125,8 @@ function MomentPhoto({
 }) {
   const frontIndexRef = useRef(0);
   const [layers, setLayers] = useState<[PhotoLayer, PhotoLayer]>(() => [
-    { src: moments[0].image, alt: moments[0].title, visible: true },
-    { src: moments[0].image, alt: moments[0].title, visible: false },
+    { src: moments[0].image, alt: moments[0].title, visible: true, position: moments[0].focus ?? "top" },
+    { src: moments[0].image, alt: moments[0].title, visible: false, position: moments[0].focus ?? "top" },
   ]);
 
   useEffect(() => {
@@ -128,7 +135,7 @@ function MomentPhoto({
       const frontIndex = frontIndexRef.current;
       const backIndex = frontIndex === 0 ? 1 : 0;
       const next: [PhotoLayer, PhotoLayer] = [...previous];
-      next[backIndex] = { src: moment.image, alt: moment.title, visible: true };
+      next[backIndex] = { src: moment.image, alt: moment.title, visible: true, position: moment.focus ?? "top" };
       next[frontIndex] = { ...next[frontIndex], visible: false };
       frontIndexRef.current = backIndex;
       return next;
@@ -136,7 +143,7 @@ function MomentPhoto({
   }, [activeIndex, moments]);
 
   return (
-    <div className="relative mx-auto w-[62%] overflow-hidden" style={{ aspectRatio: "9 / 16" }}>
+    <div className="relative w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
       {layers.map((layer, index) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -147,7 +154,7 @@ function MomentPhoto({
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover"
           style={{
-            objectPosition: "top",
+            objectPosition: layer.position,
             opacity: layer.visible ? 1 : 0,
             transition: reducedMotion ? "none" : "opacity 450ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}
@@ -178,8 +185,11 @@ function MomentChip({
       onClick={onSelect}
       aria-pressed={isSelected}
       aria-label={`View the "${title}" moment of this Act`}
-      className={`${inter.className} flex items-center gap-2 rounded-[10px] px-4 py-2.5 text-[13.5px] leading-none transition-colors`}
+      className={`${inter.className} flex min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] px-1.5 py-2.5 leading-none transition-colors`}
       style={{
+        // Fluid so all the chips always fit one row (the row is a size
+        // container, see ActTheAct).
+        fontSize: "clamp(10.5px, 4.3cqw, 12.5px)",
         background: isSelected ? CHIP_SELECTED_BG : CHIP_UNSELECTED_BG,
         color: isSelected ? "#FFFFFF" : "rgba(255, 255, 255, 0.7)",
         fontWeight: isSelected ? 600 : 500,
@@ -187,7 +197,7 @@ function MomentChip({
     >
       {title}
       <ArrowRight
-        size={14}
+        size="1.05em"
         style={{
           transform: isSelected ? "rotate(-90deg)" : "rotate(0deg)",
           transition: "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
@@ -245,7 +255,7 @@ export function ActTheAct({ actId }: { actId: string }) {
 
         <MomentPhoto moments={storyMoments} activeIndex={activeIndex} reducedMotion={reducedMotion} />
 
-        <div className="flex flex-wrap items-center justify-center gap-2.5" role="group" aria-label="Moments of this Act">
+        <div className="flex flex-nowrap items-center gap-2" role="group" aria-label="Moments of this Act" style={{ containerType: "inline-size" }}>
           {storyMoments.map((moment, index) => (
             <MomentChip
               key={moment.title}
