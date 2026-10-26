@@ -56,6 +56,10 @@ const notoSerif = localFont({
 });
 
 export const metadata: Metadata = {
+  // Needed so relative Open Graph image URLs (e.g. app/share/*'s own
+  // page-level metadata) resolve to an absolute URL for link previews
+  // (WhatsApp, etc.) instead of a bare relative path crawlers can't load.
+  metadataBase: new URL("https://aia.distantdevotion.com"),
   title: "Aram in Action",
   description: "Help people live Aram through verified acts of impact.",
 };

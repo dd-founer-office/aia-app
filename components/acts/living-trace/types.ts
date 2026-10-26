@@ -37,6 +37,13 @@ export interface EvidenceTraceItem {
   captureDate: string;
   captureDateIso: string;
   captureTime: string;
+  // Full-precision capture date/time, split for The Evidence section's
+  // "WHEN IT HAPPENED" record -- e.g. "28 September 2026" and
+  // "10:18:42 AM GMT+5:30". Derived straight from the stored capture_time
+  // + capture_timezone columns (same source as captureDateTimeFull above),
+  // never reconstructed or guessed.
+  captureDateLong?: string;
+  captureTimeWithOffset?: string;
   capturedBy: string;
   organization?: string;
 
