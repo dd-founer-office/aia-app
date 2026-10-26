@@ -1,6 +1,6 @@
 import localFont from "next/font/local";
 import { ActSnapshot } from "@/components/acts/ActSnapshot";
-import { ScrollCue } from "@/components/acts/ScrollCue";
+import { HeroCta } from "@/components/acts/HeroCta";
 import { HeroFit } from "@/components/acts/HeroFit";
 
 const calSans = localFont({
@@ -53,19 +53,68 @@ function ActHeroImage({ src, alt, objectPosition }: { src: string | null; alt: s
   );
 }
 
+// Splits the (newline-flattened) title around the first whole-word match of
+// `word`, so that word can be wrapped in the selection-box highlight.
+function renderTitle(title: string, word?: string) {
+  const flat = title.replace(/\s*\n\s*/g, " ");
+  if (!word) return flat;
+  const match = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).exec(flat);
+  if (!match) return flat;
+  return (
+    <>
+      {flat.slice(0, match.index)}
+      <span className="aia-hero-highlight">
+        {match[0]}
+        <i aria-hidden="true" className="aia-hero-handle" style={{ top: -4, left: -4 }} />
+        <i aria-hidden="true" className="aia-hero-handle" style={{ top: -4, right: -4 }} />
+        <i aria-hidden="true" className="aia-hero-handle" style={{ bottom: -4, left: -4 }} />
+        <i aria-hidden="true" className="aia-hero-handle" style={{ bottom: -4, right: -4 }} />
+      </span>
+      {flat.slice(match.index + match[0].length)}
+    </>
+  );
+}
+
+// The highlighted word reads white inside a lighter-teal selection box with
+// four small mint corner handles (the Abyssale hero treatment); the box
+// scales/fades in once shortly after load. Static under reduced motion.
+const HIGHLIGHT_CSS = `
+  .aia-hero-highlight { position: relative; isolation: isolate; display: inline-block; color: #FFFFFF; padding: 0 0.1em; margin: 0 0.02em; }
+  .aia-hero-highlight::before { content: ""; position: absolute; inset: 0.04em 0; z-index: -1; background: rgba(255, 255, 255, 0.1); animation: aia-hero-box-in 600ms cubic-bezier(0.22, 1, 0.36, 1) 500ms both; transform-origin: left center; }
+  .aia-hero-handle { position: absolute; width: 8px; height: 8px; background: ${MINT}; animation: aia-hero-handle-in 400ms ease 900ms both; }
+  @keyframes aia-hero-box-in { from { opacity: 0; transform: scaleX(0.4); } to { opacity: 1; transform: scaleX(1); } }
+  @keyframes aia-hero-handle-in { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .aia-hero-highlight::before, .aia-hero-handle { animation: none; } }
+`;
+
 function ActHeroContent({
   cause,
   title,
   description,
   showEyebrow,
+  highlightWord,
+  ctaLabel,
+  ctaTargetId,
 }: {
   cause: string;
   title: string;
   description: string;
   showEyebrow: boolean;
+  highlightWord?: string;
+  ctaLabel: string;
+  ctaTargetId: string;
 }) {
   return (
-    <div data-hero-text className="flex flex-col gap-2.5 px-5 pb-16 pt-6">
+    <div
+      data-hero-text
+      className="flex flex-col items-center justify-center gap-2.5 px-5 pb-8 pt-6 text-center"
+      // On tall phones the photo stops at 4:5; whatever height is then left
+      // of the first screen becomes this block's min-height, and the
+      // content centers inside it instead of leaving a dead patch below.
+      // 488px = page max-w-md (448) + two -mx-5 bleeds; 28px = overlap.
+      style={{ minHeight: "max(0px, calc(100svh - min(100vw, 488px) * 1.25 + 28px))" }}
+    >
+      <style>{HIGHLIGHT_CSS}</style>
       {showEyebrow && (
         <span
           className={`${inter.className} uppercase`}
@@ -77,18 +126,21 @@ function ActHeroContent({
       <h1
         className={`${calSans.className} m-0`}
         // Title text may carry an embedded "\n" (the Annadhanam Act's two
-        // sentences); render it as a plain space so lines flow naturally and
+        // sentences); it is flattened to a space so lines flow naturally and
         // a short sentence never strands one word on its own line.
-        style={{ fontSize: "clamp(24px, 7.2vw, 32px)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.4px", color: MINT, textWrap: "pretty" }}
+        style={{ fontSize: "clamp(24px, 7.2vw, 32px)", fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.4px", color: MINT, textWrap: "balance" }}
       >
-        {title.replace(/\s*\n\s*/g, " ")}
+        {renderTitle(title, highlightWord)}
       </h1>
       <p
-        className={`${inter.className} m-0`}
+        className={`${inter.className} m-0 max-w-[34ch]`}
         style={{ fontSize: 14, lineHeight: 1.55, color: "rgba(255, 255, 255, 0.78)" }}
       >
         {description}
       </p>
+      <div className="mt-4">
+        <HeroCta label={ctaLabel} targetId={ctaTargetId} />
+      </div>
     </div>
   );
 }
@@ -118,6 +170,8 @@ export function ActDetailHero({
   cause,
   showEyebrow = true,
   imageObjectPosition = "center",
+  highlightWord,
+  ctaLabel = "See the story",
 }: {
   actId: string;
   heroImageUrl: string | null;
@@ -129,11 +183,14 @@ export function ActDetailHero({
   // for Elders) renders exactly as before.
   showEyebrow?: boolean;
   imageObjectPosition?: string;
+  // Word in `title` shown in the white selection-box highlight, and the
+  // label of the CTA that scrolls to the Act Snapshot panel.
+  highlightWord?: string;
+  ctaLabel?: string;
 }) {
   return (
     <div className="-mx-5 -mt-6">
       <HeroFit />
-      <ScrollCue targetId="act-snapshot" />
       {/* The photo is pinned (sticky) at the top of the viewport, and the
           teal panel -- pulled up over its bottom edge by -mt-7 -- scrolls
           up over it, so the photo is covered as the visitor scrolls. The
@@ -142,7 +199,15 @@ export function ActDetailHero({
         <ActHeroImage src={heroImageUrl} alt={title.replace(/\s*\n\s*/g, " ")} objectPosition={imageObjectPosition} />
       </div>
       <div className="relative z-10 -mt-7 rounded-[12px]" style={{ background: TEAL }}>
-        <ActHeroContent cause={cause} title={title} description={description} showEyebrow={showEyebrow} />
+        <ActHeroContent
+          cause={cause}
+          title={title}
+          description={description}
+          showEyebrow={showEyebrow}
+          highlightWord={highlightWord}
+          ctaLabel={ctaLabel}
+          ctaTargetId="act-snapshot"
+        />
         <div id="act-snapshot">
           <ActSnapshot actId={actId} />
         </div>
