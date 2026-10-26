@@ -33,6 +33,11 @@ const MINT = "#68FFAD";
 // share an edge their borders overlap exactly, and two translucent borders
 // would stack into a brighter line.
 const MINT_BORDER = "#28765F";
+// Colour roles on this screen: solid MINT is reserved for the AiA tile (and
+// the one key fact); icon tiles are a quiet mint tint; information is soft
+// white; structure is the muted outline above.
+const SOFT_WHITE = "#EAFBF2";
+const ICON_TILE_TINT = "rgba(104, 255, 173, 0.13)";
 
 // Geometry measured directly from the reference image (1080x1142; content
 // bounding box 110,117 to 969,1013 -- 859x896) and expressed as
@@ -236,10 +241,10 @@ const SNAPSHOT_CSS = `
   .aia-snap[data-stage="static"] .aia-m { translate: var(--tx) var(--ty); }
 
   .aia-snap:is([data-stage="play"], [data-stage="exit"]) .aia-i[data-enter="grow"] {
-    animation: aia-grow 280ms ${EASE_OUT} var(--d) both;
+    animation: aia-grow 280ms ${EASE_OUT} var(--d) both, aia-glow 1000ms ease calc(var(--sw) - 150ms) backwards;
   }
   .aia-snap:is([data-stage="play"], [data-stage="exit"]) .aia-i[data-enter="emerge"] {
-    animation: aia-emerge 320ms ${EASE_OUT} var(--d) both;
+    animation: aia-emerge 320ms ${EASE_OUT} var(--d) both, aia-glow 1000ms ease calc(var(--sw) - 150ms) backwards;
   }
   .aia-snap:is([data-stage="play"], [data-stage="exit"]) .aia-m {
     animation: aia-swap ${SWAP_MS}ms ${EASE_IN_OUT} var(--sw) both;
@@ -262,7 +267,14 @@ const SNAPSHOT_CSS = `
   @keyframes aia-grow { from { scale: 0.2; opacity: 0; } to { scale: 1; opacity: 1; } }
   @keyframes aia-emerge { from { translate: var(--ex) var(--ey); opacity: 0; } to { translate: 0% 0%; opacity: 1; } }
   @keyframes aia-swap { from { translate: 0% 0%; } to { translate: var(--tx) var(--ty); } }
+  .aia-snap:is([data-stage="play"], [data-stage="exit"]) .aia-bar[data-plain] {
+    animation: aia-text-in 320ms ease-out calc(var(--bd) + var(--bi) * ${BAR_STAGGER_MS}ms) both;
+  }
   @keyframes aia-bar-in { from { scale: 0 1; opacity: 0; } to { scale: 1 1; opacity: 1; } }
+  @keyframes aia-text-in { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+  /* While a pair trades places its outline briefly lights up, so motion --
+     not colour -- guides the eye. */
+  @keyframes aia-glow { 0%, 100% { border-color: ${MINT_BORDER}; } 35% { border-color: #5BE8A6; } }
   @keyframes aia-exit { to { translate: var(--cx) var(--cy); scale: 0.55; opacity: 0; } }
   @keyframes aia-ai-in { from { scale: 0.5; opacity: 0; } to { scale: 1; opacity: 1; } }
   @keyframes aia-ai-out { from { scale: 1; opacity: 1; } to { scale: 0.5; opacity: 0; } }
@@ -395,19 +407,19 @@ function IconBox(
       className="flex items-center justify-center"
       zIndex={1}
     >
-      {/* The icon sits in a small filled mint tile with softly rounded
-          corners (same family as the AiA tile); the tile scales with the
-          collage width. */}
+      {/* The icon sits in a small tile with softly rounded corners, a quiet
+          mint tint with a mint glyph so the AiA tile stays the only solid
+          mint block; the tile scales with the collage width. */}
       <span
         className="flex items-center justify-center"
         style={{
           width: "clamp(30px, 11cqw, 44px)",
           height: "clamp(30px, 11cqw, 44px)",
-          background: MINT,
+          background: ICON_TILE_TINT,
           borderRadius: 8,
         }}
       >
-        <Icon size="58%" strokeWidth={2} color={TEAL} />
+        <Icon size="58%" strokeWidth={2} color={MINT} />
       </span>
     </SnapshotBox>
   );
@@ -431,33 +443,49 @@ function DetailBox(
   );
 }
 
-// Abyssale-style typographic highlight -- NOT a button/pill/capsule.
-// Flat mint fill sized to hug the text tightly (small radius, tight
-// padding), dark-teal Inter text, never white text, never a fully
-// rounded end. No max-width clamp: a clamp here would shrink the
-// highlight's own background below its text's natural width, leaving
-// the tail of the text rendered past the (now-narrower) mint fill --
-// invisible, since the text color is the same dark teal as the card
-// background behind it. The font scales with the collage's own width
-// (capped at 10px) so every highlight's true content width fits inside
-// its card at the card's own fixed geometry. `i` orders the bars as they
-// fill in.
-function TextBar({ i, children }: { i: number; children: ReactNode }) {
+// Detail text is plain soft-white type on the dark teal -- information, not
+// decoration. The one KEY fact of the collage (the count) keeps the
+// Abyssale-style typographic highlight: NOT a button/pill/capsule, but a flat
+// mint fill hugging the text tightly (small radius, tight padding) with
+// dark-teal text, so it is the single mint accent besides the AiA tile. No
+// max-width clamp on the highlight: a clamp would shrink its background below
+// the text's natural width, leaving the tail of the text rendered past the
+// fill in the same dark teal as the card. The font scales with the collage's
+// own width (capped) so every line's true width fits inside its card at the
+// card's own fixed geometry. `i` orders the lines as they fade in.
+const HIGHLIGHT_STYLE: CSSProperties = {
+  lineHeight: 1.25,
+  fontWeight: 600,
+  background: MINT,
+  color: TEAL,
+  fontSize: "clamp(8px, 3.1cqw, 10px)",
+  padding: "2px 6px",
+  borderRadius: 5,
+};
+const PLAIN_STYLE: CSSProperties = {
+  lineHeight: 1.25,
+  fontWeight: 600,
+  color: SOFT_WHITE,
+  fontSize: "clamp(8.5px, 3.3cqw, 10.5px)",
+};
+
+function TextBar({
+  i,
+  highlight = false,
+  children,
+}: {
+  i: number;
+  highlight?: boolean;
+  children: ReactNode;
+}) {
   return (
     <span
       className={`${inter.className} aia-bar inline-flex w-fit items-center whitespace-nowrap`}
-      style={
-        {
-          "--bi": i,
-          background: MINT,
-          color: TEAL,
-          fontWeight: 600,
-          fontSize: "clamp(8px, 3.1cqw, 10px)",
-          lineHeight: 1.25,
-          padding: "2px 6px",
-          borderRadius: 5,
-        } as CSSProperties
-      }
+      data-plain={highlight ? undefined : "true"}
+      style={{
+        ...(highlight ? HIGHLIGHT_STYLE : PLAIN_STYLE),
+        ["--bi" as string]: i,
+      }}
     >
       {children}
     </span>
@@ -753,12 +781,16 @@ export function ActSnapshot({ actId }: { actId: string }) {
         >
           {isAnnadhanamElders ? (
             <>
-              <TextBar i={0}>45 elders</TextBar>
+              <TextBar i={0} highlight>
+                45 elders
+              </TextBar>
               <TextBar i={1}>served with care</TextBar>
             </>
           ) : (
             <>
-              <TextBar i={0}>25 native saplings</TextBar>
+              <TextBar i={0} highlight>
+                25 native saplings
+              </TextBar>
               <TextBar i={1}>planted</TextBar>
             </>
           )}
