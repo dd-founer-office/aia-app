@@ -198,6 +198,12 @@ const EXIT_RATIO = 0.25;
 const SWAP_MS = 320;
 const BAR_STAGGER_MS = 90;
 const ENTRY_SETTLED_MS = 2400;
+// The play button stays hidden until the whole collage animation (the entry
+// and all four swaps; the last swap starts at 6400ms) is done. Then its ring
+// fills over READ_MS -- the visitor's reading time -- and the page moves on
+// by itself when it completes (pressing it or scrolling moves on sooner).
+const ANIMATION_DONE_MS = 6400 + SWAP_MS + 80;
+const READ_MS = 5000;
 const EXIT_PAIR_STAGGER_MS = 100;
 const AIA_OUT_DELAY_MS = 850;
 const AIA_OUT_MS = 350;
@@ -261,22 +267,20 @@ const SNAPSHOT_CSS = `
   @keyframes aia-ai-in { from { scale: 0.5; opacity: 0; } to { scale: 1; opacity: 1; } }
   @keyframes aia-ai-out { from { scale: 1; opacity: 1; } to { scale: 0.5; opacity: 0; } }
 
-  /* The play button under the collage: a ring fills while the entry
-     assembles (ending exactly when the scroll gate opens), then the button
-     pulses gently and waits for the visitor. */
+  /* The play button under the collage: it appears only once the collage
+     animation is done, and its ring then fills slowly (the reading time).
+     When the ring completes the page advances on its own. */
   .aia-cta { opacity: 0; }
   .aia-panel[data-stage="play"] .aia-cta {
-    animation: aia-cta-in 300ms ease 300ms both, aia-cta-pulse 1.6s ease-in-out ${ENTRY_SETTLED_MS}ms infinite;
+    animation: aia-cta-in 300ms ease ${ANIMATION_DONE_MS}ms both;
   }
-  .aia-panel:is([data-stage="exit"], [data-stage="static"]) .aia-cta { opacity: 1; }
+  .aia-panel[data-stage="exit"] .aia-cta[data-shown="true"], .aia-panel[data-stage="static"] .aia-cta { opacity: 1; }
   .aia-panel[data-stage="play"] .aia-cta-ring-progress {
-    animation: aia-ring-fill ${ENTRY_SETTLED_MS - 300}ms linear 300ms both;
+    animation: aia-ring-fill ${READ_MS}ms linear ${ANIMATION_DONE_MS}ms both;
   }
-  .aia-panel:is([data-stage="exit"], [data-stage="static"]) .aia-cta-ring-progress { stroke-dashoffset: 0; }
-  .aia-panel[data-stage="exit"] .aia-cta-ring { opacity: 0; transition: opacity 200ms ease; }
+  .aia-panel[data-stage="exit"] .aia-cta-ring, .aia-panel[data-stage="static"] .aia-cta-ring { display: none; }
   @keyframes aia-cta-in { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
-  @keyframes aia-cta-pulse { 0%, 100% { scale: 1; } 50% { scale: 1.07; } }
-  @keyframes aia-ring-fill { from { stroke-dashoffset: 245.04; } to { stroke-dashoffset: 0; } }
+  @keyframes aia-ring-fill { from { stroke-dashoffset: 201.06; } to { stroke-dashoffset: 0; } }
 
   @media (prefers-reduced-motion: reduce) { .aia-snap *, .aia-panel * { animation: none !important; } }
 `;
@@ -525,9 +529,12 @@ export function ActSnapshot({ actId }: { actId: string }) {
   const settledRef = useRef(false);
   const lockedRef = useRef(false);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const showTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const advanceRef = useRef<() => void>(() => {});
   const ctaRef = useRef<HTMLButtonElement>(null);
-  // The play button is only pressable once the entry has settled.
+  // The play button is visible and pressable once the collage animation is
+  // done (see ANIMATION_DONE_MS).
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -538,6 +545,11 @@ export function ActSnapshot({ actId }: { actId: string }) {
     function go(next: Stage) {
       stageRef.current = next;
       setStage(next);
+    }
+    function clearAllTimers() {
+      clearTimeout(settleTimerRef.current);
+      clearTimeout(showTimerRef.current);
+      clearTimeout(autoTimerRef.current);
     }
 
     // Play only once (almost) the whole panel is on screen, so the full
@@ -563,13 +575,20 @@ export function ActSnapshot({ actId }: { actId: string }) {
           go("play");
           settledRef.current = false;
           setReady(false);
-          clearTimeout(settleTimerRef.current);
+          clearAllTimers();
           settleTimerRef.current = setTimeout(() => {
             settledRef.current = true;
-            setReady(true);
           }, ENTRY_SETTLED_MS);
+          showTimerRef.current = setTimeout(
+            () => setReady(true),
+            ANIMATION_DONE_MS,
+          );
+          autoTimerRef.current = setTimeout(
+            () => advanceRef.current(),
+            ANIMATION_DONE_MS + READ_MS,
+          );
         } else if (ratio < EXIT_RATIO && stageRef.current !== "idle") {
-          clearTimeout(settleTimerRef.current);
+          clearAllTimers();
           settledRef.current = false;
           setReady(false);
           go("idle");
@@ -600,6 +619,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
         lockedRef.current
       )
         return;
+      clearAllTimers();
       go("exit");
       setLocked(true);
       const cta = ctaRef.current;
@@ -640,7 +660,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
 
     return () => {
       observer.disconnect();
-      clearTimeout(settleTimerRef.current);
+      clearAllTimers();
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
@@ -799,44 +819,47 @@ export function ActSnapshot({ actId }: { actId: string }) {
             else advanceRef.current();
           }}
           aria-label="Play the testimonial video"
-          className="aia-cta pointer-events-auto relative flex h-16 w-16 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
+          data-shown={ready ? "true" : "false"}
+          // Looks exactly like the video's own play button (52px, dark teal,
+          // translucent white border, white icon), so it can fly onto it.
+          className="aia-cta pointer-events-auto relative flex h-[52px] w-[52px] items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
           style={{
-            background: MINT,
-            color: TEAL,
-            border: "2px solid transparent",
+            background: TEAL,
+            color: "#FFFFFF",
+            border: "2px solid rgba(255, 255, 255, 0.55)",
             outlineColor: MINT,
           }}
         >
           <svg
             className="aia-cta-ring pointer-events-none absolute"
-            style={{ left: -11, top: -11, width: 82, height: 82 }}
-            viewBox="0 0 82 82"
+            style={{ left: -10, top: -10, width: 68, height: 68 }}
+            viewBox="0 0 68 68"
             fill="none"
             aria-hidden="true"
           >
             <circle
-              cx="41"
-              cy="41"
-              r="39"
+              cx="34"
+              cy="34"
+              r="32"
               stroke={MINT}
               strokeOpacity="0.25"
               strokeWidth="3"
             />
             <circle
               className="aia-cta-ring-progress"
-              cx="41"
-              cy="41"
-              r="39"
+              cx="34"
+              cy="34"
+              r="32"
               stroke={MINT}
               strokeWidth="3"
               strokeLinecap="round"
-              strokeDasharray="245.04"
-              strokeDashoffset="245.04"
-              transform="rotate(-90 41 41)"
+              strokeDasharray="201.06"
+              strokeDashoffset="201.06"
+              transform="rotate(-90 34 34)"
             />
           </svg>
           <Play
-            size={24}
+            size={20}
             color="currentColor"
             fill="currentColor"
             style={{ marginLeft: 3 }}
