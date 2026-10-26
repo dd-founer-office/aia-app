@@ -1,6 +1,7 @@
 import localFont from "next/font/local";
 import { ActSnapshot } from "@/components/acts/ActSnapshot";
 import { ScrollCue } from "@/components/acts/ScrollCue";
+import { HeroFit } from "@/components/acts/HeroFit";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -22,7 +23,18 @@ const MINT = "#68FFAD";
 
 function ActHeroImage({ src, alt, objectPosition }: { src: string | null; alt: string; objectPosition: string }) {
   return (
-    <div className="w-full overflow-hidden" style={{ aspectRatio: "1 / 1" }}>
+    <div
+      className="w-full overflow-hidden"
+      // Square at minimum; grows (up to 4:5) when the phone is tall enough
+      // that photo + text would otherwise leave dead space in the first
+      // screen. 488px = page max-w-md (448) + two -mx-5 bleeds; 28px = the
+      // panel's overlap onto the photo. --hero-text-h is set by HeroFit
+      // (300px is only the pre-hydration estimate).
+      style={{
+        height:
+          "clamp(min(100vw, 488px), calc(100svh - var(--hero-text-h, 300px) + 28px), calc(min(100vw, 488px) * 1.25))",
+      }}
+    >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -53,14 +65,7 @@ function ActHeroContent({
   showEyebrow: boolean;
 }) {
   return (
-    <div
-      className="flex flex-col gap-2.5 px-5 pb-[76px] pt-6"
-      // The photo (square, full hero width) + this block fill exactly one
-      // small-viewport screen, so the snapshot below only appears on
-      // scroll. 488px = the page's max-w-md (448) + its two -mx-5 bleeds;
-      // 28px = the panel's overlap onto the photo (-mt-7 below).
-      style={{ minHeight: "calc(100svh - min(100vw, 488px) + 28px)" }}
-    >
+    <div data-hero-text className="flex flex-col gap-2.5 px-5 pb-16 pt-6">
       {showEyebrow && (
         <span
           className={`${inter.className} uppercase`}
@@ -127,6 +132,7 @@ export function ActDetailHero({
 }) {
   return (
     <div className="-mx-5 -mt-6">
+      <HeroFit />
       <ScrollCue targetId="act-snapshot" />
       {/* The photo is pinned (sticky) at the top of the viewport, and the
           teal panel -- pulled up over its bottom edge by -mt-7 -- scrolls

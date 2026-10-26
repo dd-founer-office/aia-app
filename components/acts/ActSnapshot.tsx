@@ -129,6 +129,8 @@ function readReducedMotionOnServer(): boolean {
   return false;
 }
 
+const ENTER_RATIO = 0.9;
+const EXIT_RATIO = 0.25;
 const PAIR_COUNT = 4;
 const STAGGER_MS = 90;
 const DURATION_MS = 650;
@@ -305,9 +307,21 @@ export function ActSnapshot({ actId }: { actId: string }) {
     if (reducedMotion) return;
     const node = containerRef.current;
     if (!node) return;
-    const observer = new IntersectionObserver(([entry]) => setIntersecting(entry.isIntersecting), {
-      threshold: 0.25,
-    });
+    // Play only once (almost) the whole collage is on screen, and reverse
+    // only once it has mostly left -- two thresholds, so it doesn't flicker
+    // around a single boundary. On a viewport shorter than the collage the
+    // full ratio can't be reached, so the entry bar scales down to what is
+    // reachable (never below half).
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const reachable = Math.min(1, window.innerHeight / entry.boundingClientRect.height);
+        const enterAt = Math.max(0.5, Math.min(ENTER_RATIO, reachable * ENTER_RATIO));
+        setIntersecting((was) =>
+          entry.intersectionRatio >= enterAt ? true : entry.intersectionRatio < EXIT_RATIO ? false : was
+        );
+      },
+      { threshold: Array.from({ length: 21 }, (_, i) => i / 20) }
+    );
     observer.observe(node);
     return () => observer.disconnect();
   }, [reducedMotion]);
