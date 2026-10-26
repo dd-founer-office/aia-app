@@ -7,9 +7,11 @@ import {
   Calendar,
   MapPin,
   BadgeCheck,
+  Play,
   Sprout,
   UtensilsCrossed,
 } from "lucide-react";
+import { playTestimonialTransition } from "@/components/acts/testimonialTransition";
 import { ANNADHANAM_ELDERS_ACT_ID } from "@/lib/act-content-overrides";
 
 // Self-hosted rather than next/font/google -- see app/layout.tsx's comment
@@ -199,9 +201,9 @@ const ENTRY_SETTLED_MS = 2400;
 const EXIT_PAIR_STAGGER_MS = 100;
 const AIA_OUT_DELAY_MS = 850;
 const AIA_OUT_MS = 350;
-// How long the exit blocks further downward scrolling: its own length plus
-// a beat, which also absorbs trailing trackpad momentum.
-const EXIT_LOCK_MS = AIA_OUT_DELAY_MS + AIA_OUT_MS + 250;
+// When the exit (boxes collapsing, then the AiA tile leaving) has fully
+// played; the transition into the testimonial starts right after.
+const EXIT_DONE_MS = AIA_OUT_DELAY_MS + AIA_OUT_MS + 50;
 
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_IN_OUT = "cubic-bezier(0.65, 0, 0.35, 1)";
@@ -259,7 +261,24 @@ const SNAPSHOT_CSS = `
   @keyframes aia-ai-in { from { scale: 0.5; opacity: 0; } to { scale: 1; opacity: 1; } }
   @keyframes aia-ai-out { from { scale: 1; opacity: 1; } to { scale: 0.5; opacity: 0; } }
 
-  @media (prefers-reduced-motion: reduce) { .aia-snap * { animation: none !important; } }
+  /* The play button under the collage: a ring fills while the entry
+     assembles (ending exactly when the scroll gate opens), then the button
+     pulses gently and waits for the visitor. */
+  .aia-cta { opacity: 0; }
+  .aia-panel[data-stage="play"] .aia-cta {
+    animation: aia-cta-in 300ms ease 300ms both, aia-cta-pulse 1.6s ease-in-out ${ENTRY_SETTLED_MS}ms infinite;
+  }
+  .aia-panel:is([data-stage="exit"], [data-stage="static"]) .aia-cta { opacity: 1; }
+  .aia-panel[data-stage="play"] .aia-cta-ring-progress {
+    animation: aia-ring-fill ${ENTRY_SETTLED_MS - 300}ms linear 300ms both;
+  }
+  .aia-panel:is([data-stage="exit"], [data-stage="static"]) .aia-cta-ring-progress { stroke-dashoffset: 0; }
+  .aia-panel[data-stage="exit"] .aia-cta-ring { opacity: 0; transition: opacity 200ms ease; }
+  @keyframes aia-cta-in { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
+  @keyframes aia-cta-pulse { 0%, 100% { scale: 1; } 50% { scale: 1.07; } }
+  @keyframes aia-ring-fill { from { stroke-dashoffset: 245.04; } to { stroke-dashoffset: 0; } }
+
+  @media (prefers-reduced-motion: reduce) { .aia-snap *, .aia-panel * { animation: none !important; } }
 `;
 
 type IconComponent = ComponentType<{
@@ -504,8 +523,12 @@ export function ActSnapshot({ actId }: { actId: string }) {
   const stageRef = useRef<Stage>("idle");
   const panelFullRef = useRef(false);
   const settledRef = useRef(false);
-  const lockUntilRef = useRef(0);
+  const lockedRef = useRef(false);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const advanceRef = useRef<() => void>(() => {});
+  const ctaRef = useRef<HTMLButtonElement>(null);
+  // The play button is only pressable once the entry has settled.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (reducedMotion) return;
@@ -539,13 +562,16 @@ export function ActSnapshot({ actId }: { actId: string }) {
         if (ratio >= enterAt && stageRef.current === "idle") {
           go("play");
           settledRef.current = false;
+          setReady(false);
           clearTimeout(settleTimerRef.current);
           settleTimerRef.current = setTimeout(() => {
             settledRef.current = true;
+            setReady(true);
           }, ENTRY_SETTLED_MS);
         } else if (ratio < EXIT_RATIO && stageRef.current !== "idle") {
           clearTimeout(settleTimerRef.current);
           settledRef.current = false;
+          setReady(false);
           go("idle");
         }
       },
@@ -553,34 +579,60 @@ export function ActSnapshot({ actId }: { actId: string }) {
     );
     observer.observe(node);
 
-    // "Next action" = the visitor's first attempt to scroll on past the
-    // panel. While the entry is still assembling it is held back; once the
-    // collage has settled, that first gesture is swallowed and plays the
-    // exit instead, and further downward scrolling stays blocked until the
-    // exit has finished. Upward scrolling is never touched.
-    function onDownwardIntent(event: Event) {
-      if (!panelFullRef.current) return;
-      const now = performance.now();
-      if (stageRef.current === "play") {
+    // One action carries the visitor all the way through: the exit plays
+    // (boxes collapse into the AiA tile, the tile leaves), then the teal
+    // screen shrinks into the testimonial video's frame (see
+    // testimonialTransition.ts). The action is either pressing the play
+    // button or the first attempt to scroll on past the panel; both are held
+    // back until the entry has settled. While the whole sequence runs, every
+    // wheel/touch gesture is swallowed (and the hero pager is told to stand
+    // down via the data-aia-lock flag). Upward scrolling outside that window
+    // is never touched.
+    function setLocked(locked: boolean) {
+      lockedRef.current = locked;
+      if (locked) document.documentElement.dataset.aiaLock = "1";
+      else delete document.documentElement.dataset.aiaLock;
+    }
+    function advance() {
+      if (
+        stageRef.current !== "play" ||
+        !settledRef.current ||
+        lockedRef.current
+      )
+        return;
+      go("exit");
+      setLocked(true);
+      const cta = ctaRef.current;
+      window.setTimeout(() => {
+        void playTestimonialTransition(cta).finally(() => setLocked(false));
+      }, EXIT_DONE_MS);
+    }
+    advanceRef.current = advance;
+    function onGesture(event: Event, direction: "down" | "up") {
+      if (lockedRef.current) {
         if (event.cancelable) event.preventDefault();
-        if (settledRef.current && now >= lockUntilRef.current) {
-          go("exit");
-          lockUntilRef.current = now + EXIT_LOCK_MS;
-        }
-      } else if (stageRef.current === "exit" && now < lockUntilRef.current) {
-        if (event.cancelable) event.preventDefault();
+        return;
       }
+      if (
+        direction !== "down" ||
+        !panelFullRef.current ||
+        stageRef.current !== "play"
+      )
+        return;
+      if (event.cancelable) event.preventDefault();
+      if (settledRef.current) advance();
     }
     function onWheel(event: WheelEvent) {
-      if (event.deltaY > 0) onDownwardIntent(event);
+      if (event.deltaY !== 0)
+        onGesture(event, event.deltaY > 0 ? "down" : "up");
     }
     let touchStartY = 0;
     function onTouchStart(event: TouchEvent) {
       touchStartY = event.touches[0]?.clientY ?? 0;
     }
     function onTouchMove(event: TouchEvent) {
-      const y = event.touches[0]?.clientY ?? touchStartY;
-      if (touchStartY - y > 6) onDownwardIntent(event);
+      const delta = touchStartY - (event.touches[0]?.clientY ?? touchStartY);
+      if (Math.abs(delta) > 6) onGesture(event, delta > 0 ? "down" : "up");
     }
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -592,6 +644,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
+      setLocked(false);
     };
   }, [reducedMotion]);
 
@@ -599,7 +652,8 @@ export function ActSnapshot({ actId }: { actId: string }) {
     // min-h-[100svh] + centered: the collage owns one whole screen.
     <div
       ref={panelRef}
-      className="flex min-h-[100svh] items-center px-[30px] py-[42px]"
+      className="aia-panel relative flex min-h-[100svh] items-center px-[30px] py-[42px]"
+      data-stage={shownStage}
     >
       <style>{SNAPSHOT_CSS}</style>
       <div
@@ -727,6 +781,67 @@ export function ActSnapshot({ actId }: { actId: string }) {
             <TextBar i={0}>Iyal Impact Foundation</TextBar>
           )}
         </DetailBox>
+      </div>
+
+      {/* The play button: a ring fills while the collage assembles, then it
+          pulses and waits for the visitor. Pressing it does exactly what
+          scrolling does (see advance above). */}
+      <div
+        className="pointer-events-none absolute inset-x-0 flex justify-center"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 36px)" }}
+      >
+        <button
+          ref={ctaRef}
+          type="button"
+          disabled={!ready && !reducedMotion}
+          onClick={() => {
+            if (reducedMotion) void playTestimonialTransition(null);
+            else advanceRef.current();
+          }}
+          aria-label="Play the testimonial video"
+          className="aia-cta pointer-events-auto relative flex h-16 w-16 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
+          style={{
+            background: MINT,
+            color: TEAL,
+            border: "2px solid transparent",
+            outlineColor: MINT,
+          }}
+        >
+          <svg
+            className="aia-cta-ring pointer-events-none absolute"
+            style={{ left: -11, top: -11, width: 82, height: 82 }}
+            viewBox="0 0 82 82"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="41"
+              cy="41"
+              r="39"
+              stroke={MINT}
+              strokeOpacity="0.25"
+              strokeWidth="3"
+            />
+            <circle
+              className="aia-cta-ring-progress"
+              cx="41"
+              cy="41"
+              r="39"
+              stroke={MINT}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="245.04"
+              strokeDashoffset="245.04"
+              transform="rotate(-90 41 41)"
+            />
+          </svg>
+          <Play
+            size={24}
+            color="currentColor"
+            fill="currentColor"
+            style={{ marginLeft: 3 }}
+          />
+        </button>
       </div>
     </div>
   );

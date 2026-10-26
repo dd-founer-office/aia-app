@@ -26,7 +26,8 @@ export function HeroFit() {
     const text = root?.querySelector<HTMLElement>("[data-hero-text]");
     if (!root || !text) return;
 
-    const publish = () => root.style.setProperty("--hero-text-h", `${text.offsetHeight}px`);
+    const publish = () =>
+      root.style.setProperty("--hero-text-h", `${text.offsetHeight}px`);
     publish();
     const observer = new ResizeObserver(publish);
     observer.observe(text);
@@ -34,7 +35,13 @@ export function HeroFit() {
     let frame = 0;
     const fade = () => {
       frame = 0;
-      const progress = Math.min(1, Math.max(0, window.scrollY / (window.innerHeight * FADE_VIEWPORT_FRACTION)));
+      const progress = Math.min(
+        1,
+        Math.max(
+          0,
+          window.scrollY / (window.innerHeight * FADE_VIEWPORT_FRACTION),
+        ),
+      );
       text.style.opacity = String(1 - progress);
     };
     const onScroll = () => {
@@ -53,12 +60,19 @@ export function HeroFit() {
     function pageTo(top: number, event: Event) {
       if (event.cancelable) event.preventDefault();
       pagingUntil = performance.now() + PAGING_LOCK_MS;
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const reduced = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
       window.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
     }
     function onIntent(direction: "down" | "up", event: Event) {
       const panel = document.getElementById(PANEL_ID);
       if (!panel) return;
+      // The collage -> testimonial sequence owns scrolling while it runs.
+      if (document.documentElement.dataset.aiaLock) {
+        if (event.cancelable) event.preventDefault();
+        return;
+      }
       if (performance.now() < pagingUntil) {
         if (event.cancelable) event.preventDefault();
         return;
@@ -66,7 +80,8 @@ export function HeroFit() {
       const panelTop = panel.getBoundingClientRect().top + window.scrollY;
       const y = window.scrollY;
       if (direction === "down" && y < panelTop - 2) pageTo(panelTop, event);
-      else if (direction === "up" && y > 2 && y <= panelTop + 2) pageTo(0, event);
+      else if (direction === "up" && y > 2 && y <= panelTop + 2)
+        pageTo(0, event);
     }
     const onWheel = (event: WheelEvent) => {
       if (event.deltaY !== 0) onIntent(event.deltaY > 0 ? "down" : "up", event);

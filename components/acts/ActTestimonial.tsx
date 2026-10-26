@@ -12,7 +12,11 @@ const calSans = localFont({
 
 // Self-hosted rather than next/font/google -- see app/layout.tsx's comment
 // for why (intermittent Vercel build failure fetching from Google Fonts).
-const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
+const inter = localFont({
+  src: "../../app/fonts/InterVF.woff2",
+  weight: "100 900",
+  display: "swap",
+});
 
 // Reuses ActDetailHero/ActSnapshot's exact teal/mint pair -- pixel-sampled
 // directly from the Abyssale reference screenshot (its button background
@@ -41,13 +45,26 @@ interface LockableScreenOrientation {
   unlock?: () => void;
 }
 
+// Hooks for the collage -> testimonial transition (see
+// testimonialTransition.ts). The `data-reveal` attribute is only ever set
+// while that transition runs, so on every other page these rules are inert.
+const REVEAL_CSS = `
+  .aia-tm-head, .aia-tm-rest { transition: opacity 500ms ease, translate 600ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .aia-tm-play { transition: opacity 120ms ease; }
+  #act-testimonial[data-reveal="hidden"] .aia-tm-head { opacity: 0; translate: 0 16px; }
+  #act-testimonial:is([data-reveal="hidden"], [data-reveal="heading"]) .aia-tm-play { opacity: 0; }
+  #act-testimonial:is([data-reveal="hidden"], [data-reveal="heading"], [data-reveal="video"]) .aia-tm-rest { opacity: 0; translate: 0 16px; }
+  @media (prefers-reduced-motion: reduce) { .aia-tm-head, .aia-tm-rest, .aia-tm-play { transition: none; } }
+`;
+
 function PlayButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="Play video"
-      className="absolute flex items-center justify-center rounded-full"
+      data-tm-play
+      className="aia-tm-play absolute flex items-center justify-center rounded-full"
       style={{
         right: 14,
         bottom: 14,
@@ -57,7 +74,12 @@ function PlayButton({ onClick }: { onClick: () => void }) {
         border: "2px solid rgba(255, 255, 255, 0.55)",
       }}
     >
-      <Play size={20} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 3 }} />
+      <Play
+        size={20}
+        color="#FFFFFF"
+        fill="#FFFFFF"
+        style={{ marginLeft: 3 }}
+      />
     </button>
   );
 }
@@ -86,7 +108,8 @@ export function ActTestimonial() {
   useEffect(() => {
     function onFullscreenChange() {
       if (document.fullscreenElement) return;
-      const orientation = screen.orientation as unknown as LockableScreenOrientation;
+      const orientation =
+        screen.orientation as unknown as LockableScreenOrientation;
       try {
         orientation.unlock?.();
       } catch {
@@ -94,7 +117,8 @@ export function ActTestimonial() {
       }
     }
     document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
 
   function playInline() {
@@ -134,7 +158,8 @@ export function ActTestimonial() {
 
     playInline();
 
-    const orientation = screen.orientation as unknown as LockableScreenOrientation;
+    const orientation =
+      screen.orientation as unknown as LockableScreenOrientation;
     try {
       await orientation.lock?.("landscape");
     } catch {
@@ -146,10 +171,12 @@ export function ActTestimonial() {
 
   return (
     <section
+      id="act-testimonial"
       className="-mx-5 flex flex-col items-center gap-8 px-5 py-10 text-center"
       style={{ background: "#FFFFFF" }}
     >
-      <div className="flex flex-col gap-2.5 px-2">
+      <style>{REVEAL_CSS}</style>
+      <div className="aia-tm-head flex flex-col gap-2.5 px-2">
         <h2
           className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
           style={{ color: TEAL, letterSpacing: "-0.3px" }}
@@ -160,11 +187,15 @@ export function ActTestimonial() {
           className={`${inter.className} m-0 mx-auto max-w-[280px] text-[14px] leading-[1.55]`}
           style={{ color: "rgba(10, 54, 58, 0.78)" }}
         >
-          Listen to the people who planted these trees share what this act means to them.
+          Hear from the elders who shared this meal.
         </p>
       </div>
 
-      <div className="relative w-full overflow-hidden rounded-[16px]" style={{ aspectRatio: "16 / 9" }}>
+      <div
+        data-tm-video
+        className="relative w-full overflow-hidden rounded-[16px]"
+        style={{ aspectRatio: "16 / 9" }}
+      >
         <video
           ref={videoRef}
           className="h-full w-full bg-black object-cover"
@@ -186,7 +217,7 @@ export function ActTestimonial() {
           unreadably narrow column at mobile widths, so it stacks below
           sm and sits side-by-side from sm up, per the brief's own
           "stack intelligently on narrow mobile" allowance. */}
-      <div className="flex w-full flex-col items-start gap-5 text-left sm:flex-row sm:items-start sm:justify-between">
+      <div className="aia-tm-rest flex w-full flex-col items-start gap-5 text-left sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2.5">
           {/* Real quote, in the speakers' own words -- Tamil, so it's set
               in the app's existing Noto Sans Tamil (--font-tamil-sans,
@@ -196,11 +227,18 @@ export function ActTestimonial() {
             className="m-0 text-[17px] font-bold leading-[1.5]"
             style={{ color: TEAL, fontFamily: "var(--font-tamil-sans)" }}
           >
-            &ldquo;வாழ்வில் எல்லா நலமும் வளமும் பெற்று பல்லாண்டு காலம் வாழவேண்டும்&rdquo;
+            &ldquo;வாழ்வில் எல்லா நலமும் வளமும் பெற்று பல்லாண்டு காலம்
+            வாழவேண்டும்&rdquo;
           </p>
-          <p className={`${inter.className} m-0 mt-1 text-[12px] font-semibold`} style={{ color: TEAL }}>
+          <p
+            className={`${inter.className} m-0 mt-1 text-[12px] font-semibold`}
+            style={{ color: TEAL }}
+          >
             Inmates
-            <span className={`${inter.className} block font-normal`} style={{ color: "rgba(10, 54, 58, 0.55)" }}>
+            <span
+              className={`${inter.className} block font-normal`}
+              style={{ color: "rgba(10, 54, 58, 0.55)" }}
+            >
               Annai Aravindar Karunai Illam
             </span>
           </p>
