@@ -25,26 +25,11 @@ const inter = localFont({
 // the digit), so this section's colors are both "matching the reference"
 // and "an existing AiA token" at once, not a coincidence to reconcile.
 const TEAL = "#0A363A";
-const MINT = "#68FFAD";
 
 // A real 16:9 frame from the real video below (see poster comment) --
 // never a generated thumbnail.
 const VIDEO_SRC = "/mock/tree-planting-testimonial.mp4";
 const POSTER_SRC = "/mock/tree-planting-testimonial-poster.jpg";
-
-// Vendor-prefixed fullscreen APIs aren't in lib.dom.d.ts.
-interface FullscreenVideoElement extends HTMLVideoElement {
-  webkitEnterFullscreen?: () => void;
-  webkitRequestFullscreen?: () => void;
-}
-
-// lib.dom.d.ts's own ScreenOrientation type leaves `lock` effectively
-// uncallable (typed as `unknown`) -- this is the real (Android-Chrome-only)
-// shape of the method we actually call below.
-interface LockableScreenOrientation {
-  lock?: (orientation: "landscape" | "portrait") => Promise<void>;
-  unlock?: () => void;
-}
 
 // Hooks for the collage -> testimonial transition (see
 // testimonialTransition.ts). The `data-reveal` attribute is only ever set
@@ -140,7 +125,7 @@ function PlayButton({
  * used before this content was supplied.
  */
 export function ActTestimonial() {
-  const videoRef = useRef<FullscreenVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   // True while the play button's autoplay loader is running.
@@ -184,22 +169,6 @@ export function ActTestimonial() {
     return () => clearTimeout(timer);
   }, [armed]);
 
-  useEffect(() => {
-    function onFullscreenChange() {
-      if (document.fullscreenElement) return;
-      const orientation =
-        screen.orientation as unknown as LockableScreenOrientation;
-      try {
-        orientation.unlock?.();
-      } catch {
-        // Nothing to unlock on browsers that never locked it -- ignore.
-      }
-    }
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", onFullscreenChange);
-  }, []);
-
   function playInline() {
     const video = videoRef.current;
     if (!video) return;
@@ -208,44 +177,6 @@ export function ActTestimonial() {
       // some browsers -- this IS a direct tap gesture, so this is just a
       // defensive no-op for the rare rejection.
     });
-  }
-
-  async function viewFullScreen() {
-    const video = videoRef.current;
-    if (!video) return;
-
-    // iOS Safari: <video> has its own native fullscreen player that
-    // handles landscape rotation itself -- the standard Fullscreen API
-    // isn't available for video on iOS, so this is the real entry point
-    // there, not a fallback.
-    if (typeof video.webkitEnterFullscreen === "function") {
-      video.webkitEnterFullscreen();
-      playInline();
-      return;
-    }
-
-    try {
-      if (video.requestFullscreen) {
-        await video.requestFullscreen();
-      } else if (video.webkitRequestFullscreen) {
-        video.webkitRequestFullscreen();
-      }
-    } catch {
-      // Fullscreen request rejected (unsupported, blocked, etc.) -- the
-      // video still plays inline below, just not full-screen.
-    }
-
-    playInline();
-
-    const orientation =
-      screen.orientation as unknown as LockableScreenOrientation;
-    try {
-      await orientation.lock?.("landscape");
-    } catch {
-      // Orientation locking is Android-Chrome-in-fullscreen only --
-      // desktop and unsupported browsers reject this silently, which
-      // is expected, not an error to surface.
-    }
   }
 
   return (
@@ -295,12 +226,7 @@ export function ActTestimonial() {
         {!isPlaying && <PlayButton onClick={playInline} armed={armed} />}
       </div>
 
-      {/* Reference's structure is quote-left / button-right in one row,
-          both top-aligned; that row would squeeze the quote into an
-          unreadably narrow column at mobile widths, so it stacks below
-          sm and sits side-by-side from sm up, per the brief's own
-          "stack intelligently on narrow mobile" allowance. */}
-      <div className="aia-tm-rest flex w-full flex-col items-start gap-5 text-left sm:flex-row sm:items-start sm:justify-between">
+      <div className="aia-tm-rest flex w-full flex-col items-start gap-2.5 text-left">
         <div className="flex flex-col gap-2.5">
           {/* Real quote, in the speakers' own words -- Tamil, so it's set
               in the app's existing Noto Sans Tamil (--font-tamil-sans,
@@ -326,17 +252,6 @@ export function ActTestimonial() {
             </span>
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={viewFullScreen}
-          className={`${inter.className} shrink-0 self-start rounded-[16px] px-6 py-4 text-[15px] font-bold leading-[1.25]`}
-          style={{ background: TEAL, color: MINT }}
-        >
-          Full
-          <br />
-          Screen
-        </button>
       </div>
     </section>
   );
