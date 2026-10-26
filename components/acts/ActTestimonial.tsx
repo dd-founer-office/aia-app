@@ -169,6 +169,7 @@ export function ActTestimonial() {
           ref={videoRef}
           className="h-full w-full bg-black object-cover"
           poster={POSTER_SRC}
+          preload="none"
           playsInline
           controls={isPlaying}
           onPlay={() => setIsPlaying(true)}
