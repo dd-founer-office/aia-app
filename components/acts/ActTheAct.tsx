@@ -241,7 +241,7 @@ export function ActTheAct({ actId }: { actId: string }) {
   return (
     <section className="rounded-[16px] px-5 py-6" style={{ background: TEAL }}>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2.5 text-left">
+        <div className="flex flex-col gap-2.5 text-center">
           <h2
             className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
             style={{ color: MINT, letterSpacing: "-0.3px" }}
