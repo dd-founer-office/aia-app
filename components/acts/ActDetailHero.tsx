@@ -81,7 +81,7 @@ function renderTitle(title: string, word?: string) {
 const HIGHLIGHT_CSS = `
   .aia-hero-highlight { position: relative; isolation: isolate; display: inline-block; color: #FFFFFF; padding: 0 0.1em; margin: 0 0.02em; }
   .aia-hero-highlight::before { content: ""; position: absolute; inset: 0.04em 0; z-index: -1; background: rgba(255, 255, 255, 0.1); animation: aia-hero-box-in 600ms cubic-bezier(0.22, 1, 0.36, 1) 500ms both; transform-origin: left center; }
-  .aia-hero-handle { position: absolute; width: 8px; height: 8px; background: ${MINT}; animation: aia-hero-handle-in 400ms ease 900ms both; }
+  .aia-hero-handle { position: absolute; width: 8px; height: 8px; border-radius: 2px; background: ${MINT}; animation: aia-hero-handle-in 400ms ease 900ms both; }
   @keyframes aia-hero-box-in { from { opacity: 0; transform: scaleX(0.4); } to { opacity: 1; transform: scaleX(1); } }
   @keyframes aia-hero-handle-in { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: scale(1); } }
   @media (prefers-reduced-motion: reduce) { .aia-hero-highlight::before, .aia-hero-handle { animation: none; } }

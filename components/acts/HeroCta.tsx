@@ -23,6 +23,11 @@ export function HeroCta({ label, targetId }: { label: string; targetId: string }
   }
 
   return (
+    <>
+      <style>{`
+        @keyframes aia-cta-arrow-pulse { 0%, 100% { transform: translateY(-1px); opacity: 0.85; } 50% { transform: translateY(3px); opacity: 1; } }
+        @media (prefers-reduced-motion: reduce) { .aia-cta-arrow { animation: none !important; } }
+      `}</style>
     <button
       type="button"
       onClick={scrollToTarget}
@@ -35,8 +40,15 @@ export function HeroCta({ label, targetId }: { label: string; targetId: string }
         className="flex h-[22px] w-[22px] items-center justify-center rounded-[6px]"
         style={{ background: TEAL }}
       >
-        <ArrowDown size={14} strokeWidth={3} color="#FFFFFF" />
+        <ArrowDown
+          size={14}
+          strokeWidth={3}
+          color="#FFFFFF"
+          className="aia-cta-arrow"
+          style={{ animation: "aia-cta-arrow-pulse 1.4s ease-in-out infinite" }}
+        />
       </span>
     </button>
+    </>
   );
 }
