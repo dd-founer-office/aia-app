@@ -132,56 +132,76 @@ function readReducedMotionOnServer(): boolean {
 const ENTER_RATIO = 0.9;
 const EXIT_RATIO = 0.25;
 const PAIR_COUNT = 4;
-// Paced to the reference video: the AiA tile lands first, then the four
-// pairs follow one after another (~2s end to end); on exit the pairs go
-// in reverse and the AiA tile leaves last.
-const CENTER_ENTER_DELAY_MS = 0;
+// Entry is paced to the reference video: the four pairs pop in one after
+// another (~1.9s end to end, AiA tile already in place). Exit is a
+// separate, deliberate beat: once the entry has settled the boxes HOLD,
+// and on the visitor's next action they all collapse back into the AiA
+// tile (see the phase machine in ActSnapshot).
 const PAIRS_START_MS = 350;
 const PAIR_ENTER_STAGGER_MS = 250;
-const PAIR_EXIT_STAGGER_MS = 140;
-const CENTER_EXIT_DELAY_MS = 500;
 const DURATION_MS = 800;
+const SETTLE_MS = PAIRS_START_MS + (PAIR_COUNT - 1) * PAIR_ENTER_STAGGER_MS + DURATION_MS;
+const COLLAPSE_MS = 700;
+const COLLAPSE_STAGGER_MS = 50;
+// How long a collapse blocks further downward scrolling: its own length
+// plus a beat, which also absorbs trailing trackpad momentum.
+const COLLAPSE_LOCK_MS = (PAIR_COUNT - 1) * COLLAPSE_STAGGER_MS + COLLAPSE_MS + 350;
 // A calm, slightly snappy ease-out (no bounce/elastic) for the
 // "editorial, premium, precise" motion character.
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+const COLLAPSE_EASE = "cubic-bezier(0.65, 0, 0.35, 1)";
+
+// hidden: boxes waiting at their swapped slots, invisible (before the
+// panel is on screen). entered: the settled collage. collapsed: every box
+// has drawn back into the AiA tile, which stays on its own.
+type Phase = "hidden" | "entered" | "collapsed";
 
 interface Motion {
-  entered: boolean;
+  phase: Phase;
   reducedMotion: boolean;
   swap: { x: number; y: number };
+  collapse: { x: number; y: number };
   delayMs: number;
-  scale?: number;
 }
 
-// Same transition plays both ways: toggling `entered` from false->true
-// is the entrance, true->false is the exit, so the exit is always
-// exactly the entrance in reverse rather than a separate animation.
-// Start and end must use the SAME transform function (both translate()
-// or both scale()) -- CSS can't reliably interpolate between mismatched
-// transform functions, so a box either translates throughout (the pair
-// swap) or scales throughout (the center mark), never a mix of the two.
-function motionStyle({ entered, reducedMotion, swap, delayMs, scale }: Motion): CSSProperties {
+// Every state uses the same transform function list (translate + scale)
+// so CSS interpolates between any two of them.
+function motionStyle({ phase, reducedMotion, swap, collapse, delayMs }: Motion): CSSProperties {
   if (reducedMotion) return { transform: "none", opacity: 1 };
-  const transform =
-    scale !== undefined
-      ? `scale(${entered ? 1 : scale})`
-      : `translate(${entered ? 0 : swap.x}%, ${entered ? 0 : swap.y}%)`;
+  if (phase === "hidden") {
+    // Reset instantly (the panel is off screen whenever this applies).
+    return { transform: `translate(${swap.x}%, ${swap.y}%) scale(1)`, opacity: 0, transition: "none" };
+  }
+  if (phase === "entered") {
+    return {
+      transform: "translate(0%, 0%) scale(1)",
+      opacity: 1,
+      transition: `transform ${DURATION_MS}ms ${EASE} ${delayMs}ms, opacity ${DURATION_MS}ms ${EASE} ${delayMs}ms`,
+      willChange: "transform, opacity",
+    };
+  }
   return {
-    transform,
-    opacity: entered ? 1 : 0,
-    transition: `transform ${DURATION_MS}ms ${EASE} ${delayMs}ms, opacity ${DURATION_MS}ms ${EASE} ${delayMs}ms`,
+    transform: `translate(${collapse.x}%, ${collapse.y}%) scale(0.15)`,
+    opacity: 0,
+    transition: `transform ${COLLAPSE_MS}ms ${COLLAPSE_EASE} ${delayMs}ms, opacity ${COLLAPSE_MS}ms ${COLLAPSE_EASE} ${delayMs}ms`,
     willChange: "transform, opacity",
   };
 }
 
-// Pair index -> delay: ascending on entrance (0, 90, 180, 270ms) so the
-// pairs settle in sequence; the exact same indices but reversed on exit
-// (270, 180, 90, 0ms), so whichever pair *finished* entering last is
-// the *first* to leave -- a true last-in-first-out reversal, not just
-// the entrance played at random.
-function pairDelay(index: number, entered: boolean, reducedMotion: boolean): number {
+// Entrance delay ascends pair by pair; the collapse runs the pairs in the
+// reverse order (last pair in is first to draw back), nearly together.
+function pairDelay(index: number, phase: Phase, reducedMotion: boolean): number {
   if (reducedMotion) return 0;
-  return entered ? PAIRS_START_MS + index * PAIR_ENTER_STAGGER_MS : (PAIR_COUNT - 1 - index) * PAIR_EXIT_STAGGER_MS;
+  return phase === "collapsed" ? (PAIR_COUNT - 1 - index) * COLLAPSE_STAGGER_MS : PAIRS_START_MS + index * PAIR_ENTER_STAGGER_MS;
+}
+
+// Offset (as translate %, relative to the moving box's own size) that
+// carries a box's centre onto the AiA tile's centre.
+function collapseRatio(from: BoxSpec): { x: number; y: number } {
+  return {
+    x: ((CENTER.left + CENTER.width / 2 - (from.left + from.width / 2)) / from.width) * 100,
+    y: ((CENTER.top + CENTER.height / 2 - (from.top + from.height / 2)) / from.height) * 100,
+  };
 }
 
 type IconComponent = ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;
@@ -259,11 +279,11 @@ function SnapshotDetailBox({
   );
 }
 
-function SnapshotCenter({ motion }: { motion: Motion }) {
+function SnapshotCenter() {
   return (
     <div
       className="flex items-center justify-center"
-      style={{ ...boxStyle(CENTER), background: MINT, borderRadius: BOX_RADIUS, zIndex: 2, ...motionStyle(motion) }}
+      style={{ ...boxStyle(CENTER), background: MINT, borderRadius: BOX_RADIUS, zIndex: 2 }}
     >
       <span style={{ fontFamily: "var(--font-display), serif", fontWeight: 700, fontSize: "1.4em", color: TEAL }}>
         AiA
@@ -303,52 +323,110 @@ export function ActSnapshot({ actId }: { actId: string }) {
     readReducedMotionOnClient,
     readReducedMotionOnServer
   );
-  const [intersecting, setIntersecting] = useState(false);
-  // Under reduced motion the collage is just always "entered" -- no
-  // observer needed, and this keeps the setState call confined to the
-  // IntersectionObserver's own callback (the approved place for it),
-  // never called synchronously from an effect body.
-  const entered = reducedMotion || intersecting;
+  const [phase, setPhase] = useState<Phase>("hidden");
+  // Under reduced motion the collage is simply the settled static collage.
+  const shownPhase: Phase = reducedMotion ? "entered" : phase;
+
+  // Refs mirror the state for the observer and the gesture handlers, which
+  // outlive any one render.
+  const phaseRef = useRef<Phase>("hidden");
+  const panelFullRef = useRef(false);
+  const settledRef = useRef(false);
+  const lockUntilRef = useRef(0);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (reducedMotion) return;
     const node = panelRef.current;
     if (!node) return;
-    // The collage lives in a full-screen panel; play only once (almost)
-    // the whole panel is on screen, so the full screen always appears
-    // first, and reverse only once it has mostly left -- two thresholds, so
-    // it doesn't flicker around a single boundary. On a viewport shorter
-    // than the panel the full ratio can't be reached, so the entry bar
-    // scales down to what is reachable (never below half).
+
+    function go(next: Phase) {
+      phaseRef.current = next;
+      setPhase(next);
+    }
+
+    // The collage lives in a full-screen panel; the entry plays only once
+    // (almost) the whole panel is on screen, so the full screen always
+    // appears first. Leaving the panel (below EXIT_RATIO) resets it so the
+    // entry plays again on return -- two thresholds, no flicker. On a
+    // viewport shorter than the panel the full ratio can't be reached, so
+    // the entry bar scales down to what is reachable (never below half).
     const observer = new IntersectionObserver(
       ([entry]) => {
         const reachable = Math.min(1, window.innerHeight / entry.boundingClientRect.height);
         const enterAt = Math.max(0.5, Math.min(ENTER_RATIO, reachable * ENTER_RATIO));
-        setIntersecting((was) =>
-          entry.intersectionRatio >= enterAt ? true : entry.intersectionRatio < EXIT_RATIO ? false : was
-        );
+        const ratio = entry.intersectionRatio;
+        panelFullRef.current = ratio >= enterAt;
+
+        if (ratio >= enterAt && phaseRef.current === "hidden") {
+          go("entered");
+          settledRef.current = false;
+          clearTimeout(settleTimerRef.current);
+          settleTimerRef.current = setTimeout(() => {
+            settledRef.current = true;
+          }, SETTLE_MS);
+        } else if (ratio < EXIT_RATIO && phaseRef.current !== "hidden") {
+          clearTimeout(settleTimerRef.current);
+          settledRef.current = false;
+          go("hidden");
+        }
       },
       { threshold: Array.from({ length: 21 }, (_, i) => i / 20) }
     );
     observer.observe(node);
-    return () => observer.disconnect();
+
+    // "Next action" = the visitor's first attempt to scroll on past the
+    // panel. While the entry is still playing it is held back; once the
+    // collage has settled, that first gesture is swallowed and instead
+    // collapses every box into the AiA tile, and further downward scrolling
+    // stays blocked until the collapse has finished. Upward scrolling is
+    // never touched.
+    function onDownwardIntent(event: Event) {
+      if (!panelFullRef.current) return;
+      const now = performance.now();
+      if (phaseRef.current === "entered") {
+        if (event.cancelable) event.preventDefault();
+        if (settledRef.current && now >= lockUntilRef.current) {
+          go("collapsed");
+          lockUntilRef.current = now + COLLAPSE_LOCK_MS;
+        }
+      } else if (phaseRef.current === "collapsed" && now < lockUntilRef.current) {
+        if (event.cancelable) event.preventDefault();
+      }
+    }
+    function onWheel(event: WheelEvent) {
+      if (event.deltaY > 0) onDownwardIntent(event);
+    }
+    let touchStartY = 0;
+    function onTouchStart(event: TouchEvent) {
+      touchStartY = event.touches[0]?.clientY ?? 0;
+    }
+    function onTouchMove(event: TouchEvent) {
+      const y = event.touches[0]?.clientY ?? touchStartY;
+      if (touchStartY - y > 6) onDownwardIntent(event);
+    }
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(settleTimerRef.current);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+    };
   }, [reducedMotion]);
 
-  function pairMotion(index: number, swap: { x: number; y: number }): Motion {
-    return { entered, reducedMotion, swap, delayMs: pairDelay(index, entered, reducedMotion) };
+  function pairMotion(index: number, swap: { x: number; y: number }, box: BoxSpec): Motion {
+    return {
+      phase: shownPhase,
+      reducedMotion,
+      swap,
+      collapse: collapseRatio(box),
+      delayMs: pairDelay(index, shownPhase, reducedMotion),
+    };
   }
-
-  // The center mark leads: it settles in first, before any pair, and on
-  // exit it's the last thing to go -- a subtle scale
-  // (never a translate, it doesn't have a "swap" partner) keeps it
-  // "calm" rather than a dramatic pop.
-  const centerMotion: Motion = {
-    entered,
-    reducedMotion,
-    swap: { x: 0, y: 0 },
-    delayMs: reducedMotion ? 0 : entered ? CENTER_ENTER_DELAY_MS : CENTER_EXIT_DELAY_MS,
-    scale: entered ? 1 : 0.92,
-  };
 
   return (
     // Outer padding is 1.5x the original px-5/pb-7/pt-1 (20/28/4px), per
@@ -361,16 +439,16 @@ export function ActSnapshot({ actId }: { actId: string }) {
           box={ICON_TOP_LEFT}
           icon={Calendar}
           roundedEdges="top"
-          motion={pairMotion(0, DATE_ICON_SWAP)}
+          motion={pairMotion(0, DATE_ICON_SWAP, ICON_TOP_LEFT)}
         />
-        <SnapshotDetailBox box={DETAIL_TOP_LEFT} roundedEdges="bottom" motion={pairMotion(0, DATE_TEXT_SWAP)}>
+        <SnapshotDetailBox box={DETAIL_TOP_LEFT} roundedEdges="bottom" motion={pairMotion(0, DATE_TEXT_SWAP, DETAIL_TOP_LEFT)}>
           <TextBar>28 September</TextBar>
           <TextBar>Monday</TextBar>
         </SnapshotDetailBox>
 
         {/* Location -- three lines */}
-        <SnapshotIconBox box={ICON_TOP_MID} icon={MapPin} motion={pairMotion(1, LOCATION_ICON_SWAP)} />
-        <SnapshotDetailBox box={DETAIL_TOP_RIGHT} motion={pairMotion(1, LOCATION_TEXT_SWAP)}>
+        <SnapshotIconBox box={ICON_TOP_MID} icon={MapPin} motion={pairMotion(1, LOCATION_ICON_SWAP, ICON_TOP_MID)} />
+        <SnapshotDetailBox box={DETAIL_TOP_RIGHT} motion={pairMotion(1, LOCATION_TEXT_SWAP, DETAIL_TOP_RIGHT)}>
           {isAnnadhanamElders ? (
             <>
               <TextBar>Sreenivasanallur</TextBar>
@@ -386,10 +464,10 @@ export function ActSnapshot({ actId }: { actId: string }) {
           )}
         </SnapshotDetailBox>
 
-        <SnapshotCenter motion={centerMotion} />
+        <SnapshotCenter />
 
         {/* Act / Impact -- first line stays on one line, second line centered beneath */}
-        <SnapshotDetailBox box={DETAIL_RIGHT} roundedEdges="top" align="center" motion={pairMotion(2, ACT_TEXT_SWAP)}>
+        <SnapshotDetailBox box={DETAIL_RIGHT} roundedEdges="top" align="center" motion={pairMotion(2, ACT_TEXT_SWAP, DETAIL_RIGHT)}>
           {isAnnadhanamElders ? (
             <>
               <TextBar>45 elders</TextBar>
@@ -406,7 +484,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
           box={ICON_BOTTOM_RIGHT}
           icon={isAnnadhanamElders ? UtensilsCrossed : Sprout}
           roundedEdges="bottom"
-          motion={pairMotion(2, ACT_ICON_SWAP)}
+          motion={pairMotion(2, ACT_ICON_SWAP, ICON_BOTTOM_RIGHT)}
         />
 
         {/* Verified Partner */}
@@ -414,9 +492,9 @@ export function ActSnapshot({ actId }: { actId: string }) {
           box={ICON_BOTTOM_WIDE}
           icon={BadgeCheck}
           roundedEdges="top"
-          motion={pairMotion(3, PARTNER_ICON_SWAP)}
+          motion={pairMotion(3, PARTNER_ICON_SWAP, ICON_BOTTOM_WIDE)}
         />
-        <SnapshotDetailBox box={DETAIL_BOTTOM_WIDE} roundedEdges="bottom" motion={pairMotion(3, PARTNER_TEXT_SWAP)}>
+        <SnapshotDetailBox box={DETAIL_BOTTOM_WIDE} roundedEdges="bottom" motion={pairMotion(3, PARTNER_TEXT_SWAP, DETAIL_BOTTOM_WIDE)}>
           {isAnnadhanamElders ? (
             <>
               <TextBar>Annai Aravindhar</TextBar>
