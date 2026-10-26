@@ -21,7 +21,7 @@ const MINT = "#68FFAD";
 
 function ActHeroImage({ src, alt, objectPosition }: { src: string | null; alt: string; objectPosition: string }) {
   return (
-    <div className="w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
+    <div className="w-full overflow-hidden" style={{ aspectRatio: "1 / 1" }}>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -52,7 +52,7 @@ function ActHeroContent({
   showEyebrow: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-3 px-5 pb-6 pt-7">
+    <div className="flex flex-col gap-2.5 px-5 pb-6 pt-6">
       {showEyebrow && (
         <span
           className={`${inter.className} uppercase`}
@@ -63,16 +63,16 @@ function ActHeroContent({
       )}
       <h1
         className={`${calSans.className} m-0`}
-        // whiteSpace: pre-line -- lets a title carry an embedded "\n" to
-        // force a specific two-line break (used by the Annadhanam Act's
-        // exact headline); plain text without a "\n" is unaffected.
-        style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.12, letterSpacing: "-0.4px", color: MINT, whiteSpace: "pre-line" }}
+        // Title text may carry an embedded "\n" (the Annadhanam Act's two
+        // sentences); render it as a plain space so lines flow naturally and
+        // a short sentence never strands one word on its own line.
+        style={{ fontSize: "clamp(24px, 7.2vw, 32px)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.4px", color: MINT, textWrap: "pretty" }}
       >
-        {title}
+        {title.replace(/\s*\n\s*/g, " ")}
       </h1>
       <p
         className={`${inter.className} m-0`}
-        style={{ fontSize: 14.5, lineHeight: 1.6, color: "rgba(255, 255, 255, 0.72)" }}
+        style={{ fontSize: 14, lineHeight: 1.55, color: "rgba(255, 255, 255, 0.78)" }}
       >
         {description}
       </p>
@@ -81,8 +81,10 @@ function ActHeroContent({
 }
 
 /**
- * Act Detail's hero: a large, clean editorial photo -- no text or UI over
- * it -- followed immediately by ONE continuous deep-teal surface that
+ * Act Detail's hero: a square, clean editorial photo -- no text or UI over
+ * it -- with ONE continuous deep-teal surface that overlaps its bottom
+ * edge and scrolls up over it (the photo + title + description are the
+ * first mobile screen). The teal surface
  * carries the eyebrow/title/description AND the Act Snapshot collage
  * with no seam between them (per founder direction: the whole thing
  * should read as one editorial hero, not a hero card plus a separate
@@ -117,11 +119,20 @@ export function ActDetailHero({
 }) {
   return (
     <div className="-mx-5 -mt-6">
-      <ActHeroImage src={heroImageUrl} alt={title.replace(/\s*\n\s*/g, " ")} objectPosition={imageObjectPosition} />
-      <div className="rounded-[12px]" style={{ background: TEAL }}>
+      {/* The photo is pinned (sticky) at the top of the viewport, and the
+          teal panel -- pulled up over its bottom edge by -mt-7 -- scrolls
+          up over it, so the photo is covered as the visitor scrolls. The
+          panel must stay opaque and above it (z-10) for that to work. */}
+      <div className="sticky top-0 z-0">
+        <ActHeroImage src={heroImageUrl} alt={title.replace(/\s*\n\s*/g, " ")} objectPosition={imageObjectPosition} />
+      </div>
+      <div className="relative z-10 -mt-7 rounded-[12px]" style={{ background: TEAL }}>
         <ActHeroContent cause={cause} title={title} description={description} showEyebrow={showEyebrow} />
         <ActSnapshot actId={actId} />
       </div>
+      {/* White backing under the panel's rounded bottom corners, so the
+          pinned photo can't show through the notch while it scrolls. */}
+      <div aria-hidden="true" className="relative z-[5] -mt-3 h-3 bg-white" />
     </div>
   );
 }

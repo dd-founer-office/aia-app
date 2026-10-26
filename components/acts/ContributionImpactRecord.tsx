@@ -135,7 +135,7 @@ function ImpactRecordRows({
           className={`flex w-1/2 flex-col items-center justify-center gap-0.5 py-2.5 ${isFirst ? "rounded-tr-[16px]" : ""}`}
           style={{ background: "#FAFAFA" }}
         >
-          <span className={`${inter.className} text-[10px]`} style={{ color: "var(--color-muted-foreground)" }}>
+          <span className={`${inter.className} text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
             {number}
           </span>
           <span className={`${inter.className} text-[14px] font-semibold`} style={{ color: "var(--color-foreground)" }}>
@@ -150,7 +150,7 @@ function ImpactRecordRows({
         style={{ background: "#FFFFFF", ...ROW_DIVIDER }}
       >
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className={`${inter.className} text-[10px]`} style={{ color: "var(--color-muted-foreground)" }}>
+          <span className={`${inter.className} text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
             {entry.dataLabel}
           </span>
           <span className={`${inter.className} break-words text-[14px] font-semibold`} style={{ color: "var(--color-foreground)" }}>
@@ -242,11 +242,11 @@ export function ContributionImpactRecord({ data }: { data: ContributionImpactRec
             }}
             className="flex flex-col gap-4 pt-5"
           >
-            <div className="flex flex-col gap-1">
-              <h2 className={`${calSans.className} m-0 text-[19px] font-bold`} style={{ color: TEAL }}>
+            <div className="flex flex-col gap-2.5">
+              <h2 className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`} style={{ color: TEAL }}>
                 Contribution Impact Record
               </h2>
-              <p className={`${inter.className} m-0 text-[13px] leading-[1.5]`} style={{ color: "var(--color-muted-foreground)" }}>
+              <p className={`${inter.className} m-0 text-[14px] leading-[1.55]`} style={{ color: "var(--color-muted-foreground)" }}>
                 A traceable record of where your contribution went and what it made possible.
               </p>
             </div>

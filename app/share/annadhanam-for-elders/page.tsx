@@ -43,7 +43,7 @@ export const metadata: Metadata = {
 export default function AnnadhanamForEldersSharePage() {
   return (
     <div
-      className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-5 px-5 pb-16 pt-6"
+      className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-10 px-5 pb-16 pt-6"
       style={{ background: "#FFFFFF" }}
     >
       <ActDetailHero
@@ -56,11 +56,17 @@ export default function AnnadhanamForEldersSharePage() {
         imageObjectPosition="96% center"
       />
 
-      <ActTestimonial />
+      {/* Testimonial and Evidence carry their own py-10; -my-10 cancels it
+          so every section sits exactly one gap-10 apart. */}
+      <div className="-my-10">
+        <ActTestimonial />
+      </div>
 
       <ActTheAct actId={ANNADHANAM_ELDERS_ACT_ID} />
 
-      <ActEvidence organization={ANNADHANAM_ELDERS_HERO.organization} evidence={ANNADHANAM_ELDERS_EVIDENCE} />
+      <div className="-my-10">
+        <ActEvidence organization={ANNADHANAM_ELDERS_HERO.organization} evidence={ANNADHANAM_ELDERS_EVIDENCE} />
+      </div>
 
       <ContributionImpactRecord data={ANNADHANAM_ELDERS_IMPACT_RECORD} />
 
