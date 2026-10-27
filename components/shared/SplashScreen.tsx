@@ -17,6 +17,7 @@ const SHARE_MINT = "#68FFAD";
 const SHARE_TEAL = "#0A363A";
 const TILE_PX = 120;
 const SHARE_EXPAND_MS = 1000;
+const SHARE_HOLD_MS = 1500;
 const SHARE_EASE = "cubic-bezier(0.76, 0, 0.24, 1)";
 const TILE_RADIUS_PX = 16;
 const TILE_SHRINK_MS = 500;
@@ -184,7 +185,8 @@ function RevealWord({
 // webfont has loaded so the widths are never from a fallback font.
 function AnchoredWordmark({ open }: { open: boolean }) {
   const refs = useRef<(HTMLSpanElement | null)[]>([]);
-  const [m, setM] = useState<{ shift: number[]; hide: number[] } | null>(null);
+  const anchorRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const [m, setM] = useState<{ shift: number[] } | null>(null);
   // Transitions switch on only after the collapsed pose has painted, so the
   // wordmark appears already collapsed instead of visibly collapsing.
   const [armed, setArmed] = useState(false);
@@ -199,15 +201,12 @@ function AnchoredWordmark({ open }: { open: boolean }) {
         /* proceed with whatever is loaded */
       }
       const els = refs.current;
-      if (cancelled || els.some((el) => !el?.firstChild)) return;
+      if (cancelled || els.some((el) => !el)) return;
       const lefts = els.map((el) => el!.offsetLeft);
       const widths = els.map((el) => el!.offsetWidth);
-      const anchors = els.map((el) => {
-        const range = document.createRange();
-        range.setStart(el!.firstChild!, 0);
-        range.setEnd(el!.firstChild!, 1);
-        return range.getBoundingClientRect().width;
-      });
+      const anchors = anchorRefs.current.map(
+        (el) => el!.getBoundingClientRect().width,
+      );
       const full =
         lefts[lefts.length - 1] + widths[widths.length - 1] - lefts[0];
       const sum = anchors.reduce((a, b) => a + b, 0);
@@ -217,7 +216,7 @@ function AnchoredWordmark({ open }: { open: boolean }) {
         before += anchors[i];
         return x;
       });
-      setM({ shift, hide: widths.map((w, i) => w - anchors[i]) });
+      setM({ shift });
       requestAnimationFrame(() =>
         requestAnimationFrame(() => !cancelled && setArmed(true)),
       );
@@ -246,17 +245,35 @@ function AnchoredWordmark({ open }: { open: boolean }) {
           style={{
             display: "inline-block",
             color: SHARE_TEAL,
-            opacity: m ? 1 : 0,
+            // Already visible when it starts open; a collapsed start waits for
+            // the measurement so it never shows a wrong pose.
+            opacity: m || open ? 1 : 0,
             translate: m && !open ? `${m.shift[i]}px 0` : "0 0",
-            clipPath:
-              m && !open ? `inset(0 ${m.hide[i]}px 0 0)` : "inset(0 0 0 0)",
-            willChange: "translate, clip-path",
+            willChange: "translate",
             transition: armed
-              ? `translate ${SHARE_EXPAND_MS}ms ${SHARE_EASE}, clip-path ${SHARE_EXPAND_MS}ms ${SHARE_EASE}`
+              ? `translate ${SHARE_EXPAND_MS}ms ${SHARE_EASE}`
               : "none",
           }}
         >
-          {w.text}
+          {/* First letter stays whole; the rest of the word fades out instead
+              of being clipped, so no letter edge is ever cut. */}
+          <span
+            ref={(el) => {
+              anchorRefs.current[i] = el;
+            }}
+          >
+            {w.text.slice(0, 1)}
+          </span>
+          <span
+            style={{
+              opacity: open ? 1 : 0,
+              transition: armed
+                ? `opacity ${SHARE_EXPAND_MS * 0.55}ms ease-in-out ${open ? SHARE_EXPAND_MS * 0.3 : 0}ms`
+                : "none",
+            }}
+          >
+            {w.text.slice(1)}
+          </span>
         </span>
       ))}
     </div>
@@ -265,7 +282,7 @@ function AnchoredWordmark({ open }: { open: boolean }) {
 
 export default function SplashScreen() {
   const share = /^\/(share|vaazhga-vaazhthudan)\//.test(usePathname() ?? "");
-  const [phase, setPhase] = useState<Phase>("compact");
+  const [phase, setPhase] = useState<Phase>(share ? "expanded" : "compact");
   // Defaults to true so the splash is present in the server-rendered
   // HTML itself — otherwise the browser paints Home first (server
   // output, pre-hydration) and only shows the splash once React
@@ -309,11 +326,16 @@ export default function SplashScreen() {
       return () => timers.forEach(clearTimeout);
     }
 
+    // Share pages: the full "Aram in Action" is shown first, then it
+    // contracts to "AiA" and the exit plays. Elsewhere: "AiA" expands and
+    // contracts back, as before.
     const tExpand = INITIAL_STILL_MS;
-    const tContract = tExpand + (share ? SHARE_EXPAND_MS : EXPAND_MS) + HOLD_MS;
-    const tDissolve = tContract + CONTRACT_MS + REST_MS;
+    const tContract = share ? SHARE_HOLD_MS : tExpand + EXPAND_MS + HOLD_MS;
+    const tDissolve = share
+      ? tContract + SHARE_EXPAND_MS + REST_MS
+      : tContract + CONTRACT_MS + REST_MS;
 
-    timers.push(setTimeout(() => setPhase("expanded"), tExpand));
+    if (!share) timers.push(setTimeout(() => setPhase("expanded"), tExpand));
     timers.push(setTimeout(() => setPhase("compact"), tContract));
     timers.push(setTimeout(() => setPhase("dissolving"), tDissolve));
     timers.push(
