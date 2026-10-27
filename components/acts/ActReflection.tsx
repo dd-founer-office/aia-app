@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import Image from "next/image";
 import localFont from "next/font/local";
-import { ArrowRight, Heart, Lock, Plus, X } from "lucide-react";
+import { ArrowRight, Heart, Plus, X } from "lucide-react";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -117,6 +117,27 @@ function FeelingChip({
   );
 }
 
+// Solid body with the shackle left as an outline and the keyhole cut out, so
+// both read clearly at small size (a fully filled lock loses them).
+function LockIcon({ active }: { active: boolean }) {
+  const ink = active ? TEAL : WHITE;
+  const hole = active ? WHITE : CHIP_BG;
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M8 10.5V8a4 4 0 0 1 8 0v2.5"
+        fill="none"
+        stroke={ink}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5" fill={ink} />
+      <circle cx="12" cy="15" r="1.7" fill={hole} />
+      <rect x="11.1" y="15.5" width="1.8" height="3.2" rx="0.9" fill={hole} />
+    </svg>
+  );
+}
+
 function PrivacyToggle({
   isPrivate,
   onToggle,
@@ -140,12 +161,7 @@ function PrivacyToggle({
           borderRadius: CONTROL_RADIUS,
         }}
       >
-        <Lock
-          size={16}
-          strokeWidth={2}
-          color={isPrivate ? TEAL : "#FFFFFF"}
-          fill={isPrivate ? TEAL : "#FFFFFF"}
-        />
+        <LockIcon active={isPrivate} />
       </span>
       <span className="flex flex-col gap-0.5">
         <span
@@ -322,11 +338,11 @@ export function ActReflection() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5">
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={handleMaybeLater}
-                className={`${inter.className} h-8 px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+                className={`${inter.className} h-9 flex-1 px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
                 style={{
                   background: PANEL,
                   border: HAIRLINE,
@@ -340,7 +356,7 @@ export function ActReflection() {
               <button
                 type="button"
                 onClick={handleSave}
-                className={`${inter.className} flex h-8 items-center justify-center gap-1.5 whitespace-nowrap px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+                className={`${inter.className} flex h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
                 style={{
                   background: SAVE_GRADIENT,
                   border: "1px solid rgba(255, 255, 255, 0.35)",
