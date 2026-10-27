@@ -15,7 +15,9 @@ const calSans = localFont({
 // lets it glide down before fading. Everything else keeps the original look.
 const SHARE_MINT = "#68FFAD";
 const SHARE_TEAL = "#0A363A";
-const TILE_PX = 96;
+const TILE_PX = 120;
+const SHARE_EXPAND_MS = 1000;
+const SHARE_EASE = "cubic-bezier(0.76, 0, 0.24, 1)";
 const TILE_RADIUS_PX = 16;
 const TILE_SHRINK_MS = 500;
 const TILE_GLIDE_MS = 600;
@@ -174,6 +176,93 @@ function RevealWord({
   );
 }
 
+// Share-page wordmark: laid out once at its final size, then moved with
+// transform/clip-path only (no width animation, so no reflow and no drift).
+// Collapsed, every word is slid so its first letter ("A", "i", "A") sits
+// next to the others, and the rest of the word is clipped away; opening just
+// slides the words back and un-clips them. Measured only after the real
+// webfont has loaded so the widths are never from a fallback font.
+function AnchoredWordmark({ open }: { open: boolean }) {
+  const refs = useRef<(HTMLSpanElement | null)[]>([]);
+  const [m, setM] = useState<{ shift: number[]; hide: number[] } | null>(null);
+  // Transitions switch on only after the collapsed pose has painted, so the
+  // wordmark appears already collapsed instead of visibly collapsing.
+  const [armed, setArmed] = useState(false);
+
+  useLayoutEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await document.fonts.load(`700 3rem ${calSans.style.fontFamily}`);
+        await document.fonts.ready;
+      } catch {
+        /* proceed with whatever is loaded */
+      }
+      const els = refs.current;
+      if (cancelled || els.some((el) => !el?.firstChild)) return;
+      const lefts = els.map((el) => el!.offsetLeft);
+      const widths = els.map((el) => el!.offsetWidth);
+      const anchors = els.map((el) => {
+        const range = document.createRange();
+        range.setStart(el!.firstChild!, 0);
+        range.setEnd(el!.firstChild!, 1);
+        return range.getBoundingClientRect().width;
+      });
+      const full =
+        lefts[lefts.length - 1] + widths[widths.length - 1] - lefts[0];
+      const sum = anchors.reduce((a, b) => a + b, 0);
+      let before = 0;
+      const shift = els.map((_, i) => {
+        const x = lefts[0] + (full - sum) / 2 + before - lefts[i];
+        before += anchors[i];
+        return x;
+      });
+      setM({ shift, hide: widths.map((w, i) => w - anchors[i]) });
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => !cancelled && setArmed(true)),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div
+      className={`${calSans.className} select-none font-bold`}
+      style={{
+        fontSize: "clamp(2.25rem, 10vw, 3rem)",
+        lineHeight: 1,
+        whiteSpace: "pre",
+        position: "relative",
+      }}
+    >
+      {WORDS.map((w, i) => (
+        <span
+          key={w.text}
+          ref={(el) => {
+            refs.current[i] = el;
+          }}
+          style={{
+            display: "inline-block",
+            color: SHARE_TEAL,
+            opacity: m ? 1 : 0,
+            translate: m && !open ? `${m.shift[i]}px 0` : "0 0",
+            clipPath:
+              m && !open ? `inset(0 ${m.hide[i]}px 0 0)` : "inset(0 0 0 0)",
+            willChange: "translate, clip-path",
+            transition: armed
+              ? `translate ${SHARE_EXPAND_MS}ms ${SHARE_EASE}, clip-path ${SHARE_EXPAND_MS}ms ${SHARE_EASE}`
+              : "none",
+          }}
+        >
+          {w.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function SplashScreen() {
   const share = usePathname()?.startsWith("/share/") ?? false;
   const [phase, setPhase] = useState<Phase>("compact");
@@ -221,7 +310,7 @@ export default function SplashScreen() {
     }
 
     const tExpand = INITIAL_STILL_MS;
-    const tContract = tExpand + EXPAND_MS + HOLD_MS;
+    const tContract = tExpand + (share ? SHARE_EXPAND_MS : EXPAND_MS) + HOLD_MS;
     const tDissolve = tContract + CONTRACT_MS + REST_MS;
 
     timers.push(setTimeout(() => setPhase("expanded"), tExpand));
@@ -244,34 +333,32 @@ export default function SplashScreen() {
 
   if (share) {
     const clipFull = "inset(0px 0px 0px 0px round 0px)";
-    const clipTile = `inset(calc(50% - ${TILE_PX / 2}px) calc(50% - ${TILE_PX / 2}px) calc(50% - ${TILE_PX / 2}px) calc(50% - ${TILE_PX / 2}px) round ${TILE_RADIUS_PX}px)`;
+    const half = TILE_PX / 2;
+    const clipTile = `inset(calc(50% - ${half}px) calc(50% - ${half}px) calc(50% - ${half}px) calc(50% - ${half}px) round ${TILE_RADIUS_PX}px)`;
     return (
       <div
         role="status"
         aria-label="Aram in Action"
-        className="fixed inset-0 z-[100] flex items-center justify-center"
+        className="fixed inset-0 z-[100]"
         style={{
-          background: SHARE_MINT,
-          clipPath: dissolving ? clipTile : clipFull,
           translate: wordmarkFading ? "0 34vh" : "0 0",
           opacity: wordmarkFading ? 0 : 1,
-          transition: `clip-path ${TILE_SHRINK_MS}ms ${EASE}, translate ${TILE_GLIDE_MS}ms ${EASE}, opacity ${TILE_GLIDE_MS}ms ease-in`,
+          transition: `translate ${TILE_GLIDE_MS}ms ${EASE}, opacity ${TILE_GLIDE_MS}ms ease-in`,
           pointerEvents: dissolving ? "none" : "auto",
         }}
       >
+        {/* The mint screen shrinks into the tile shape; the wordmark is a
+            separate layer so the tile always carries its "AiA". */}
         <div
-          className={`${calSans.className} select-none flex items-baseline font-bold`}
-          style={{ fontSize: "clamp(2.25rem, 10vw, 3rem)", lineHeight: 1 }}
-        >
-          {WORDS.map((w) => (
-            <RevealWord
-              key={w.text}
-              text={w.text}
-              colorVar={w.colorVar}
-              color={SHARE_TEAL}
-              open={open}
-            />
-          ))}
+          className="absolute inset-0"
+          style={{
+            background: SHARE_MINT,
+            clipPath: dissolving ? clipTile : clipFull,
+            transition: `clip-path ${TILE_SHRINK_MS}ms ${EASE}`,
+          }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <AnchoredWordmark open={open} />
         </div>
       </div>
     );
