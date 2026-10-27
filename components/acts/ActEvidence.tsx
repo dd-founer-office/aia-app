@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import { Calendar, MapPin, ChevronDown, User } from "lucide-react";
 import type { EvidenceTraceItem } from "@/components/acts/living-trace/types";
+import { FullPhotoViewer } from "@/components/acts/living-trace/FullPhotoViewer";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -210,6 +211,7 @@ export function ActEvidence({
   const [steps, setSteps] = useState(0);
   const [inView, setInView] = useState(false);
   const [touching, setTouching] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const reduced = useSyncExternalStore(
     subscribeToReducedMotion,
     readReducedMotion,
@@ -246,8 +248,13 @@ export function ActEvidence({
     : null;
   const changed = steps > 0;
 
+  // Tapping a side photo brings it to the centre; tapping the centre photo
+  // opens it full screen (with its Back button).
   function bringToCentre(i: number) {
-    if (i === active) return;
+    if (i === active) {
+      setViewerOpen(true);
+      return;
+    }
     setActive(i);
     setSteps((v) => v + 1);
   }
@@ -439,6 +446,13 @@ export function ActEvidence({
           </p>
         </EvidenceRecord>
       </div>
+      {viewerOpen && (
+        <FullPhotoViewer
+          items={evidence}
+          initialIndex={active % n}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
     </section>
   );
 }

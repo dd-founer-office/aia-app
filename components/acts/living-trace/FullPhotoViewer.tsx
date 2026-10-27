@@ -145,7 +145,7 @@ export function FullPhotoViewer({ items, initialIndex, onClose }: FullPhotoViewe
           <img
             src={current.photoUrl}
             alt={current.momentTitle}
-            className="absolute inset-0 h-full w-full select-none object-cover transition-opacity duration-300 ease-out"
+            className="absolute inset-0 h-full w-full select-none object-contain transition-opacity duration-300 ease-out"
             draggable={false}
           />
         )}
