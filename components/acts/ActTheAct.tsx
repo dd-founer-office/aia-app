@@ -298,7 +298,7 @@ export function ActTheAct({ actId }: { actId: string }) {
   const activeMoment = storyMoments[activeIndex];
 
   return (
-    <section ref={sectionRef} data-care={care} className="rounded-[16px] px-5 py-6" style={{ background: TEAL }}>
+    <section id="act-the-act" ref={sectionRef} data-care={care} className="rounded-[16px] px-5 py-6" style={{ background: TEAL }}>
       <style>{CARE_CSS}</style>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2.5 text-center">

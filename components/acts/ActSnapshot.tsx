@@ -16,6 +16,11 @@ import { ANNADHANAM_ELDERS_ACT_ID } from "@/lib/act-content-overrides";
 
 // Self-hosted rather than next/font/google -- see app/layout.tsx's comment
 // for why (intermittent Vercel build failure fetching from Google Fonts).
+const calSans = localFont({
+  src: "../../app/fonts/CalSansVF.woff2",
+  weight: "400 700",
+  display: "swap",
+});
 const inter = localFont({
   src: "../../app/fonts/InterVF.woff2",
   weight: "100 900",
@@ -505,7 +510,7 @@ function SnapshotCenter() {
     >
       <span
         style={{
-          fontFamily: "var(--font-display), serif",
+          fontFamily: calSans.style.fontFamily,
           fontWeight: 700,
           fontSize: "1.4em",
           color: TEAL,
