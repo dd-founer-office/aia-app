@@ -77,8 +77,8 @@ export const TREE_BIRTHDAY_ACT: ActContent = {
   ],
 };
 
-// Most recent first; the duplicate sapling shot is left out. Capture times start
-// at 2:00 PM today, two minutes apart.
+// Most recent first; the duplicate sapling shot is left out. Capture times run from
+// 11:00 AM to 3:30 PM today.
 const PHOTOS: { file: string; title: string; narrative: string }[] = [
   {
     file: "p1.jpg",
@@ -123,12 +123,19 @@ const PHOTOS: { file: string; title: string; narrative: string }[] = [
 ];
 
 function captureAt(index: number) {
-  const minute = 14 - index * 2;
-  const mm = String(Math.max(minute, 0)).padStart(2, "0");
+  // 11:00 AM for the earliest photo (last in the list) to 3:30 PM for the
+  // latest (first), spread evenly across the day.
+  const total =
+    11 * 60 +
+    Math.round(((PHOTOS.length - 1 - index) * 270) / (PHOTOS.length - 1));
+  const hour24 = Math.floor(total / 60);
+  const mm = String(total % 60).padStart(2, "0");
+  const hour12 = hour24 > 12 ? hour24 - 12 : hour24;
+  const period = hour24 >= 12 ? "PM" : "AM";
   return {
-    iso: `2026-10-27T14:${mm}:00+05:30`,
-    short: `2:${mm} PM`,
-    full: `2:${mm}:00 PM GMT+5:30`,
+    iso: `2026-10-27T${String(hour24).padStart(2, "0")}:${mm}:00+05:30`,
+    short: `${hour12}:${mm} ${period}`,
+    full: `${hour12}:${mm}:00 ${period} GMT+5:30`,
   };
 }
 
