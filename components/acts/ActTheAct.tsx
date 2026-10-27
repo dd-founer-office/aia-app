@@ -13,7 +13,11 @@ const calSans = localFont({
 
 // Self-hosted rather than next/font/google -- see app/layout.tsx's comment
 // for why (intermittent Vercel build failure fetching from Google Fonts).
-const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
+const inter = localFont({
+  src: "../../app/fonts/InterVF.woff2",
+  weight: "100 900",
+  display: "swap",
+});
 
 // Reuses ActDetailHero/ActSnapshot's exact teal/mint pair for the card
 // surface and heading.
@@ -47,17 +51,20 @@ const STORY_MOMENTS: StoryMoment[] = [
   {
     title: "Plant",
     image: "/mock/tree-planting-plant.jpg",
-    description: "A young sapling stands newly planted, its stakes holding it steady as it takes root in the earth.",
+    description:
+      "A young sapling stands newly planted, its stakes holding it steady as it takes root in the earth.",
   },
   {
     title: "Nurture",
     image: "/mock/tree-planting-nurture.jpg",
-    description: "A protective cover is wrapped around it, shielding the young tree so it can grow safely.",
+    description:
+      "A protective cover is wrapped around it, shielding the young tree so it can grow safely.",
   },
   {
     title: "Together",
     image: "/mock/tree-planting-together.jpg",
-    description: "A member of the community ties the guard in place, making sure this young tree is looked after.",
+    description:
+      "A member of the community ties the guard in place, making sure this young tree is looked after.",
   },
 ];
 
@@ -104,6 +111,18 @@ const CARE_CSS = `
   [data-care="hidden"] .care-photo { clip-path: circle(0% at 50% 50%); }
   [data-care="revealed"] .care-photo { clip-path: circle(85% at 50% 50%); }
   [data-care="hidden"] .care-chip { opacity: 0; translate: 0 10px; scale: 0.92; }
+  /* While the empty card waits below the fold it tugs up and gives a small
+     shake every few seconds, like a handle waiting to be pulled. */
+  @keyframes care-tug {
+    0%, 55%, 100% { translate: 0 0; rotate: 0deg; }
+    62% { translate: 0 -8px; rotate: 0deg; }
+    68% { translate: 0 -8px; rotate: -0.7deg; }
+    74% { translate: 0 -8px; rotate: 0.7deg; }
+    80% { translate: 0 -8px; rotate: -0.4deg; }
+    86% { translate: 0 -8px; rotate: 0deg; }
+    94% { translate: 0 0; rotate: 0deg; }
+  }
+  [data-care="hidden"] { transform-origin: 50% 0; animation: care-tug 2.6s ease-in-out infinite; }
 `;
 const CARE_REVEAL_DONE_MS = 1900;
 
@@ -144,8 +163,18 @@ function MomentPhoto({
 }) {
   const frontIndexRef = useRef(0);
   const [layers, setLayers] = useState<[PhotoLayer, PhotoLayer]>(() => [
-    { src: moments[0].image, alt: moments[0].title, visible: true, position: moments[0].focus ?? "top" },
-    { src: moments[0].image, alt: moments[0].title, visible: false, position: moments[0].focus ?? "top" },
+    {
+      src: moments[0].image,
+      alt: moments[0].title,
+      visible: true,
+      position: moments[0].focus ?? "top",
+    },
+    {
+      src: moments[0].image,
+      alt: moments[0].title,
+      visible: false,
+      position: moments[0].focus ?? "top",
+    },
   ]);
 
   useEffect(() => {
@@ -154,7 +183,12 @@ function MomentPhoto({
       const frontIndex = frontIndexRef.current;
       const backIndex = frontIndex === 0 ? 1 : 0;
       const next: [PhotoLayer, PhotoLayer] = [...previous];
-      next[backIndex] = { src: moment.image, alt: moment.title, visible: true, position: moment.focus ?? "top" };
+      next[backIndex] = {
+        src: moment.image,
+        alt: moment.title,
+        visible: true,
+        position: moment.focus ?? "top",
+      };
       next[frontIndex] = { ...next[frontIndex], visible: false };
       frontIndexRef.current = backIndex;
       return next;
@@ -162,7 +196,10 @@ function MomentPhoto({
   }, [activeIndex, moments]);
 
   return (
-    <div className="care-photo relative w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
+    <div
+      className="care-photo relative w-full overflow-hidden"
+      style={{ aspectRatio: "4 / 5" }}
+    >
       {layers.map((layer, index) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -175,7 +212,9 @@ function MomentPhoto({
           style={{
             objectPosition: layer.position,
             opacity: layer.visible ? 1 : 0,
-            transition: reducedMotion ? "none" : "opacity 450ms cubic-bezier(0.22, 1, 0.36, 1)",
+            transition: reducedMotion
+              ? "none"
+              : "opacity 450ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}
         />
       ))}
@@ -246,20 +285,26 @@ function MomentChip({
  */
 export function ActTheAct({ actId }: { actId: string }) {
   const isAnnadhanamElders = actId === ANNADHANAM_ELDERS_ACT_ID;
-  const storyMoments = isAnnadhanamElders ? ANNADHANAM_STORY_MOMENTS : STORY_MOMENTS;
-  const heading = isAnnadhanamElders ? ANNADHANAM_HEADING : "From intention to earth";
+  const storyMoments = isAnnadhanamElders
+    ? ANNADHANAM_STORY_MOMENTS
+    : STORY_MOMENTS;
+  const heading = isAnnadhanamElders
+    ? ANNADHANAM_HEADING
+    : "From intention to earth";
 
   const reducedMotion = useSyncExternalStore(
     subscribeToReducedMotionChanges,
     readReducedMotionOnClient,
-    readReducedMotionOnServer
+    readReducedMotionOnServer,
   );
   const [activeIndex, setActiveIndex] = useState(0);
 
   // The staged entrance (see CARE_CSS): hide once the card is known to be
   // below the fold, reveal when it has risen ~25% into view.
   const sectionRef = useRef<HTMLElement>(null);
-  const [care, setCare] = useState<"hidden" | "revealed" | undefined>(undefined);
+  const [care, setCare] = useState<"hidden" | "revealed" | undefined>(
+    undefined,
+  );
   useEffect(() => {
     const el = sectionRef.current;
     if (!el || reducedMotion) return;
@@ -284,7 +329,7 @@ export function ActTheAct({ actId }: { actId: string }) {
           timer = setTimeout(() => setCare(undefined), CARE_REVEAL_DONE_MS);
         }
       },
-      { rootMargin: "0px 0px -25% 0px" }
+      { rootMargin: "0px 0px -25% 0px" },
     );
     observer.observe(el);
     return () => {
@@ -298,7 +343,13 @@ export function ActTheAct({ actId }: { actId: string }) {
   const activeMoment = storyMoments[activeIndex];
 
   return (
-    <section id="act-the-act" ref={sectionRef} data-care={care} className="rounded-[16px] px-5 py-6" style={{ background: TEAL }}>
+    <section
+      id="act-the-act"
+      ref={sectionRef}
+      data-care={care}
+      className="rounded-[16px] px-5 py-6"
+      style={{ background: TEAL }}
+    >
       <style>{CARE_CSS}</style>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2.5 text-center">
@@ -308,14 +359,26 @@ export function ActTheAct({ actId }: { actId: string }) {
           >
             {heading}
           </h2>
-          <p className={`${inter.className} care-p m-0 text-[14px] leading-[1.55]`} style={{ color: "rgba(255, 255, 255, 0.82)" }}>
+          <p
+            className={`${inter.className} care-p m-0 text-[14px] leading-[1.55]`}
+            style={{ color: "rgba(255, 255, 255, 0.82)" }}
+          >
             {activeMoment.description}
           </p>
         </div>
 
-        <MomentPhoto moments={storyMoments} activeIndex={activeIndex} reducedMotion={reducedMotion} />
+        <MomentPhoto
+          moments={storyMoments}
+          activeIndex={activeIndex}
+          reducedMotion={reducedMotion}
+        />
 
-        <div className="flex flex-nowrap items-center gap-2" role="group" aria-label="Moments of this Act" style={{ containerType: "inline-size" }}>
+        <div
+          className="flex flex-nowrap items-center gap-2"
+          role="group"
+          aria-label="Moments of this Act"
+          style={{ containerType: "inline-size" }}
+        >
           {storyMoments.map((moment, index) => (
             <MomentChip
               key={moment.title}
