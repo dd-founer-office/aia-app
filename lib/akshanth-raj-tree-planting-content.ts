@@ -24,7 +24,7 @@ const LNG = 79.485895;
 export const TREE_BIRTHDAY_HERO = {
   title: "Some Birthdays Are Marked by Cake.\nThis One by Roots",
   description:
-    "Native trees planted in Akshanth Raj's name, each one a wish that keeps growing.",
+    "Native trees planted in Akshanth Raj's name: Thennai, Pala, Nila Vembu, Vengai and Arasamaram, each one a wish that keeps growing.",
   heroImageUrl: `${IMG}/hero.jpg`,
   imageObjectPosition: "55% 50%",
   highlightWord: "Roots",
