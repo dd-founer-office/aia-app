@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import Image from "next/image";
 import localFont from "next/font/local";
 import { ArrowRight, Heart, Info, Lock, Plus, X } from "lucide-react";
 
@@ -22,6 +23,8 @@ const inter = localFont({
 // the section surface and accents.
 const TEAL = "#0A363A";
 const MINT = "#68FFAD";
+// Inside this section only the heading and the Save CTA use mint.
+const WHITE = "#FFFFFF";
 // New, local to this section only -- a darker-than-TEAL charcoal-teal
 // surface for the inset cards (feeling picker, textarea, My Reflection),
 // distinct from the outer TEAL section behind them. No existing token
@@ -72,12 +75,12 @@ function FeelingChip({
         borderRadius: CONTROL_RADIUS,
         background: CHIP_BG,
         color: "#FFFFFF",
-        border: selected ? `1.5px solid ${MINT}` : "1.5px solid transparent",
-        outlineColor: MINT,
+        border: selected ? `1.5px solid ${WHITE}` : "1.5px solid transparent",
+        outlineColor: WHITE,
       }}
     >
       {selected ? (
-        <X size={12} strokeWidth={2.5} color={MINT} />
+        <X size={12} strokeWidth={2.5} color={WHITE} />
       ) : (
         <Plus size={12} strokeWidth={2.5} />
       )}
@@ -100,12 +103,12 @@ function PrivacyToggle({
       aria-checked={isPrivate}
       onClick={onToggle}
       className="flex w-full items-center gap-3 px-1 py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-      style={{ outlineColor: MINT }}
+      style={{ outlineColor: WHITE }}
     >
       <span
         className="flex h-9 w-9 shrink-0 items-center justify-center transition-colors"
         style={{
-          background: isPrivate ? MINT : CHIP_BG,
+          background: isPrivate ? WHITE : CHIP_BG,
           borderRadius: CONTROL_RADIUS,
         }}
       >
@@ -185,257 +188,281 @@ export function ActReflection() {
   // Full-bleed to the viewport edges and down to the page bottom, like the
   // Snapshot section (-mx-5 / -mb-16 cancel the page wrapper's px-5 / pb-16).
   return (
-    <section
-      className="-mx-5 -mb-16 px-5 pb-24 pt-10"
-      style={{ background: TEAL }}
-    >
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-3 text-center">
-          <h2
-            className={`${calSans.className} m-0 text-[26px] font-bold leading-[1.15]`}
-            style={{ color: MINT }}
-          >
-            And Something Stays
-          </h2>
-          <p
-            className={`${inter.className} m-0 text-[16px] leading-[1.45]`}
-            style={{ color: "#D4FFE9" }}
-          >
-            Take a moment to capture what this act mean to you.
-          </p>
-        </div>
-
-        <div
-          className="flex flex-col gap-4 p-3"
-          style={{
-            background: PANEL,
-            borderRadius: CARD_RADIUS,
-            border: HAIRLINE,
-          }}
-        >
-          <div
-            className="p-4"
-            style={{
-              background: CARD_SURFACE,
-              borderRadius: CARD_RADIUS,
-              border: HAIRLINE,
-            }}
-          >
-            <h3
-              className={`${calSans.className} m-0 text-[17px] font-semibold`}
-              style={{ color: "#FFFFFF" }}
+    <>
+      <section
+        className="-mx-5 px-5 py-10"
+        style={{ background: TEAL, borderRadius: 12 }}
+      >
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3 text-center">
+            <h2
+              className={`${calSans.className} m-0 text-[26px] font-bold leading-[1.15]`}
+              style={{ color: MINT }}
             >
-              This act made me feel...
-            </h3>
+              And Something Stays
+            </h2>
             <p
-              className={`${calSans.className} m-0 mt-0.5 text-[12px]`}
-              style={{ color: "rgba(255, 255, 255, 0.85)" }}
+              className={`${inter.className} m-0 text-[16px] leading-[1.45]`}
+              style={{ color: "#D4FFE9" }}
             >
-              You can choose more than one.
+              Take a moment to capture what this act mean to you.
             </p>
-            <div className="mt-4 grid grid-cols-3 gap-2.5">
-              {FEELINGS.map((feeling) => (
-                <FeelingChip
-                  key={feeling}
-                  label={feeling}
-                  selected={selectedFeelings.has(feeling)}
-                  onToggle={() => toggleFeeling(feeling)}
-                />
-              ))}
-            </div>
           </div>
 
           <div
-            className="p-4"
+            className="flex flex-col gap-4 p-3"
             style={{
-              background: CARD_SURFACE,
+              background: PANEL,
               borderRadius: CARD_RADIUS,
               border: HAIRLINE,
             }}
           >
-            <label htmlFor={textareaId} className="block cursor-text">
+            <div
+              className="p-4"
+              style={{
+                background: CARD_SURFACE,
+                borderRadius: CARD_RADIUS,
+                border: HAIRLINE,
+              }}
+            >
               <h3
                 className={`${calSans.className} m-0 text-[17px] font-semibold`}
                 style={{ color: "#FFFFFF" }}
               >
-                Or write it in your own words (optional)
+                This act made me feel...
               </h3>
               <p
                 className={`${calSans.className} m-0 mt-0.5 text-[12px]`}
                 style={{ color: "rgba(255, 255, 255, 0.85)" }}
               >
-                What would you like to remember about this moment?
+                You can choose more than one.
               </p>
-            </label>
-            <div className="relative mt-4">
-              <textarea
-                id={textareaId}
-                value={reflectionText}
-                onChange={(event) =>
-                  setReflectionText(event.target.value.slice(0, MAX_LENGTH))
-                }
-                maxLength={MAX_LENGTH}
-                rows={4}
-                placeholder="Share what this moment meant to you..."
-                className={`${inter.className} w-full resize-none px-3 pb-7 pt-2.5 text-[12px] leading-[1.45] placeholder:text-white/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+              <div className="mt-4 grid grid-cols-3 gap-2.5">
+                {FEELINGS.map((feeling) => (
+                  <FeelingChip
+                    key={feeling}
+                    label={feeling}
+                    selected={selectedFeelings.has(feeling)}
+                    onToggle={() => toggleFeeling(feeling)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div
+              className="p-4"
+              style={{
+                background: CARD_SURFACE,
+                borderRadius: CARD_RADIUS,
+                border: HAIRLINE,
+              }}
+            >
+              <label htmlFor={textareaId} className="block cursor-text">
+                <h3
+                  className={`${calSans.className} m-0 text-[17px] font-semibold`}
+                  style={{ color: "#FFFFFF" }}
+                >
+                  Or write it in your own words (optional)
+                </h3>
+                <p
+                  className={`${calSans.className} m-0 mt-0.5 text-[12px]`}
+                  style={{ color: "rgba(255, 255, 255, 0.85)" }}
+                >
+                  What would you like to remember about this moment?
+                </p>
+              </label>
+              <div className="relative mt-4">
+                <textarea
+                  id={textareaId}
+                  value={reflectionText}
+                  onChange={(event) =>
+                    setReflectionText(event.target.value.slice(0, MAX_LENGTH))
+                  }
+                  maxLength={MAX_LENGTH}
+                  rows={4}
+                  placeholder="Share what this moment meant to you..."
+                  className={`${inter.className} w-full resize-none px-3 pb-7 pt-2.5 text-[12px] leading-[1.45] placeholder:text-white/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+                  style={{
+                    background: CHIP_BG,
+                    color: "#FFFFFF",
+                    outlineColor: WHITE,
+                    borderRadius: CONTROL_RADIUS,
+                  }}
+                />
+                <span
+                  className={`${inter.className} pointer-events-none absolute bottom-2.5 right-3 text-[10px]`}
+                  style={{ color: "rgba(255, 255, 255, 0.8)" }}
+                >
+                  {reflectionText.length}/{MAX_LENGTH}
+                </span>
+              </div>
+              <div className="mt-4">
+                <PrivacyToggle
+                  isPrivate={isPrivate}
+                  onToggle={() => setIsPrivate((v) => !v)}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={handleMaybeLater}
+                className={`${inter.className} h-8 px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
                 style={{
-                  background: CHIP_BG,
+                  background: PANEL,
+                  border: HAIRLINE,
                   color: "#FFFFFF",
-                  outlineColor: MINT,
+                  outlineColor: WHITE,
                   borderRadius: CONTROL_RADIUS,
                 }}
-              />
-              <span
-                className={`${inter.className} pointer-events-none absolute bottom-2.5 right-3 text-[10px]`}
-                style={{ color: "rgba(255, 255, 255, 0.8)" }}
               >
-                {reflectionText.length}/{MAX_LENGTH}
-              </span>
-            </div>
-            <div className="mt-4">
-              <PrivacyToggle
-                isPrivate={isPrivate}
-                onToggle={() => setIsPrivate((v) => !v)}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={handleMaybeLater}
-              className={`${inter.className} h-8 px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
-              style={{
-                background: PANEL,
-                border: HAIRLINE,
-                color: "#FFFFFF",
-                outlineColor: MINT,
-                borderRadius: CONTROL_RADIUS,
-              }}
-            >
-              Maybe later
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className={`${inter.className} flex h-8 items-center justify-center gap-1.5 whitespace-nowrap px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
-              style={{
-                background: SAVE_GRADIENT,
-                border: "1px solid rgba(255, 255, 255, 0.35)",
-                boxShadow: "0 0 14px rgba(104, 255, 173, 0.28)",
-                color: TEAL,
-                outlineColor: MINT,
-                borderRadius: CONTROL_RADIUS,
-              }}
-            >
-              Save Reflection
-              <ArrowRight size={14} strokeWidth={2.5} />
-            </button>
-          </div>
-
-          {saved && (
-            <>
-              <div
-                className="p-4"
+                Maybe later
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className={`${inter.className} flex h-8 items-center justify-center gap-1.5 whitespace-nowrap px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
                 style={{
-                  background: CARD_SURFACE,
-                  borderRadius: CARD_RADIUS,
-                  border: HAIRLINE,
+                  background: SAVE_GRADIENT,
+                  border: "1px solid rgba(255, 255, 255, 0.35)",
+                  boxShadow: "0 0 14px rgba(104, 255, 173, 0.28)",
+                  color: TEAL,
+                  outlineColor: WHITE,
+                  borderRadius: CONTROL_RADIUS,
                 }}
               >
-                <div className="flex items-center gap-3">
+                Save Reflection
+                <ArrowRight size={14} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {saved && (
+              <>
+                <div
+                  className="p-4"
+                  style={{
+                    background: CARD_SURFACE,
+                    borderRadius: CARD_RADIUS,
+                    border: HAIRLINE,
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center"
+                      style={{
+                        background: CHIP_BG,
+                        borderRadius: CONTROL_RADIUS,
+                      }}
+                    >
+                      <Heart size={18} strokeWidth={2} color={WHITE} />
+                    </span>
+                    <h3
+                      className={`${calSans.className} m-0 min-w-0 flex-1 text-[17px] font-semibold`}
+                      style={{ color: "#FFFFFF" }}
+                    >
+                      My Reflection
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={handleEdit}
+                      className={`${inter.className} shrink-0 self-start h-6 px-3 text-[10px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+                      style={{
+                        background: CHIP_BG,
+                        color: "#FFFFFF",
+                        outlineColor: WHITE,
+                        borderRadius: 4,
+                      }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+
+                  {saved.text && (
+                    <p
+                      className={`${calSans.className} m-0 mt-4 text-[13px] leading-[1.4]`}
+                      style={{ color: "#FFFFFF" }}
+                    >
+                      &ldquo;{saved.text}&rdquo;
+                    </p>
+                  )}
+
+                  {saved.feelings.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2.5">
+                      {saved.feelings.map((feeling) => (
+                        <span
+                          key={feeling}
+                          className={`${inter.className} flex h-8 items-center px-5 text-[11px] font-medium`}
+                          style={{
+                            background: CHIP_BG,
+                            color: "#FFFFFF",
+                            borderRadius: CONTROL_RADIUS,
+                          }}
+                        >
+                          {feeling}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  className="flex items-center gap-3 px-3 py-4"
+                  style={{ background: "#202620", borderRadius: CARD_RADIUS }}
+                >
                   <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                    style={{ background: WHITE }}
+                  >
+                    <Info size={16} strokeWidth={2.5} color={TEAL} />
+                  </span>
+                  <p
+                    className={`${calSans.className} m-0 min-w-0 flex-1 text-[12px] leading-[1.4]`}
+                    style={{ color: "#FFFFFF" }}
+                  >
+                    Some moments are worth leaving for the next generation.
+                  </p>
+                  <button
+                    type="button"
+                    className={`${inter.className} flex shrink-0 items-center gap-1 h-8 px-3 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
                     style={{
-                      background: CHIP_BG,
+                      background: PANEL,
+                      color: "#FFFFFF",
+                      outlineColor: WHITE,
                       borderRadius: CONTROL_RADIUS,
                     }}
                   >
-                    <Heart size={18} strokeWidth={2} color={MINT} />
-                  </span>
-                  <h3
-                    className={`${calSans.className} m-0 min-w-0 flex-1 text-[17px] font-semibold`}
-                    style={{ color: "#FFFFFF" }}
-                  >
-                    My Reflection
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={handleEdit}
-                    className={`${inter.className} shrink-0 self-start h-6 px-3 text-[10px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
-                    style={{
-                      background: CHIP_BG,
-                      color: "#FFFFFF",
-                      outlineColor: MINT,
-                      borderRadius: 4,
-                    }}
-                  >
-                    Edit
+                    Add to Legacy
+                    <ArrowRight size={11} strokeWidth={2.5} />
                   </button>
                 </div>
-
-                {saved.text && (
-                  <p
-                    className={`${calSans.className} m-0 mt-4 text-[13px] leading-[1.4]`}
-                    style={{ color: "#FFFFFF" }}
-                  >
-                    &ldquo;{saved.text}&rdquo;
-                  </p>
-                )}
-
-                {saved.feelings.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2.5">
-                    {saved.feelings.map((feeling) => (
-                      <span
-                        key={feeling}
-                        className={`${inter.className} flex h-8 items-center px-5 text-[11px] font-medium`}
-                        style={{
-                          background: CHIP_BG,
-                          color: "#FFFFFF",
-                          borderRadius: CONTROL_RADIUS,
-                        }}
-                      >
-                        {feeling}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div
-                className="flex items-center gap-3 px-3 py-4"
-                style={{ background: "#202620", borderRadius: CARD_RADIUS }}
-              >
-                <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: MINT }}
-                >
-                  <Info size={16} strokeWidth={2.5} color={TEAL} />
-                </span>
-                <p
-                  className={`${calSans.className} m-0 min-w-0 flex-1 text-[12px] leading-[1.4]`}
-                  style={{ color: "#FFFFFF" }}
-                >
-                  Some moments are worth leaving for the next generation.
-                </p>
-                <button
-                  type="button"
-                  className={`${inter.className} flex shrink-0 items-center gap-1 h-8 px-3 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
-                  style={{
-                    background: PANEL,
-                    color: "#FFFFFF",
-                    outlineColor: MINT,
-                    borderRadius: CONTROL_RADIUS,
-                  }}
-                >
-                  Add to Legacy
-                  <ArrowRight size={11} strokeWidth={2.5} />
-                </button>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+      <footer className="flex flex-col items-center gap-3 pt-8 text-center">
+        <span
+          className={`${inter.className} text-[11px] font-medium uppercase tracking-[0.12em]`}
+          style={{ color: "#5C6B69" }}
+        >
+          Powered by
+        </span>
+        <Image
+          src="/brand/distant-devotion-logo.png"
+          alt="Distant Devotion"
+          width={664}
+          height={301}
+          sizes="150px"
+          className="h-auto w-[150px] rounded-[10px]"
+        />
+        <span
+          className={`${calSans.className} text-[14px] font-medium`}
+          style={{ color: TEAL }}
+        >
+          Keeping what matters alive
+        </span>
+      </footer>
+    </>
   );
 }
