@@ -29,7 +29,7 @@ const TAGLINES: readonly TaglineTemplate[] = [
   { id: "character-2", theme: "character", text: "Trust is built in the choices nobody sees." },
 
   { id: "self-control-1", theme: "self-control", text: "The pause before reacting is where real strength lives." },
-  { id: "self-control-2", theme: "self-control", text: "Calm isn't the absence of anger — it's what comes after it." },
+  { id: "self-control-2", theme: "self-control", text: "Calm isn't the absence of anger. It's what comes after it." },
 
   { id: "generosity-1", theme: "generosity", text: "The smallest gift, given first, teaches the most." },
   { id: "generosity-2", theme: "generosity", text: "Generosity starts the moment you stop counting what's left." },
@@ -50,7 +50,7 @@ const TAGLINES: readonly TaglineTemplate[] = [
   { id: "devotion-2", theme: "devotion", text: "Devotion doesn't need an audience to be real." },
 
   { id: "speech-1", theme: "speech", text: "Words chosen carefully build the trust that lasts." },
-  { id: "speech-2", theme: "speech", text: "What's said once can't be unsaid — worth remembering early." },
+  { id: "speech-2", theme: "speech", text: "What's said once can't be unsaid, worth remembering early." },
 
   { id: "education-1", theme: "education", text: "Curiosity fed today becomes wisdom nobody can take away." },
   { id: "education-2", theme: "education", text: "The questions a child keeps asking shape who they become." },

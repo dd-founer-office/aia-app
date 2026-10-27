@@ -57,7 +57,7 @@ const ACTIONS: readonly ActionTemplate[] = [
   { id: "education-1", theme: "education", text: "Spend fifteen minutes today learning something new together, starting with: \"Let's figure this out together.\"" },
   { id: "education-2", theme: "education", text: "Ask your child today what they're curious about, then say: \"Let's go find one real answer together.\"" },
 
-  { id: "honesty-1", theme: "honesty", text: "If a small mistake happens today, model owning it out loud: \"That one's on me — I got that wrong.\"" },
+  { id: "honesty-1", theme: "honesty", text: "If a small mistake happens today, model owning it out loud: \"That one's on me. I got that wrong.\"" },
   { id: "honesty-2", theme: "honesty", text: "The next time you referee a disagreement today, say your reasoning out loud: \"Here's why I think this is fair.\"" },
 ];
 

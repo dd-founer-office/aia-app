@@ -38,7 +38,7 @@ export interface CtaConfig {
 }
 
 export const CTA_TYPES: readonly CtaConfig[] = [
-  { id: "SAVE", label: "Save", copyTemplate: "Save this one — you'll want to teach it again." },
+  { id: "SAVE", label: "Save", copyTemplate: "Save this one. You'll want to teach it again." },
   { id: "SHARE", label: "Share", copyTemplate: "Share this with a parent who'd want to see it." },
   { id: "COMMENT", label: "Comment", copyTemplate: "Tell us in the comments how your family lives this out." },
   { id: "TRY_TODAY", label: "Try Today", copyTemplate: "Try today's small action with your child before the day ends." },
