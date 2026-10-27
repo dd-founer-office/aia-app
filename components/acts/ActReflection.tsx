@@ -31,6 +31,7 @@ const TEAL = "#0A363A";
 const MINT = "#68FFAD";
 // Inside this section only the heading and the Save CTA use mint.
 const WHITE = "#FFFFFF";
+const HEART_RED = "#FF4D5E";
 // New, local to this section only -- a darker-than-TEAL charcoal-teal
 // surface for the inset cards (feeling picker, textarea, My Reflection),
 // distinct from the outer TEAL section behind them. No existing token
@@ -54,14 +55,16 @@ const REFLECTION_CSS = `
   .rf-card { position: relative; box-shadow: 0 -2px 14px -6px rgba(${STROKE_GREY},0.35); }
   .rf-card::before {
     content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
-    background: linear-gradient(180deg, rgba(${STROKE_GREY},0.95) 0%, rgba(${STROKE_GREY},0.45) 30%, rgba(${STROKE_GREY},0) 55%);
+    background: linear-gradient(180deg, rgba(${STROKE_GREY},0.95) 0%, rgba(${STROKE_GREY},0.5) 30%, rgba(${STROKE_GREY},0.3) 55%, rgba(${STROKE_GREY},0.24) 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
   }
   .rf-card.rf-gradient { box-shadow: 0 0 22px -4px rgba(${LOGO_ORANGE},0.35), 0 0 22px -4px rgba(${MINT_RGB},0.25); }
   .rf-card.rf-gradient::before {
     padding: 1.5px;
-    background: linear-gradient(45deg, rgb(${LOGO_ORANGE}) 0%, rgba(${LOGO_ORANGE},0) 38%, rgba(${MINT_RGB},0) 62%, rgb(${MINT_RGB}) 100%);
+    background:
+      linear-gradient(45deg, rgb(${LOGO_ORANGE}) 0%, rgba(${LOGO_ORANGE},0) 38%, rgba(${MINT_RGB},0) 62%, rgb(${MINT_RGB}) 100%),
+      linear-gradient(135deg, rgb(${LOGO_ORANGE}) 0%, rgba(${LOGO_ORANGE},0) 38%, rgba(${MINT_RGB},0) 62%, rgb(${MINT_RGB}) 100%);
   }
 `;
 const SAVE_GRADIENT = `linear-gradient(180deg, #8DFFC4 0%, ${MINT} 55%, #3FE08C 100%)`;
@@ -98,7 +101,7 @@ function FeelingChip({
       type="button"
       aria-pressed={selected}
       onClick={onToggle}
-      className={`${inter.className} flex items-center justify-center gap-1 whitespace-nowrap h-8 px-1 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+      className={`${inter.className} flex items-center justify-center gap-1 whitespace-nowrap h-8 px-3 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
       style={{
         borderRadius: CONTROL_RADIUS,
         background: CHIP_BG,
@@ -108,9 +111,9 @@ function FeelingChip({
       }}
     >
       {selected ? (
-        <X size={12} strokeWidth={2.5} color={WHITE} />
+        <X size={12} strokeWidth={2.5} color={WHITE} className="shrink-0" />
       ) : (
-        <Plus size={12} strokeWidth={2.5} />
+        <Plus size={12} strokeWidth={2.5} className="shrink-0" />
       )}
       {label}
     </button>
@@ -275,7 +278,7 @@ export function ActReflection() {
               >
                 You can choose more than one.
               </p>
-              <div className="mt-4 grid grid-cols-3 gap-2.5">
+              <div className="mt-4 flex flex-wrap gap-2.5">
                 {FEELINGS.map((feeling) => (
                   <FeelingChip
                     key={feeling}
@@ -391,8 +394,8 @@ export function ActReflection() {
                       <Heart
                         size={18}
                         strokeWidth={2}
-                        color={WHITE}
-                        fill={WHITE}
+                        color={HEART_RED}
+                        fill={HEART_RED}
                       />
                     </span>
                     <h3

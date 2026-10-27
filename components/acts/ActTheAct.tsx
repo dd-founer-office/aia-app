@@ -114,16 +114,17 @@ const CARE_CSS = `
   /* While the empty card waits below the fold it tugs up and gives a small
      shake every few seconds, like a handle waiting to be pulled. */
   @keyframes care-tug {
-    0%, 45%, 100% { translate: 0 0; rotate: 0deg; }
-    54% { translate: 0 -16px; rotate: 0deg; }
-    60% { translate: -4px -16px; rotate: -1.2deg; }
-    66% { translate: 4px -16px; rotate: 1.2deg; }
-    72% { translate: -3px -16px; rotate: -0.9deg; }
-    78% { translate: 3px -16px; rotate: 0.9deg; }
-    84% { translate: 0 -16px; rotate: 0deg; }
+    0%, 40%, 100% { translate: 0 0; rotate: 0deg; }
+    48% { translate: 0 -30px; rotate: 0deg; }
+    54% { translate: -10px -30px; rotate: -2.4deg; }
+    60% { translate: 10px -30px; rotate: 2.4deg; }
+    66% { translate: -8px -30px; rotate: -2deg; }
+    72% { translate: 8px -30px; rotate: 2deg; }
+    78% { translate: -4px -30px; rotate: -1deg; }
+    84% { translate: 0 -30px; rotate: 0deg; }
     94% { translate: 0 0; rotate: 0deg; }
   }
-  [data-care="hidden"] { transform-origin: 50% 0; animation: care-tug 2.2s ease-in-out infinite; }
+  [data-care="hidden"] { transform-origin: 50% 0; animation: care-tug 2s ease-in-out infinite; }
 `;
 const CARE_REVEAL_DONE_MS = 1900;
 
