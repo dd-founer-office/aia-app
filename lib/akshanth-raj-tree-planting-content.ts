@@ -3,7 +3,7 @@ import type { ContributionImpactRecordData } from "@/components/acts/Contributio
 import type { SnapshotContent } from "@/components/acts/ActSnapshot";
 import type { ActContent } from "@/components/acts/ActTheAct";
 import type { TestimonialContent } from "@/components/acts/ActTestimonial";
-import { AKSHANTH_IMPACT_BANNER } from "@/lib/akshanth-raj-content";
+import { buildMonthlyAramBanner } from "@/lib/akshanth-raj-content";
 
 /**
  * Content for the tree-planting act gifted for Akshanth Raj's birthday
@@ -189,4 +189,7 @@ export const TREE_BIRTHDAY_IMPACT_RECORD: ContributionImpactRecordData = {
   verification: { dataLabel: "Status", dataValue: "Completed", recordId: "" },
 };
 
-export const TREE_BIRTHDAY_IMPACT_BANNER = AKSHANTH_IMPACT_BANNER;
+export const TREE_BIRTHDAY_IMPACT_BANNER = buildMonthlyAramBanner(
+  "Hi Aram in Action team, I saw the 15 native trees planted at Elandurai for Akshanth Raj's birthday (Vaazhga Vaazhthudan) with Iyal Impact Foundation. I would like to know more about joining the Monthly Aram.",
+  "Learn how to keep trees growing every month",
+);
