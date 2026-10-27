@@ -13,7 +13,7 @@ import { AKSHANTH_IMPACT_BANNER } from "@/lib/akshanth-raj-content";
  */
 export const TREE_BIRTHDAY_ACT_ID =
   "vaazhga-vaazhthudan-akshanth-raj-tree-planting";
-export const TREE_BIRTHDAY_PLACE = "Thirucherai, Kumbakonam, Thanjavur";
+export const TREE_BIRTHDAY_PLACE = "Elandurai, Kumbakonam, Thanjavur";
 
 const IMG = "/mock/tree-birthday";
 
@@ -29,15 +29,15 @@ export const TREE_BIRTHDAY_HERO = {
 // confirm: date, place and partner name.
 export const TREE_BIRTHDAY_SNAPSHOT: SnapshotContent = {
   dateLines: ["27 October", "Tuesday"],
-  locationLines: ["Thirucherai", "Kumbakonam", "Thanjavur"],
+  locationLines: ["Elandurai", "Kumbakonam", "Thanjavur"],
   keyLine: "Saplings planted",
   keySub: "for a birthday",
   partnerLines: ["Aram in Action", "Tree Planting Team"],
   icon: "tree",
 };
 
-// The footage is portrait and has no testimonial, so the section is a plain
-// "watch it" video with no quote.
+// The footage was shot sideways, so it is rotated to landscape and carries
+// the supplied audio (trimmed to its length). No written quote.
 export const TREE_BIRTHDAY_VIDEO: TestimonialContent = {
   videoSrc: `${IMG}/planting.mp4`,
   posterSrc: `${IMG}/planting-poster.jpg`,
@@ -46,7 +46,6 @@ export const TREE_BIRTHDAY_VIDEO: TestimonialContent = {
   quote: "",
   speaker: "",
   organization: "",
-  contain: true,
 };
 
 const ACT_DESCRIPTION =
@@ -167,7 +166,7 @@ export const TREE_BIRTHDAY_IMPACT_RECORD: ContributionImpactRecordData = {
   },
   allocation: {
     dataLabel: "Recipient",
-    dataValue: "Thirucherai",
+    dataValue: "Elandurai",
     recordId: "",
   },
   impact: { dataLabel: "Outcome", dataValue: "Saplings planted", recordId: "" },
