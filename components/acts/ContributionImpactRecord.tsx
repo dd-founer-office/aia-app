@@ -92,13 +92,16 @@ const ENTRY_META: {
 function RecordIdPill({ recordId, href }: { recordId: string; href?: string }) {
   const className = `${inter.className} inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-3.5 py-1.5 transition-opacity hover:opacity-80`;
   const style = { background: MINT };
-  const content = (
+  // An entry with no id yet keeps the pill's shape but shows nothing in it.
+  const content = recordId ? (
     <>
       <span className="text-[12px] font-semibold" style={{ color: TEAL }}>
         {recordId}
       </span>
       <ChevronRight size={14} color={TEAL} aria-hidden="true" />
     </>
+  ) : (
+    <span aria-hidden="true" className="block h-[18px] w-10" />
   );
 
   // No underlying route exists yet for any of these ids (see
@@ -135,10 +138,10 @@ function FlushIconCell({
       style={{ background: TEAL }}
     >
       <div
-        className="flex h-8 w-8 items-center justify-center rounded-full"
-        style={{ background: MINT }}
+        className="flex h-9 w-9 items-center justify-center rounded-[10px]"
+        style={{ background: "rgba(104, 255, 173, 0.16)" }}
       >
-        <Icon size={16} strokeWidth={2} color={TEAL} />
+        <Icon size={18} strokeWidth={2} color={MINT} />
       </div>
     </div>
   );
@@ -204,9 +207,7 @@ function ImpactRecordRows({
             {entry.dataValue}
           </span>
         </div>
-        {entry.recordId ? (
-          <RecordIdPill recordId={entry.recordId} href={entry.href} />
-        ) : null}
+        <RecordIdPill recordId={entry.recordId} href={entry.href} />
       </div>
     </>
   );

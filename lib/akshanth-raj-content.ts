@@ -16,12 +16,10 @@ import type { TestimonialContent } from "@/components/acts/ActTestimonial";
 export const AKSHANTH_ACT_ID = "vaazhga-vaazhthudan-akshanth-raj";
 export const AKSHANTH_ORGANIZATION = "Sudar Matruthiranudaiyor Kapagam";
 
-// The monthly-Aram banner opens WhatsApp with a prefilled message. Set the
-// number in international format without "+" (e.g. "9715XXXXXXXX"); while it
-// is empty the link opens WhatsApp's own contact picker with the message.
-const WHATSAPP_NUMBER = "";
+// The monthly-Aram banner opens WhatsApp with a prefilled message.
+const WHATSAPP_NUMBER = "971582267155";
 const WHATSAPP_MESSAGE =
-  "Hi, I'd like to know more about the Monthly Aram (Vaazhga Vaazhthudan - Akshanth Raj).";
+  "Hi Aram in Action team, I saw Akshanth Raj's Vaazhga Vaazhthudan meal for 35 residents at Sudar Matruthiranudaiyor Kapagam. I would like to know more about joining the Monthly Aram.";
 export const AKSHANTH_WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
 
 const IMG = "/mock/vaazhga";
@@ -30,8 +28,8 @@ export const AKSHANTH_HERO = {
   title: "From Dubai, a Blessing\nReached a Plate in Thirucherai",
   description:
     "Because Akshanth Raj's thoughtfulness, thousands of kilometres away, became a warm meal for 35 residents who were remembered.",
-  heroImageUrl: `${IMG}/p14.jpg`,
-  imageObjectPosition: "62% 50%",
+  heroImageUrl: `${IMG}/hero.jpg`,
+  imageObjectPosition: "52% 50%",
   highlightWord: "Blessing",
 };
 
@@ -76,14 +74,20 @@ export const AKSHANTH_ACT: ActContent = {
       description: ACT_DESCRIPTION,
       focus: "78% 50%",
     },
-    {
-      title: "Smiles",
-      image: `${IMG}/p20.jpg`,
-      description: ACT_DESCRIPTION,
-      focus: "52% 50%",
-    },
   ],
 };
+
+// This morning, 8:00 - 8:20 AM IST: the first (most recent) photo is the
+// latest minute and each earlier one is two minutes before it.
+function captureAt(index: number) {
+  const minute = 18 - index * 2;
+  const mm = String(Math.max(minute, 0)).padStart(2, "0");
+  return {
+    iso: `2026-10-27T08:${mm}:00+05:30`,
+    short: `8:${mm} AM`,
+    full: `8:${mm}:00 AM GMT+5:30`,
+  };
+}
 
 const PLACE = "Thirucherai, Kumbakonam, Thanjavur";
 // Most recent first, like getPublishedActTrace(); the first three are what
@@ -152,9 +156,10 @@ export const AKSHANTH_EVIDENCE: EvidenceTraceItem[] = EVIDENCE_PHOTOS.map(
     momentTitle: photo.title,
     narrative: photo.narrative,
     captureDate: "27 October 2026",
-    captureDateIso: "2026-10-27T09:00:00+05:30",
-    captureTime: "9:00 AM",
+    captureDateIso: captureAt(index).iso,
+    captureTime: captureAt(index).short,
     captureDateLong: "27 Oct 2026",
+    captureTimeWithOffset: captureAt(index).full,
     capturedBy: "AiA Operations",
     landmark: PLACE,
     gpsLat: 0,
