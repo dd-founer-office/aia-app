@@ -13,7 +13,7 @@ import {
   TREE_BIRTHDAY_HERO,
   TREE_BIRTHDAY_IMPACT_BANNER,
   TREE_BIRTHDAY_IMPACT_RECORD,
-  TREE_BIRTHDAY_PLACE,
+  TREE_BIRTHDAY_PARTNER,
   TREE_BIRTHDAY_SNAPSHOT,
   TREE_BIRTHDAY_VIDEO,
 } from "@/lib/akshanth-raj-tree-planting-content";
@@ -70,7 +70,7 @@ export default function AkshanthRajTreePlantingPage() {
 
       <div className="-my-10">
         <ActEvidence
-          organization="Aram in Action"
+          organization={TREE_BIRTHDAY_PARTNER}
           evidence={TREE_BIRTHDAY_EVIDENCE}
         />
       </div>

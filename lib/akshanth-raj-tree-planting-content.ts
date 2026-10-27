@@ -13,6 +13,7 @@ import { AKSHANTH_IMPACT_BANNER } from "@/lib/akshanth-raj-content";
  */
 export const TREE_BIRTHDAY_ACT_ID =
   "vaazhga-vaazhthudan-akshanth-raj-tree-planting";
+export const TREE_BIRTHDAY_PARTNER = "Iyal Impact Foundation";
 export const TREE_BIRTHDAY_PLACE = "Elandurai, Kumbakonam, Thanjavur";
 
 const IMG = "/mock/tree-birthday";
@@ -26,13 +27,12 @@ export const TREE_BIRTHDAY_HERO = {
   highlightWord: "Roots",
 };
 
-// confirm: partner name.
 export const TREE_BIRTHDAY_SNAPSHOT: SnapshotContent = {
   dateLines: ["27 October", "Tuesday"],
   locationLines: ["Elandurai", "Kumbakonam", "Thanjavur"],
   keyLine: "15 saplings",
   keySub: "planted for a birthday",
-  partnerLines: ["Aram in Action", "Tree Planting Team"],
+  partnerLines: ["Iyal Impact Foundation"],
   icon: "tree",
 };
 
