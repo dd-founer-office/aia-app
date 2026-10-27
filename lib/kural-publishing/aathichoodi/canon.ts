@@ -97,7 +97,34 @@ export interface CuratedEpisodeContent {
    *  its own per-theme hook automatically -- there is no more single fixed
    *  hook repeated across the series. */
   hookOverride?: string;
+  /** Optional language-development category, driving Slide 4's 3-pill tag
+   *  row (one pill shown active/filled) and Slide 3's own heading text
+   *  (RETHINK THIS TODAY / ASK YOUR CHILD TODAY / TRY THIS FAMILY ROUTINE
+   *  -- see aathichoodi-carousel-renderer.ts). Hand-authored editorial
+   *  classification, never derived or guessed -- an episode with no value
+   *  here simply falls back to the fixed Slide 3 heading and omits the
+   *  pill row. See LANGUAGE_CATEGORY_LABELS below for display text. */
+  languageCategory?: "beliefs" | "practices" | "management";
 }
+
+/** Display labels for CuratedEpisodeContent.languageCategory -- the tag
+ *  row's own "Language X" copy. */
+export const LANGUAGE_CATEGORY_LABELS: Record<NonNullable<CuratedEpisodeContent["languageCategory"]>, string> = {
+  beliefs: "Language Beliefs",
+  practices: "Language Practices",
+  management: "Language Management",
+};
+
+/** Slide 3's own heading text when an episode has a languageCategory --
+ *  distinct from LANGUAGE_CATEGORY_LABELS above (the pill row's own
+ *  copy). An episode with no languageCategory falls back to the design
+ *  system's original fixed heading (Slide3Style.sectionHeadingText,
+ *  "ASK YOUR CHILD TODAY"). */
+export const SLIDE3_ACTION_HEADING_LABELS: Record<NonNullable<CuratedEpisodeContent["languageCategory"]>, string> = {
+  beliefs: "RETHINK THIS TODAY",
+  practices: "ASK YOUR CHILD TODAY",
+  management: "TRY THIS FAMILY ROUTINE",
+};
 
 export interface AathichoodiCanonEntry {
   episodeNumber: number;
@@ -137,6 +164,7 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       todayAction: "Tonight, before bed, ask: \"What's one good thing you did today that nobody asked you to do?\" Whatever the answer, celebrate the wanting — not just the doing.",
       aiaConnection: "Wisdom becomes meaningful when it becomes action — that's the whole idea behind Aram in Action.",
       recommendedCta: "SAVE",
+      languageCategory: "beliefs",
     },
   },
   // Episode 2 is deliberately NOT curated -- it composes entirely from the

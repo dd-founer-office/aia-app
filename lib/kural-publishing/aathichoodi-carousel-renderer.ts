@@ -44,6 +44,7 @@
  */
 
 import type { ComposedEpisode } from "./aathichoodi/content-engine";
+import { LANGUAGE_CATEGORY_LABELS, SLIDE3_ACTION_HEADING_LABELS } from "./aathichoodi/canon";
 
 // ---------------------------------------------------------------------------
 // Design system -- fully overridable. DEFAULT_STYLE is the founder-approved
@@ -61,6 +62,16 @@ export interface CarouselColors {
   panelFill: string;
   panelBorder: string;
   badgeRing: string;
+  /** Slide 3's language-category tag row -- the active pill (matching
+   *  episode.languageCategory) uses the accent/active pair, every other
+   *  pill uses the inactive pair, same "accent = selected" convention
+   *  already used elsewhere in this palette. */
+  tagPillInactiveBackground: string;
+  tagPillInactiveBorder: string;
+  tagPillInactiveText: string;
+  tagPillActiveBackground: string;
+  tagPillActiveBorder: string;
+  tagPillActiveText: string;
 }
 
 export interface CarouselLayout {
@@ -134,6 +145,19 @@ export interface Slide3Style {
   panelPadY: number;
   panelRadius: number;
   showQuoteMark: boolean;
+  /** 3-pill language-category tag row -- one pill (episode.languageCategory)
+   *  is shown active/filled. Only drawn when showTagRow is true AND the
+   *  episode actually has a languageCategory set (every episode except the
+   *  handful hand-classified so far); tagRowX holds each pill's literal
+   *  left edge rather than a margin + gap, so the three positions can be
+   *  tuned independently. */
+  showTagRow: boolean;
+  tagRowY: number;
+  tagRowX: readonly [number, number, number];
+  tagRowPillW: number;
+  tagRowPillH: number;
+  tagRowPillRadius: number;
+  tagRowTextSize: number;
 }
 export interface Slide4Style {
   heroSize: number;
@@ -352,6 +376,12 @@ export const DEFAULT_STYLE: CarouselStyle = {
     panelFill: "rgba(255, 255, 255, 0.07)",
     panelBorder: "rgba(255, 255, 255, 0.12)",
     badgeRing: "rgba(255, 255, 255, 0.16)",
+    tagPillInactiveBackground: "rgba(255, 255, 255, 0.07)",
+    tagPillInactiveBorder: "rgba(255, 255, 255, 0.12)",
+    tagPillInactiveText: "#A9C4B1",
+    tagPillActiveBackground: "#4FAE7C",
+    tagPillActiveBorder: "#4FAE7C",
+    tagPillActiveText: "#0C2A1B",
   },
   layout: {
     marginX: 0.093,
@@ -394,6 +424,13 @@ export const DEFAULT_STYLE: CarouselStyle = {
     panelPadY: 0.07,
     panelRadius: 0.03,
     showQuoteMark: true,
+    showTagRow: true,
+    tagRowY: 184,
+    tagRowX: [90, 315, 544],
+    tagRowPillW: 175,
+    tagRowPillH: 57,
+    tagRowPillRadius: 8,
+    tagRowTextSize: 22,
   },
   slide4: {
     heroSize: 48,
@@ -422,6 +459,12 @@ export const INVERTED_COLORS: CarouselColors = {
   panelFill: "rgba(21, 66, 44, 0.06)",
   panelBorder: "rgba(21, 66, 44, 0.14)",
   badgeRing: "rgba(21, 66, 44, 0.18)",
+  tagPillInactiveBackground: "rgba(21, 66, 44, 0.06)",
+  tagPillInactiveBorder: "rgba(21, 66, 44, 0.14)",
+  tagPillInactiveText: "#4A6B57",
+  tagPillActiveBackground: "#3C8F62",
+  tagPillActiveBorder: "#3C8F62",
+  tagPillActiveText: "#F6F1E3",
 };
 
 export function resolveStyle(overrides?: CarouselStyleOverrides, invertColors?: boolean): CarouselStyle {
@@ -1295,6 +1338,50 @@ function drawSlide3Action(
     }
     pushHotspot(hotspots, id, frame.contentX, frame.contentW, firstBaseline, cursorY, afterSize, offset);
   }
+
+  // Tag-pill row -- "Language Beliefs/Practices/Management". Episodes
+  // without episode.languageCategory authored yet skip this row entirely
+  // rather than guessing a category, same "only render what's actually
+  // set" convention distantDevotionConnection/aiaConnection follow.
+  const category = episode.languageCategory;
+  if (style.slide3.showTagRow && category) {
+    const tagRowOffset = posFor(positions, "slide3.tagRow");
+    const pillW = px(style.slide3.tagRowPillW, width);
+    const pillH = px(style.slide3.tagRowPillH, width);
+    const pillRadius = px(style.slide3.tagRowPillRadius, width);
+    const pillY = px(style.slide3.tagRowY, width) + tagRowOffset.dy;
+    const textSize = px(style.slide3.tagRowTextSize, width);
+    if (draw) {
+      for (const [i, id] of (["beliefs", "practices", "management"] as const).entries()) {
+        const pillX = px(style.slide3.tagRowX[i], width) + tagRowOffset.dx;
+        const isActive = id === category;
+        ctx.fillStyle = isActive ? style.colors.tagPillActiveBackground : style.colors.tagPillInactiveBackground;
+        ctx.strokeStyle = isActive ? style.colors.tagPillActiveBorder : style.colors.tagPillInactiveBorder;
+        ctx.lineWidth = Math.max(1, px(1, width));
+        ctx.beginPath();
+        ctx.roundRect(pillX, pillY, pillW, pillH, pillRadius);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = "center";
+        ctx.fillStyle = isActive ? style.colors.tagPillActiveText : style.colors.tagPillInactiveText;
+        ctx.font = `${isActive ? 600 : 400} ${Math.round(textSize)}px ${serifFont}`;
+        const [firstWord, ...rest] = LANGUAGE_CATEGORY_LABELS[id].split(" ");
+        const secondWord = rest.join(" ");
+        const lineHeight = textSize * 1.15;
+        const textCx = pillX + pillW / 2;
+        const textCy = pillY + pillH / 2;
+        ctx.fillText(firstWord, textCx, textCy - lineHeight * 0.1);
+        ctx.fillText(secondWord, textCx, textCy + lineHeight * 0.9);
+      }
+    }
+    if (hotspots) {
+      const groupX = px(style.slide3.tagRowX[0], width) + tagRowOffset.dx;
+      const groupRight = px(style.slide3.tagRowX[2], width) + pillW + tagRowOffset.dx;
+      hotspots.push({ id: "slide3.tagRow", x: groupX, y: pillY, width: groupRight - groupX, height: pillH });
+    }
+  }
+
   return cursorY;
 }
 
@@ -1495,6 +1582,14 @@ export function renderAathichoodiCarouselSlide(
   const { width, height, slideIndex, tamilFont, serifFont, sansFont, displayFont } = opts;
   const style = resolveStyle(opts.design?.style, opts.design?.invertColors);
   const episode = applyTextOverrides(opts.episode, opts.design?.text);
+  // Slide 3's heading responds to the episode's own languageCategory
+  // (RETHINK THIS TODAY / ASK YOUR CHILD TODAY / TRY THIS FAMILY ROUTINE)
+  // when set, falling back to the design system's original fixed heading
+  // otherwise -- mutating the freshly-resolved style object here (not a
+  // style override field) so computeFrame/drawHeader need no new params.
+  if (slideIndex === 3 && episode.languageCategory) {
+    style.slide3.sectionHeadingText = SLIDE3_ACTION_HEADING_LABELS[episode.languageCategory];
+  }
   const frame = computeFrame(style, width, height, slideIndex);
   const positions = opts.design?.positions;
   const emphases = opts.design?.emphases;

@@ -91,6 +91,11 @@ export interface ComposedEpisode {
   captionCta: string;
   recommendedFormat: AathichoodiFormat;
   verified: boolean;
+  /** Optional language-development category (see canon.ts's
+   *  CuratedEpisodeContent.languageCategory) -- drives Slide 4's tag row
+   *  and Slide 3's heading in the renderer. Undefined for every episode
+   *  that hasn't been hand-classified yet. */
+  languageCategory?: "beliefs" | "practices" | "management";
 }
 
 /** STATIC is recommended only for short, emotionally-anchored lines --
@@ -185,6 +190,7 @@ export function composeEpisode(
     captionCta: captionCta.text,
     recommendedFormat: recommendFormat(entry),
     verified: entry.verified,
+    languageCategory: curated?.languageCategory,
   };
 
   const nextHistory: SeriesHistory = {
