@@ -38,14 +38,14 @@ export interface CtaConfig {
 }
 
 export const CTA_TYPES: readonly CtaConfig[] = [
-  { id: "SAVE", label: "Save", copyTemplate: "Save this now — you'll want it the next time this comes up at home." },
+  { id: "SAVE", label: "Save", copyTemplate: "Save this now. You'll want it the next time this comes up at home." },
   { id: "SHARE", label: "Share", copyTemplate: "Send this to one parent right now who needs to see it today." },
   { id: "COMMENT", label: "Comment", copyTemplate: "Comment below: how will your family live this out this week?" },
-  { id: "TRY_TODAY", label: "Try Today", copyTemplate: "Don't just read it — try today's action with your child before bedtime." },
+  { id: "TRY_TODAY", label: "Try Today", copyTemplate: "Don't just read it. Try today's action with your child before bedtime." },
   { id: "PARENT_REFLECTION", label: "Parent Reflection", copyTemplate: "Sit with this tonight, then talk about it with your child tomorrow." },
-  { id: "AIA_PARTICIPATION", label: "AiA Participation", copyTemplate: "Take the next step — turn this value into action with Aram in Action." },
+  { id: "AIA_PARTICIPATION", label: "AiA Participation", copyTemplate: "Take the next step. Turn this value into action with Aram in Action." },
   { id: "DISTANT_DEVOTION", label: "Distant Devotion", copyTemplate: "Carry this value forward today through Distant Devotion." },
-  { id: "STORY_TESTIMONIAL", label: "Story / Testimonial", copyTemplate: "Tell us how your family has lived this — your story could help another parent." },
+  { id: "STORY_TESTIMONIAL", label: "Story / Testimonial", copyTemplate: "Tell us how your family has lived this. Your story could help another parent." },
   { id: "SOFT_ENQUIRY", label: "Soft Enquiry", copyTemplate: "Want to bring this into your family's routine? Ask us how." },
 ];
 

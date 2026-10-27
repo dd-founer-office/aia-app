@@ -33,7 +33,7 @@ const OPENERS: readonly ThemedTemplate[] = [
   { id: "character-2", theme: "character", text: "Kids build who they are long before anyone's watching." },
   { id: "character-3", theme: "character", text: "Character isn't one big decision. It's the sum of a hundred small ones." },
 
-  { id: "self-control-1", theme: "self-control", text: "The gap between feeling it and saying it — that's where growth lives." },
+  { id: "self-control-1", theme: "self-control", text: "The gap between feeling it and saying it. That's where growth lives." },
   { id: "self-control-2", theme: "self-control", text: "Patience isn't taught in one lecture. It's built in a hundred small pauses." },
   { id: "self-control-3", theme: "self-control", text: "The moment you want to react is exactly the moment that teaches the most." },
 
@@ -50,7 +50,7 @@ const OPENERS: readonly ThemedTemplate[] = [
   { id: "gratitude-3", theme: "gratitude", text: "What a child appreciates, they tend to protect." },
 
   { id: "responsibility-1", theme: "responsibility", text: "Ownership is a habit before it's ever a value." },
-  { id: "responsibility-2", theme: "responsibility", text: "Kids rise to exactly the responsibility they're handed — no more, no less." },
+  { id: "responsibility-2", theme: "responsibility", text: "Kids rise to exactly the responsibility they're handed. No more, no less." },
   { id: "responsibility-3", theme: "responsibility", text: "Nobody's born responsible. It's practiced, badly, until it isn't." },
 
   { id: "community-1", theme: "community", text: "Belonging starts with someone deciding to include, not wait to be included." },
@@ -76,7 +76,7 @@ const OPENERS: readonly ThemedTemplate[] = [
 
 const CLOSERS: readonly ThemedTemplate[] = [
   { id: "character-1", theme: "character", text: "Worth sitting with tonight, parent to parent." },
-  { id: "character-2", theme: "character", text: "One line, one small shift — that's how it starts." },
+  { id: "character-2", theme: "character", text: "One line, one small shift. That's how it starts." },
   { id: "character-3", theme: "character", text: "Small and consistent beats big and rare, every time." },
 
   { id: "self-control-1", theme: "self-control", text: "Not a fix. A first step for a hard moment." },
@@ -91,11 +91,11 @@ const CLOSERS: readonly ThemedTemplate[] = [
   { id: "family-2", theme: "family", text: "None of this needs to be perfect. Just present." },
   { id: "family-3", theme: "family", text: "Today counts. It doesn't have to be a big day." },
 
-  { id: "gratitude-1", theme: "gratitude", text: "Say it out loud tonight — it counts more than you'd think." },
+  { id: "gratitude-1", theme: "gratitude", text: "Say it out loud tonight. It counts more than you'd think." },
   { id: "gratitude-2", theme: "gratitude", text: "A habit worth starting before bedtime tonight." },
   { id: "gratitude-3", theme: "gratitude", text: "A short thank-you, said often, outlasts a big one said once." },
 
-  { id: "responsibility-1", theme: "responsibility", text: "Ownership, not obligation — the difference matters." },
+  { id: "responsibility-1", theme: "responsibility", text: "Ownership, not obligation. The difference matters." },
   { id: "responsibility-2", theme: "responsibility", text: "One small task, all the way through, today." },
   { id: "responsibility-3", theme: "responsibility", text: "Let the task be theirs, start to finish." },
 
@@ -103,7 +103,7 @@ const CLOSERS: readonly ThemedTemplate[] = [
   { id: "community-2", theme: "community", text: "The easiest values lesson to practice this week." },
   { id: "community-3", theme: "community", text: "Noticing who's left out is a skill worth building early." },
 
-  { id: "devotion-1", theme: "devotion", text: "A minute of stillness is harder than it sounds — try it anyway." },
+  { id: "devotion-1", theme: "devotion", text: "A minute of stillness is harder than it sounds. Try it anyway." },
   { id: "devotion-2", theme: "devotion", text: "Quiet, on purpose, once today." },
   { id: "devotion-3", theme: "devotion", text: "One quiet minute, on purpose, is enough to start." },
 
@@ -132,26 +132,26 @@ const CTAS: readonly CtaTemplate[] = [
   { id: "share-1", type: "SHARE", text: "Tag a parent who needs to see this today." },
   { id: "share-2", type: "SHARE", text: "Send this to someone raising kids alongside you." },
 
-  { id: "comment-1", type: "COMMENT", text: "Drop a comment — how does your family handle this one?" },
+  { id: "comment-1", type: "COMMENT", text: "Drop a comment. How does your family handle this one?" },
   { id: "comment-2", type: "COMMENT", text: "We're curious how this plays out in your house. Tell us below." },
 
   { id: "try-today-1", type: "TRY_TODAY", text: "Give this a real try before bedtime tonight." },
   { id: "try-today-2", type: "TRY_TODAY", text: "Test this out today and see what happens." },
 
-  { id: "parent-reflection-1", type: "PARENT_REFLECTION", text: "No action needed today — just sit with this one a while." },
+  { id: "parent-reflection-1", type: "PARENT_REFLECTION", text: "No action needed today. Just sit with this one a while." },
   { id: "parent-reflection-2", type: "PARENT_REFLECTION", text: "Some days the reflection is the whole lesson." },
 
   { id: "aia-participation-1", type: "AIA_PARTICIPATION", text: "Curious what this looks like in practice? Aram in Action can show you." },
-  { id: "aia-participation-2", type: "AIA_PARTICIPATION", text: "There's a real way to put this into motion — ask us how." },
+  { id: "aia-participation-2", type: "AIA_PARTICIPATION", text: "There's a real way to put this into motion. Ask us how." },
 
-  { id: "distant-devotion-1", type: "DISTANT_DEVOTION", text: "Distant Devotion turns this into something lasting — worth a look." },
+  { id: "distant-devotion-1", type: "DISTANT_DEVOTION", text: "Distant Devotion turns this into something lasting. Worth a look." },
   { id: "distant-devotion-2", type: "DISTANT_DEVOTION", text: "A quiet way to carry this further, from wherever you are." },
 
   { id: "story-testimonial-1", type: "STORY_TESTIMONIAL", text: "Has this shown up in your own family? We'd genuinely love to hear it." },
   { id: "story-testimonial-2", type: "STORY_TESTIMONIAL", text: "If this sounds familiar, tell us your version of it." },
 
   { id: "soft-enquiry-1", type: "SOFT_ENQUIRY", text: "Wondering how this connects to Aram in Action? Just ask." },
-  { id: "soft-enquiry-2", type: "SOFT_ENQUIRY", text: "There's more behind this one if you're curious — DM us." },
+  { id: "soft-enquiry-2", type: "SOFT_ENQUIRY", text: "There's more behind this one if you're curious. DM us." },
 ];
 
 export function selectCaptionOpener(

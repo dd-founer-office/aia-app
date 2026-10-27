@@ -35,21 +35,21 @@ interface ScenarioTemplate extends Pickable {
 }
 
 const SCENARIOS: readonly ScenarioTemplate[] = [
-  { id: "character-1", theme: "character", text: "A stray coin sits on the classroom floor. No teacher saw it fall, and nobody's asking. Pocketing it would be easy — and nobody would ever know the difference." },
+  { id: "character-1", theme: "character", text: "A stray coin sits on the classroom floor. No teacher saw it fall, and nobody's asking. Pocketing it would be easy. And nobody would ever know the difference." },
   { id: "character-2", theme: "character", text: "Your child finds a shortcut on a school project that nobody would catch. The grade wouldn't change. Only your child would ever know it was taken." },
   { id: "character-3", theme: "character", text: "A cashier hands back too much change. It's a small enough amount that no one would notice. It's also the whole decision, settled in about five seconds." },
   { id: "character-4", theme: "character", text: "Two classmates get blamed for something only one of them actually did, and your child is the only one who saw it happen. Speaking up costs something. Staying quiet costs something else." },
   { id: "character-5", theme: "character", text: "The group has decided to pick on someone today, and joining in is the easy way to stay in. Standing apart, even quietly, is its own kind of cost." },
   { id: "character-6", theme: "character", text: "Nobody is checking the hardest part of today's assignment. Skipping it wouldn't even be noticed. Doing it anyway happens for an audience of one." },
 
-  { id: "self-control-1", theme: "self-control", text: "A sibling knocks over something your child spent an hour building. It was an accident — but for a second, that doesn't matter. What happens in that second is the whole thing." },
+  { id: "self-control-1", theme: "self-control", text: "A sibling knocks over something your child spent an hour building. It was an accident. But for a second, that doesn't matter. What happens in that second is the whole thing." },
   { id: "self-control-2", theme: "self-control", text: "It's the fifth \"five more minutes\" tonight. The sixth \"no\" is coming. How it lands, from either side, is already being decided." },
-  { id: "self-control-3", theme: "self-control", text: "Your child loses a close game in front of everyone. There's a window — a few seconds, maybe less — before the reaction sets in." },
+  { id: "self-control-3", theme: "self-control", text: "Your child loses a close game in front of everyone. There's a window, a few seconds, maybe less, before the reaction sets in." },
   { id: "self-control-4", theme: "self-control", text: "Dessert before dinner, again. The answer is still no. Tonight's version of that argument is already starting to write itself." },
   { id: "self-control-5", theme: "self-control", text: "A sibling finds the exact thing that stings and says it anyway. The urge to fire back is instant. The half-second after it isn't." },
   { id: "self-control-6", theme: "self-control", text: "Everything feels unfair tonight, and your child is exhausted enough to show it. Whether it turns into words or a meltdown is still an open question." },
 
-  { id: "generosity-1", theme: "generosity", text: "One favorite snack left, and a friend is visibly hungry. Splitting it costs something real — and happens without being asked." },
+  { id: "generosity-1", theme: "generosity", text: "One favorite snack left, and a friend is visibly hungry. Splitting it costs something real. And happens without being asked." },
   { id: "generosity-2", theme: "generosity", text: "A classmate has forgotten their pencil case again. Your child notices before the teacher does, and slides one across without a word." },
   { id: "generosity-3", theme: "generosity", text: "Your child has been saving for something they want, and a sibling is short for something smaller. Chipping in costs the thing they've been waiting for." },
   { id: "generosity-4", theme: "generosity", text: "A friend is quietly having a hard week. Noticing is easy. Bringing them something tomorrow is the part that actually counts." },
@@ -71,18 +71,18 @@ const SCENARIOS: readonly ScenarioTemplate[] = [
   { id: "gratitude-6", theme: "gratitude", text: "Your child is retelling a proud moment and leaves out the person who helped them get there. Adding that person back into the story is gratitude, in the details." },
 
   { id: "responsibility-1", theme: "responsibility", text: "The room looks clean enough to pass a glance. The closet tells a different story. Nobody's going to open it today except your child." },
-  { id: "responsibility-2", theme: "responsibility", text: "One small job — feeding the dog, watering the plant — no reminder needed this time. That's not an accident. It's a rep." },
+  { id: "responsibility-2", theme: "responsibility", text: "One small job, feeding the dog, watering the plant, no reminder needed this time. That's not an accident. It's a rep." },
   { id: "responsibility-3", theme: "responsibility", text: "A chore gets started, then abandoned halfway for something more interesting. Whether it gets finished later, unprompted, is still undecided." },
   { id: "responsibility-4", theme: "responsibility", text: "Something borrowed came back a little damaged. Mentioning it before anyone notices costs more than staying quiet would." },
   { id: "responsibility-5", theme: "responsibility", text: "It's your child's turn to set up for the group, and nobody's checking. Doing it properly anyway, not just enough to pass, is a choice nobody will see." },
-  { id: "responsibility-6", theme: "responsibility", text: "A promise made yesterday is already half-forgotten by morning. What happens next — an excuse, or an admission — is still being decided." },
+  { id: "responsibility-6", theme: "responsibility", text: "A promise made yesterday is already half-forgotten by morning. What happens next, an excuse, or an admission, is still being decided." },
 
   { id: "community-1", theme: "community", text: "A new kid sits alone again today. Staying with the usual group is easier. Walking over isn't." },
   { id: "community-2", theme: "community", text: "It's time to pick who gets invited this weekend. The name chosen says more than any conversation about it would." },
   { id: "community-3", theme: "community", text: "A group project needs one more person, and the one left over isn't anyone's first pick. Someone has to say something." },
-  { id: "community-4", theme: "community", text: "The neighborhood cleanup is genuinely optional today — no one's checking who shows up. Showing up anyway means something different because of that." },
+  { id: "community-4", theme: "community", text: "The neighborhood cleanup is genuinely optional today. No one's checking who shows up. Showing up anyway means something different because of that." },
   { id: "community-5", theme: "community", text: "An older neighbor is struggling with something heavy. Noticing before being asked is the first half of this. Offering is the second." },
-  { id: "community-6", theme: "community", text: "A teammate's mistake cost the game. Including them in the conversation afterward, instead of letting them stand alone, is the harder option — and the one that matters." },
+  { id: "community-6", theme: "community", text: "A teammate's mistake cost the game. Including them in the conversation afterward, instead of letting them stand alone, is the harder option. And the one that matters." },
 
   { id: "devotion-1", theme: "devotion", text: "Before dinner, your family pauses for a moment everyone's done a thousand times. Tonight, your child actually means it instead of rushing through it." },
   { id: "devotion-2", theme: "devotion", text: "Your child asks why the family still keeps an old tradition nobody's explained to them. The answer you give shapes what devotion means to them for years." },
@@ -96,7 +96,7 @@ const SCENARIOS: readonly ScenarioTemplate[] = [
   { id: "speech-3", theme: "speech", text: "Your child knows a piece of gossip that would make them the center of attention if they shared it. Whether they let it stop with them is this Aathichoodi, tested by temptation." },
   { id: "speech-4", theme: "speech", text: "A friend asks your child's honest opinion about something they're proud of, but it's not very good. Finding a kind, truthful answer is speech, doing real work." },
   { id: "speech-5", theme: "speech", text: "Your child is losing an argument and reaches for something personal to say, something that would really land. Whether they say it anyway is decided in one breath." },
-  { id: "speech-6", theme: "speech", text: "Someone compliments your child in front of a sibling who didn't get the same praise. What your child says next — nothing, or something generous — is this Aathichoodi, quietly at work." },
+  { id: "speech-6", theme: "speech", text: "Someone compliments your child in front of a sibling who didn't get the same praise. What your child says next, nothing, or something generous, is this Aathichoodi, quietly at work." },
 
   { id: "education-1", theme: "education", text: "Your child gets a question wrong in front of the whole class and wants to give up on the subject entirely. What you say next decides whether curiosity survives the embarrassment." },
   { id: "education-2", theme: "education", text: "A grandparent starts telling your child how something used to be done, long before phones. Whether your child puts the phone down to listen is this Aathichoodi, right there." },
@@ -106,7 +106,7 @@ const SCENARIOS: readonly ScenarioTemplate[] = [
   { id: "education-6", theme: "education", text: "There's a documentary or article your child could skip for something easier tonight. Choosing the harder, more interesting thing is this Aathichoodi, quietly at work." },
 
   { id: "honesty-1", theme: "honesty", text: "Your child breaks something and has about three seconds to decide: own up, or blame the dog. What they choose in that gap is this Aathichoodi in its purest form." },
-  { id: "honesty-2", theme: "honesty", text: "Two siblings tell two different stories about the same fight. Judging fairly — not just believing whoever spoke first — is exactly what today's line calls for." },
+  { id: "honesty-2", theme: "honesty", text: "Two siblings tell two different stories about the same fight. Judging fairly, not just believing whoever spoke first, is exactly what today's line calls for." },
   { id: "honesty-3", theme: "honesty", text: "Your child says they finished something they actually didn't. It would be easy to let it slide by tomorrow. Correcting it themselves, unprompted, is this Aathichoodi, choosing itself." },
   { id: "honesty-4", theme: "honesty", text: "Your child is asked a direct question by a teacher and the honest answer might get them in a little trouble. What they say next is honesty, tested for real." },
   { id: "honesty-5", theme: "honesty", text: "A friend asks your child to back up a story that isn't quite true. Whether your child goes along with it, or says what actually happened, is this Aathichoodi in a single moment." },
