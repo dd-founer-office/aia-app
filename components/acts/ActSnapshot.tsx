@@ -544,8 +544,43 @@ function SnapshotCenter() {
  * inside its own single continuous teal surface, so it must read as a
  * continuation of that surface, not a second nested card.
  */
-export function ActSnapshot({ actId }: { actId: string }) {
+export interface SnapshotContent {
+  dateLines: [string, string];
+  locationLines: string[];
+  keyLine: string;
+  keySub: string;
+  partnerLines: string[];
+  // A key, not a component: this object is passed from a server page.
+  icon: "food" | "tree";
+}
+
+const ELDERS_SNAPSHOT: SnapshotContent = {
+  dateLines: ["28 September", "Monday"],
+  locationLines: ["Sreenivasanallur", "Kumbakonam", "Thanjavur"],
+  keyLine: "45 elders",
+  keySub: "served with care",
+  partnerLines: ["Annai Aravindhar", "Karunai Illam"],
+  icon: "food",
+};
+const TREE_SNAPSHOT: SnapshotContent = {
+  dateLines: ["28 September", "Monday"],
+  locationLines: ["Alangulam", "Thanjavur", "Tamil Nadu"],
+  keyLine: "25 native saplings",
+  keySub: "planted",
+  partnerLines: ["Iyal Impact Foundation"],
+  icon: "tree",
+};
+
+export function ActSnapshot({
+  actId,
+  content: contentOverride,
+}: {
+  actId: string;
+  content?: SnapshotContent;
+}) {
   const isAnnadhanamElders = actId === ANNADHANAM_ELDERS_ACT_ID;
+  const content =
+    contentOverride ?? (isAnnadhanamElders ? ELDERS_SNAPSHOT : TREE_SNAPSHOT);
   const panelRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useSyncExternalStore(
     subscribeToReducedMotionChanges,
@@ -733,8 +768,8 @@ export function ActSnapshot({ actId }: { actId: string }) {
           enter={{ kind: "emerge", at: 1000, from: DATE_ICON_A }}
           barsAt={1300}
         >
-          <TextBar i={0}>28 September</TextBar>
-          <TextBar i={1}>Monday</TextBar>
+          <TextBar i={0}>{content.dateLines[0]}</TextBar>
+          <TextBar i={1}>{content.dateLines[1]}</TextBar>
         </DetailBox>
 
         {/* Location -- three lines */}
@@ -756,19 +791,11 @@ export function ActSnapshot({ actId }: { actId: string }) {
           enter={{ kind: "emerge", at: 1000, from: LOC_ICON_A }}
           barsAt={1450}
         >
-          {isAnnadhanamElders ? (
-            <>
-              <TextBar i={0}>Sreenivasanallur</TextBar>
-              <TextBar i={1}>Kumbakonam</TextBar>
-              <TextBar i={2}>Thanjavur</TextBar>
-            </>
-          ) : (
-            <>
-              <TextBar i={0}>Alangulam</TextBar>
-              <TextBar i={1}>Thanjavur</TextBar>
-              <TextBar i={2}>Tamil Nadu</TextBar>
-            </>
-          )}
+          {content.locationLines.map((line, i) => (
+            <TextBar key={line} i={i}>
+              {line}
+            </TextBar>
+          ))}
         </DetailBox>
 
         <SnapshotCenter />
@@ -784,21 +811,12 @@ export function ActSnapshot({ actId }: { actId: string }) {
           barsAt={1750}
           align="center"
         >
-          {isAnnadhanamElders ? (
-            <>
-              <TextBar i={0} highlight>
-                45 elders
-              </TextBar>
-              <TextBar i={1}>served with care</TextBar>
-            </>
-          ) : (
-            <>
-              <TextBar i={0} highlight>
-                25 native saplings
-              </TextBar>
-              <TextBar i={1}>planted</TextBar>
-            </>
-          )}
+          <>
+            <TextBar i={0} highlight>
+              {content.keyLine}
+            </TextBar>
+            <TextBar i={1}>{content.keySub}</TextBar>
+          </>
         </DetailBox>
         <IconBox
           a={ACT_ICON_A}
@@ -807,7 +825,7 @@ export function ActSnapshot({ actId }: { actId: string }) {
           swapAt={6400}
           exitOrder={3}
           enter={{ kind: "grow", at: 850 }}
-          icon={isAnnadhanamElders ? UtensilsCrossed : Sprout}
+          icon={content.icon === "food" ? UtensilsCrossed : Sprout}
         />
 
         {/* Verified Partner */}
@@ -829,14 +847,11 @@ export function ActSnapshot({ actId }: { actId: string }) {
           enter={{ kind: "grow", at: 700 }}
           barsAt={1200}
         >
-          {isAnnadhanamElders ? (
-            <>
-              <TextBar i={0}>Annai Aravindhar</TextBar>
-              <TextBar i={1}>Karunai Illam</TextBar>
-            </>
-          ) : (
-            <TextBar i={0}>Iyal Impact Foundation</TextBar>
-          )}
+          {content.partnerLines.map((line, i) => (
+            <TextBar key={line} i={i}>
+              {line}
+            </TextBar>
+          ))}
         </DetailBox>
       </div>
 

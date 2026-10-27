@@ -1,5 +1,8 @@
 import localFont from "next/font/local";
-import { ActSnapshot } from "@/components/acts/ActSnapshot";
+import {
+  ActSnapshot,
+  type SnapshotContent,
+} from "@/components/acts/ActSnapshot";
 import { HeroCta } from "@/components/acts/HeroCta";
 import { HeroFit } from "@/components/acts/HeroFit";
 
@@ -11,7 +14,11 @@ const calSans = localFont({
 
 // Self-hosted rather than next/font/google -- see app/layout.tsx's comment
 // for why (intermittent Vercel build failure fetching from Google Fonts).
-const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
+const inter = localFont({
+  src: "../../app/fonts/InterVF.woff2",
+  weight: "100 900",
+  display: "swap",
+});
 
 // Reuses Home's EditorialHero teal/mint pair exactly (components/home/
 // EditorialHero.tsx) -- these two colors aren't in globals.css's LOCKED
@@ -21,7 +28,15 @@ const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900
 const TEAL = "#0A363A";
 const MINT = "#68FFAD";
 
-function ActHeroImage({ src, alt, objectPosition }: { src: string | null; alt: string; objectPosition: string }) {
+function ActHeroImage({
+  src,
+  alt,
+  objectPosition,
+}: {
+  src: string | null;
+  alt: string;
+  objectPosition: string;
+}) {
   return (
     <div
       className="w-full overflow-hidden"
@@ -47,7 +62,10 @@ function ActHeroImage({ src, alt, objectPosition }: { src: string | null; alt: s
         />
       ) : (
         // Existing (previously unused) fallback token, --color-photo-placeholder.
-        <div className="h-full w-full" style={{ background: "var(--color-photo-placeholder)" }} />
+        <div
+          className="h-full w-full"
+          style={{ background: "var(--color-photo-placeholder)" }}
+        />
       )}
     </div>
   );
@@ -58,17 +76,35 @@ function ActHeroImage({ src, alt, objectPosition }: { src: string | null; alt: s
 function renderTitle(title: string, word?: string) {
   const flat = title.replace(/\s*\n\s*/g, " ");
   if (!word) return flat;
-  const match = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).exec(flat);
+  const match = new RegExp(
+    `\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+  ).exec(flat);
   if (!match) return flat;
   return (
     <>
       {flat.slice(0, match.index)}
       <span className="aia-hero-highlight">
         {match[0]}
-        <i aria-hidden="true" className="aia-hero-handle" style={{ top: -4, left: -4 }} />
-        <i aria-hidden="true" className="aia-hero-handle" style={{ top: -4, right: -4 }} />
-        <i aria-hidden="true" className="aia-hero-handle" style={{ bottom: -4, left: -4 }} />
-        <i aria-hidden="true" className="aia-hero-handle" style={{ bottom: -4, right: -4 }} />
+        <i
+          aria-hidden="true"
+          className="aia-hero-handle"
+          style={{ top: -4, left: -4 }}
+        />
+        <i
+          aria-hidden="true"
+          className="aia-hero-handle"
+          style={{ top: -4, right: -4 }}
+        />
+        <i
+          aria-hidden="true"
+          className="aia-hero-handle"
+          style={{ bottom: -4, left: -4 }}
+        />
+        <i
+          aria-hidden="true"
+          className="aia-hero-handle"
+          style={{ bottom: -4, right: -4 }}
+        />
       </span>
       {flat.slice(match.index + match[0].length)}
     </>
@@ -112,13 +148,20 @@ function ActHeroContent({
       // of the first screen becomes this block's min-height, and the
       // content centers inside it instead of leaving a dead patch below.
       // 488px = page max-w-md (448) + two -mx-5 bleeds; 28px = overlap.
-      style={{ minHeight: "max(0px, calc(100svh - min(100vw, 488px) * 1.25 + 28px))" }}
+      style={{
+        minHeight: "max(0px, calc(100svh - min(100vw, 488px) * 1.25 + 28px))",
+      }}
     >
       <style>{HIGHLIGHT_CSS}</style>
       {showEyebrow && (
         <span
           className={`${inter.className} uppercase`}
-          style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "1.4px", color: "rgba(104, 255, 173, 0.68)" }}
+          style={{
+            fontSize: 11.5,
+            fontWeight: 700,
+            letterSpacing: "1.4px",
+            color: "rgba(104, 255, 173, 0.68)",
+          }}
         >
           {cause}
         </span>
@@ -128,13 +171,24 @@ function ActHeroContent({
         // Title text may carry an embedded "\n" (the Annadhanam Act's two
         // sentences); it is flattened to a space so lines flow naturally and
         // a short sentence never strands one word on its own line.
-        style={{ fontSize: "clamp(24px, 7.2vw, 32px)", fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.4px", color: MINT, textWrap: "balance" }}
+        style={{
+          fontSize: "clamp(24px, 7.2vw, 32px)",
+          fontWeight: 700,
+          lineHeight: 1.25,
+          letterSpacing: "-0.4px",
+          color: MINT,
+          textWrap: "balance",
+        }}
       >
         {renderTitle(title, highlightWord)}
       </h1>
       <p
         className={`${inter.className} m-0 max-w-[34ch]`}
-        style={{ fontSize: 14, lineHeight: 1.55, color: "rgba(255, 255, 255, 0.78)" }}
+        style={{
+          fontSize: 14,
+          lineHeight: 1.55,
+          color: "rgba(255, 255, 255, 0.78)",
+        }}
       >
         {description}
       </p>
@@ -172,6 +226,7 @@ export function ActDetailHero({
   imageObjectPosition = "center",
   highlightWord,
   ctaLabel = "See the story",
+  snapshotContent,
 }: {
   actId: string;
   heroImageUrl: string | null;
@@ -187,6 +242,7 @@ export function ActDetailHero({
   // label of the CTA that scrolls to the Act Snapshot panel.
   highlightWord?: string;
   ctaLabel?: string;
+  snapshotContent?: SnapshotContent;
 }) {
   return (
     <div className="-mx-5 -mt-6">
@@ -196,9 +252,16 @@ export function ActDetailHero({
           up over it, so the photo is covered as the visitor scrolls. The
           panel must stay opaque and above it (z-10) for that to work. */}
       <div className="sticky top-0 z-0">
-        <ActHeroImage src={heroImageUrl} alt={title.replace(/\s*\n\s*/g, " ")} objectPosition={imageObjectPosition} />
+        <ActHeroImage
+          src={heroImageUrl}
+          alt={title.replace(/\s*\n\s*/g, " ")}
+          objectPosition={imageObjectPosition}
+        />
       </div>
-      <div className="relative z-10 -mt-7 rounded-[12px]" style={{ background: TEAL }}>
+      <div
+        className="relative z-10 -mt-7 rounded-[12px]"
+        style={{ background: TEAL }}
+      >
         <ActHeroContent
           cause={cause}
           title={title}
@@ -209,7 +272,7 @@ export function ActDetailHero({
           ctaTargetId="act-snapshot"
         />
         <div id="act-snapshot">
-          <ActSnapshot actId={actId} />
+          <ActSnapshot actId={actId} content={snapshotContent} />
         </div>
       </div>
       {/* White backing under the panel's rounded bottom corners, so the
