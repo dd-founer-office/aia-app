@@ -32,6 +32,8 @@ const PANEL = "#1B1B1B";
 const CARD_SURFACE = "#232323";
 const CHIP_BG = "#363636";
 const CARD_RADIUS = 8;
+const HAIRLINE = "1px solid rgba(255, 255, 255, 0.14)";
+const SAVE_GRADIENT = `linear-gradient(180deg, #8DFFC4 0%, ${MINT} 55%, #3FE08C 100%)`;
 const CONTROL_RADIUS = 6;
 
 const FEELINGS = [
@@ -65,7 +67,7 @@ function FeelingChip({
       type="button"
       aria-pressed={selected}
       onClick={onToggle}
-      className={`${inter.className} flex items-center justify-center gap-1 whitespace-nowrap px-1 py-2.5 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+      className={`${inter.className} flex items-center justify-center gap-1 whitespace-nowrap h-8 px-1 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
       style={{
         borderRadius: CONTROL_RADIUS,
         background: CHIP_BG,
@@ -101,7 +103,7 @@ function PrivacyToggle({
       style={{ outlineColor: MINT }}
     >
       <span
-        className="flex h-11 w-11 shrink-0 items-center justify-center transition-colors"
+        className="flex h-9 w-9 shrink-0 items-center justify-center transition-colors"
         style={{
           background: isPrivate ? MINT : CHIP_BG,
           borderRadius: CONTROL_RADIUS,
@@ -203,11 +205,19 @@ export function ActReflection() {
 
         <div
           className="flex flex-col gap-4 p-3"
-          style={{ background: PANEL, borderRadius: CARD_RADIUS }}
+          style={{
+            background: PANEL,
+            borderRadius: CARD_RADIUS,
+            border: HAIRLINE,
+          }}
         >
           <div
             className="p-4"
-            style={{ background: CARD_SURFACE, borderRadius: CARD_RADIUS }}
+            style={{
+              background: CARD_SURFACE,
+              borderRadius: CARD_RADIUS,
+              border: HAIRLINE,
+            }}
           >
             <h3
               className={`${calSans.className} m-0 text-[17px] font-semibold`}
@@ -235,7 +245,11 @@ export function ActReflection() {
 
           <div
             className="p-4"
-            style={{ background: CARD_SURFACE, borderRadius: CARD_RADIUS }}
+            style={{
+              background: CARD_SURFACE,
+              borderRadius: CARD_RADIUS,
+              border: HAIRLINE,
+            }}
           >
             <label htmlFor={textareaId} className="block cursor-text">
               <h3
@@ -259,7 +273,7 @@ export function ActReflection() {
                   setReflectionText(event.target.value.slice(0, MAX_LENGTH))
                 }
                 maxLength={MAX_LENGTH}
-                rows={5}
+                rows={4}
                 placeholder="Share what this moment meant to you..."
                 className={`${inter.className} w-full resize-none px-3 pb-7 pt-2.5 text-[12px] leading-[1.45] placeholder:text-white/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
                 style={{
@@ -284,13 +298,14 @@ export function ActReflection() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={handleMaybeLater}
-              className={`${inter.className} flex-1 px-4 py-3 text-[13px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+              className={`${inter.className} h-8 px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
               style={{
-                background: CHIP_BG,
+                background: PANEL,
+                border: HAIRLINE,
                 color: "#FFFFFF",
                 outlineColor: MINT,
                 borderRadius: CONTROL_RADIUS,
@@ -301,9 +316,11 @@ export function ActReflection() {
             <button
               type="button"
               onClick={handleSave}
-              className={`${inter.className} flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-3 text-[13px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+              className={`${inter.className} flex h-8 items-center justify-center gap-1.5 whitespace-nowrap px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
               style={{
-                background: MINT,
+                background: SAVE_GRADIENT,
+                border: "1px solid rgba(255, 255, 255, 0.35)",
+                boxShadow: "0 0 14px rgba(104, 255, 173, 0.28)",
                 color: TEAL,
                 outlineColor: MINT,
                 borderRadius: CONTROL_RADIUS,
@@ -318,11 +335,15 @@ export function ActReflection() {
             <>
               <div
                 className="p-4"
-                style={{ background: CARD_SURFACE, borderRadius: CARD_RADIUS }}
+                style={{
+                  background: CARD_SURFACE,
+                  borderRadius: CARD_RADIUS,
+                  border: HAIRLINE,
+                }}
               >
                 <div className="flex items-center gap-3">
                   <span
-                    className="flex h-11 w-11 shrink-0 items-center justify-center"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center"
                     style={{
                       background: CHIP_BG,
                       borderRadius: CONTROL_RADIUS,
@@ -339,7 +360,7 @@ export function ActReflection() {
                   <button
                     type="button"
                     onClick={handleEdit}
-                    className={`${inter.className} shrink-0 self-start px-3 py-1 text-[10px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+                    className={`${inter.className} shrink-0 self-start h-6 px-3 text-[10px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
                     style={{
                       background: CHIP_BG,
                       color: "#FFFFFF",
@@ -365,7 +386,7 @@ export function ActReflection() {
                     {saved.feelings.map((feeling) => (
                       <span
                         key={feeling}
-                        className={`${inter.className} px-6 py-2.5 text-[11px] font-medium`}
+                        className={`${inter.className} flex h-8 items-center px-5 text-[11px] font-medium`}
                         style={{
                           background: CHIP_BG,
                           color: "#FFFFFF",
@@ -397,7 +418,7 @@ export function ActReflection() {
                 </p>
                 <button
                   type="button"
-                  className={`${inter.className} flex shrink-0 items-center gap-1 px-3 py-2 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+                  className={`${inter.className} flex shrink-0 items-center gap-1 h-8 px-3 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
                   style={{
                     background: PANEL,
                     color: "#FFFFFF",
