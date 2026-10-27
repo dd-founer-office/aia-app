@@ -17,20 +17,23 @@ export const TREE_BIRTHDAY_PARTNER = "Iyal Impact Foundation";
 export const TREE_BIRTHDAY_PLACE = "Elandurai, Kumbakonam, Thanjavur";
 
 const IMG = "/mock/tree-birthday";
+// Pin supplied for the planting site at Elandurai.
+const LAT = 10.971611;
+const LNG = 79.485895;
 
 export const TREE_BIRTHDAY_HERO = {
   title: "Some Birthdays Are Marked by Cake.\nThis One by Roots",
   description:
-    "Saplings planted in Akshanth Raj's name, each one a wish that keeps growing.",
-  heroImageUrl: `${IMG}/p1.jpg`,
-  imageObjectPosition: "50% 45%",
+    "Native trees planted in Akshanth Raj's name, each one a wish that keeps growing.",
+  heroImageUrl: `${IMG}/hero.jpg`,
+  imageObjectPosition: "55% 50%",
   highlightWord: "Roots",
 };
 
 export const TREE_BIRTHDAY_SNAPSHOT: SnapshotContent = {
   dateLines: ["27 October", "Tuesday"],
   locationLines: ["Elandurai", "Kumbakonam", "Thanjavur"],
-  keyLine: "15 saplings",
+  keyLine: "15 native trees",
   keySub: "planted for a birthday",
   partnerLines: ["Iyal Impact Foundation"],
   icon: "tree",
@@ -49,7 +52,7 @@ export const TREE_BIRTHDAY_VIDEO: TestimonialContent = {
 };
 
 const ACT_DESCRIPTION =
-  "Saplings prepared, planted by hand and protected, so each one can grow strong.";
+  "Native saplings prepared, planted by hand and protected, so each one can grow strong.";
 export const TREE_BIRTHDAY_ACT: ActContent = {
   heading: "Where the Wish Took Root",
   moments: [
@@ -75,7 +78,7 @@ export const TREE_BIRTHDAY_ACT: ActContent = {
 };
 
 // Most recent first; the duplicate sapling shot is left out. Capture times start
-// at 2:00 PM today, two minutes apart. No coordinates yet.
+// at 2:00 PM today, two minutes apart.
 const PHOTOS: { file: string; title: string; narrative: string }[] = [
   {
     file: "p1.jpg",
@@ -145,8 +148,8 @@ export const TREE_BIRTHDAY_EVIDENCE: EvidenceTraceItem[] = PHOTOS.map(
     captureTimeWithOffset: captureAt(index).full,
     capturedBy: "AiA Operations",
     landmark: TREE_BIRTHDAY_PLACE,
-    gpsLat: 0,
-    gpsLng: 0,
+    gpsLat: LAT,
+    gpsLng: LNG,
     gpsAccuracyMeters: 0,
     approvedBy: "AiA Operations",
     approvedDate: "27 October 2026",
@@ -154,6 +157,8 @@ export const TREE_BIRTHDAY_EVIDENCE: EvidenceTraceItem[] = PHOTOS.map(
       kind: "map",
       verificationStatus: "verified",
       locationLabel: TREE_BIRTHDAY_PLACE,
+      lat: LAT,
+      lng: LNG,
     },
   }),
 );
@@ -171,7 +176,7 @@ export const TREE_BIRTHDAY_IMPACT_RECORD: ContributionImpactRecordData = {
   },
   impact: {
     dataLabel: "Outcome",
-    dataValue: "15 saplings planted",
+    dataValue: "15 native trees planted",
     recordId: "",
   },
   verification: { dataLabel: "Status", dataValue: "Completed", recordId: "" },
