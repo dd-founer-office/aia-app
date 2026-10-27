@@ -31,7 +31,7 @@ const MINT = "#68FFAD";
 const CHIP_SELECTED_BG = "#1F6A7F";
 const CHIP_UNSELECTED_BG = "#12454C";
 
-interface StoryMoment {
+export interface StoryMoment {
   title: string;
   image: string;
   description: string;
@@ -285,14 +285,25 @@ function MomentChip({
  * count. See the STORY_MOMENTS comment above for why this Act only has
  * three (no "Prepare" photo exists), not the full four.
  */
-export function ActTheAct({ actId }: { actId: string }) {
+export interface ActContent {
+  heading: string;
+  moments: StoryMoment[];
+}
+
+export function ActTheAct({
+  actId,
+  content,
+}: {
+  actId: string;
+  content?: ActContent;
+}) {
   const isAnnadhanamElders = actId === ANNADHANAM_ELDERS_ACT_ID;
-  const storyMoments = isAnnadhanamElders
-    ? ANNADHANAM_STORY_MOMENTS
-    : STORY_MOMENTS;
-  const heading = isAnnadhanamElders
-    ? ANNADHANAM_HEADING
-    : "From intention to earth";
+  const storyMoments =
+    content?.moments ??
+    (isAnnadhanamElders ? ANNADHANAM_STORY_MOMENTS : STORY_MOMENTS);
+  const heading =
+    content?.heading ??
+    (isAnnadhanamElders ? ANNADHANAM_HEADING : "From intention to earth");
 
   const reducedMotion = useSyncExternalStore(
     subscribeToReducedMotionChanges,

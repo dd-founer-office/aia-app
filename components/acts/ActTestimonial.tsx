@@ -124,7 +124,18 @@ function PlayButton({
  * Karunai Illam) rather than the Tree Planting Team placeholder credit
  * used before this content was supplied.
  */
-export function ActTestimonial() {
+export interface TestimonialContent {
+  videoSrc: string;
+  posterSrc: string;
+  subtitle: string;
+  quote: string;
+  speaker: string;
+  organization: string;
+}
+
+export function ActTestimonial({ content }: { content?: TestimonialContent }) {
+  const videoSrc = content?.videoSrc ?? VIDEO_SRC;
+  const posterSrc = content?.posterSrc ?? POSTER_SRC;
   const videoRef = useRef<HTMLVideoElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -198,7 +209,7 @@ export function ActTestimonial() {
           className={`${inter.className} m-0 mx-auto max-w-[280px] text-[14px] leading-[1.55]`}
           style={{ color: "rgba(10, 54, 58, 0.78)" }}
         >
-          Hear from the elders who shared this meal.
+          {content?.subtitle ?? "Hear from the elders who shared this meal."}
         </p>
       </div>
 
@@ -210,7 +221,7 @@ export function ActTestimonial() {
         <video
           ref={videoRef}
           className="h-full w-full bg-black object-cover"
-          poster={POSTER_SRC}
+          poster={posterSrc}
           preload="none"
           playsInline
           controls={isPlaying}
@@ -220,7 +231,7 @@ export function ActTestimonial() {
           }}
           onPause={() => setIsPlaying(false)}
         >
-          <source src={VIDEO_SRC} type="video/mp4" />
+          <source src={videoSrc} type="video/mp4" />
         </video>
 
         {!isPlaying && <PlayButton onClick={playInline} armed={armed} />}
@@ -236,19 +247,25 @@ export function ActTestimonial() {
             className="m-0 text-[17px] font-bold leading-[1.5]"
             style={{ color: TEAL, fontFamily: "var(--font-tamil-sans)" }}
           >
-            &ldquo;வாழ்வில் எல்லா நலமும் வளமும் பெற்று பல்லாண்டு காலம்
-            வாழவேண்டும்&rdquo;
+            {content ? (
+              <>&ldquo;{content.quote}&rdquo;</>
+            ) : (
+              <>
+                &ldquo;வாழ்வில் எல்லா நலமும் வளமும் பெற்று பல்லாண்டு காலம்
+                வாழவேண்டும்&rdquo;
+              </>
+            )}
           </p>
           <p
             className={`${inter.className} m-0 mt-1 text-[12px] font-semibold`}
             style={{ color: TEAL }}
           >
-            Inmates
+            {content?.speaker ?? "Inmates"}
             <span
               className={`${inter.className} block font-normal`}
               style={{ color: "rgba(10, 54, 58, 0.55)" }}
             >
-              Annai Aravindar Karunai Illam
+              {content?.organization ?? "Annai Aravindar Karunai Illam"}
             </span>
           </p>
         </div>

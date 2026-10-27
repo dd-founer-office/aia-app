@@ -3,7 +3,14 @@
 import { useId, useState, useSyncExternalStore } from "react";
 import type { ComponentType } from "react";
 import localFont from "next/font/local";
-import { ChevronDown, ChevronRight, HeartHandshake, Landmark, ShieldCheck, Users } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  HeartHandshake,
+  Landmark,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
@@ -13,7 +20,11 @@ const calSans = localFont({
 
 // Self-hosted rather than next/font/google -- see app/layout.tsx's comment
 // for why (intermittent Vercel build failure fetching from Google Fonts).
-const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
+const inter = localFont({
+  src: "../../app/fonts/InterVF.woff2",
+  weight: "100 900",
+  display: "swap",
+});
 
 // Reuses ActDetailHero/ActSnapshot/ActEvidence's exact teal/mint/pale-mint
 // trio -- the same dark-green surface and light accountability-panel tone
@@ -56,11 +67,26 @@ export interface ContributionImpactRecordData {
   verification: ImpactRecordEntry;
 }
 
-const ENTRY_META: { key: keyof ContributionImpactRecordData; number: string; label: string; icon: ComponentType<{ size?: number; strokeWidth?: number; color?: string }> }[] = [
-  { key: "contribution", number: "01", label: "Contribution", icon: HeartHandshake },
+const ENTRY_META: {
+  key: keyof ContributionImpactRecordData;
+  number: string;
+  label: string;
+  icon: ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;
+}[] = [
+  {
+    key: "contribution",
+    number: "01",
+    label: "Contribution",
+    icon: HeartHandshake,
+  },
   { key: "allocation", number: "02", label: "Allocation", icon: Landmark },
   { key: "impact", number: "03", label: "Impact", icon: Users },
-  { key: "verification", number: "04", label: "Verification", icon: ShieldCheck },
+  {
+    key: "verification",
+    number: "04",
+    label: "Verification",
+    icon: ShieldCheck,
+  },
 ];
 
 function RecordIdPill({ recordId, href }: { recordId: string; href?: string }) {
@@ -96,13 +122,22 @@ function RecordIdPill({ recordId, href }: { recordId: string; href?: string }) {
 // the row's own top/bottom (reference: founder-supplied close-up of a
 // single flush teal row) -- holding a smaller mint circular badge with
 // the dark-teal icon inside it.
-function FlushIconCell({ icon: Icon, isFirst }: { icon: ComponentType<{ size?: number; strokeWidth?: number; color?: string }>; isFirst: boolean }) {
+function FlushIconCell({
+  icon: Icon,
+  isFirst,
+}: {
+  icon: ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;
+  isFirst: boolean;
+}) {
   return (
     <div
       className={`flex w-1/2 items-center justify-center ${isFirst ? "rounded-tl-[16px]" : ""}`}
       style={{ background: TEAL }}
     >
-      <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: MINT }}>
+      <div
+        className="flex h-8 w-8 items-center justify-center rounded-full"
+        style={{ background: MINT }}
+      >
         <Icon size={16} strokeWidth={2} color={TEAL} />
       </div>
     </div>
@@ -135,10 +170,16 @@ function ImpactRecordRows({
           className={`flex w-1/2 flex-col items-center justify-center gap-0.5 py-2.5 ${isFirst ? "rounded-tr-[16px]" : ""}`}
           style={{ background: "#FAFAFA" }}
         >
-          <span className={`${inter.className} text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
+          <span
+            className={`${inter.className} text-[11px]`}
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
             {number}
           </span>
-          <span className={`${inter.className} text-[14px] font-semibold`} style={{ color: "var(--color-foreground)" }}>
+          <span
+            className={`${inter.className} text-[14px] font-semibold`}
+            style={{ color: "var(--color-foreground)" }}
+          >
             {label}
           </span>
         </div>
@@ -150,14 +191,22 @@ function ImpactRecordRows({
         style={{ background: "#FFFFFF", ...ROW_DIVIDER }}
       >
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className={`${inter.className} text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
+          <span
+            className={`${inter.className} text-[11px]`}
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
             {entry.dataLabel}
           </span>
-          <span className={`${inter.className} break-words text-[14px] font-semibold`} style={{ color: "var(--color-foreground)" }}>
+          <span
+            className={`${inter.className} break-words text-[14px] font-semibold`}
+            style={{ color: "var(--color-foreground)" }}
+          >
             {entry.dataValue}
           </span>
         </div>
-        <RecordIdPill recordId={entry.recordId} href={entry.href} />
+        {entry.recordId ? (
+          <RecordIdPill recordId={entry.recordId} href={entry.href} />
+        ) : null}
       </div>
     </>
   );
@@ -177,13 +226,28 @@ function ImpactRecordRows({
  * exist; nothing here is Annadhanam-specific (that content lives in
  * lib/act-content-overrides.ts, passed in by the caller).
  */
-export function ContributionImpactRecord({ data }: { data: ContributionImpactRecordData }) {
+export interface ImpactRecordBanner {
+  title: string;
+  subtitle: string;
+  buttonLabel: string;
+  href: string;
+}
+
+export function ContributionImpactRecord({
+  data,
+  banner,
+}: {
+  data: ContributionImpactRecordData;
+  // When set: the record's heading/description are centred and an info
+  // banner (Legacy-banner look) with one link button closes the panel.
+  banner?: ImpactRecordBanner;
+}) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const reducedMotion = useSyncExternalStore(
     subscribeToReducedMotionChanges,
     readReducedMotionOnClient,
-    readReducedMotionOnServer
+    readReducedMotionOnServer,
   );
 
   return (
@@ -202,7 +266,9 @@ export function ContributionImpactRecord({ data }: { data: ContributionImpactRec
           aria-hidden="true"
           style={{
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            transition: reducedMotion ? "none" : "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
+            transition: reducedMotion
+              ? "none"
+              : "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}
         />
         <span className="text-[14px] font-medium" style={{ color: "#FFFFFF" }}>
@@ -214,7 +280,9 @@ export function ContributionImpactRecord({ data }: { data: ContributionImpactRec
           aria-hidden="true"
           style={{
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            transition: reducedMotion ? "none" : "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
+            transition: reducedMotion
+              ? "none"
+              : "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}
         />
       </button>
@@ -223,7 +291,9 @@ export function ContributionImpactRecord({ data }: { data: ContributionImpactRec
         style={{
           display: "grid",
           gridTemplateRows: open ? "1fr" : "0fr",
-          transition: reducedMotion ? "none" : "grid-template-rows 400ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transition: reducedMotion
+            ? "none"
+            : "grid-template-rows 400ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         <div className="overflow-hidden">
@@ -242,16 +312,28 @@ export function ContributionImpactRecord({ data }: { data: ContributionImpactRec
             }}
             className="flex flex-col gap-4 pt-5"
           >
-            <div className="flex flex-col gap-2.5">
-              <h2 className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`} style={{ color: TEAL }}>
+            <div
+              className={`flex flex-col gap-2.5 ${banner ? "text-center" : ""}`}
+            >
+              <h2
+                className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
+                style={{ color: TEAL }}
+              >
                 Contribution Impact Record
               </h2>
-              <p className={`${inter.className} m-0 text-[14px] leading-[1.55]`} style={{ color: "var(--color-muted-foreground)" }}>
-                A traceable record of where your contribution went and what it made possible.
+              <p
+                className={`${inter.className} m-0 text-[14px] leading-[1.55]`}
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                A traceable record of where your contribution went and what it
+                made possible.
               </p>
             </div>
 
-            <div className="border" style={{ borderColor: "var(--color-border)", borderRadius: 16 }}>
+            <div
+              className="border"
+              style={{ borderColor: "var(--color-border)", borderRadius: 16 }}
+            >
               {ENTRY_META.map(({ key, number, label, icon }, index) => (
                 <ImpactRecordRows
                   key={key}
@@ -264,6 +346,53 @@ export function ContributionImpactRecord({ data }: { data: ContributionImpactRec
                 />
               ))}
             </div>
+
+            {banner && (
+              <div
+                className="flex items-center gap-3 px-3 py-4"
+                style={{ background: "#202620", borderRadius: 8 }}
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: "rgba(104, 255, 173, 0.24)" }}
+                >
+                  <span
+                    className={`${inter.className} flex h-[18px] w-[18px] items-center justify-center rounded-full text-[11px] font-extrabold`}
+                    style={{ background: MINT, color: TEAL }}
+                  >
+                    i
+                  </span>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`${calSans.className} m-0 text-[12px] font-semibold leading-[1.3]`}
+                    style={{ color: "#FFFFFF" }}
+                  >
+                    {banner.title}
+                  </p>
+                  <p
+                    className={`${calSans.className} m-0 mt-0.5 text-[11px]`}
+                    style={{ color: "rgba(255, 255, 255, 0.6)" }}
+                  >
+                    {banner.subtitle}
+                  </p>
+                </div>
+                <a
+                  href={banner.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${inter.className} flex h-8 shrink-0 items-center px-3 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+                  style={{
+                    background: "#1B1B1B",
+                    color: "#FFFFFF",
+                    outlineColor: "#FFFFFF",
+                    borderRadius: 6,
+                  }}
+                >
+                  {banner.buttonLabel}
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>
