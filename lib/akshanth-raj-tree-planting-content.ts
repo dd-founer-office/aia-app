@@ -69,10 +69,10 @@ export const TREE_BIRTHDAY_ACT: ActContent = {
       focus: "50% 50%",
     },
     {
-      title: "Growing",
-      image: `${IMG}/p1.jpg`,
+      title: "Protected",
+      image: `${IMG}/p3.jpg`,
       description: ACT_DESCRIPTION,
-      focus: "50% 50%",
+      focus: "40% 50%",
     },
   ],
 };
