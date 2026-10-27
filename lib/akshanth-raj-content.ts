@@ -16,11 +16,17 @@ import type { TestimonialContent } from "@/components/acts/ActTestimonial";
 export const AKSHANTH_ACT_ID = "vaazhga-vaazhthudan-akshanth-raj";
 export const AKSHANTH_ORGANIZATION = "Sudar Matruthiranudaiyor Kapagam";
 
-// The monthly-Aram banner opens WhatsApp with a prefilled message.
+// The monthly-Aram banner opens WhatsApp with a prefilled message that names
+// the act the visitor is looking at, so each page passes its own.
 const WHATSAPP_NUMBER = "971582267155";
-const WHATSAPP_MESSAGE =
-  "Hi Aram in Action team, I saw Akshanth Raj's Vaazhga Vaazhthudan meal for 35 residents at Sudar Matruthiranudaiyor Kapagam. I would like to know more about joining the Monthly Aram.";
-export const AKSHANTH_WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+export function buildMonthlyAramBanner(message: string, subtitle: string) {
+  return {
+    title: "Available only for Monthly Aram participants",
+    subtitle,
+    buttonLabel: "Know more",
+    href: `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
+  };
+}
 
 const IMG = "/mock/vaazhga";
 
@@ -199,9 +205,7 @@ export const AKSHANTH_IMPACT_RECORD: ContributionImpactRecordData = {
   verification: { dataLabel: "Status", dataValue: "Completed", recordId: "" },
 };
 
-export const AKSHANTH_IMPACT_BANNER = {
-  title: "Available only for Monthly Aram participants",
-  subtitle: "Learn how to keep a meal going every month",
-  buttonLabel: "Know more",
-  href: AKSHANTH_WHATSAPP_URL,
-};
+export const AKSHANTH_IMPACT_BANNER = buildMonthlyAramBanner(
+  "Hi Aram in Action team, I saw Akshanth Raj's Vaazhga Vaazhthudan meal for 35 residents at Sudar Matruthiranudaiyor Kapagam. I would like to know more about joining the Monthly Aram.",
+  "Learn how to keep a meal going every month",
+);
