@@ -95,39 +95,6 @@ const ANNADHANAM_STORY_MOMENTS: StoryMoment[] = [
   },
 ];
 
-// Staged entrance, played once as the card arrives: the heading rises, the
-// description follows, the photo opens like an iris, and the chips pop in one
-// after another. The hidden state only exists once the page has hydrated and
-// the card is still below the fold (data-care), so without JS -- or for a card
-// already on screen -- everything is simply visible. The attribute is dropped
-// again once the entrance has played, so the chips' own colour transitions are
-// never delayed afterwards.
-const CARE_CSS = `
-  .care-h, .care-p { transition: opacity 600ms ease, translate 700ms cubic-bezier(0.22, 1, 0.36, 1); }
-  .care-p { transition-delay: 120ms; }
-  .care-photo { transition: clip-path 1000ms cubic-bezier(0.22, 1, 0.36, 1) 250ms; }
-  .care-chip { transition: opacity 450ms ease, translate 500ms cubic-bezier(0.22, 1, 0.36, 1), scale 500ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms ease, color 150ms ease; transition-delay: calc(750ms + var(--i) * 110ms), calc(750ms + var(--i) * 110ms), calc(750ms + var(--i) * 110ms), 0ms, 0ms; }
-  [data-care="hidden"] .care-h, [data-care="hidden"] .care-p { opacity: 0; translate: 0 16px; }
-  [data-care="hidden"] .care-photo { clip-path: circle(0% at 50% 50%); }
-  [data-care="revealed"] .care-photo { clip-path: circle(85% at 50% 50%); }
-  [data-care="hidden"] .care-chip { opacity: 0; translate: 0 10px; scale: 0.92; }
-  /* While the empty card waits below the fold it tugs up and gives a small
-     shake every few seconds, like a handle waiting to be pulled. */
-  @keyframes care-tug {
-    0%, 40%, 100% { translate: 0 0; rotate: 0deg; }
-    48% { translate: 0 -30px; rotate: 0deg; }
-    54% { translate: -10px -30px; rotate: -2.4deg; }
-    60% { translate: 10px -30px; rotate: 2.4deg; }
-    66% { translate: -8px -30px; rotate: -2deg; }
-    72% { translate: 8px -30px; rotate: 2deg; }
-    78% { translate: -4px -30px; rotate: -1deg; }
-    84% { translate: 0 -30px; rotate: 0deg; }
-    94% { translate: 0 0; rotate: 0deg; }
-  }
-  [data-care="hidden"] { transform-origin: 50% 0; animation: care-tug 2s ease-in-out infinite; }
-`;
-const CARE_REVEAL_DONE_MS = 1900;
-
 function subscribeToReducedMotionChanges(onChange: () => void): () => void {
   const query = window.matchMedia("(prefers-reduced-motion: reduce)");
   query.addEventListener("change", onChange);
@@ -312,45 +279,6 @@ export function ActTheAct({
   );
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // The staged entrance (see CARE_CSS): hide once the card is known to be
-  // below the fold, reveal when it has risen ~25% into view.
-  const sectionRef = useRef<HTMLElement>(null);
-  const [care, setCare] = useState<"hidden" | "revealed" | undefined>(
-    undefined,
-  );
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el || reducedMotion) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let started = false;
-    let hidden = false;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!started) {
-          started = true;
-          if (entry.isIntersecting) {
-            observer.disconnect(); // already on screen: no entrance
-            return;
-          }
-          hidden = true;
-          setCare("hidden");
-          return;
-        }
-        if (hidden && entry.isIntersecting) {
-          setCare("revealed");
-          observer.disconnect();
-          timer = setTimeout(() => setCare(undefined), CARE_REVEAL_DONE_MS);
-        }
-      },
-      { rootMargin: "0px 0px -25% 0px" },
-    );
-    observer.observe(el);
-    return () => {
-      observer.disconnect();
-      clearTimeout(timer);
-    };
-  }, [reducedMotion]);
-
   if (storyMoments.length === 0) return null;
 
   const activeMoment = storyMoments[activeIndex];
@@ -358,12 +286,9 @@ export function ActTheAct({
   return (
     <section
       id="act-the-act"
-      ref={sectionRef}
-      data-care={care}
       className="rounded-[16px] px-5 py-6"
       style={{ background: TEAL }}
     >
-      <style>{CARE_CSS}</style>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2.5 text-center">
           <h2
