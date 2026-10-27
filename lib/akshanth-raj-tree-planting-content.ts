@@ -26,12 +26,12 @@ export const TREE_BIRTHDAY_HERO = {
   highlightWord: "Roots",
 };
 
-// confirm: date, place and partner name.
+// confirm: partner name.
 export const TREE_BIRTHDAY_SNAPSHOT: SnapshotContent = {
   dateLines: ["27 October", "Tuesday"],
   locationLines: ["Elandurai", "Kumbakonam", "Thanjavur"],
-  keyLine: "Saplings planted",
-  keySub: "for a birthday",
+  keyLine: "15 saplings",
+  keySub: "planted for a birthday",
   partnerLines: ["Aram in Action", "Tree Planting Team"],
   icon: "tree",
 };
@@ -74,8 +74,8 @@ export const TREE_BIRTHDAY_ACT: ActContent = {
   ],
 };
 
-// Most recent first; the duplicate sapling shot is left out. Capture times are
-// working placeholders (confirm), two minutes apart. No coordinates yet.
+// Most recent first; the duplicate sapling shot is left out. Capture times start
+// at 2:00 PM today, two minutes apart. No coordinates yet.
 const PHOTOS: { file: string; title: string; narrative: string }[] = [
   {
     file: "p1.jpg",
@@ -123,9 +123,9 @@ function captureAt(index: number) {
   const minute = 14 - index * 2;
   const mm = String(Math.max(minute, 0)).padStart(2, "0");
   return {
-    iso: `2026-10-27T09:${mm}:00+05:30`,
-    short: `9:${mm} AM`,
-    full: `9:${mm}:00 AM GMT+5:30`,
+    iso: `2026-10-27T14:${mm}:00+05:30`,
+    short: `2:${mm} PM`,
+    full: `2:${mm}:00 PM GMT+5:30`,
   };
 }
 
@@ -169,7 +169,11 @@ export const TREE_BIRTHDAY_IMPACT_RECORD: ContributionImpactRecordData = {
     dataValue: "Elandurai",
     recordId: "",
   },
-  impact: { dataLabel: "Outcome", dataValue: "Saplings planted", recordId: "" },
+  impact: {
+    dataLabel: "Outcome",
+    dataValue: "15 saplings planted",
+    recordId: "",
+  },
   verification: { dataLabel: "Status", dataValue: "Completed", recordId: "" },
 };
 
