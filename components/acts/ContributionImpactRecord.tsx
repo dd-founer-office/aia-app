@@ -92,7 +92,7 @@ const ENTRY_META: {
 function RecordIdPill({ recordId, href }: { recordId: string; href?: string }) {
   const className = `${inter.className} inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-3.5 py-1.5 transition-opacity hover:opacity-80`;
   const style = { background: MINT };
-  // An entry with no id yet keeps the pill's shape but shows nothing in it.
+  // An entry with no id yet keeps the pill's shape with just the arrow.
   const content = recordId ? (
     <>
       <span className="text-[12px] font-semibold" style={{ color: TEAL }}>
@@ -101,7 +101,9 @@ function RecordIdPill({ recordId, href }: { recordId: string; href?: string }) {
       <ChevronRight size={14} color={TEAL} aria-hidden="true" />
     </>
   ) : (
-    <span aria-hidden="true" className="block h-[18px] w-10" />
+    <span className="flex h-[18px] w-8 items-center justify-center">
+      <ChevronRight size={16} color={TEAL} aria-hidden="true" />
+    </span>
   );
 
   // No underlying route exists yet for any of these ids (see

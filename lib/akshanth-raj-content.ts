@@ -89,10 +89,13 @@ function captureAt(index: number) {
   };
 }
 
+// Pin dropped on the venue in Google Maps (Sudar Academy and Charitable
+// Trust, North St, Thirucherai).
+const LAT = 10.878627;
+const LNG = 79.452828;
 const PLACE = "Thirucherai, Kumbakonam, Thanjavur";
 // Most recent first, like getPublishedActTrace(); the first three are what
-// the carousel shows to begin with. No GPS is set: the evidence card only
-// shows coordinates when they exist, and none were supplied.
+// the carousel shows to begin with.
 const EVIDENCE_PHOTOS: { file: string; title: string; narrative: string }[] = [
   {
     file: "p14.jpg",
@@ -162,8 +165,8 @@ export const AKSHANTH_EVIDENCE: EvidenceTraceItem[] = EVIDENCE_PHOTOS.map(
     captureTimeWithOffset: captureAt(index).full,
     capturedBy: "AiA Operations",
     landmark: PLACE,
-    gpsLat: 0,
-    gpsLng: 0,
+    gpsLat: LAT,
+    gpsLng: LNG,
     gpsAccuracyMeters: 0,
     approvedBy: "AiA Operations",
     approvedDate: "27 October 2026",
@@ -171,6 +174,8 @@ export const AKSHANTH_EVIDENCE: EvidenceTraceItem[] = EVIDENCE_PHOTOS.map(
       kind: "map",
       verificationStatus: "verified",
       locationLabel: PLACE,
+      lat: LAT,
+      lng: LNG,
     },
   }),
 );
