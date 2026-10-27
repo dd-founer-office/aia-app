@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ActDetailHero } from "@/components/acts/ActDetailHero";
 import { ActTestimonial } from "@/components/acts/ActTestimonial";
 import { ActTheAct } from "@/components/acts/ActTheAct";
+import { TestimonialFadeOut } from "@/components/acts/TestimonialFadeOut";
 import { ActEvidence } from "@/components/acts/ActEvidence";
 import { ContributionImpactRecord } from "@/components/acts/ContributionImpactRecord";
 import { ActReflection } from "@/components/acts/ActReflection";
@@ -58,23 +59,17 @@ export default function AnnadhanamForEldersSharePage() {
         ctaLabel="Your Aram in Action"
       />
 
-      {/* Curtain: the testimonial stays pinned while the teal card rises
-          over it and covers it (the same idea as the hero, where the teal
-          covers the pinned photo). The pin lasts exactly as long as this
-          wrapper, which ends with the card, so nothing pinned can show
-          through below it. The testimonial's own py-10 provides the gap
-          above and below; -mt-10 cancels the flex gap above. */}
-      <div className="relative -mt-10">
-        <div className="sticky top-0 z-0">
-          <ActTestimonial />
-        </div>
-        <div className="relative z-10 [&>section]:shadow-[0_-14px_36px_rgba(10,54,58,0.16)]">
-          <ActTheAct actId={ANNADHANAM_ELDERS_ACT_ID} />
-        </div>
+      {/* Testimonial and Evidence carry their own py-10; -my-10 cancels it
+          so every section sits exactly one gap-10 apart. As the card below
+          arrives, TestimonialFadeOut fades the testimonial into the white
+          page and stops its video. */}
+      <div className="-my-10">
+        <ActTestimonial />
       </div>
 
-      {/* Evidence carries its own py-10; -my-10 cancels it so every section
-          sits exactly one gap-10 apart. */}
+      <ActTheAct actId={ANNADHANAM_ELDERS_ACT_ID} />
+
+      <TestimonialFadeOut />
 
       <div className="-my-10">
         <ActEvidence organization={ANNADHANAM_ELDERS_HERO.organization} evidence={ANNADHANAM_ELDERS_EVIDENCE} />
