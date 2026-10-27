@@ -11,7 +11,10 @@ import {
   Sprout,
   UtensilsCrossed,
 } from "lucide-react";
-import { playTestimonialTransition } from "@/components/acts/testimonialTransition";
+import {
+  playTestimonialTransition,
+  TESTIMONIAL_ID,
+} from "@/components/acts/testimonialTransition";
 import { ANNADHANAM_ELDERS_ACT_ID } from "@/lib/act-content-overrides";
 
 // Self-hosted rather than next/font/google -- see app/layout.tsx's comment
@@ -596,6 +599,10 @@ export function ActSnapshot({
   const panelFullRef = useRef(false);
   const settledRef = useRef(false);
   const lockedRef = useRef(false);
+  // Set once the collage -> testimonial transition has played. From then on
+  // the collage is an ordinary, static part of the page: scrolling back up
+  // never replays the animation, the transition or the scroll lock.
+  const playedRef = useRef(false);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const showTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const autoTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -638,6 +645,7 @@ export function ActSnapshot({
         );
         const ratio = entry.intersectionRatio;
         panelFullRef.current = ratio >= enterAt;
+        if (playedRef.current) return;
 
         if (ratio >= enterAt && stageRef.current === "idle") {
           go("play");
@@ -692,7 +700,11 @@ export function ActSnapshot({
       setLocked(true);
       const cta = ctaRef.current;
       window.setTimeout(() => {
-        void playTestimonialTransition(cta).finally(() => setLocked(false));
+        void playTestimonialTransition(cta).finally(() => {
+          setLocked(false);
+          playedRef.current = true;
+          go("static");
+        });
       }, EXIT_DONE_MS);
     }
     advanceRef.current = advance;
@@ -868,6 +880,10 @@ export function ActSnapshot({
           disabled={!ready && !reducedMotion}
           onClick={() => {
             if (reducedMotion) void playTestimonialTransition(null);
+            else if (playedRef.current)
+              document
+                .getElementById(TESTIMONIAL_ID)
+                ?.scrollIntoView({ behavior: "smooth" });
             else advanceRef.current();
           }}
           aria-label="Play the testimonial video"
