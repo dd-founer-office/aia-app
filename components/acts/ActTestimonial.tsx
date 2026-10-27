@@ -128,9 +128,14 @@ export interface TestimonialContent {
   videoSrc: string;
   posterSrc: string;
   subtitle: string;
+  // Section heading; defaults to "They say it better".
+  heading?: string;
+  // An empty quote hides the quote and speaker block (video-only sections).
   quote: string;
   speaker: string;
   organization: string;
+  // Portrait footage: show the whole frame instead of cropping it to 16:9.
+  contain?: boolean;
 }
 
 export function ActTestimonial({ content }: { content?: TestimonialContent }) {
@@ -203,7 +208,7 @@ export function ActTestimonial({ content }: { content?: TestimonialContent }) {
           className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
           style={{ color: TEAL, letterSpacing: "-0.3px" }}
         >
-          They say it better
+          {content?.heading ?? "They say it better"}
         </h2>
         <p
           className={`${inter.className} m-0 mx-auto max-w-[280px] text-[14px] leading-[1.55]`}
@@ -220,7 +225,7 @@ export function ActTestimonial({ content }: { content?: TestimonialContent }) {
       >
         <video
           ref={videoRef}
-          className="h-full w-full bg-black object-cover"
+          className={`h-full w-full bg-black ${content?.contain ? "object-contain" : "object-cover"}`}
           poster={posterSrc}
           preload="none"
           playsInline
@@ -237,39 +242,41 @@ export function ActTestimonial({ content }: { content?: TestimonialContent }) {
         {!isPlaying && <PlayButton onClick={playInline} armed={armed} />}
       </div>
 
-      <div className="aia-tm-rest flex w-full flex-col items-start gap-2.5 text-left">
-        <div className="flex flex-col gap-2.5">
-          {/* Real quote, in the speakers' own words -- Tamil, so it's set
+      {(!content || content.quote) && (
+        <div className="aia-tm-rest flex w-full flex-col items-start gap-2.5 text-left">
+          <div className="flex flex-col gap-2.5">
+            {/* Real quote, in the speakers' own words -- Tamil, so it's set
               in the app's existing Noto Sans Tamil (--font-tamil-sans,
               loaded globally in app/layout.tsx), not Inter, which has no
               Tamil glyphs to shape it correctly. */}
-          <p
-            className="m-0 text-[17px] font-bold leading-[1.5]"
-            style={{ color: TEAL, fontFamily: "var(--font-tamil-sans)" }}
-          >
-            {content ? (
-              <>&ldquo;{content.quote}&rdquo;</>
-            ) : (
-              <>
-                &ldquo;வாழ்வில் எல்லா நலமும் வளமும் பெற்று பல்லாண்டு காலம்
-                வாழவேண்டும்&rdquo;
-              </>
-            )}
-          </p>
-          <p
-            className={`${inter.className} m-0 mt-1 text-[12px] font-semibold`}
-            style={{ color: TEAL }}
-          >
-            {content?.speaker ?? "Inmates"}
-            <span
-              className={`${inter.className} block font-normal`}
-              style={{ color: "rgba(10, 54, 58, 0.55)" }}
+            <p
+              className="m-0 text-[17px] font-bold leading-[1.5]"
+              style={{ color: TEAL, fontFamily: "var(--font-tamil-sans)" }}
             >
-              {content?.organization ?? "Annai Aravindar Karunai Illam"}
-            </span>
-          </p>
+              {content ? (
+                <>&ldquo;{content.quote}&rdquo;</>
+              ) : (
+                <>
+                  &ldquo;வாழ்வில் எல்லா நலமும் வளமும் பெற்று பல்லாண்டு காலம்
+                  வாழவேண்டும்&rdquo;
+                </>
+              )}
+            </p>
+            <p
+              className={`${inter.className} m-0 mt-1 text-[12px] font-semibold`}
+              style={{ color: TEAL }}
+            >
+              {content?.speaker ?? "Inmates"}
+              <span
+                className={`${inter.className} block font-normal`}
+                style={{ color: "rgba(10, 54, 58, 0.55)" }}
+              >
+                {content?.organization ?? "Annai Aravindar Karunai Illam"}
+              </span>
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
