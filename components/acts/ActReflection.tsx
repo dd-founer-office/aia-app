@@ -182,10 +182,12 @@ export function ActReflection() {
     setSaved(null);
   }
 
+  // Full-bleed to the viewport edges and down to the page bottom, like the
+  // Snapshot section (-mx-5 / -mb-16 cancel the page wrapper's px-5 / pb-16).
   return (
     <section
-      className="px-5 py-8"
-      style={{ background: TEAL, borderRadius: 16 }}
+      className="-mx-5 -mb-16 px-5 pb-24 pt-10"
+      style={{ background: TEAL }}
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-3 text-center">
