@@ -40,15 +40,15 @@ export const TREE_BIRTHDAY_SNAPSHOT: SnapshotContent = {
 };
 
 // The footage was shot sideways, so it is rotated to landscape and carries
-// the supplied audio (trimmed to its length). No written quote.
+// the supplied audio (trimmed to its length).
 export const TREE_BIRTHDAY_VIDEO: TestimonialContent = {
   videoSrc: `${IMG}/planting.mp4`,
   posterSrc: `${IMG}/planting-poster.jpg`,
-  heading: "Watch it take root",
-  subtitle: "The planting, as it happened.",
-  quote: "",
-  speaker: "",
-  organization: "",
+  subtitle: "Hear from the team who planted these trees.",
+  quote:
+    "இவை வளர்ந்து நிழலும் உயிரும் தருவது போல, உங்கள் வாழ்வும் மகிழ்ச்சியும் நலமும் நிறைந்து செழிக்க அன்போடு வாழ்த்துகிறோம்",
+  speaker: "Team member",
+  organization: TREE_BIRTHDAY_PARTNER,
 };
 
 const ACT_DESCRIPTION =
