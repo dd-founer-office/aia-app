@@ -685,7 +685,13 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       recommendedCta: "PARENT_REFLECTION",
     },
   },
-  { episodeNumber: 39, tamilText: "கேள்வி முயல்", simpleMeaning: "Make effort to listen to and learn from the wise.", transliteration: "Kelvi Muyal", primaryTheme: "education", verified: true },
+  { episodeNumber: 39, tamilText: "கேள்வி முயல்", simpleMeaning: "Make effort to listen to and learn from the wise.", transliteration: "Kelvi Muyal", primaryTheme: "education", verified: true,
+    // Everything else composes from the education pool; only classifying
+    // for Slide 4's tag row/heading.
+    curated: {
+      languageCategory: "practices",
+    },
+  },
   { episodeNumber: 40, tamilText: "கைவினை கரவேல்", simpleMeaning: "Do not hide the craft/skill your hands know.", transliteration: "Kaivinai Karavel", primaryTheme: "responsibility", verified: true,
     // Curated: uncurated, this composes from the responsibility pool's
     // "finish your chores properly" angle -- the actual line is about
@@ -696,11 +702,24 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       familyAngle: "Your child is good at something, drawing, fixing things, explaining homework, and a sibling or friend could really use that help. Offering to teach or help instead of keeping it to themselves is exactly what this line means.",
       todayAction: "Ask your child today: \"What are you good at that you could teach or help someone else with this week?\"",
       childLesson: "A skill you keep to yourself helps no one. Share what you're good at.",
+      languageCategory: "practices",
     },
   },
-  { episodeNumber: 41, tamilText: "கொள்ளை விரும்பேல்", simpleMeaning: "Do not desire to plunder or take what is not yours.", transliteration: "Kollai Virumbel", primaryTheme: "honesty", verified: true },
-  { episodeNumber: 42, tamilText: "கோதாட்டு ஒழி", simpleMeaning: "Give up flawed or dishonest games.", transliteration: "Kothaadu Ozhi", primaryTheme: "character", verified: true },
-  { episodeNumber: 43, tamilText: "கௌவை அகற்று", simpleMeaning: "Remove slander and vilifying talk.", transliteration: "Kauvai Agatru", primaryTheme: "speech", verified: true },
+  { episodeNumber: 41, tamilText: "கொள்ளை விரும்பேல்", simpleMeaning: "Do not desire to plunder or take what is not yours.", transliteration: "Kollai Virumbel", primaryTheme: "honesty", verified: true,
+    curated: {
+      languageCategory: "practices",
+    },
+  },
+  { episodeNumber: 42, tamilText: "கோதாட்டு ஒழி", simpleMeaning: "Give up flawed or dishonest games.", transliteration: "Kothaadu Ozhi", primaryTheme: "character", verified: true,
+    curated: {
+      languageCategory: "management",
+    },
+  },
+  { episodeNumber: 43, tamilText: "கௌவை அகற்று", simpleMeaning: "Remove slander and vilifying talk.", transliteration: "Kauvai Agatru", primaryTheme: "speech", verified: true,
+    curated: {
+      languageCategory: "management",
+    },
+  },
   { episodeNumber: 44, tamilText: "சக்கர நெறி நில்", simpleMeaning: "Stand within the rule of law (the ruler's just order).", transliteration: "Chakkara Nerinil", primaryTheme: "community", verified: true,
     // Curated: uncurated, this composes from the community pool's
     // "welcome new people in" angle -- the actual line is about following
@@ -712,9 +731,14 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       todayAction: "The next time a rule feels inconvenient to your child today, ask: \"What happens if everyone decided rules were optional when they're inconvenient?\"",
       childLesson: "Rules only work if people follow them even when it's inconvenient. That includes you.",
       aiaConnection: "Following fair rules even when it's inconvenient is a value worth practicing, not just agreeing with. Which is exactly what Aram in Action is about.",
+      languageCategory: "beliefs",
     },
   },
-  { episodeNumber: 45, tamilText: "சான்றோர் இனத்து இரு", simpleMeaning: "Keep the company of the wise and virtuous.", transliteration: "Saandror Inathu Iru", primaryTheme: "community", verified: true },
+  { episodeNumber: 45, tamilText: "சான்றோர் இனத்து இரு", simpleMeaning: "Keep the company of the wise and virtuous.", transliteration: "Saandror Inathu Iru", primaryTheme: "community", verified: true,
+    curated: {
+      languageCategory: "management",
+    },
+  },
   { episodeNumber: 46, tamilText: "சித்திரம் பேசேல்", simpleMeaning: "Do not speak falsehood as though it were true.", transliteration: "Chithiram Pesel", primaryTheme: "honesty", verified: true },
   { episodeNumber: 47, tamilText: "சீர்மை மறவேல்", simpleMeaning: "Never forget the qualities that bring honor.", transliteration: "Seermai Maravel", primaryTheme: "character", verified: true },
   { episodeNumber: 48, tamilText: "சுளிக்கச் சொல்லேல்", simpleMeaning: "Do not speak in a way that provokes anger in the listener.", transliteration: "Sulikka Sollel", primaryTheme: "speech", verified: true },
