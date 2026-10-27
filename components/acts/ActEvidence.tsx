@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import { Calendar, MapPin, ChevronDown, User } from "lucide-react";
@@ -11,7 +14,11 @@ const calSans = localFont({
 
 // Self-hosted rather than next/font/google -- see app/layout.tsx's comment
 // for why (intermittent Vercel build failure fetching from Google Fonts).
-const inter = localFont({ src: "../../app/fonts/InterVF.woff2", weight: "100 900", display: "swap" });
+const inter = localFont({
+  src: "../../app/fonts/InterVF.woff2",
+  weight: "100 900",
+  display: "swap",
+});
 
 const TEAL = "#0A363A";
 // Existing --color-primary (globals.css) -- the icon/accent color on the
@@ -24,8 +31,14 @@ const APP_BG = "#EFF4F2";
 
 function MomentArrow() {
   return (
-    <div className="flex items-center justify-center" aria-hidden="true">
-      <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full" style={{ background: TEAL }}>
+    <div
+      className="ev-arrow flex items-center justify-center"
+      aria-hidden="true"
+    >
+      <div
+        className="flex h-[22px] w-[22px] items-center justify-center rounded-full"
+        style={{ background: TEAL }}
+      >
         <ChevronDown size={12} color="#FFFFFF" />
       </div>
     </div>
@@ -55,15 +68,20 @@ function RecordIconBadge({ icon }: { icon: ReactNode }) {
 function EvidenceRecord({
   icon,
   label,
+  changed = false,
   children,
 }: {
   icon: ReactNode;
   label: string;
+  // True once the centre photo has changed, so the record plays its
+  // update animation (a soft outline glow and a quick fade of the text).
+  changed?: boolean;
   children: ReactNode;
 }) {
   return (
     <div
-      className="mx-auto flex w-[59%] items-start gap-3.5 rounded-[12px] px-5 py-4 text-left"
+      data-changed={changed}
+      className="ev-record flex w-full items-start gap-3.5 rounded-[12px] px-5 py-4 text-left"
       style={{
         background: "var(--color-card)",
         boxShadow: "0 12px 32px rgba(10, 54, 58, 0.06)",
@@ -71,7 +89,14 @@ function EvidenceRecord({
     >
       <RecordIconBadge icon={icon} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className={`${inter.className}`} style={{ fontSize: 11, fontWeight: 500, color: "var(--color-muted-foreground)" }}>
+        <span
+          className={`${inter.className}`}
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: "var(--color-muted-foreground)",
+          }}
+        >
           {label}
         </span>
         {children}
@@ -80,79 +105,95 @@ function EvidenceRecord({
   );
 }
 
-// Not a Link to a Living Trace Viewer here -- that page is gated to
-// signed-in, linked contributors (see app/acts/[id]/evidence), which
-// would 404 for the public, no-sign-in visitors this page is built for.
-function SidePhoto({ src }: { src: string }) {
-  return (
-    <div
-      className="overflow-hidden rounded-[6px]"
-      style={{
-        aspectRatio: "1 / 1",
-        flex: "0 1 31.82%",
-        boxShadow: "0 6px 16px rgba(10, 54, 58, 0.08)",
-      }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-    </div>
-  );
+// ---- Photo carousel --------------------------------------------------
+// Three photos show at once (previous / current / next); with more than
+// three they rotate like a conveyor, and the When/Where/Who cards follow
+// whichever photo is in the centre. All photos are the same size; the
+// centre one is projected by a 10% scale and a deeper shadow, and sits a
+// touch lower. Layout px: SIDE margin, GAP between photos (a bit more than
+// the visible gap so the scaled centre photo leaves equal visible spacing).
+const SIDE = 10;
+const GAP = 14.5;
+const CENTRE_SCALE = 1.1;
+const CENTRE_DROP = 7; // px; with the scale this puts the top edge ~3px lower
+const ROTATE_MS = 4000;
+const SLIDE_MS = 700;
+const CAROUSEL_CSS = `
+  @keyframes ev-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 3px; } }
+  .ev-arrow > div { animation: ev-bob 1.8s ease-in-out infinite; }
+  @keyframes ev-in { from { opacity: 0; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
+  @keyframes ev-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(50, 141, 99, 0), 0 12px 32px rgba(10, 54, 58, 0.06); }
+    30% { box-shadow: 0 0 0 2px rgba(50, 141, 99, 0.55), 0 12px 32px rgba(10, 54, 58, 0.06); }
+  }
+  .ev-record[data-changed="true"] { animation: ev-glow 900ms ease; }
+  .ev-record[data-changed="true"] > div:last-child { animation: ev-in 450ms ease-out; }
+  @media (prefers-reduced-motion: reduce) { .ev-arrow > div, .ev-record, .ev-record > div { animation: none !important; } }
+`;
+
+function subscribeToReducedMotion(onChange: () => void): () => void {
+  const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+function readReducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+// Relative position of virtual slot `i` to the centre slot `a`, in
+// [-floor(m/2), ceil(m/2)-1].
+function relative(i: number, a: number, m: number) {
+  const half = Math.floor(m / 2);
+  return ((((i - a + half) % m) + m) % m) - half;
+}
+
+function slotStyle(rel: number, reduced: boolean): React.CSSProperties {
+  const s = "100%"; // translateX percentages are of the photo's own width
+  const x =
+    rel === -1
+      ? `${SIDE}px`
+      : rel === 0
+        ? `calc(${s} + ${SIDE + GAP}px)`
+        : rel === 1
+          ? `calc(200% + ${SIDE + 2 * GAP}px)`
+          : rel < 0
+            ? `calc(-100% - ${GAP * 2}px)`
+            : `calc(300% + ${SIDE + 4 * GAP}px)`;
+  const centre = rel === 0;
+  return {
+    width: "var(--s)",
+    height: "var(--s)",
+    transform: `translateX(${x})${centre ? ` translateY(${CENTRE_DROP}px) scale(${CENTRE_SCALE})` : ""}`,
+    opacity: rel >= -1 && rel <= 1 ? 1 : 0,
+    zIndex: centre ? 3 : rel === -1 || rel === 1 ? 2 : 1,
+    boxShadow: centre
+      ? "0 18px 36px rgba(10, 54, 58, 0.28)"
+      : "0 6px 16px rgba(10, 54, 58, 0.10)",
+    pointerEvents: rel >= -1 && rel <= 1 ? "auto" : "none",
+    transition: reduced
+      ? "none"
+      : `transform ${SLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity 500ms ease, box-shadow ${SLIDE_MS}ms ease`,
+  };
+}
+
+// "Sreenivasanallur, Kumbakonam, Thanjavur" -> "Sreenivasanallur, Thanjavur":
+// the village and the district only.
+function shortPlace(landmark?: string | null) {
+  if (!landmark) return "Location unavailable";
+  const parts = landmark
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.length > 2
+    ? `${parts[0]}, ${parts[parts.length - 1]}`
+    : parts.join(", ");
 }
 
 /**
- * Three real photographs, asymmetric -- the center one (the featured
- * evidence moment) ~10% larger than the other two, hanging LOWER than
- * them (top-aligned row; the taller center simply extends further down)
- * with a slightly stronger soft shadow; the side photographs are
- * smaller, sit higher/quieter, with a lighter shadow of their own.
- * Matches the Abyssale reference's own layered three-photo composition
- * rather than three equal gallery cards.
- */
-function EvidencePhotoRow({ photos }: { photos: string[] }) {
-  if (photos.length === 0) return null;
-
-  const [center, left, right] = photos;
-
-  return (
-    <div className="flex items-start justify-center gap-[22px] px-9">
-      {left && <SidePhoto src={left} />}
-
-      <div
-        className="relative z-10 overflow-hidden rounded-[6px]"
-        style={{
-          aspectRatio: "1 / 1",
-          flex: "0 1 36.36%",
-          boxShadow: "0 16px 32px rgba(10, 54, 58, 0.14)",
-        }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={center} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-      </div>
-
-      {right && <SidePhoto src={right} />}
-    </div>
-  );
-}
-
-/**
- * Act Detail's "The Evidence" section -- CA-011's documentary record.
- * Full-bleed surface (-mx-5, like ActTestimonial's own full-bleed
- * section) on a pure-white background, with a single soft radial glow
- * in the app's own light-mint background color (--color-background)
- * behind the whole composition rather than a visible box. A centered
- * heading/description matching ActTestimonial's exact typography (no
- * eyebrow label), three real capture photos in an asymmetric featured
- * composition, then three WHEN/WHERE/WHO records
- * built from the exact same per-photo trace data the full Living Trace
- * Viewer (/acts/[id]/evidence) renders -- never a separate, divergent
- * fetch. Every value here is either real evidence data or omitted
- * entirely; nothing is reconstructed or guessed (see the per-field
- * comments below for what's omitted and why).
- *
- * Picks the chronologically EARLIEST evidence item as the record this
- * section's WHEN/WHERE/WHO describes -- "original capture", not whichever
- * item happens to sort first in the trace viewer's own (most-recent-first)
- * order.
+ * Act Detail's "Every moment leaves a trace" section: a three-photo
+ * carousel (rotating on its own once there are more than three) over three
+ * wide records -- When / Where / Who -- that always describe the centre
+ * photo. Mirrors the trace viewer's own data (EvidenceTraceItem).
  */
 export function ActEvidence({
   organization,
@@ -161,22 +202,63 @@ export function ActEvidence({
   organization: string;
   evidence: EvidenceTraceItem[];
 }) {
-  if (evidence.length === 0) return null;
+  const n = evidence.length;
+  // Virtual slots: the list repeated enough times (>= 5 slots) that a
+  // conveyor always has a hidden slot on each side to slide through.
+  const m = n > 3 ? n * Math.ceil(5 / n) : n;
+  const [active, setActive] = useState(0);
+  const [steps, setSteps] = useState(0);
+  const [inView, setInView] = useState(false);
+  const [touching, setTouching] = useState(false);
+  const reduced = useSyncExternalStore(
+    subscribeToReducedMotion,
+    readReducedMotion,
+    () => false,
+  );
+  const sectionRef = useRef<HTMLElement>(null);
 
-  const photos = evidence.slice(0, 3).map((item) => item.photoUrl);
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { threshold: 0.35 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
-  const earliest = [...evidence].sort((a, b) => a.captureDateIso.localeCompare(b.captureDateIso))[0];
+  useEffect(() => {
+    if (n <= 3 || reduced || !inView || touching) return;
+    const timer = setInterval(() => {
+      setActive((a) => (a + 1) % m);
+      setSteps((v) => v + 1);
+    }, ROTATE_MS);
+    return () => clearInterval(timer);
+  }, [n, m, reduced, inView, touching]);
 
-  const hasCoords = earliest.trust.lat != null && earliest.trust.lng != null;
+  if (n === 0) return null;
+
+  const current = evidence[active % n];
+  const hasCoords = current.trust.lat != null && current.trust.lng != null;
   const mapsUrl = hasCoords
-    ? `https://www.google.com/maps/search/?api=1&query=${earliest.trust.lat},${earliest.trust.lng}`
+    ? `https://www.google.com/maps/search/?api=1&query=${current.trust.lat},${current.trust.lng}`
     : null;
+  const changed = steps > 0;
+
+  function bringToCentre(i: number) {
+    if (i === active) return;
+    setActive(i);
+    setSteps((v) => v + 1);
+  }
 
   return (
     <section
+      ref={sectionRef}
       className="relative -mx-5 flex flex-col items-center gap-8 overflow-hidden px-5 py-10 text-center"
       style={{ background: "#FFFFFF" }}
     >
+      <style>{CAROUSEL_CSS}</style>
       {/* Soft atmospheric glow behind the whole composition -- a single
           diffused radial wash in the app's own light-mint background
           color, sitting on top of the pure-white section, not a visible
@@ -191,7 +273,10 @@ export function ActEvidence({
         }}
       />
 
-      <div className="relative flex flex-col gap-2.5 px-2" style={{ zIndex: 1 }}>
+      <div
+        className="relative flex flex-col gap-2.5 px-2"
+        style={{ zIndex: 1 }}
+      >
         <h2
           className={`${calSans.className} m-0 text-[24px] font-bold leading-[1.15]`}
           style={{ color: TEAL, letterSpacing: "-0.3px" }}
@@ -206,26 +291,98 @@ export function ActEvidence({
         </p>
       </div>
 
-      <div className="relative flex w-full flex-col items-stretch gap-[14px]" style={{ zIndex: 1 }}>
-        <EvidencePhotoRow photos={photos} />
+      <div
+        className="relative flex w-full flex-col items-stretch gap-[14px]"
+        style={{ zIndex: 1 }}
+      >
+        {/* Photos. The row is a size container so the photo size is one
+            calc: (width - 2 SIDE - 2 GAP) / 3. Its height leaves room for the
+            centre photo's drop and scale; the dots below sit in the space that
+            keeps the gap under the centre photo equal to the gap above it. */}
+        <div style={{ containerType: "inline-size" }}>
+          <div
+            className="relative"
+            style={
+              {
+                "--s": `calc((100cqw - ${2 * SIDE + 2 * GAP}px) / 3)`,
+                height: "calc(var(--s) + 12px)",
+              } as React.CSSProperties
+            }
+            onPointerDown={() => setTouching(true)}
+            onPointerUp={() => setTouching(false)}
+            onPointerCancel={() => setTouching(false)}
+          >
+            {Array.from({ length: m }, (_, i) => {
+              const item = evidence[i % n];
+              const rel = relative(i, active, m);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => bringToCentre(i)}
+                  aria-label={`Show ${item.momentTitle}`}
+                  className="absolute left-0 top-0 overflow-hidden rounded-[6px] p-0"
+                  style={slotStyle(rel, reduced)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.photoUrl}
+                    alt={item.momentTitle}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div
+          aria-hidden="true"
+          className="flex items-center justify-center gap-1.5"
+          style={{ height: 6, opacity: n > 3 ? 1 : 0 }}
+        >
+          {Array.from({ length: n }, (_, i) => (
+            <span
+              key={i}
+              className="h-1.5 rounded-full"
+              style={{
+                width: i === active % n ? 18 : 6,
+                background: i === active % n ? TEAL : "rgba(10, 54, 58, 0.2)",
+                transition: "width 300ms ease, background 300ms ease",
+              }}
+            />
+          ))}
+        </div>
 
         <MomentArrow />
 
-        <EvidenceRecord icon={<Calendar size={20} color={PRIMARY} />} label="When it happened ...">
-          {earliest.captureDateLong && earliest.captureTimeWithOffset ? (
+        <EvidenceRecord
+          key={`w-${current.id}`}
+          changed={changed}
+          icon={<Calendar size={20} color={PRIMARY} />}
+          label="When it happened ..."
+        >
+          {current.captureDateLong && current.captureTimeWithOffset ? (
             <>
-              <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
-                {earliest.captureDateLong}
+              <p
+                className={`${inter.className} m-0 text-[12px] font-bold`}
+                style={{ color: "var(--color-foreground)" }}
+              >
+                {current.captureDateLong}
               </p>
-              <p className={`${inter.className} m-0 text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
-                {earliest.captureTimeWithOffset}
+              <p
+                className={`${inter.className} m-0 text-[11px]`}
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                {current.captureTimeWithOffset}
               </p>
             </>
           ) : (
-            // Genuinely missing on the stored evidence row -- never
-            // reconstructed. See lib/published-acts.ts's captureDateLong/
-            // captureTimeWithOffset comment.
-            <p className={`${inter.className} m-0 text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
+            <p
+              className={`${inter.className} m-0 text-[11px]`}
+              style={{ color: "var(--color-muted-foreground)" }}
+            >
               Capture time unavailable
             </p>
           )}
@@ -233,14 +390,19 @@ export function ActEvidence({
 
         <MomentArrow />
 
-        <EvidenceRecord icon={<MapPin size={20} color={PRIMARY} />} label="Where it happened ...">
-          <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
-            {earliest.landmark ?? "Location unavailable"}
+        <EvidenceRecord
+          key={`l-${current.id}`}
+          changed={changed}
+          icon={<MapPin size={20} color={PRIMARY} />}
+          label="Where it happened ..."
+        >
+          <p
+            className={`${inter.className} m-0 text-[12px] font-bold`}
+            style={{ color: "var(--color-foreground)" }}
+          >
+            {shortPlace(current.landmark)}
           </p>
           {hasCoords && (
-            // The coordinates themselves are the map link -- keeps this
-            // record to exactly 3 lines (eyebrow/body/metadata) instead of
-            // a separate "View on map" line.
             <a
               href={mapsUrl!}
               target="_blank"
@@ -248,20 +410,31 @@ export function ActEvidence({
               className={`${inter.className} m-0 text-[11px]`}
               style={{ color: PRIMARY }}
             >
-              {earliest.trust.lat!.toFixed(4)}, {earliest.trust.lng!.toFixed(4)}
+              {current.trust.lat!.toFixed(4)}, {current.trust.lng!.toFixed(4)}
             </a>
           )}
         </EvidenceRecord>
 
         <MomentArrow />
 
-        <EvidenceRecord icon={<User size={20} color={PRIMARY} />} label="Who captured it ...">
-          <p className={`${inter.className} m-0 text-[12px] font-bold`} style={{ color: "var(--color-foreground)" }}>
-            {earliest.capturedBy}
+        <EvidenceRecord
+          key={`c-${current.id}`}
+          changed={changed}
+          icon={<User size={20} color={PRIMARY} />}
+          label="Who captured it ..."
+        >
+          <p
+            className={`${inter.className} m-0 text-[12px] font-bold`}
+            style={{ color: "var(--color-foreground)" }}
+          >
+            {current.capturedBy}
           </p>
           {/* No role/title field exists on the mission record -- omitted
               rather than invented. */}
-          <p className={`${inter.className} m-0 text-[11px]`} style={{ color: "var(--color-muted-foreground)" }}>
+          <p
+            className={`${inter.className} m-0 text-[11px]`}
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
             {organization}
           </p>
         </EvidenceRecord>
