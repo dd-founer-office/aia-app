@@ -3,11 +3,17 @@
 import { useId, useState } from "react";
 import Image from "next/image";
 import localFont from "next/font/local";
-import { ArrowRight, Heart, Info, Lock, Plus, X } from "lucide-react";
+import { ArrowRight, Heart, Lock, Plus, X } from "lucide-react";
 
 const calSans = localFont({
   src: "../../app/fonts/CalSansVF.woff2",
   weight: "400 700",
+  display: "swap",
+});
+
+const notoTamil = localFont({
+  src: "../../app/fonts/NotoSansTamilVF.woff2",
+  weight: "100 900",
   display: "swap",
 });
 
@@ -36,6 +42,28 @@ const CARD_SURFACE = "#232323";
 const CHIP_BG = "#363636";
 const CARD_RADIUS = 8;
 const HAIRLINE = "1px solid rgba(255, 255, 255, 0.14)";
+const STROKE_GREY = "154, 160, 158";
+const LOGO_ORANGE = "255, 90, 31";
+const MINT_RGB = "104, 255, 173";
+// Outer panel: a soft glow around the whole card instead of a stroke. Inner
+// cards: a grey stroke only along the top half that fades out downwards (a
+// masked ::before). My Reflection: a full gradient stroke, logo orange at the
+// bottom-left to mint at the top-right, with a matching glow.
+const REFLECTION_CSS = `
+  .rf-panel { box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 0 26px 2px rgba(255,255,255,0.14); }
+  .rf-card { position: relative; box-shadow: 0 -2px 14px -6px rgba(${STROKE_GREY},0.35); }
+  .rf-card::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: linear-gradient(180deg, rgba(${STROKE_GREY},0.95) 0%, rgba(${STROKE_GREY},0.45) 30%, rgba(${STROKE_GREY},0) 55%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .rf-card.rf-gradient { box-shadow: 0 0 22px -4px rgba(${LOGO_ORANGE},0.35), 0 0 22px -4px rgba(${MINT_RGB},0.25); }
+  .rf-card.rf-gradient::before {
+    padding: 1.5px;
+    background: linear-gradient(45deg, rgb(${LOGO_ORANGE}) 0%, rgba(${LOGO_ORANGE},0) 38%, rgba(${MINT_RGB},0) 62%, rgb(${MINT_RGB}) 100%);
+  }
+`;
 const SAVE_GRADIENT = `linear-gradient(180deg, #8DFFC4 0%, ${MINT} 55%, #3FE08C 100%)`;
 const CONTROL_RADIUS = 6;
 
@@ -115,7 +143,8 @@ function PrivacyToggle({
         <Lock
           size={16}
           strokeWidth={2}
-          color={isPrivate ? TEAL : "rgba(255, 255, 255, 0.6)"}
+          color={isPrivate ? TEAL : "#FFFFFF"}
+          fill={isPrivate ? TEAL : "#FFFFFF"}
         />
       </span>
       <span className="flex flex-col gap-0.5">
@@ -189,6 +218,7 @@ export function ActReflection() {
   // Snapshot section (-mx-5 / -mb-16 cancel the page wrapper's px-5 / pb-16).
   return (
     <>
+      <style>{REFLECTION_CSS}</style>
       <section
         className="-mx-5 px-5 py-10"
         style={{ background: TEAL, borderRadius: 12 }}
@@ -210,20 +240,12 @@ export function ActReflection() {
           </div>
 
           <div
-            className="flex flex-col gap-4 p-3"
-            style={{
-              background: PANEL,
-              borderRadius: CARD_RADIUS,
-              border: HAIRLINE,
-            }}
+            className="rf-panel flex flex-col gap-4 p-3"
+            style={{ background: PANEL, borderRadius: CARD_RADIUS }}
           >
             <div
-              className="p-4"
-              style={{
-                background: CARD_SURFACE,
-                borderRadius: CARD_RADIUS,
-                border: HAIRLINE,
-              }}
+              className="rf-card p-4"
+              style={{ background: CARD_SURFACE, borderRadius: CARD_RADIUS }}
             >
               <h3
                 className={`${calSans.className} m-0 text-[17px] font-semibold`}
@@ -250,12 +272,8 @@ export function ActReflection() {
             </div>
 
             <div
-              className="p-4"
-              style={{
-                background: CARD_SURFACE,
-                borderRadius: CARD_RADIUS,
-                border: HAIRLINE,
-              }}
+              className="rf-card p-4"
+              style={{ background: CARD_SURFACE, borderRadius: CARD_RADIUS }}
             >
               <label htmlFor={textareaId} className="block cursor-text">
                 <h3
@@ -340,11 +358,10 @@ export function ActReflection() {
             {saved && (
               <>
                 <div
-                  className="p-4"
+                  className="rf-card rf-gradient p-4"
                   style={{
                     background: CARD_SURFACE,
                     borderRadius: CARD_RADIUS,
-                    border: HAIRLINE,
                   }}
                 >
                   <div className="flex items-center gap-3">
@@ -355,7 +372,12 @@ export function ActReflection() {
                         borderRadius: CONTROL_RADIUS,
                       }}
                     >
-                      <Heart size={18} strokeWidth={2} color={WHITE} />
+                      <Heart
+                        size={18}
+                        strokeWidth={2}
+                        color={WHITE}
+                        fill={WHITE}
+                      />
                     </span>
                     <h3
                       className={`${calSans.className} m-0 min-w-0 flex-1 text-[17px] font-semibold`}
@@ -411,17 +433,30 @@ export function ActReflection() {
                   style={{ background: "#202620", borderRadius: CARD_RADIUS }}
                 >
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                    style={{ background: WHITE }}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                    style={{ background: `rgba(${MINT_RGB}, 0.24)` }}
                   >
-                    <Info size={16} strokeWidth={2.5} color={TEAL} />
+                    <span
+                      className={`${inter.className} flex h-[18px] w-[18px] items-center justify-center rounded-full text-[11px] font-extrabold`}
+                      style={{ background: MINT, color: TEAL }}
+                    >
+                      i
+                    </span>
                   </span>
-                  <p
-                    className={`${calSans.className} m-0 min-w-0 flex-1 text-[12px] leading-[1.4]`}
-                    style={{ color: "#FFFFFF" }}
-                  >
-                    Some moments are worth leaving for the next generation.
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`${calSans.className} m-0 text-[12px] font-semibold leading-[1.3]`}
+                      style={{ color: "#FFFFFF" }}
+                    >
+                      Some moments are worth leaving for the next generation
+                    </p>
+                    <p
+                      className={`${calSans.className} m-0 mt-0.5 text-[11px]`}
+                      style={{ color: "rgba(255, 255, 255, 0.6)" }}
+                    >
+                      Add this reflection to your legacy
+                    </p>
+                  </div>
                   <button
                     type="button"
                     className={`${inter.className} flex shrink-0 items-center gap-1 h-8 px-3 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
@@ -443,10 +478,14 @@ export function ActReflection() {
       </section>
       <footer className="flex flex-col items-center gap-3 pt-8 text-center">
         <span
-          className={`${inter.className} text-[11px] font-medium uppercase tracking-[0.12em]`}
+          className={`${calSans.className} text-[13px] font-medium`}
           style={{ color: "#5C6B69" }}
         >
-          Powered by
+          Held with{" "}
+          <span className={notoTamil.className} style={{ fontWeight: 600 }}>
+            அறம்
+          </span>{" "}
+          by
         </span>
         <Image
           src="/brand/distant-devotion-logo.png"
