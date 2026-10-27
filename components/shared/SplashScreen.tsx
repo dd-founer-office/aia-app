@@ -1,6 +1,24 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import localFont from "next/font/local";
+
+const calSans = localFont({
+  src: "../../app/fonts/CalSansVF.woff2",
+  weight: "400 700",
+  display: "swap",
+});
+
+// Share pages only (for now): full mint screen, Cal Sans wordmark in the
+// brand teal, and the exit shrinks the screen into the AiA tile shape and
+// lets it glide down before fading. Everything else keeps the original look.
+const SHARE_MINT = "#68FFAD";
+const SHARE_TEAL = "#0A363A";
+const TILE_PX = 96;
+const TILE_RADIUS_PX = 16;
+const TILE_SHRINK_MS = 500;
+const TILE_GLIDE_MS = 600;
 
 /**
  * AiA Splash Screen — wordmark transformation loader.
@@ -54,7 +72,10 @@ const WORDMARK_FADE_MS = 250;
 
 type Phase = "compact" | "expanded" | "dissolving" | "wordmark-fading";
 
-const WORDS: { text: string; colorVar: "--color-primary" | "--color-muted-foreground" }[] = [
+const WORDS: {
+  text: string;
+  colorVar: "--color-primary" | "--color-muted-foreground";
+}[] = [
   { text: "Aram ", colorVar: "--color-primary" },
   { text: "in ", colorVar: "--color-muted-foreground" },
   { text: "Action", colorVar: "--color-primary" },
@@ -63,14 +84,19 @@ const WORDS: { text: string; colorVar: "--color-primary" | "--color-muted-foregr
 function RevealWord({
   text,
   colorVar,
+  color,
   open,
 }: {
   text: string;
   colorVar: string;
+  color?: string;
   open: boolean;
 }) {
   const fullRef = useRef<HTMLSpanElement>(null);
-  const [measured, setMeasured] = useState<{ anchor: number; full: number } | null>(null);
+  const [measured, setMeasured] = useState<{
+    anchor: number;
+    full: number;
+  } | null>(null);
 
   useLayoutEffect(() => {
     let cancelled = false;
@@ -118,7 +144,12 @@ function RevealWord({
       <span
         ref={fullRef}
         aria-hidden="true"
-        style={{ position: "absolute", visibility: "hidden", whiteSpace: "pre", pointerEvents: "none" }}
+        style={{
+          position: "absolute",
+          visibility: "hidden",
+          whiteSpace: "pre",
+          pointerEvents: "none",
+        }}
       >
         {text}
       </span>
@@ -129,7 +160,7 @@ function RevealWord({
           display: "inline-block",
           whiteSpace: "pre",
           verticalAlign: "baseline",
-          color: `var(${colorVar})`,
+          color: color ?? `var(${colorVar})`,
           opacity: measured ? 1 : 0,
           width: `${currentWidth}px`,
           clipPath: `inset(0 ${hiddenWidth}px 0 0)`,
@@ -144,6 +175,7 @@ function RevealWord({
 }
 
 export default function SplashScreen() {
+  const share = usePathname()?.startsWith("/share/") ?? false;
   const [phase, setPhase] = useState<Phase>("compact");
   // Defaults to true so the splash is present in the server-rendered
   // HTML itself — otherwise the browser paints Home first (server
@@ -166,16 +198,25 @@ export default function SplashScreen() {
     }
     window.sessionStorage.setItem(SESSION_KEY, "1");
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
 
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const dissolveTotal = BACKDROP_DISSOLVE_MS + WORDMARK_FADE_DELAY_MS + WORDMARK_FADE_MS;
+    const dissolveTotal = share
+      ? TILE_SHRINK_MS + TILE_GLIDE_MS
+      : BACKDROP_DISSOLVE_MS + WORDMARK_FADE_DELAY_MS + WORDMARK_FADE_MS;
+    const fadeDelay = share ? TILE_SHRINK_MS : WORDMARK_FADE_DELAY_MS;
 
     if (reducedMotion) {
       const tDissolve = 900;
       timers.push(setTimeout(() => setPhase("dissolving"), tDissolve));
-      timers.push(setTimeout(() => setPhase("wordmark-fading"), tDissolve + WORDMARK_FADE_DELAY_MS));
-      timers.push(setTimeout(() => setMounted(false), tDissolve + dissolveTotal));
+      timers.push(
+        setTimeout(() => setPhase("wordmark-fading"), tDissolve + fadeDelay),
+      );
+      timers.push(
+        setTimeout(() => setMounted(false), tDissolve + dissolveTotal),
+      );
       return () => timers.forEach(clearTimeout);
     }
 
@@ -186,10 +227,13 @@ export default function SplashScreen() {
     timers.push(setTimeout(() => setPhase("expanded"), tExpand));
     timers.push(setTimeout(() => setPhase("compact"), tContract));
     timers.push(setTimeout(() => setPhase("dissolving"), tDissolve));
-    timers.push(setTimeout(() => setPhase("wordmark-fading"), tDissolve + WORDMARK_FADE_DELAY_MS));
+    timers.push(
+      setTimeout(() => setPhase("wordmark-fading"), tDissolve + fadeDelay),
+    );
     timers.push(setTimeout(() => setMounted(false), tDissolve + dissolveTotal));
 
     return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per mount
   }, []);
 
   if (!mounted) return null;
@@ -197,6 +241,41 @@ export default function SplashScreen() {
   const open = phase === "expanded";
   const dissolving = phase === "dissolving" || phase === "wordmark-fading";
   const wordmarkFading = phase === "wordmark-fading";
+
+  if (share) {
+    const clipFull = "inset(0px 0px 0px 0px round 0px)";
+    const clipTile = `inset(calc(50% - ${TILE_PX / 2}px) calc(50% - ${TILE_PX / 2}px) calc(50% - ${TILE_PX / 2}px) calc(50% - ${TILE_PX / 2}px) round ${TILE_RADIUS_PX}px)`;
+    return (
+      <div
+        role="status"
+        aria-label="Aram in Action"
+        className="fixed inset-0 z-[100] flex items-center justify-center"
+        style={{
+          background: SHARE_MINT,
+          clipPath: dissolving ? clipTile : clipFull,
+          translate: wordmarkFading ? "0 34vh" : "0 0",
+          opacity: wordmarkFading ? 0 : 1,
+          transition: `clip-path ${TILE_SHRINK_MS}ms ${EASE}, translate ${TILE_GLIDE_MS}ms ${EASE}, opacity ${TILE_GLIDE_MS}ms ease-in`,
+          pointerEvents: dissolving ? "none" : "auto",
+        }}
+      >
+        <div
+          className={`${calSans.className} select-none flex items-baseline font-bold`}
+          style={{ fontSize: "clamp(2.25rem, 10vw, 3rem)", lineHeight: 1 }}
+        >
+          {WORDS.map((w) => (
+            <RevealWord
+              key={w.text}
+              text={w.text}
+              colorVar={w.colorVar}
+              color={SHARE_TEAL}
+              open={open}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -219,7 +298,12 @@ export default function SplashScreen() {
         }}
       >
         {WORDS.map((w) => (
-          <RevealWord key={w.text} text={w.text} colorVar={w.colorVar} open={open} />
+          <RevealWord
+            key={w.text}
+            text={w.text}
+            colorVar={w.colorVar}
+            open={open}
+          />
         ))}
       </div>
     </div>
