@@ -7,8 +7,8 @@ import type { TestimonialContent } from "@/components/acts/ActTestimonial";
 /**
  * Content for the breakfast served to 45 students at Voice Trust (Siruganur,
  * Trichy) on 28 October 2026, shared privately with the person it was
- * given for. Every line is written to her ("you"), and none mention the
- * programme name. Presentation layer only, like lib/akshanth-raj-content.ts.
+ * given for. Every line is written to her ("you"), and the copy keeps the
+ * programme name out (only the record's Source line names it). Presentation layer only, like lib/akshanth-raj-content.ts.
  */
 export const VOICE_TRUST_ACT_ID = "voice-trust-breakfast-281026";
 export const VOICE_TRUST_PARTNER = "Voice Trust";
@@ -154,7 +154,7 @@ export const VOICE_TRUST_EVIDENCE: EvidenceTraceItem[] = PHOTOS.map(
 export const VOICE_TRUST_IMPACT_RECORD: ContributionImpactRecordData = {
   contribution: {
     dataLabel: "Source",
-    dataValue: "Your contribution",
+    dataValue: "Monthly Aram",
     recordId: "DD-C-00312",
   },
   allocation: {
@@ -174,8 +174,9 @@ export const VOICE_TRUST_IMPACT_RECORD: ContributionImpactRecordData = {
   },
 };
 
-// Informational only: no button, no WhatsApp.
+// Informational only: no button, no WhatsApp. It previews the next feature:
+// the open process behind each step and why the contribution went where it did.
 export const VOICE_TRUST_IMPACT_BANNER = {
-  title: "More of your impact record is coming soon",
-  subtitle: "We are adding a fuller view of what you made possible",
+  title: "Coming soon: the story behind every step",
+  subtitle: "See how and why your contribution was placed here",
 };

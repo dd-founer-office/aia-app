@@ -174,7 +174,7 @@ function ActHeroContent({
         style={{
           fontSize: "clamp(24px, 7.2vw, 32px)",
           fontWeight: 700,
-          lineHeight: 1.25,
+          lineHeight: 1.42,
           letterSpacing: "-0.4px",
           color: MINT,
           textWrap: "balance",
