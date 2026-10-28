@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: TITLE,
     description: VOICE_TRUST_HERO.description,
-    url: "/aram/vt-x7k2m9",
+    url: "/aram/rabia-x7k2m9",
     type: "article",
     images: [{ url: VOICE_TRUST_HERO.heroImageUrl, width: 1204, height: 1600 }],
   },
