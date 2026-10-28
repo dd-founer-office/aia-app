@@ -232,8 +232,9 @@ function ImpactRecordRows({
 export interface ImpactRecordBanner {
   title: string;
   subtitle: string;
-  buttonLabel: string;
-  href: string;
+  // Both optional: a banner without them is informational only (no button).
+  buttonLabel?: string;
+  href?: string;
 }
 
 export function ContributionImpactRecord({
@@ -380,20 +381,22 @@ export function ContributionImpactRecord({
                     {banner.subtitle}
                   </p>
                 </div>
-                <a
-                  href={banner.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`${inter.className} flex h-8 shrink-0 items-center px-3 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
-                  style={{
-                    background: "#1B1B1B",
-                    color: "#FFFFFF",
-                    outlineColor: "#FFFFFF",
-                    borderRadius: 6,
-                  }}
-                >
-                  {banner.buttonLabel}
-                </a>
+                {banner.href && banner.buttonLabel && (
+                  <a
+                    href={banner.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${inter.className} flex h-8 shrink-0 items-center px-3 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
+                    style={{
+                      background: "#1B1B1B",
+                      color: "#FFFFFF",
+                      outlineColor: "#FFFFFF",
+                      borderRadius: 6,
+                    }}
+                  >
+                    {banner.buttonLabel}
+                  </a>
+                )}
               </div>
             )}
           </div>

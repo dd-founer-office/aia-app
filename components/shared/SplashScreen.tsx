@@ -281,7 +281,9 @@ function AnchoredWordmark({ open }: { open: boolean }) {
 }
 
 export default function SplashScreen() {
-  const share = /^\/(share|vaazhga-vaazhthudan)\//.test(usePathname() ?? "");
+  const share = /^\/(share|vaazhga-vaazhthudan|aram)\//.test(
+    usePathname() ?? "",
+  );
   const [phase, setPhase] = useState<Phase>(share ? "expanded" : "compact");
   // Defaults to true so the splash is present in the server-rendered
   // HTML itself — otherwise the browser paints Home first (server
