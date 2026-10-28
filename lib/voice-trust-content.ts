@@ -73,46 +73,48 @@ export const VOICE_TRUST_ACT: ActContent = {
   ],
 };
 
-// Most recent first. The real order of the morning: the food ready, the
-// note of thanks on the board, then the children praying before eating.
+// Most recent first. Times follow the wall clock in the photos and video
+// (about 8:00 on the board, 8:06 in the video): the food ready at 7:57:25,
+// the note of thanks on the board, then the children praying before eating.
 const PHOTOS: {
   file: string;
   title: string;
   narrative: string;
-  at: [number, number];
+  at: [number, number, number];
 }[] = [
   {
     file: "boys.jpg",
     title: "Hands Folded Before Breakfast",
     narrative: "Boys paused in prayer before the first bite.",
-    at: [7, 29],
+    at: [8, 5, 9],
   },
   {
     file: "girls.jpg",
     title: "A Prayer of Thanks",
     narrative: "Girls folded their hands before eating.",
-    at: [7, 26],
+    at: [8, 3, 41],
   },
   {
     file: "board.jpg",
     title: "A Note of Thanks on the Board",
     narrative: "The children wrote a thank-you note on the blackboard.",
-    at: [7, 22],
+    at: [8, 0, 32],
   },
   {
     file: "food.jpg",
     title: "Breakfast Ready to Serve",
     narrative: "Idli, sambar, chutney and more, ready to be served.",
-    at: [7, 20],
+    at: [7, 57, 25],
   },
 ];
 
-function format([h, m]: [number, number]) {
+function format([h, m, sec]: [number, number, number]) {
   const mm = String(m).padStart(2, "0");
+  const ss = String(sec).padStart(2, "0");
   return {
-    iso: `2026-10-28T0${h}:${mm}:00+05:30`,
+    iso: `2026-10-28T0${h}:${mm}:${ss}+05:30`,
     short: `${h}:${mm} AM`,
-    full: `${h}:${mm}:00 AM GMT+5:30`,
+    full: `${h}:${mm}:${ss} AM GMT+5:30`,
   };
 }
 
