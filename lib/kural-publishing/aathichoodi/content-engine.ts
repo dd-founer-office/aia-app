@@ -155,7 +155,12 @@ export function composeEpisode(
     ? { id: "curated", text: curated.familyAngle }
     : selectScenario(theme, episodeNumber, history.recentScenarioIds);
   const action = curated?.todayAction
-    ? { id: "curated", text: curated.todayAction, mechanism: curated.actionMechanism }
+    ? {
+        id: "curated",
+        text: curated.todayAction,
+        mechanism: curated.actionMechanism,
+        ...(curated.todayActionSupport ? { support: curated.todayActionSupport } : {}),
+      }
     : selectAction(theme, episodeNumber, history.recentActionIds);
   const childLesson = curated?.childLesson
     ? { id: "curated", text: curated.childLesson }

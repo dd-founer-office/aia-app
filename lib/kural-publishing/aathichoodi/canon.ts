@@ -114,6 +114,14 @@ export interface CuratedEpisodeContent {
    *  (quality-check.ts); omitting it just means that check skips this
    *  episode rather than guessing. */
   actionMechanism?: ActionMechanismId;
+  /** Optional supporting line for a curated todayAction (Slide 4's smaller
+   *  muted line under the highlighted action) -- the pool's own action
+   *  templates (actions.ts) often pair one, but a curated todayAction is a
+   *  plain string with no `support` of its own, so this is the only way to
+   *  keep that second line once an episode's action gets locked in. Omit
+   *  it and the curated episode simply shows no supporting line, same as
+   *  a pool action that has none. */
+  todayActionSupport?: string;
   /** Optional hand-authored override for Slide 1's tagline (the muted
    *  line under the hook) and its paired CTA button label -- explicit
    *  founder direction that both must build on THIS episode's own hook
@@ -686,56 +694,122 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
     },
   },
   { episodeNumber: 39, tamilText: "கேள்வி முயல்", simpleMeaning: "Make effort to listen to and learn from the wise.", transliteration: "Kelvi Muyal", primaryTheme: "education", verified: true,
-    // Everything else composes from the education pool; only classifying
-    // for Slide 4's tag row/heading.
+    // Fully curated/locked (founder-approved week-39-45 batch, 2026-10) --
+    // every field below is the exact text the composer produced at
+    // approval time, pinned so it can never drift from anti-repetition
+    // history growing in a browser's localStorage across later sessions.
     curated: {
+      hookOverride: "Have you shown them that curiosity is worth protecting?",
+      tagline: "One question today.\nA lifetime of learning tomorrow.",
+      ctaLabel: "Ask Today",
+      understanding: "Here's what Avvaiyar wants every child to carry: make effort to listen to and learn from the wise. Learning that sticks isn't the kind memorized for a test. It's the kind a child chases because they actually want to know.",
+      familyAngle: "A subject is genuinely hard for your child this term, and it would be easier to just avoid it. Sticking with it anyway is learning, chosen the hard way.",
+      todayAction: "Tonight, share something you learned recently that surprised you, and ask what surprised them this week.",
+      todayActionSupport: "Go first with your own answer. It makes theirs easier to share.",
+      childLesson: "Curiosity today becomes capability tomorrow.",
+      aiaConnection: "Aram in Action treats learning as a lifelong habit, not something that ends when school lets out.",
+      recommendedCta: "SAVE",
+      recommendedCtaCopy: "Save this now. You'll want it the next time this comes up at home.",
       languageCategory: "practices",
     },
   },
   { episodeNumber: 40, tamilText: "கைவினை கரவேல்", simpleMeaning: "Do not hide the craft/skill your hands know.", transliteration: "Kaivinai Karavel", primaryTheme: "responsibility", verified: true,
-    // Curated: uncurated, this composes from the responsibility pool's
-    // "finish your chores properly" angle -- the actual line is about
-    // sharing/using a skill you have, not task-completion.
+    // Fully curated/locked (founder-approved week-39-45 batch, 2026-10).
     curated: {
       hookOverride: "Does your child share what they're good at, instead of keeping it to themselves?",
+      tagline: "Finishing well matters more than finishing fast.",
+      ctaLabel: "Own It",
       understanding: "Avvaiyar's wisdom here is simple: don't hide a skill you actually have. A skill kept hidden helps no one. Not even you. What you're good at is meant to be used, and shared.",
       familyAngle: "Your child is good at something, drawing, fixing things, explaining homework, and a sibling or friend could really use that help. Offering to teach or help instead of keeping it to themselves is exactly what this line means.",
       todayAction: "Ask your child today: \"What are you good at that you could teach or help someone else with this week?\"",
       childLesson: "A skill you keep to yourself helps no one. Share what you're good at.",
+      aiaConnection: "Reliability isn't built in one big test. It's built in ordinary, forgettable tasks like today's.",
+      recommendedCta: "TRY_TODAY",
+      recommendedCtaCopy: "Don't just read it. Try today's action with your child before bedtime.",
       languageCategory: "practices",
     },
   },
   { episodeNumber: 41, tamilText: "கொள்ளை விரும்பேல்", simpleMeaning: "Do not desire to plunder or take what is not yours.", transliteration: "Kollai Virumbel", primaryTheme: "honesty", verified: true,
+    // Fully curated/locked (founder-approved week-39-45 batch, 2026-10).
     curated: {
+      hookOverride: "Have you taught them that owning a mistake is stronger than covering it?",
+      tagline: "One truth today.\nTrust tomorrow.",
+      ctaLabel: "Speak Truth",
+      understanding: "Avvaiyar's wisdom here is simple: do not desire to plunder or take what is not yours. A child learns the value of the truth by watching whether it's actually rewarded, or quietly punished, at home.",
+      familyAngle: "Your child finds money on the ground at school with no name on it. Turning it in instead of pocketing it is honesty, with no one checking.",
+      todayAction: "Talk with your child today about the difference between a lie and a surprise, using a real example if you can.",
+      todayActionSupport: "A birthday surprise is an easy, low-stakes example to start with.",
+      childLesson: "Being fair to everyone, even when it's inconvenient, is what earns real trust.",
+      aiaConnection: "Fair judgment, given without playing favorites, is its own quiet form of honesty.",
+      recommendedCta: "PARENT_REFLECTION",
+      recommendedCtaCopy: "Sit with this tonight, then talk about it with your child tomorrow.",
       languageCategory: "practices",
     },
   },
   { episodeNumber: 42, tamilText: "கோதாட்டு ஒழி", simpleMeaning: "Give up flawed or dishonest games.", transliteration: "Kothaadu Ozhi", primaryTheme: "character", verified: true,
+    // Fully curated/locked (founder-approved week-39-45 batch, 2026-10).
     curated: {
+      hookOverride: "Would your child do the right thing with no one watching?",
+      tagline: "Small choices, repeated, are what character is actually made of.",
+      ctaLabel: "Choose Well",
+      understanding: "Avvaiyar teaches us this: give up flawed or dishonest games. That desire, once a child has it, becomes the root every other value grows from.",
+      familyAngle: "A stray coin sits on the classroom floor. No teacher saw it fall, and nobody's asking. Pocketing it would be easy. And nobody would ever know the difference.",
+      todayAction: "Notice one moment today when your child does the right thing with no one watching, and name it out loud: \"I saw that, and it mattered.\"",
+      todayActionSupport: "Say it the moment you notice it. Waiting until later makes it feel like an afterthought.",
+      childLesson: "Who you are when no one's watching is who you really are.",
+      aiaConnection: "A child who chooses honesty when no one's watching has already learned something most adults are still working on.",
+      recommendedCta: "COMMENT",
+      recommendedCtaCopy: "Comment below: how will your family live this out this week?",
       languageCategory: "management",
     },
   },
   { episodeNumber: 43, tamilText: "கௌவை அகற்று", simpleMeaning: "Remove slander and vilifying talk.", transliteration: "Kauvai Agatru", primaryTheme: "speech", verified: true,
+    // Fully curated/locked (founder-approved week-39-45 batch, 2026-10).
     curated: {
+      hookOverride: "Have you taught them to think before they speak?",
+      tagline: "Careful speech today.\nLasting trust tomorrow.",
+      ctaLabel: "Choose Words",
+      understanding: "Avvaiyar's message here is clear: remove slander and vilifying talk. A child learns the weight of their own words by watching how carefully the people around them choose theirs.",
+      familyAngle: "Your child hears a rumor about a classmate and is about to repeat it at dinner. Whether it goes any further is entirely up to what they choose to say next.",
+      todayAction: "Catch one moment today to compliment someone sincerely, right in front of your child: \"I really appreciate that you did that.\"",
+      todayActionSupport: "Pick something true and specific. Your child notices when praise sounds genuine.",
+      childLesson: "A kind word costs you nothing but can carry someone through a hard day.",
+      aiaConnection: "What gets said in your house, and what doesn't, shapes your child more than either of you probably notices.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Send this to one parent right now who needs to see it today.",
       languageCategory: "management",
     },
   },
   { episodeNumber: 44, tamilText: "சக்கர நெறி நில்", simpleMeaning: "Stand within the rule of law (the ruler's just order).", transliteration: "Chakkara Nerinil", primaryTheme: "community", verified: true,
-    // Curated: uncurated, this composes from the community pool's
-    // "welcome new people in" angle -- the actual line is about following
-    // fair rules even when inconvenient, a different idea.
+    // Fully curated/locked (founder-approved week-39-45 batch, 2026-10).
     curated: {
       hookOverride: "Does your child follow the rules even when nobody's enforcing them?",
+      tagline: "A small kindness can change how someone's whole day feels.",
+      ctaLabel: "Be Kind",
       understanding: "Avvaiyar's wisdom here is about living within fair rules, not just the ones that are convenient. A society holds together when people follow its rules even when breaking one would be easy and unnoticed.",
       familyAngle: "Your child finds a rule at school or in a game inconvenient and quietly considers bending it since no one would notice. Following it anyway, even when it's inconvenient, is exactly what this line is about.",
       todayAction: "The next time a rule feels inconvenient to your child today, ask: \"What happens if everyone decided rules were optional when they're inconvenient?\"",
       childLesson: "Rules only work if people follow them even when it's inconvenient. That includes you.",
       aiaConnection: "Following fair rules even when it's inconvenient is a value worth practicing, not just agreeing with. Which is exactly what Aram in Action is about.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Send this to one parent right now who needs to see it today.",
       languageCategory: "beliefs",
     },
   },
   { episodeNumber: 45, tamilText: "சான்றோர் இனத்து இரு", simpleMeaning: "Keep the company of the wise and virtuous.", transliteration: "Saandror Inathu Iru", primaryTheme: "community", verified: true,
+    // Fully curated/locked (founder-approved week-39-45 batch, 2026-10).
     curated: {
+      hookOverride: "Have you shown them what it looks like to make room for someone new?",
+      tagline: "Belonging starts the moment someone decides to include, not wait.",
+      ctaLabel: "Include Someone",
+      understanding: "Avvaiyar puts it plainly: keep the company of the wise and virtuous. Noticing who's left out, and doing something about it, is a habit a child has to practice before it becomes instinct.",
+      familyAngle: "The neighborhood cleanup is genuinely optional today. No one's checking who shows up. Showing up anyway means something different because of that.",
+      todayAction: "Encourage your child to invite someone new into an activity today: \"Come join us.\"",
+      todayActionSupport: "It can be as simple as one extra spot at the table or in the game.",
+      childLesson: "A good friend is someone whose company makes you want to be better.",
+      aiaConnection: "Aram in Action keeps circling back to this: belonging is something you build, not something you wait for.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Send this to one parent right now who needs to see it today.",
       languageCategory: "management",
     },
   },
