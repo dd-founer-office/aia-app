@@ -813,20 +813,32 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       imagePromptOverride: "Create a natural, emotionally believable editorial lifestyle photograph for a parenting carousel, vertical 4:5. Scene: an everyday Tamil family living in Dubai at home in the evening. A school-age child sits at the dining table with a half-finished school project, coloured paper, glue, pencils and an open school notebook, looking worried after realising the project is due tomorrow. A parent sits nearby, calmly helping the child organise the next steps rather than scolding. Show a warm, contemporary Dubai apartment dining area with subtle residential towers visible through the window, not tourist landmarks. Authentic Tamil family appearance, natural modest home clothing, realistic lived-in details, gentle evening light, candid documentary photography, expressive but understated faces, uncluttered composition. No text, no captions, no logos, no watermarks, no exaggerated expressions or cultural stereotypes.",
     },
   },
-  { episodeNumber: 44, tamilText: "சக்கர நெறி நில்", simpleMeaning: "Stand within the rule of law (the ruler's just order).", transliteration: "Chakkara Nerinil", primaryTheme: "community", verified: true,
-    // Fully curated/locked (founder-approved week-39-45 batch, 2026-10).
+  { episodeNumber: 44, tamilText: "சக்கர நெறி நில்", simpleMeaning: "Live according to the righteous order or just principles established by the rightful ruler or leader.", transliteration: "Chakkara Nerinil", primaryTheme: "community", verified: true,
+    // Replaced with the Notion-sourced "Aathichoodi Daily – Carousel
+    // Content" database row for Episode 44, per the same founder
+    // direction as Episode 43 (2026-11): that database is the sole
+    // canonical content source going forward, superseding the prior
+    // week-39-45 curated batch for any episode it covers, including this
+    // one's simpleMeaning (Notion's own English gloss). transliteration is
+    // left as the authentic-order document's "Chakkara Nerinil" rather
+    // than Notion's own "Sakkara Neri Nil" spelling, same as tamilText --
+    // Notion's rows aren't a classical-text-accuracy source. primaryTheme
+    // stays "community", which still fits the new copy (shared rules that
+    // hold a community together).
     curated: {
-      hookOverride: "Does your child follow the rules even when nobody's enforcing them?",
-      tagline: "A small kindness can change how someone's whole day feels.",
-      ctaLabel: "Be Kind",
-      understanding: "Avvaiyar's wisdom here is about living within fair rules, not just the ones that are convenient. A society holds together when people follow its rules even when breaking one would be easy and unnoticed.",
-      familyAngle: "Your child finds a rule at school or in a game inconvenient and quietly considers bending it since no one would notice. Following it anyway, even when it's inconvenient, is exactly what this line is about.",
-      todayAction: "The next time a rule feels inconvenient to your child today, ask: \"What happens if everyone decided rules were optional when they're inconvenient?\"",
-      childLesson: "Rules only work if people follow them even when it's inconvenient. That includes you.",
-      aiaConnection: "Following fair rules even when it's inconvenient is a value worth practicing, not just agreeing with. Which is exactly what Aram in Action is about.",
+      hookOverride: "What does it mean to follow a fair path?",
+      tagline: "Rules are not just words on a page.\nThey help a community live together.",
+      ctaLabel: "Understand the rule. Respect the common good.",
+      understanding: "The original line speaks about living by the just order of governance. In family life, we can reflect on the value of fair, shared rules—not changing them for personal advantage.",
+      familyAngle: "At home, your child wants to be first in every game and changes the rules whenever they start losing. The game stops being fun because nobody can trust the rules.",
+      todayAction: "Pick one family routine—screen time, games or getting ready for school—and agree on a simple rule together, starting with: \"Make shared rules together.\"",
+      todayActionSupport: "Fair rules build trust when they apply to everyone.",
+      childLesson: "Children learn fairness not only from the rules we make, but from the way we follow them.",
+      aiaConnection: "A fair rule is meaningful only when we respect it even when it does not favour us.",
       recommendedCta: "SHARE",
-      recommendedCtaCopy: "Send this to one parent right now who needs to see it today.",
-      languageCategory: "beliefs",
+      recommendedCtaCopy: "Share this with a family that believes in raising children with fairness.",
+      languageCategory: "management",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5, for a parenting carousel. A contemporary Tamil family living in Dubai at home, two school-age siblings playing a simple board game at a dining table. One child looks frustrated after a disagreement about the rules; a parent calmly points to the rule sheet and helps both children agree to play fairly. Warm lived-in Dubai apartment, subtle city buildings through a window, candid documentary photography, natural expressions, realistic modest home clothing, soft daylight. No text, logos, watermarks, exaggerated expressions or stereotypes.",
     },
   },
   { episodeNumber: 45, tamilText: "சான்றோர் இனத்து இரு", simpleMeaning: "Keep the company of the wise and virtuous.", transliteration: "Saandror Inathu Iru", primaryTheme: "community", verified: true,
