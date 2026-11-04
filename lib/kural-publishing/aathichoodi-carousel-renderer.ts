@@ -1247,11 +1247,11 @@ function headerMetrics(style: CarouselStyle, width: number, height: number, slid
   // locked correction ("reduce the space around the text keep it tight").
   // Shared with drawHeader so the badge's actual drawn height and the
   // space reserved for it can never drift apart. Only Slide 1 (STOP)
-  // still carries the "AATHICHOODI" eyebrow -- each of Slides 2-5 dropped
-  // it as its own Figma redesign landed (file H9LpyoKvzC5UanyL360JLs),
-  // so no vertical space is reserved for it there any more; whatever
-  // comes next on each of those slides moves straight up to the top
-  // margin instead of leaving a dead gap.
+  // carries the "AATHICHOODI" eyebrow -- explicit founder direction
+  // (confirmed twice: once to add it back everywhere, then corrected to
+  // Slide 1 only) -- so no vertical space is reserved for it on any
+  // other slide; whatever comes next on those slides moves straight up
+  // to the top margin instead of leaving a dead gap.
   const hasEyebrow = slideIndex === 0;
   const eyebrowPadY = eyebrow * 0.42;
   const badgeH = hasEyebrow ? eyebrow + eyebrowPadY * 2 : 0;
@@ -1321,9 +1321,8 @@ function drawHeader(
   // correction. No divider line beneath it any more, and no pill
   // background -- just the "AATHICHOODI" text itself, in
   // slide0EyebrowText (white), per explicit founder direction. Only Slide
-  // 1 (STOP) still draws it at all any more -- see headerMetrics'
-  // hasEyebrow -- every other slide dropped it as its own Figma redesign
-  // landed (file H9LpyoKvzC5UanyL360JLs).
+  // 1 (STOP) draws it -- confirmed twice (briefly tried everywhere, then
+  // corrected back to Slide 1 only) -- see headerMetrics' hasEyebrow.
   if (slideIndex === 0) {
     try {
       ctx.letterSpacing = `${Math.round(px(2, width))}px`;

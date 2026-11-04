@@ -114,7 +114,7 @@ import {
   type TemplateId,
   type AathichoodiContent,
 } from "@/lib/kural-publishing/content-types";
-import { TOTAL_EPISODES, SLIDE3_ACTION_HEADING_LABELS } from "@/lib/kural-publishing/aathichoodi/canon";
+import { TOTAL_EPISODES, SLIDE3_ACTION_HEADING_LABELS, getCanonEntry } from "@/lib/kural-publishing/aathichoodi/canon";
 import {
   composeEpisode,
   nextEpisodeNumber,
@@ -2125,11 +2125,15 @@ export default function PublishingWorkspace() {
   // not necessarily the original generated copy.
   const handleCopyFamilyImagePrompt = useCallback(() => {
     if (!displayEpisode) return;
-    const generatedParagraphs = splitEditorialParagraphs(displayEpisode.familyAngle);
-    const effectiveText = generatedParagraphs
-      .map((generated, i) => textOverrides.slide2?.paragraphs?.[i] || generated)
-      .join(" ");
-    const prompt = buildFamilyImagePrompt(effectiveText, displayEpisode.episodeNumber);
+    const override = getCanonEntry(displayEpisode.episodeNumber)?.curated?.imagePromptOverride;
+    let prompt = override;
+    if (!prompt) {
+      const generatedParagraphs = splitEditorialParagraphs(displayEpisode.familyAngle);
+      const effectiveText = generatedParagraphs
+        .map((generated, i) => textOverrides.slide2?.paragraphs?.[i] || generated)
+        .join(" ");
+      prompt = buildFamilyImagePrompt(effectiveText, displayEpisode.episodeNumber);
+    }
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(prompt).catch(() => {
         /* clipboard permission unavailable -- prompt can still be selected from an alert/log if needed */

@@ -44,6 +44,18 @@
  * Episode 23's simpleMeaning was already corrected as part of the
  * original spelling pass and needed no further change.
  *
+ * CONTENT SOURCE (2026-11 onward): the founder's Notion database
+ * "Aathichoodi Daily – Carousel Content" is now the sole canonical
+ * source for curated episode content (hook/tagline/understanding/
+ * familyAngle/todayAction/aiaConnection/CTA/image prompt), fed in here
+ * episode by episode as the founder supplies them -- explicitly
+ * superseding any prior curated batch or reference document for the
+ * episodes it covers, including simpleMeaning where Notion's own gloss
+ * differs (see Episode 43's own comment for a live example). tamilText
+ * itself is NOT touched by this -- it remains governed by the authentic-
+ * order reference document above, since Notion's rows don't claim to be
+ * a classical-text-accuracy source.
+ *
  * primaryTheme is a new editorial tag (this project's own taxonomy, see
  * themes.ts) used only to pick which hook/scenario/action pools apply when
  * content-engine.ts composes an episode -- it carries no claim about the
@@ -140,6 +152,15 @@ export interface CuratedEpisodeContent {
    *  reference its own content specifically, not just its type's generic
    *  phrasing. */
   recommendedCtaCopy?: string;
+  /** Optional hand-authored AI image-generation prompt for Slide 2's
+   *  (Family Situation's) background photo -- when set, the workspace's
+   *  "Copy image prompt" button uses this verbatim instead of generating
+   *  one from familyAngle via family-image-prompt.ts's rotating
+   *  setting/cultural-touch pools. For an episode whose source material
+   *  (e.g. a batch of approved copy) already supplies its own specific
+   *  prompt -- tied to a particular scene, location, and mood -- that
+   *  prompt should win over the generic generated one. */
+  imagePromptOverride?: string;
 }
 
 /** Display labels for CuratedEpisodeContent.languageCategory, matching the
@@ -763,21 +784,33 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       languageCategory: "management",
     },
   },
-  { episodeNumber: 43, tamilText: "கௌவை அகற்று", simpleMeaning: "Remove slander and vilifying talk.", transliteration: "Kauvai Agatru", primaryTheme: "speech", verified: true,
-    // Fully curated/locked (founder-approved week-39-45 batch, 2026-10).
+  { episodeNumber: 43, tamilText: "கௌவை அகற்று", simpleMeaning: "Remove difficulties in life.", transliteration: "Kauvai Agatru", primaryTheme: "responsibility", verified: true,
+    // Replaced with the Notion-sourced "Aathichoodi Daily – Carousel
+    // Content" database row for Episode 43, per explicit founder
+    // direction (2026-11): that database is now the sole canonical
+    // content source going forward, superseding the prior week-39-45
+    // curated batch for any episode it covers, including this one's
+    // simpleMeaning (Notion's own gloss, "Remove difficulties in life",
+    // read differently from the Avvaiyar_Aathichoodi_Authentic_Order.docx
+    // reference used earlier -- an explicit founder call, not an
+    // oversight). primaryTheme changed from "speech" to "responsibility"
+    // to match: every field below is curated, so the theme tag no longer
+    // drives any pool content for this episode, but leaving it as
+    // "speech" would have been actively wrong for the new copy.
     curated: {
-      hookOverride: "Have you taught them to think before they speak?",
-      tagline: "Careful speech today.\nLasting trust tomorrow.",
-      ctaLabel: "Choose Words",
-      understanding: "Avvaiyar's message here is clear: remove slander and vilifying talk. A child learns the weight of their own words by watching how carefully the people around them choose theirs.",
-      familyAngle: "Your child hears a rumor about a classmate and is about to repeat it at dinner. Whether it goes any further is entirely up to what they choose to say next.",
-      todayAction: "Catch one moment today to compliment someone sincerely, right in front of your child: \"I really appreciate that you did that.\"",
-      todayActionSupport: "Pick something true and specific. Your child notices when praise sounds genuine.",
-      childLesson: "A kind word costs you nothing but can carry someone through a hard day.",
-      aiaConnection: "What gets said in your house, and what doesn't, shapes your child more than either of you probably notices.",
+      hookOverride: "Have you taught them to prevent the problems they can?",
+      tagline: "A little thought today.\nLess avoidable trouble tomorrow.",
+      ctaLabel: "Make Tomorrow Easier",
+      understanding: "Some troubles are unavoidable. Others are created by our own careless choices or lack of preparation. Learn to recognise and remove the difficulties that need not be there.",
+      familyAngle: "Your child remembers a school project only after dinner, the night before it is due. Now everyone is rushing to finish something that could have been planned earlier.",
+      todayAction: "Each evening, spend ten minutes with your child checking what needs to be ready for tomorrow, starting with: \"Let's make tomorrow easier.\"",
+      todayActionSupport: "Small preparation can prevent avoidable stress.",
+      childLesson: "A little planning can make tomorrow lighter for the whole family.",
+      aiaConnection: "Not every difficulty can be avoided. But some can be prevented by the choices we make today.",
       recommendedCta: "SHARE",
-      recommendedCtaCopy: "Send this to one parent right now who needs to see it today.",
+      recommendedCtaCopy: "Send this to a parent who wants to make everyday family life a little easier.",
       languageCategory: "management",
+      imagePromptOverride: "Create a natural, emotionally believable editorial lifestyle photograph for a parenting carousel, vertical 4:5. Scene: an everyday Tamil family living in Dubai at home in the evening. A school-age child sits at the dining table with a half-finished school project, coloured paper, glue, pencils and an open school notebook, looking worried after realising the project is due tomorrow. A parent sits nearby, calmly helping the child organise the next steps rather than scolding. Show a warm, contemporary Dubai apartment dining area with subtle residential towers visible through the window, not tourist landmarks. Authentic Tamil family appearance, natural modest home clothing, realistic lived-in details, gentle evening light, candid documentary photography, expressive but understated faces, uncluttered composition. No text, no captions, no logos, no watermarks, no exaggerated expressions or cultural stereotypes.",
     },
   },
   { episodeNumber: 44, tamilText: "சக்கர நெறி நில்", simpleMeaning: "Stand within the rule of law (the ruler's just order).", transliteration: "Chakkara Nerinil", primaryTheme: "community", verified: true,
