@@ -396,7 +396,7 @@ export default function CauseSelection() {
             type="submit"
             className={`flex items-center justify-center gap-1.5 rounded-md py-3 text-center text-[13px] font-semibold ${FOCUS}`}
             style={valid
-              ? { background: "linear-gradient(180deg, #8DFFC4 0%, #68FFAD 55%, #3FE08C 100%)", border: "1px solid rgba(255,255,255,0.35)", boxShadow: "0 0 14px rgba(104,255,173,0.28)", color: TEAL }
+              ? { background: MINT, border: "1px solid rgba(255,255,255,0.35)", boxShadow: "0 0 14px rgba(104,255,173,0.28)", color: TEAL }
               : { background: "#2e2e2e", border: "1px solid transparent", color: "rgba(255,255,255,0.35)" }}
           >
             Aram Into Action
