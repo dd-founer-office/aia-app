@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import localFont from "next/font/local";
-import { ArrowRight, Check, ChevronDown } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronDown } from "lucide-react";
 import {
   ForkKnifeIcon,
   FlowerLotusIcon,
@@ -143,6 +143,8 @@ export default function CauseSelection() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [tried, setTried] = useState(false);
+  // While an amount is being typed it can sit below the minimum; it is clamped on blur.
+  const [drafts, setDrafts] = useState<Partial<Record<ActionId, string>>>({});
 
   const chosen = ACTIONS.filter((a) => selected[a.id]);
   const total = chosen.reduce((sum, a) => sum + amounts[a.id], 0);
@@ -158,6 +160,21 @@ export default function CauseSelection() {
 
   function bump(id: ActionId, delta: number) {
     setAmounts((a) => ({ ...a, [id]: Math.max(MIN_PER_ACTION, a[id] + delta) }));
+  }
+
+  function typeAmount(id: ActionId, raw: string) {
+    const digits = raw.replace(/\D/g, "").slice(0, 6);
+    setDrafts((d) => ({ ...d, [id]: digits }));
+    setAmounts((a) => ({ ...a, [id]: Number(digits) }));
+  }
+
+  function commitAmount(id: ActionId) {
+    setAmounts((a) => ({ ...a, [id]: Math.max(MIN_PER_ACTION, a[id]) }));
+    setDrafts((d) => {
+      const next = { ...d };
+      delete next[id];
+      return next;
+    });
   }
 
   const contactTrim = contact.trim();
@@ -241,7 +258,20 @@ export default function CauseSelection() {
                     <button type="button" aria-label={`Decrease ${title}`} disabled={amounts[id] <= MIN_PER_ACTION}
                       onClick={() => bump(id, -STEP)}
                       className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] bg-[#4a4a4a] disabled:opacity-40">−</button>
-                    <span className="min-w-[52px] text-center tabular-nums">{formatINR(amounts[id])}</span>
+                    <span className="flex items-center rounded-[5px] bg-[#2a2a2a] px-1.5 py-0.5 tabular-nums">
+                      <span className="text-white/60">₹</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        aria-label={`${title} amount in rupees`}
+                        value={drafts[id] ?? amounts[id].toLocaleString("en-IN")}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onChange={(e) => typeAmount(id, e.target.value)}
+                        onBlur={() => commitAmount(id)}
+                        className={`w-[50px] bg-transparent text-right text-sm text-white outline-none ${FOCUS}`}
+                      />
+                    </span>
                     <button type="button" aria-label={`Increase ${title}`} onClick={() => bump(id, STEP)}
                       className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px]" style={{ background: MINT, color: TEAL }}>+</button>
                   </span>
@@ -330,8 +360,24 @@ export default function CauseSelection() {
               </div>
             </Field>
             <Field label="On which day?" htmlFor="ma-date">
-              <input id="ma-date" type="date" className={inputCls} style={{ background: FIELD, color: occasionDate ? "#fff" : "#666" }}
-                value={occasionDate} onChange={(e) => setOccasionDate(e.target.value)} />
+              <div className="relative">
+                <div
+                  className="flex items-center justify-between rounded-md px-2.5 py-2 text-[13px]"
+                  style={{ background: FIELD, color: occasionDate ? "#fff" : "rgba(255,255,255,0.4)" }}
+                >
+                  <span>{occasionDate ? new Date(`${occasionDate}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Select a date"}</span>
+                  <CalendarDays size={16} className="text-white/70" />
+                </div>
+                <input
+                  id="ma-date"
+                  type="date"
+                  aria-label="Occasion date"
+                  className={`ma-field absolute inset-0 h-full w-full cursor-pointer opacity-0 ${FOCUS}`}
+                  value={occasionDate}
+                  onClick={(e) => e.currentTarget.showPicker?.()}
+                  onChange={(e) => setOccasionDate(e.target.value)}
+                />
+              </div>
             </Field>
           </Section>
 
