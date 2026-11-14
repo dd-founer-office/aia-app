@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import localFont from "next/font/local";
-import { Check, ChevronDown } from "lucide-react";
+import { ArrowRight, Check, ChevronDown } from "lucide-react";
 import {
   ForkKnifeIcon,
   FlowerLotusIcon,
@@ -28,13 +28,14 @@ const TEAL = "#0A363A";
 const MINT = "#68FFAD";
 const PANEL = "#1B1B1B";
 const CARD = "#232323";
-const FIELD = "#2a2a2a";
+const FIELD = "#363636";
 const ERROR_RED = "#ef4444";
-const STROKE_GREY = "170, 170, 170";
+const STROKE_GREY = "154, 160, 158";
 
-const MIN_TOTAL = 1000;
+// Every chosen action carries its own minimum, so the floor is 1,000 per action.
+const MIN_PER_ACTION = 1000;
 const STEP = 100;
-const MIN_PER_ACTION = 100;
+const FOCUS = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
 type Icon = (p: { className?: string }) => React.ReactElement;
 
@@ -61,6 +62,7 @@ const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const isMobile = (v: string) => /^(\+?91)?[6-9]\d{9}$/.test(v.replace(/[\s-]/g, ""));
 
 const css = `
+  .rf-panel { box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 0 26px 2px rgba(255,255,255,0.14); }
   .ma-card { position: relative; box-shadow: 0 -2px 14px -6px rgba(${STROKE_GREY},0.35); }
   .ma-card::before {
     content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
@@ -68,7 +70,7 @@ const css = `
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
   }
-  .ma-field::placeholder { color: #666; }
+  .ma-field::placeholder { color: rgba(255,255,255,0.4); }
   .ma-field { color-scheme: dark; }
 `;
 
@@ -76,7 +78,7 @@ function Tick({ on }: { on: boolean }) {
   return (
     <span
       className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full"
-      style={{ background: on ? MINT : "#3a3a3a", color: TEAL }}
+      style={{ background: on ? MINT : "#4a4a4a", color: TEAL }}
     >
       {on && <Check size={12} strokeWidth={3.5} />}
     </span>
@@ -85,10 +87,10 @@ function Tick({ on }: { on: boolean }) {
 
 function Section({ title, sub, children }: { title?: string; sub?: string; children: React.ReactNode }) {
   return (
-    <section className="ma-card rounded-lg p-3" style={{ background: CARD }}>
-      {title && <h2 className={`${calSans.className} text-[18px] leading-tight text-white`}>{title}</h2>}
-      {sub && <p className="mb-2.5 mt-0.5 text-xs text-white/60">{sub}</p>}
-      {children}
+    <section className="ma-card rounded-lg p-4" style={{ background: CARD }}>
+      {title && <h2 className={`${calSans.className} m-0 text-[17px] font-semibold text-white`}>{title}</h2>}
+      {sub && <p className={`${calSans.className} m-0 mt-0.5 text-[12px] text-white/85`}>{sub}</p>}
+      <div className={title ? "mt-4" : ""}>{children}</div>
     </section>
   );
 }
@@ -122,7 +124,7 @@ function Field({
   );
 }
 
-const inputCls = "ma-field w-full rounded-md border-0 px-2.5 py-2 text-[13px] text-white outline-none focus:ring-1 focus:ring-[#68FFAD]";
+const inputCls = "ma-field w-full rounded-md border-0 px-2.5 py-2 text-[13px] text-white outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
 export default function CauseSelection() {
   const [selected, setSelected] = useState<Record<ActionId, boolean>>({
@@ -150,7 +152,7 @@ export default function CauseSelection() {
     setSelected((s) => ({ ...s, [id]: next }));
     setAmounts((a) => ({
       ...a,
-      [id]: next ? (chosen.length === 0 ? MIN_TOTAL : MIN_PER_ACTION) : 0,
+      [id]: next ? MIN_PER_ACTION : 0,
     }));
   }
 
@@ -161,7 +163,9 @@ export default function CauseSelection() {
   const contactTrim = contact.trim();
   const errors = {
     action: chosen.length === 0 ? "Choose at least one action for your Aram." : "",
-    total: chosen.length > 0 && total < MIN_TOTAL ? `Add a little more to reach the minimum of ${formatINR(MIN_TOTAL)}.` : "",
+    total: chosen.length > 0 && total < chosen.length * MIN_PER_ACTION
+      ? `Add a little more to reach the minimum of ${formatINR(chosen.length * MIN_PER_ACTION)}.`
+      : "",
     dedName: dedicate && !dedName.trim() ? "Add their name to complete your dedication." : "",
     name: !name.trim() ? "Add your name to continue." : "",
     contact: !contactTrim || !(isEmail(contactTrim) || isMobile(contactTrim))
@@ -185,18 +189,18 @@ export default function CauseSelection() {
     >
       <style>{css}</style>
       <div className="mx-auto w-full max-w-[440px]">
-        <h1 className={`${calSans.className} text-center text-[28px] leading-[1.15]`} style={{ color: MINT }}>
+        <h1 className={`${calSans.className} m-0 text-center text-[26px] font-bold leading-[1.15]`} style={{ color: MINT }}>
           Let Your Aram Take Action
         </h1>
-        <p className="mx-1.5 mb-[18px] mt-2 text-center text-sm leading-normal text-[#e6fff3]">
+        <p className="mx-1.5 mb-5 mt-3 text-center text-[16px] leading-[1.45] text-[#D4FFE9]">
           Choose where your monthly contribution can make a real difference.
         </p>
 
         <form
           onSubmit={submit}
           noValidate
-          className="flex flex-col gap-2 rounded-[10px] p-2"
-          style={{ background: PANEL, boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 0 26px 2px rgba(255,255,255,0.12)" }}
+          className="rf-panel flex flex-col gap-4 rounded-lg p-3"
+          style={{ background: PANEL }}
         >
           <Section title="Put Aram Into Action" sub="Pick one or more ways to make a difference.">
             <div className="grid grid-cols-2 gap-2.5">
@@ -208,15 +212,15 @@ export default function CauseSelection() {
                     type="button"
                     aria-pressed={on}
                     onClick={() => toggleAction(id)}
-                    className="flex flex-col items-center rounded-lg px-2 pb-2.5 pt-3 text-center"
-                    style={{ background: FIELD, border: `1px solid ${on ? MINT : "#333"}` }}
+                    className={`flex flex-col items-center rounded-lg px-2 pb-2.5 pt-3 text-center ${FOCUS}`}
+                    style={{ background: FIELD, border: `1.5px solid ${on ? MINT : "transparent"}` }}
                   >
-                    <span className="mb-2 text-[9.5px] uppercase tracking-[0.1em]" style={{ color: on ? MINT : "#666" }}>
+                    <span className="mb-2 text-[9.5px] uppercase tracking-[0.1em]" style={{ color: on ? MINT : "#8a8a8a" }}>
                       {cause}
                     </span>
                     <Icon className="mb-2 h-7 w-7" />
-                    <span className="text-base font-bold" style={{ color: on ? MINT : "#8a8a8a" }}>{title}</span>
-                    <span className="mt-1 text-[11.5px] leading-snug" style={{ color: on ? "#fff" : "#6b6b6b" }}>{line}</span>
+                    <span className={`${calSans.className} text-base font-bold`} style={{ color: on ? MINT : "#FFFFFF" }}>{title}</span>
+                    <span className={`${calSans.className} mt-1 text-[11.5px] leading-snug`} style={{ color: on ? "#fff" : "#8a8a8a" }}>{line}</span>
                     <span className="mt-2"><Tick on={on} /></span>
                   </button>
                 );
@@ -232,11 +236,11 @@ export default function CauseSelection() {
                   <span className="flex h-[34px] w-[34px] items-center justify-center rounded-md" style={{ background: TEAL, color: MINT }}>
                     <Icon className="h-[18px] w-[18px]" />
                   </span>
-                  <span className="flex-1 text-sm font-semibold">{title}</span>
+                  <span className={`${calSans.className} flex-1 text-[15px] font-semibold`}>{title}</span>
                   <span className="flex items-center gap-2 text-sm">
                     <button type="button" aria-label={`Decrease ${title}`} disabled={amounts[id] <= MIN_PER_ACTION}
                       onClick={() => bump(id, -STEP)}
-                      className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] bg-[#3a3a3a] disabled:opacity-40">−</button>
+                      className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] bg-[#4a4a4a] disabled:opacity-40">−</button>
                     <span className="min-w-[52px] text-center tabular-nums">{formatINR(amounts[id])}</span>
                     <button type="button" aria-label={`Increase ${title}`} onClick={() => bump(id, STEP)}
                       className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px]" style={{ background: MINT, color: TEAL }}>+</button>
@@ -254,14 +258,14 @@ export default function CauseSelection() {
           <Section>
             <div className="flex items-center gap-3 rounded-md px-2.5 py-[9px]" style={{ background: FIELD }}>
               <div className="flex-1">
-                <p className="text-sm font-semibold">Is this Aram for someone special?</p>
-                <p className="text-[11px] text-white/50">Carry their name into something good.</p>
+                <p className={`${calSans.className} text-[15px] font-semibold`}>Is this Aram for someone special?</p>
+                <p className={`${calSans.className} text-[12px] text-white/85`}>Carry their name into something good.</p>
               </div>
               <button
                 type="button" role="switch" aria-checked={dedicate} aria-label="Dedicate this Aram"
                 onClick={() => setDedicate((d) => !d)}
-                className="relative h-6 w-[42px] rounded-full transition-colors"
-                style={{ background: dedicate ? MINT : "#444" }}
+                className={`relative h-6 w-[42px] rounded-full transition-colors ${FOCUS}`}
+                style={{ background: dedicate ? MINT : "#555" }}
               >
                 <span className="absolute top-[3px] h-[18px] w-[18px] rounded-full transition-all"
                   style={{ left: dedicate ? 21 : 3, background: dedicate ? TEAL : "#fff" }} />
@@ -277,15 +281,15 @@ export default function CauseSelection() {
                   const on = kind === k;
                   return (
                     <button key={k} type="button" aria-pressed={on} onClick={() => setKind(k)}
-                      className="mb-1.5 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left"
-                      style={{ background: FIELD, border: `1px solid ${on ? MINT : "#333"}` }}>
+                      className={`mb-1.5 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left ${FOCUS}`}
+                      style={{ background: FIELD, border: `1.5px solid ${on ? MINT : "transparent"}` }}>
                       <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-md"
-                        style={{ background: on ? TEAL : "#333", color: on ? MINT : "#777" }}>
+                        style={{ background: on ? TEAL : "#4a4a4a", color: on ? MINT : "#9a9a9a" }}>
                         <Ic className="h-5 w-5" />
                       </span>
                       <span className="flex-1">
-                        <span className="block text-sm font-semibold" style={{ color: on ? MINT : "#8a8a8a" }}>{t}</span>
-                        <span className="block text-[11.5px]" style={{ color: on ? "#fff" : "#6b6b6b" }}>{d}</span>
+                        <span className={`${calSans.className} block text-[15px] font-semibold`} style={{ color: on ? MINT : "#FFFFFF" }}>{t}</span>
+                        <span className={`${calSans.className} block text-[12px]`} style={{ color: on ? "#fff" : "#8a8a8a" }}>{d}</span>
                       </span>
                       <Tick on={on} />
                     </button>
@@ -344,12 +348,13 @@ export default function CauseSelection() {
 
           <button
             type="submit"
-            className="rounded-md py-3 text-center font-bold"
+            className={`flex items-center justify-center gap-1.5 rounded-md py-3 text-center text-[13px] font-semibold ${FOCUS}`}
             style={valid
-              ? { background: "linear-gradient(180deg, #8DFFC4 0%, #68FFAD 55%, #3FE08C 100%)", color: TEAL }
-              : { background: "#2e2e2e", color: "rgba(255,255,255,0.35)" }}
+              ? { background: "linear-gradient(180deg, #8DFFC4 0%, #68FFAD 55%, #3FE08C 100%)", border: "1px solid rgba(255,255,255,0.35)", boxShadow: "0 0 14px rgba(104,255,173,0.28)", color: TEAL }
+              : { background: "#2e2e2e", border: "1px solid transparent", color: "rgba(255,255,255,0.35)" }}
           >
             Aram Into Action
+            <ArrowRight size={14} strokeWidth={2.5} />
           </button>
         </form>
       </div>
