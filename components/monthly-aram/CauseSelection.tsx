@@ -258,7 +258,7 @@ export default function CauseSelection() {
           <Section>
             <div className="flex items-center gap-3 rounded-md px-2.5 py-[9px]" style={{ background: FIELD }}>
               <div className="flex-1">
-                <p className={`${calSans.className} text-[15px] font-semibold`}>Is this Aram for someone special?</p>
+                <p className={`${calSans.className} text-[14px] font-semibold`}>Is this Aram for someone special?</p>
                 <p className={`${calSans.className} text-[12px] text-white/85`}>Carry their name into something good.</p>
               </div>
               <button
