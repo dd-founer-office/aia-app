@@ -267,34 +267,35 @@ export default function CauseSelection() {
   const occasionText = occasion ? `marking ${OCCASION_PHRASE[occasion]}` : "";
   const dateText = occasionDate ? `on ${formatDate(occasionDate)}` : "";
   const when = [occasionText, dateText].filter(Boolean).join(" ");
-  const story = [
+  const storyParts = [
     `${name.trim()}, this month your Aram will ${list(chosen.map((a) => VERB[a.id]))}: ${list(chosen.map((a) => `${formatINR(amounts[a.id])} to ${a.cause}`))}.`,
     dedicate && who
       ? `You gave it ${kind === "honour" ? "in honour of" : "in memory of"} ${who}${when ? `, ${when}` : ""}${message.trim() ? `, with the words \u201c${message.trim()}\u201d` : ""}${/[.!?\u2026]$/.test(message.trim()) ? "" : "."}`
       : "",
     `Somewhere, ${list(chosen.map((a) => OUTCOME[a.id]))}, because you chose to act.`,
     "We\u2019ll be in touch once your actions are done.",
-  ].filter(Boolean).join(" ");
+  ].filter(Boolean);
 
-  const shellBg = { background: `radial-gradient(120% 60% at 50% 0%, #0f4a4f 0%, ${TEAL} 55%, #082c30 100%)` };
 
   if (submitted) {
     return (
       <main
-        className={`${inter.className} flex min-h-screen flex-col items-center justify-center px-6 py-10 text-center text-white`}
-        style={shellBg}
+        className={`${inter.className} flex min-h-screen flex-col items-center justify-center px-6 py-10 text-center`}
+        style={{ background: MINT, color: TEAL }}
       >
         <div className="mx-auto w-full max-w-[440px]">
-          <p className="m-0 text-[17px] font-semibold uppercase tracking-[0.02em]">Thank you</p>
-          <h1 className={`${calSans.className} m-0 mb-6 mt-3.5 text-[42px] font-bold leading-[1.05] tracking-[-0.01em]`} style={{ color: MINT }}>
+          <p className="m-0 text-[16px] font-semibold uppercase tracking-[0.02em]">Thank you</p>
+          <h1 className={`${calSans.className} m-0 mb-6 mt-3.5 text-[40px] font-bold leading-[1.05] tracking-[-0.01em]`}>
             You&apos;ve Put Your Aram Into Action
           </h1>
-          <p className="m-0 text-[15px] leading-[1.55] text-white">{story}</p>
+          {storyParts.map((part, i) => (
+            <p key={i} className="m-0 mt-4 text-[16px] leading-[1.5] first:mt-0">{part}</p>
+          ))}
           <button
             type="button"
             onClick={() => { setSubmitted(false); window.scrollTo({ top: 0 }); }}
-            className={`mt-8 rounded-lg px-[22px] py-3 text-[14px] font-semibold ${FOCUS}`}
-            style={{ background: MINT, color: TEAL }}
+            className={`mt-[30px] rounded-lg px-[22px] py-3 text-[14px] font-bold ${FOCUS}`}
+            style={{ background: TEAL, color: MINT }}
           >
             Change my actions
           </button>
@@ -509,13 +510,18 @@ export default function CauseSelection() {
           <button
             type="submit"
             disabled={sending}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-3 text-center text-[13px] font-semibold ${FOCUS}`}
+            className={`flex items-center justify-center gap-2.5 rounded-md py-2.5 text-center text-[13px] font-bold ${FOCUS}`}
             style={valid
               ? { background: MINT, border: "1px solid rgba(255,255,255,0.35)", boxShadow: "0 0 14px rgba(104,255,173,0.28)", color: TEAL }
               : { background: "#2e2e2e", border: "1px solid transparent", color: "rgba(255,255,255,0.35)" }}
           >
             Aram Into Action
-            <ArrowRight size={14} strokeWidth={2.5} />
+            <span
+              className="flex h-6 w-6 items-center justify-center rounded-md"
+              style={valid ? { background: TEAL, color: MINT } : { background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.35)" }}
+            >
+              <ArrowRight size={14} strokeWidth={3} />
+            </span>
           </button>
         </form>
       </div>
