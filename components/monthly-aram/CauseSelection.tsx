@@ -148,6 +148,8 @@ export default function CauseSelection() {
   const [tried, setTried] = useState(false);
   // While an amount is being typed it can sit below the minimum; it is clamped on blur.
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [serverError, setServerError] = useState(false);
   const [drafts, setDrafts] = useState<Partial<Record<ActionId, string>>>({});
 
   const chosen = ACTIONS.filter((a) => selected[a.id]);
@@ -196,13 +198,45 @@ export default function CauseSelection() {
   const valid = !Object.values(errors).some(Boolean);
   const show = (msg: string) => (tried ? msg : "");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTried(true);
-    if (!valid) return;
-    // Saving (Supabase, then Notion) is the next phase.
-    setSubmitted(true);
-    window.scrollTo({ top: 0 });
+    if (!valid || sending) return;
+    setSending(true);
+    setServerError(false);
+    try {
+      const res = await fetch("/api/monthly-aram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          contact: contact.trim(),
+          amounts: {
+            annadhanam: selected.annadhanam ? amounts.annadhanam : 0,
+            tree: selected.tree ? amounts.tree : 0,
+            education: selected.education ? amounts.education : 0,
+            medical: selected.medical ? amounts.medical : 0,
+          },
+          dedication: dedicate
+            ? {
+                kind,
+                name: dedName.trim(),
+                relationship: relationship === "Other" ? otherRelationship.trim() || "Other" : relationship,
+                message: message.trim(),
+              }
+            : null,
+          occasion,
+          occasionDate,
+        }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setSubmitted(true);
+      window.scrollTo({ top: 0 });
+    } catch {
+      setServerError(true);
+    } finally {
+      setSending(false);
+    }
   }
 
   const list = (items: string[]) =>
@@ -467,8 +501,14 @@ export default function CauseSelection() {
             </Field>
           </Section>
 
+          {serverError && (
+            <p role="alert" className="m-0 text-center text-xs" style={{ color: ERROR_RED }}>
+              Your action hasn&apos;t gone through yet. Let&apos;s try once more.
+            </p>
+          )}
           <button
             type="submit"
+            disabled={sending}
             className={`flex items-center justify-center gap-1.5 rounded-md py-3 text-center text-[13px] font-semibold ${FOCUS}`}
             style={valid
               ? { background: MINT, border: "1px solid rgba(255,255,255,0.35)", boxShadow: "0 0 14px rgba(104,255,173,0.28)", color: TEAL }
