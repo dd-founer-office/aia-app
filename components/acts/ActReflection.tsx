@@ -67,7 +67,6 @@ const REFLECTION_CSS = `
       linear-gradient(135deg, rgb(${LOGO_ORANGE}) 0%, rgba(${LOGO_ORANGE},0) 38%, rgba(${MINT_RGB},0) 62%, rgb(${MINT_RGB}) 100%);
   }
 `;
-const SAVE_GRADIENT = `linear-gradient(180deg, #8DFFC4 0%, ${MINT} 55%, #3FE08C 100%)`;
 const CONTROL_RADIUS = 6;
 
 const FEELINGS = [
@@ -361,7 +360,7 @@ export function ActReflection() {
                 onClick={handleSave}
                 className={`${inter.className} flex h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap px-4 text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
                 style={{
-                  background: SAVE_GRADIENT,
+                  background: MINT,
                   border: "1px solid rgba(255, 255, 255, 0.35)",
                   boxShadow: "0 0 14px rgba(104, 255, 173, 0.28)",
                   color: TEAL,
