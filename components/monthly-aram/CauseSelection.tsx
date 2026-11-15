@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import localFont from "next/font/local";
 import { ArrowRight, CalendarDays, Check, ChevronDown } from "lucide-react";
 import {
@@ -30,6 +31,7 @@ const PANEL = "#1B1B1B";
 const CARD = "#232323";
 const FIELD = "#363636";
 const ERROR_RED = "#ef4444";
+const HEART_RED = "#FF4D5E";
 const STROKE_GREY = "154, 160, 158";
 
 // Every chosen action carries its own minimum, so the floor is 1,000 per action.
@@ -57,11 +59,20 @@ type ActionId = (typeof ACTIONS)[number]["id"];
 const RELATIONSHIPS = ["Parent", "Spouse", "Child", "Friend", "Other"];
 const OCCASIONS = ["Birthday", "Anniversary", "Remembrance day", "Festival", "Wedding", "New beginning", "Other"];
 
+const formatDate = (iso: string) =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 const formatINR = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const isMobile = (v: string) => /^(\+?91)?[6-9]\d{9}$/.test(v.replace(/[\s-]/g, ""));
 
 const css = `
+  .ma-card.ma-gradient { box-shadow: 0 0 22px -4px rgba(255,90,31,0.35), 0 0 22px -4px rgba(104,255,173,0.25); }
+  .ma-card.ma-gradient::before {
+    padding: 1.5px;
+    background:
+      linear-gradient(45deg, rgb(255,90,31) 0%, rgba(255,90,31,0) 38%, rgba(104,255,173,0) 62%, rgb(104,255,173) 100%),
+      linear-gradient(135deg, rgb(255,90,31) 0%, rgba(255,90,31,0) 38%, rgba(104,255,173,0) 62%, rgb(104,255,173) 100%);
+  }
   .rf-panel { box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 0 26px 2px rgba(255,255,255,0.14); }
   .ma-card { position: relative; box-shadow: 0 -2px 14px -6px rgba(${STROKE_GREY},0.35); }
   .ma-card::before {
@@ -144,6 +155,7 @@ export default function CauseSelection() {
   const [contact, setContact] = useState("");
   const [tried, setTried] = useState(false);
   // While an amount is being typed it can sit below the minimum; it is clamped on blur.
+  const [submitted, setSubmitted] = useState(false);
   const [drafts, setDrafts] = useState<Partial<Record<ActionId, string>>>({});
 
   const chosen = ACTIONS.filter((a) => selected[a.id]);
@@ -196,7 +208,101 @@ export default function CauseSelection() {
     e.preventDefault();
     setTried(true);
     if (!valid) return;
-    // Saving (Supabase, then Notion) and the thank-you screen are the next phase.
+    // Saving (Supabase, then Notion) is the next phase.
+    setSubmitted(true);
+    window.scrollTo({ top: 0 });
+  }
+
+  const shell = `${inter.className} min-h-screen px-3.5 pb-8 pt-7 text-white`;
+  const shellBg = { background: `radial-gradient(120% 60% at 50% 0%, #0f4a4f 0%, ${TEAL} 55%, #082c30 100%)` };
+
+  if (submitted) {
+    const ded = dedicate && dedName.trim();
+    return (
+      <main className={shell} style={shellBg}>
+        <style>{css}</style>
+        <div className="mx-auto w-full max-w-[440px]">
+          <h1 className={`${calSans.className} m-0 text-center text-[26px] font-bold leading-[1.15]`} style={{ color: MINT }}>
+            You&apos;ve Put Your Aram Into Action
+          </h1>
+          <p className="mx-1 mb-5 mt-3 text-center text-[16px] leading-[1.45] text-[#D4FFE9]">
+            Thank you, {name.trim()}. Here is what your giving will do this month.
+          </p>
+          <div className="rf-panel flex flex-col gap-4 rounded-lg p-3" style={{ background: PANEL }}>
+            <Section title="Your Aram this month" sub="Every rupee is already on its way.">
+              {chosen.map(({ id, title, Icon }) => (
+                <div key={id} className="mb-1.5 flex items-center gap-2.5 rounded-md p-2" style={{ background: FIELD }}>
+                  <span className="flex h-[34px] w-[34px] items-center justify-center rounded-md" style={{ background: TEAL, color: MINT }}>
+                    <Icon className="h-[18px] w-[18px]" />
+                  </span>
+                  <span className={`${calSans.className} flex-1 text-[15px] font-semibold`}>{title}</span>
+                  <span className="text-sm tabular-nums">{formatINR(amounts[id])}</span>
+                </div>
+              ))}
+              <div className="mt-2.5 flex items-center justify-between text-[13px] text-white/65">
+                <span>Total</span>
+                <span className={`${calSans.className} text-[22px]`} style={{ color: MINT }}>{formatINR(total)}</span>
+              </div>
+            </Section>
+
+            {ded && (
+              <section className="ma-card ma-gradient rounded-lg p-4" style={{ background: CARD }}>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md" style={{ background: FIELD, color: HEART_RED }}>
+                    {kind === "honour" ? <HeartIcon className="h-5 w-5" /> : <FlowerLotusIcon className="h-5 w-5" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className={`${calSans.className} m-0 text-[17px] font-semibold leading-tight`}>
+                      {kind === "honour" ? "In honour of" : "In memory of"} {dedName.trim()}
+                    </h2>
+                    <p className={`${calSans.className} m-0 mt-0.5 text-[12px] text-white/85`}>
+                      Your Aram this month carries their name.
+                    </p>
+                  </div>
+                </div>
+                {message.trim() && (
+                  <p className={`${calSans.className} m-0 mt-4 text-[13px] leading-[1.4]`}>&ldquo;{message.trim()}&rdquo;</p>
+                )}
+                {(occasion || occasionDate) && (
+                  <div className="mt-4 flex flex-wrap gap-2.5">
+                    {occasion && <span className="flex h-8 items-center rounded-md px-3.5 text-[11px] font-medium" style={{ background: FIELD }}>{occasion}</span>}
+                    {occasionDate && <span className="flex h-8 items-center rounded-md px-3.5 text-[11px] font-medium" style={{ background: FIELD }}>{formatDate(occasionDate)}</span>}
+                  </div>
+                )}
+              </section>
+            )}
+
+            <div className="flex items-center gap-3 rounded-lg px-3 py-4" style={{ background: "#202620" }}>
+              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full" style={{ background: "rgba(104,255,173,0.24)" }}>
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[11px] font-extrabold" style={{ background: MINT, color: TEAL }}>i</span>
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className={`${calSans.className} m-0 text-[12px] font-semibold leading-[1.3]`}>We&apos;ll show you what your Aram made possible</p>
+                <p className={`${calSans.className} m-0 mt-0.5 text-[11px] text-white/60`}>You&apos;ll hear from us once your actions are done.</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => { setSubmitted(false); window.scrollTo({ top: 0 }); }}
+                className={`h-9 flex-1 rounded-md px-4 text-[12px] font-semibold text-white ${FOCUS}`}
+                style={{ background: PANEL, border: "1px solid rgba(255,255,255,0.14)" }}
+              >
+                Change my actions
+              </button>
+              <Link
+                href="/"
+                className={`flex h-9 flex-1 items-center justify-center rounded-md px-4 text-[12px] font-semibold ${FOCUS}`}
+                style={{ background: MINT, border: "1px solid rgba(255,255,255,0.35)", boxShadow: "0 0 14px rgba(104,255,173,0.28)", color: TEAL }}
+              >
+                Done
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -365,7 +471,7 @@ export default function CauseSelection() {
                   className="flex items-center justify-between rounded-md px-2.5 py-2 text-[13px]"
                   style={{ background: FIELD, color: occasionDate ? "#fff" : "rgba(255,255,255,0.4)" }}
                 >
-                  <span>{occasionDate ? new Date(`${occasionDate}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Select a date"}</span>
+                  <span>{occasionDate ? formatDate(occasionDate) : "Select a date"}</span>
                   <CalendarDays size={16} className="text-white/70" />
                 </div>
                 <input
