@@ -230,13 +230,16 @@ export default function CauseSelection() {
             Thank you, {name.trim()}. Here is what your giving will do this month.
           </p>
           <div className="rf-panel flex flex-col gap-4 rounded-lg p-3" style={{ background: PANEL }}>
-            <Section title="Your Aram this month" sub="Every rupee is already on its way.">
-              {chosen.map(({ id, title, Icon }) => (
+            <Section>
+              {chosen.map(({ id, title, cause, Icon }) => (
                 <div key={id} className="mb-1.5 flex items-center gap-2.5 rounded-md p-2" style={{ background: FIELD }}>
                   <span className="flex h-[34px] w-[34px] items-center justify-center rounded-md" style={{ background: TEAL, color: MINT }}>
                     <Icon className="h-[18px] w-[18px]" />
                   </span>
-                  <span className={`${calSans.className} flex-1 text-[15px] font-semibold`}>{title}</span>
+                  <span className="flex-1">
+                    <span className={`${calSans.className} block text-[15px] font-semibold leading-tight`}>{title}</span>
+                    <span className="block text-[9.5px] uppercase tracking-[0.1em] text-white/55">{cause}</span>
+                  </span>
                   <span className="text-sm tabular-nums">{formatINR(amounts[id])}</span>
                 </div>
               ))}
@@ -278,8 +281,8 @@ export default function CauseSelection() {
                 <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[11px] font-extrabold" style={{ background: MINT, color: TEAL }}>i</span>
               </span>
               <div className="min-w-0 flex-1">
-                <p className={`${calSans.className} m-0 text-[12px] font-semibold leading-[1.3]`}>We&apos;ll show you what your Aram made possible</p>
-                <p className={`${calSans.className} m-0 mt-0.5 text-[11px] text-white/60`}>You&apos;ll hear from us once your actions are done.</p>
+                <p className={`${calSans.className} m-0 text-[12px] font-semibold leading-[1.3]`}>You&apos;ll see the difference it made</p>
+                <p className={`${calSans.className} m-0 mt-0.5 text-[11px] text-white/60`}>We&apos;ll be in touch once your actions are done.</p>
               </div>
             </div>
 
