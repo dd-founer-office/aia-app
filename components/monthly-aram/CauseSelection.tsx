@@ -48,8 +48,8 @@ const ACTIONS: {
   line: string;
   Icon: Icon;
 }[] = [
-  { id: "annadhanam", title: "Fill a Plate", cause: "Annadhanam", line: "More than a meal, a moment of care.", Icon: ForkKnifeIcon },
-  { id: "tree", title: "Grow a Tree", cause: "Tree Planting", line: "Give tomorrow a little more green.", Icon: TreeIcon },
+  { id: "annadhanam", title: "Fill Plates", cause: "Annadhanam", line: "More than a meal, a moment of care.", Icon: ForkKnifeIcon },
+  { id: "tree", title: "Grow Trees", cause: "Tree Planting", line: "Give tomorrow a little more green.", Icon: TreeIcon },
   { id: "education", title: "Build Futures", cause: "Education", line: "Give a young mind room to grow.", Icon: GraduationCapIcon },
   { id: "medical", title: "Stand Beside", cause: "Medical Support", line: "Be there when care matters most.", Icon: HandHeartIcon },
 ];
@@ -101,7 +101,7 @@ function Section({ title, sub, children }: { title?: string; sub?: string; child
     <section className="ma-card rounded-lg p-4" style={{ background: CARD }}>
       {title && <h2 className={`${calSans.className} m-0 text-[17px] font-semibold text-white`}>{title}</h2>}
       {sub && <p className={`${calSans.className} m-0 mt-0.5 text-[12px] text-white/85`}>{sub}</p>}
-      <div className={title ? "mt-4" : ""}>{children}</div>
+      <div className={title ? "mt-4" : sub ? "mt-3" : ""}>{children}</div>
     </section>
   );
 }
@@ -148,6 +148,7 @@ export default function CauseSelection() {
   const [kind, setKind] = useState<"honour" | "memory">("honour");
   const [dedName, setDedName] = useState("");
   const [relationship, setRelationship] = useState("");
+  const [otherRelationship, setOtherRelationship] = useState("");
   const [message, setMessage] = useState("");
   const [occasion, setOccasion] = useState("");
   const [occasionDate, setOccasionDate] = useState("");
@@ -325,7 +326,7 @@ export default function CauseSelection() {
           className="rf-panel flex flex-col gap-4 rounded-lg p-3"
           style={{ background: PANEL }}
         >
-          <Section title="Put Aram Into Action" sub="Pick one or more ways to make a difference.">
+          <Section sub="Choose one, or more than one.">
             <div className="grid grid-cols-2 gap-2.5">
               {ACTIONS.map(({ id, title, cause, line, Icon }) => {
                 const on = selected[id];
@@ -444,6 +445,11 @@ export default function CauseSelection() {
                     </select>
                     <ChevronDown size={16} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/70" />
                   </div>
+                  {relationship === "Other" && (
+                    <input aria-label="Their relationship to you" className={`${inputCls} mt-2`} style={{ background: FIELD }}
+                      placeholder="Grandfather" value={otherRelationship}
+                      onChange={(e) => setOtherRelationship(e.target.value)} maxLength={40} />
+                  )}
                 </Field>
                 <Field label="A few words for them" htmlFor="ma-msg">
                   <textarea id="ma-msg" rows={2} className={`${inputCls} resize-none`} style={{ background: FIELD }}
