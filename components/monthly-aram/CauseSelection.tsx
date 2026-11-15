@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import localFont from "next/font/local";
 import { ArrowRight, CalendarDays, Check, ChevronDown } from "lucide-react";
 import {
@@ -31,7 +30,6 @@ const PANEL = "#1B1B1B";
 const CARD = "#232323";
 const FIELD = "#363636";
 const ERROR_RED = "#ef4444";
-const HEART_RED = "#FF4D5E";
 const STROKE_GREY = "154, 160, 158";
 
 // Every chosen action carries its own minimum, so the floor is 1,000 per action.
@@ -66,13 +64,6 @@ const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const isMobile = (v: string) => /^(\+?91)?[6-9]\d{9}$/.test(v.replace(/[\s-]/g, ""));
 
 const css = `
-  .ma-card.ma-gradient { box-shadow: 0 0 22px -4px rgba(255,90,31,0.35), 0 0 22px -4px rgba(104,255,173,0.25); }
-  .ma-card.ma-gradient::before {
-    padding: 1.5px;
-    background:
-      linear-gradient(45deg, rgb(255,90,31) 0%, rgba(255,90,31,0) 38%, rgba(104,255,173,0) 62%, rgb(104,255,173) 100%),
-      linear-gradient(135deg, rgb(255,90,31) 0%, rgba(255,90,31,0) 38%, rgba(104,255,173,0) 62%, rgb(104,255,173) 100%);
-  }
   .rf-panel { box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 0 26px 2px rgba(255,255,255,0.14); }
   .ma-card { position: relative; box-shadow: 0 -2px 14px -6px rgba(${STROKE_GREY},0.35); }
   .ma-card::before {
@@ -214,96 +205,65 @@ export default function CauseSelection() {
     window.scrollTo({ top: 0 });
   }
 
-  const shell = `${inter.className} min-h-screen px-3.5 pb-8 pt-7 text-white`;
+  const list = (items: string[]) =>
+    items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+  const VERB: Record<ActionId, string> = {
+    annadhanam: "fill plates",
+    tree: "plant trees that will outlast us",
+    education: "give a young mind room to grow",
+    medical: "stand beside someone when care matters most",
+  };
+  const OUTCOME: Record<ActionId, string> = {
+    annadhanam: "someone will share a warm meal",
+    tree: "a tree will take root",
+    education: "a child will open a book",
+    medical: "someone will not face it alone",
+  };
+  const OCCASION_PHRASE: Record<string, string> = {
+    Birthday: "a birthday",
+    Anniversary: "an anniversary",
+    "Remembrance day": "a day of remembrance",
+    Festival: "a festival",
+    Wedding: "a wedding",
+    "New beginning": "a new beginning",
+    Other: "a special day",
+  };
+  const relation = relationship === "Other" ? otherRelationship.trim().toLowerCase() : relationship.toLowerCase();
+  const who = dedName.trim() ? (relation ? `your ${relation} (${dedName.trim()})` : dedName.trim()) : "";
+  const occasionText = occasion ? `marking ${OCCASION_PHRASE[occasion]}` : "";
+  const dateText = occasionDate ? `on ${formatDate(occasionDate)}` : "";
+  const when = [occasionText, dateText].filter(Boolean).join(" ");
+  const story = [
+    `${name.trim()}, this month your Aram will ${list(chosen.map((a) => VERB[a.id]))}: ${list(chosen.map((a) => `${formatINR(amounts[a.id])} to ${a.cause}`))}.`,
+    dedicate && who
+      ? `You gave it ${kind === "honour" ? "in honour of" : "in memory of"} ${who}${when ? `, ${when}` : ""}${message.trim() ? `, with the words \u201c${message.trim()}\u201d` : ""}${/[.!?\u2026]$/.test(message.trim()) ? "" : "."}`
+      : "",
+    `Somewhere, ${list(chosen.map((a) => OUTCOME[a.id]))}, because you chose to act.`,
+    "We\u2019ll be in touch once your actions are done.",
+  ].filter(Boolean).join(" ");
+
   const shellBg = { background: `radial-gradient(120% 60% at 50% 0%, #0f4a4f 0%, ${TEAL} 55%, #082c30 100%)` };
 
   if (submitted) {
-    const ded = dedicate && dedName.trim();
     return (
-      <main className={shell} style={shellBg}>
-        <style>{css}</style>
+      <main
+        className={`${inter.className} flex min-h-screen flex-col items-center justify-center px-6 py-10 text-center text-white`}
+        style={shellBg}
+      >
         <div className="mx-auto w-full max-w-[440px]">
-          <h1 className={`${calSans.className} m-0 text-center text-[26px] font-bold leading-[1.15]`} style={{ color: MINT }}>
+          <p className="m-0 text-[17px] font-semibold uppercase tracking-[0.02em]">Thank you</p>
+          <h1 className={`${calSans.className} m-0 mb-6 mt-3.5 text-[42px] font-bold leading-[1.05] tracking-[-0.01em]`} style={{ color: MINT }}>
             You&apos;ve Put Your Aram Into Action
           </h1>
-          <p className="mx-1 mb-5 mt-3 text-center text-[16px] leading-[1.45] text-[#D4FFE9]">
-            Thank you, {name.trim()}. Here is what your giving will do this month.
-          </p>
-          <div className="rf-panel flex flex-col gap-4 rounded-lg p-3" style={{ background: PANEL }}>
-            <Section>
-              {chosen.map(({ id, title, cause, Icon }) => (
-                <div key={id} className="mb-1.5 flex items-center gap-2.5 rounded-md p-2" style={{ background: FIELD }}>
-                  <span className="flex h-[34px] w-[34px] items-center justify-center rounded-md" style={{ background: TEAL, color: MINT }}>
-                    <Icon className="h-[18px] w-[18px]" />
-                  </span>
-                  <span className="flex-1">
-                    <span className={`${calSans.className} block text-[15px] font-semibold leading-tight`}>{title}</span>
-                    <span className="block text-[9.5px] uppercase tracking-[0.1em] text-white/55">{cause}</span>
-                  </span>
-                  <span className="text-sm tabular-nums">{formatINR(amounts[id])}</span>
-                </div>
-              ))}
-              <div className="mt-2.5 flex items-center justify-between text-[13px] text-white/65">
-                <span>Total</span>
-                <span className={`${calSans.className} text-[22px]`} style={{ color: MINT }}>{formatINR(total)}</span>
-              </div>
-            </Section>
-
-            {ded && (
-              <section className="ma-card ma-gradient rounded-lg p-4" style={{ background: CARD }}>
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md" style={{ background: FIELD, color: HEART_RED }}>
-                    {kind === "honour" ? <HeartIcon className="h-5 w-5" /> : <FlowerLotusIcon className="h-5 w-5" />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <h2 className={`${calSans.className} m-0 text-[17px] font-semibold leading-tight`}>
-                      {kind === "honour" ? "In honour of" : "In memory of"} {dedName.trim()}
-                    </h2>
-                    <p className={`${calSans.className} m-0 mt-0.5 text-[12px] text-white/85`}>
-                      Your Aram this month carries their name.
-                    </p>
-                  </div>
-                </div>
-                {message.trim() && (
-                  <p className={`${calSans.className} m-0 mt-4 text-[13px] leading-[1.4]`}>&ldquo;{message.trim()}&rdquo;</p>
-                )}
-                {(occasion || occasionDate) && (
-                  <div className="mt-4 flex flex-wrap gap-2.5">
-                    {occasion && <span className="flex h-8 items-center rounded-md px-3.5 text-[11px] font-medium" style={{ background: FIELD }}>{occasion}</span>}
-                    {occasionDate && <span className="flex h-8 items-center rounded-md px-3.5 text-[11px] font-medium" style={{ background: FIELD }}>{formatDate(occasionDate)}</span>}
-                  </div>
-                )}
-              </section>
-            )}
-
-            <div className="flex items-center gap-3 rounded-lg px-3 py-4" style={{ background: "#202620" }}>
-              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full" style={{ background: "rgba(104,255,173,0.24)" }}>
-                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[11px] font-extrabold" style={{ background: MINT, color: TEAL }}>i</span>
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className={`${calSans.className} m-0 text-[12px] font-semibold leading-[1.3]`}>You&apos;ll see the difference it made</p>
-                <p className={`${calSans.className} m-0 mt-0.5 text-[11px] text-white/60`}>We&apos;ll be in touch once your actions are done.</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => { setSubmitted(false); window.scrollTo({ top: 0 }); }}
-                className={`h-9 flex-1 rounded-md px-4 text-[12px] font-semibold text-white ${FOCUS}`}
-                style={{ background: PANEL, border: "1px solid rgba(255,255,255,0.14)" }}
-              >
-                Change my actions
-              </button>
-              <Link
-                href="/"
-                className={`flex h-9 flex-1 items-center justify-center rounded-md px-4 text-[12px] font-semibold ${FOCUS}`}
-                style={{ background: MINT, border: "1px solid rgba(255,255,255,0.35)", boxShadow: "0 0 14px rgba(104,255,173,0.28)", color: TEAL }}
-              >
-                Done
-              </Link>
-            </div>
-          </div>
+          <p className="m-0 text-[15px] leading-[1.55] text-white">{story}</p>
+          <button
+            type="button"
+            onClick={() => { setSubmitted(false); window.scrollTo({ top: 0 }); }}
+            className={`mt-8 rounded-lg px-[22px] py-3 text-[14px] font-semibold ${FOCUS}`}
+            style={{ background: MINT, color: TEAL }}
+          >
+            Change my actions
+          </button>
         </div>
       </main>
     );
