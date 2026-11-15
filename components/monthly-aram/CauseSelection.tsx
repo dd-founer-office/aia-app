@@ -149,6 +149,7 @@ export default function CauseSelection() {
   // While an amount is being typed it can sit below the minimum; it is clamped on blur.
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
+  const [closeBlocked, setCloseBlocked] = useState(false);
   const [serverError, setServerError] = useState(false);
   const [drafts, setDrafts] = useState<Partial<Record<ActionId, string>>>({});
 
@@ -291,14 +292,32 @@ export default function CauseSelection() {
           {storyParts.map((part, i) => (
             <p key={i} className="m-0 mt-4 text-[16px] leading-[1.5] first:mt-0">{part}</p>
           ))}
-          <button
-            type="button"
-            onClick={() => { setSubmitted(false); window.scrollTo({ top: 0 }); }}
-            className={`mt-[30px] rounded-lg px-[22px] py-3 text-[14px] font-bold ${FOCUS}`}
-            style={{ background: TEAL, color: MINT }}
-          >
-            Change my actions
-          </button>
+          <div className="mt-[30px] flex flex-wrap items-center justify-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => { setSubmitted(false); setCloseBlocked(false); window.scrollTo({ top: 0 }); }}
+              className={`rounded-lg px-[22px] py-3 text-[14px] font-bold ${FOCUS}`}
+              style={{ background: TEAL, color: MINT, border: `2px solid ${TEAL}` }}
+            >
+              Change my actions
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                window.close();
+                // Browsers only let a script close a page it opened itself, so
+                // when this is ignored we tell the member they can close it.
+                setTimeout(() => setCloseBlocked(true), 300);
+              }}
+              className={`rounded-lg px-[22px] py-3 text-[14px] font-bold ${FOCUS}`}
+              style={{ background: "transparent", color: TEAL, border: `2px solid ${TEAL}` }}
+            >
+              Close
+            </button>
+          </div>
+          {closeBlocked && (
+            <p role="status" className="m-0 mt-3.5 text-[14px] font-semibold">You can close this page now.</p>
+          )}
         </div>
       </main>
     );
