@@ -1,3 +1,4 @@
+import { giftCopy } from "./vaazhga-gift-copy";
 import { reportCopy } from "./vaazhga-copy";
 import type { VaazhgaReport } from "./vaazhga-vaazhthudan-reports";
 
@@ -122,5 +123,33 @@ export function buildBookerJourney(report: VaazhgaReport): { steps: TimelineStep
       meta,
     };
   });
+  return { steps, current };
+}
+
+/**
+ * The birthday person's journey: four milestones with the approved wording
+ * (see vaazhga-gift-copy.ts), from the same tracker dates. A milestone is
+ * completed only when its own date is recorded.
+ */
+export function buildGiftJourney(report: VaazhgaReport): { steps: TimelineStep[]; current: number } {
+  const t = report.gift.tracker;
+  const j = giftCopy(report).journey;
+  const defs: { key: "blessed" | "packed" | "shipped" | "delivered"; date?: string; extra?: string }[] = [
+    { key: "blessed", date: t.blessedOn },
+    { key: "packed", date: t.packedOn },
+    { key: "shipped", date: t.shippedOn, extra: t.courierRef ? `Courier reference ${t.courierRef}` : undefined },
+    { key: "delivered", date: t.deliveredOn },
+  ];
+  const done = defs.map((d) => Boolean(d.date));
+  const firstOpen = done.findIndex((d) => !d);
+  const current = firstOpen === -1 ? defs.length - 1 : firstOpen;
+  const steps = defs.map(({ key, date, extra }, i): TimelineStep => ({
+    key,
+    title: j[key].title,
+    text: j[key].text,
+    done: done[i],
+    status: done[i] ? j.labels.done : i === current && key === "packed" ? j.labels.inProgress : j.labels.awaiting,
+    meta: [date, extra].filter(Boolean).join(" · ") || undefined,
+  }));
   return { steps, current };
 }

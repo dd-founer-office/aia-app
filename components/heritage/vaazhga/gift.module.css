@@ -173,7 +173,7 @@
 .blessingTamil {
   font-family: var(--font-tamil-sans), sans-serif;
   font-weight: 600;
-  font-size: clamp(17px, 5.6vw, 22px);
+  font-size: clamp(14px, 4.7vw, 19px);
   line-height: 1.7;
   white-space: nowrap;
 }
@@ -434,4 +434,65 @@
 
 .blessingTamil {
   letter-spacing: 0;
+}
+
+/* ---------- Approved-copy additions ---------- */
+
+.sectionHead p:not(:last-of-type) {
+  color: var(--hg-ink);
+}
+
+.messageHead {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--hg-ink);
+}
+
+.messageLead {
+  margin: 12px 0 24px;
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--hg-grey);
+}
+
+.status {
+  margin-top: 24px;
+  font-size: 20px;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--hg-on-dark);
+}
+
+.tracker .trackerLead + .trackerLead {
+  margin-top: 12px;
+}
+
+.blessingLabel {
+  margin-bottom: 16px;
+  font-family: var(--font-tamil-sans), sans-serif;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.blessingWrap {
+  margin-top: 20px;
+  font-size: 20px;
+  white-space: normal;
+}
+
+.closingHead {
+  margin: 56px 0 0;
+  font-size: 28px;
+  line-height: 1.25;
+  color: var(--hg-maroon);
+}
+
+.closingText {
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--hg-maroon);
 }

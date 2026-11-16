@@ -24,7 +24,7 @@ function Quote({ sender, text }: { sender: string; text: string }) {
  * message when there is one. The booker, in preview, sees a box to write it
  * in, with a live look at how it will appear.
  */
-export function MessageSection({ sender, recipient, preview, sent }: { sender: string; recipient: string; preview: boolean; sent: string }) {
+export function MessageSection({ sender, recipient, preview, sent, headline, text }: { sender: string; recipient: string; preview: boolean; sent: string; headline: string; text: string }) {
   const { message, setMessage } = useMessage();
 
   if (preview) {
@@ -61,6 +61,8 @@ export function MessageSection({ sender, recipient, preview, sent }: { sender: s
   if (!sent) return null;
   return (
     <section className={g.message} aria-label={`A message from ${sender}`}>
+      <h2 className={`${s.cal} ${g.messageHead}`}>{headline}</h2>
+      <p className={g.messageLead}>{text}</p>
       <Quote sender={sender} text={sent} />
     </section>
   );

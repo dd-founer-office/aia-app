@@ -1,4 +1,6 @@
-import { buildTimeline } from "@/lib/heritage/vaazhga-timeline";
+import { Fragment } from "react";
+import { giftCopy } from "@/lib/heritage/vaazhga-gift-copy";
+import { buildGiftJourney } from "@/lib/heritage/vaazhga-timeline";
 import { giftPaths, type VaazhgaReport } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
 import { Frame } from "./Frame";
 import { MessageProvider } from "./MessageContext";
@@ -13,7 +15,7 @@ import s from "./report.module.css";
 const DD_LOGO_LIGHT = "/heritage/dd-logo-light.png";
 const DD_LOGO = "/brand/distant-devotion-logo.png";
 const VV_LOGO = "/heritage/vv-logo.png";
-const NAME_SECTION_ID = "your-name";
+const HERO_SECTION_ID = "for-you";
 
 // The six Heritage Gifting categories, shown by their logos (one ivory colour
 // with orange accents). `height` evens out their optical size: Peranbu's
@@ -33,13 +35,14 @@ const CATEGORIES: { name: string; sub: string; logo: string; height: number; cur
  * in the opener; everything after that speaks as Distant Devotion.
  */
 export function GiftPage({ report, preview, message }: { report: VaazhgaReport; preview: boolean; message: string }) {
-  const { recipient, deity, lampSrc, photos, initialPhotoIndex, gift } = report;
+  const { recipient, lampSrc, photos, initialPhotoIndex, gift } = report;
   const { tracker } = gift;
   const paths = giftPaths(gift.slug);
   const sankalpam = photos.find((p) => p.key === "sankalpam")?.src ?? lampSrc;
   const giftPhotos = photos.map((p) => ({ ...p, heading: p.giftHeading ?? p.heading, line: p.giftLine ?? p.line }));
 
-  const journey = buildTimeline(report, "gift");
+  const journey = buildGiftJourney(report);
+  const c = giftCopy(report);
 
   return (
     <div className={s.shell}>
@@ -57,10 +60,10 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className={g.openerLogoMark} src={VV_LOGO} alt={`Vaazhga Vaazhthudan, a birthday blessing for ${recipient}`} width={230} height={139} />
               </h1>
-              <p className={g.sentBy}>Sent with love by {gift.sender}</p>
+              <p className={g.sentBy}>{c.sentBy}</p>
             </div>
             <div className={g.cue}>
-              <a className={g.cueBtn} href={`#${NAME_SECTION_ID}`} aria-label="See what was offered for you">
+              <a className={g.cueBtn} href={`#${HERO_SECTION_ID}`} aria-label="Read your blessing">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3A0B1A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M12 4v15M5 12l7 7 7-7" />
                 </svg>
@@ -68,13 +71,27 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
             </div>
           </section>
 
-          {/* ---------- Personal message ---------- */}
-          <MessageSection sender={gift.sender} recipient={recipient} preview={preview} sent={message} />
+          {/* ---------- Hero copy ---------- */}
+          <section id={HERO_SECTION_ID} className={s.lampHead} style={{ paddingTop: 64 }}>
+            <h2 className={`${s.cal} ${s.h2}`}>{c.hero.headline}</h2>
+            {c.hero.paragraphs.map((text) => (
+              <p key={text} className={s.lead}>
+                {text}
+              </p>
+            ))}
+          </section>
 
-          {/* ---------- Offered in your name ---------- */}
-          <section id={NAME_SECTION_ID} className={s.lampHead}>
-            <h2 className={`${s.cal} ${s.h2}`}>Offered in your name</h2>
-            <p className={s.lead}>We remembered you before {deity}, with your name and your star.</p>
+          {/* ---------- Personal message ---------- */}
+          <MessageSection sender={gift.sender} recipient={recipient} preview={preview} sent={message} headline={c.message.headline} text={c.message.text} />
+
+          {/* ---------- A prayer, made in your name ---------- */}
+          <section className={s.lampHead} style={{ paddingTop: 64 }}>
+            <h2 className={`${s.cal} ${s.h2}`}>{c.offering.headline}</h2>
+            {c.offering.paragraphs.map((text) => (
+              <p key={text} className={s.lead}>
+                {text}
+              </p>
+            ))}
           </section>
           <div className={s.band}>
             <div className={s.card}>
@@ -100,8 +117,12 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
 
           {/* ---------- From the temple ---------- */}
           <section className={g.sectionHead}>
-            <h2 className={`${s.cal} ${s.h2}`}>From the temple</h2>
-            <p className={s.lead}>A few moments from the morning we offered your blessing.</p>
+            <h2 className={`${s.cal} ${s.h2}`}>{c.photos.headline}</h2>
+            {c.photos.paragraphs.map((text) => (
+              <p key={text} className={s.lead}>
+                {text}
+              </p>
+            ))}
           </section>
           <div style={{ marginTop: -8 }}>
             <TempleCarousel photos={giftPhotos} initialIndex={initialPhotoIndex} />
@@ -110,17 +131,21 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
           {/* ---------- Prasadam ---------- */}
           <section className={g.tracker} aria-labelledby="prasadam-heading">
             <h2 id="prasadam-heading" className={`${s.cal} ${g.title}`}>
-              Your prasadam is coming
+              {c.prasadam.headline}
             </h2>
-            <p className={g.trackerLead}>
-              Blessed at the temple, and soon on its way to you with your sankalpam card.
-            </p>
+            {c.prasadam.paragraphs.map((text) => (
+              <p key={text} className={g.trackerLead}>
+                {text}
+              </p>
+            ))}
+            <h3 className={`${s.cal} ${g.status}`}>{c.prasadam.status.title}</h3>
+            <p className={g.trackerLead}>{c.prasadam.status.text}</p>
             <div style={{ marginTop: 32 }}>
               <Timeline steps={journey.steps} current={journey.current} />
             </div>
             {tracker.trackUrl ? (
               <a className={`${s.cal} ${s.btn}`} href={tracker.trackUrl} target="_blank" rel="noopener noreferrer">
-                Track your parcel
+                {c.prasadam.track}
                 <span className={s.btnIcon} aria-hidden="true">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFEFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 19L19 5M8 5h11v11" />
@@ -132,20 +157,41 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
 
           {/* ---------- Tamil blessing ---------- */}
           <section className={g.blessing} aria-label="A blessing">
-            <p className={g.blessingTamil} lang="ta">
-              நீடூழி வாழ்க!
-              <br />
-              நலமுடன் வளமுடன் வாழ்க
+            <p className={g.blessingLabel} lang="ta">
+              {c.tamil.label}
             </p>
-            <p className={g.blessingEn}>May you live long, in health and abundance.</p>
+            <p className={g.blessingTamil} lang="ta">
+              {c.tamil.lines.map((line, i) => (
+                <Fragment key={line}>
+                  {i > 0 ? <br /> : null}
+                  {line}
+                </Fragment>
+              ))}
+            </p>
+            <p className={`${g.blessingTamil} ${g.blessingWrap}`} lang="ta">
+              {c.tamil.deityLine}
+            </p>
+            <p className={`${g.blessingTamil} ${g.blessingWrap}`} lang="ta">
+              {c.tamil.closing}
+            </p>
+            <h2 className={`${s.cal} ${g.closingHead}`}>{c.closing.headline}</h2>
+            {c.closing.paragraphs.map((text) => (
+              <p key={text} className={g.closingText}>
+                {text}
+              </p>
+            ))}
           </section>
 
           {/* ---------- Six categories ---------- */}
           <section className={g.cats} aria-labelledby="cats-heading">
             <h2 id="cats-heading" className={`${s.cal} ${g.title}`}>
-              Send a blessing to someone you love
+              {c.discover.headline}
             </h2>
-            <p className={g.catsLead}>Six moments in a life, each with a blessing from the temple.</p>
+            {c.discover.paragraphs.map((text) => (
+              <p key={text} className={g.catsLead}>
+                {text}
+              </p>
+            ))}
             <ul className={g.catGrid}>
               {CATEGORIES.map(({ name, sub, logo, height, current }) => (
                 <li key={name} className={`${g.cat} ${current ? g.catOn : ""}`}>
