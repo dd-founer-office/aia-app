@@ -53,7 +53,7 @@
   flex: 1;
   background: var(--hg-maroon);
   border-radius: 0 0 6px 6px;
-  padding: 100px 0 280px;
+  padding: 24px 0 280px;
 }
 
 .heroText {
@@ -540,11 +540,11 @@
   margin-bottom: 32px;
 }
 
-/* Temple-corridor line art behind the footer, at 25% opacity. */
+/* Temple-corridor line art behind the footer, at 25% opacity, shown whole (not cropped). */
 .footerArt {
   position: absolute;
   inset: 0;
-  background: url("/heritage/footer-corridor.webp") center / cover no-repeat;
+  background: url("/heritage/footer-corridor.webp") center / contain no-repeat;
   opacity: 0.25;
   pointer-events: none;
 }
