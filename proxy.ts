@@ -8,7 +8,30 @@ import { NextResponse, type NextRequest } from "next/server";
 // token expiring mid-visit doesn't silently log the contributor out. Reads
 // the anon key only (never the service role) -- this runs on every request
 // including anonymous ones, so it must never be able to bypass RLS.
+// Heritage Gifting is its own Distant Devotion identity with its own URL
+// space. On heritage.distantdevotion.com the public paths are the short ones
+// (/vaazhga-vaazhthudan/<name>-<id>); internally they live under
+// /heritage-gifting so none of it can collide with Aram in Action routes.
+// The same internal path also works on any deployment URL, which is how
+// previews are viewed before the domain points at the app.
+const HERITAGE_HOST = /^heritage\./i;
+const HERITAGE_ROOT = "/heritage-gifting";
+
 export async function proxy(request: NextRequest) {
+  if (HERITAGE_HOST.test(request.headers.get("host") ?? "")) {
+    const { pathname } = request.nextUrl;
+    const internal =
+      pathname === HERITAGE_ROOT ||
+      pathname.startsWith(`${HERITAGE_ROOT}/`) ||
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/_next/");
+    if (!internal) {
+      const url = request.nextUrl.clone();
+      url.pathname = `${HERITAGE_ROOT}${pathname === "/" ? "" : pathname}`;
+      return NextResponse.rewrite(url);
+    }
+  }
+
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

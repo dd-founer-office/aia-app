@@ -1,0 +1,524 @@
+/*
+ * Heritage Gifting: Vaazhga Vaazhthudan report.
+ *
+ * Its own palette and type, deliberately independent of Aram in Action's
+ * mint/teal system. Brand: maroon + orange from the Distant Devotion logo,
+ * Cal Sans headings, Inter body, Noto Sans Tamil for Tamil.
+ */
+
+.shell {
+  --hg-maroon: #3a0b1a;
+  --hg-orange: #ff4e00;
+  --hg-ivory: #f7f1ea;
+  --hg-ink: #111111;
+  --hg-grey: #6b6b6b;
+  --hg-on-dark: #fffeff;
+  --hg-container: #ede3df;
+
+  min-height: 100dvh;
+  background: var(--hg-ivory);
+  color: var(--hg-ink);
+  font-family: var(--hg-inter), -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.page {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  overflow-x: clip;
+  background: var(--hg-ivory);
+}
+
+.cal {
+  font-family: var(--hg-cal), var(--hg-inter), sans-serif;
+  font-weight: 600;
+}
+
+/* ---------- Hero ---------- */
+
+.heroWrap {
+  --H: max(100svh, 720px);
+  position: relative;
+  height: calc(var(--H) + 39px);
+}
+
+.hero {
+  position: absolute;
+  inset: 0;
+  background: var(--hg-maroon);
+  border-radius: 0 0 14px 14px;
+}
+
+.logo {
+  position: absolute;
+  left: 20px;
+  top: 28px;
+  height: 54px;
+  width: auto;
+}
+
+.heroText {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100px;
+  height: calc(var(--H) - 341px);
+  min-height: 330px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--hg-on-dark);
+}
+
+.tamilLabel {
+  font-family: var(--font-tamil-sans), sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.heroTitle {
+  margin: 14px 0;
+  font-size: 32px;
+  line-height: 1.12;
+  color: var(--hg-orange);
+}
+
+.heroBody {
+  font-size: 16px;
+  line-height: 1.55;
+  opacity: 0.92;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 22px;
+  padding: 11px 12px 11px 24px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+  font-size: 17px;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.pillIcon,
+.btnIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--hg-maroon);
+}
+
+.pillIcon {
+  width: 38px;
+  height: 38px;
+}
+
+.rows {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.row {
+  position: absolute;
+  left: 0;
+  display: flex;
+  gap: 9px;
+  width: max-content;
+}
+
+.row1 {
+  top: calc(var(--H) - 217px);
+  left: -37px;
+}
+.row2 {
+  top: calc(var(--H) - 95px);
+  left: -80px;
+}
+.row3 {
+  top: calc(var(--H) + 27px);
+  left: -87px;
+}
+
+.tile {
+  display: block;
+  flex: none;
+  width: 87px;
+  height: 87px;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.logoTile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 87px;
+  height: 87px;
+  border: 0.5px solid var(--hg-orange);
+  border-radius: 16px;
+  background: var(--hg-maroon);
+}
+
+.logoTile img {
+  width: 70px;
+  height: auto;
+}
+
+/* ---------- Lamp ---------- */
+
+.lampHead {
+  padding: 117px 26px 0;
+  text-align: center;
+}
+
+.h2 {
+  font-size: 32px;
+  line-height: 1.12;
+  color: var(--hg-ink);
+}
+
+.lead {
+  margin-top: 12px;
+  padding: 0 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--hg-grey);
+}
+
+.band {
+  margin-top: 40px;
+  padding: 48px 22px;
+  border-radius: 14px;
+  background: var(--hg-maroon);
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 43.5px;
+}
+
+.card > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 43.5px;
+  object-fit: cover;
+}
+
+/* Thin frame inset in the photo; each corner mark sits on the rounded edge
+   (inset = 0.2929 x radius puts the frame corner exactly on the curve). */
+.frame {
+  position: absolute;
+  inset: 12.7px;
+  border: 1.3px solid rgba(58, 11, 26, 0.6);
+  pointer-events: none;
+}
+
+.frame i {
+  position: absolute;
+  width: 6px;
+  height: 9px;
+  background: var(--hg-maroon);
+}
+.frame i:nth-child(1) {
+  left: -4px;
+  top: -5.5px;
+  transform: rotate(-45deg);
+}
+.frame i:nth-child(2) {
+  right: -4px;
+  top: -5.5px;
+  transform: rotate(45deg);
+}
+.frame i:nth-child(3) {
+  left: -4px;
+  bottom: -5.5px;
+  transform: rotate(45deg);
+}
+.frame i:nth-child(4) {
+  right: -4px;
+  bottom: -5.5px;
+  transform: rotate(-45deg);
+}
+
+/* ---------- Temple ---------- */
+
+.transition {
+  padding: 64px 26px 0;
+  text-align: center;
+}
+
+.transition .h2 {
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.box {
+  margin: 36px 22px 0;
+  padding: 26px 0 30px;
+  border-radius: 28px;
+  background: var(--hg-container);
+  text-align: center;
+}
+
+.vis {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 214px;
+  padding: 14px calc(50% - 75px) 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  outline-offset: -4px;
+}
+.vis::-webkit-scrollbar {
+  display: none;
+}
+
+.vis img {
+  flex: none;
+  width: 150px;
+  height: 170px;
+  border-radius: 18px;
+  object-fit: cover;
+  scroll-snap-align: center;
+  box-shadow: 0 8px 20px rgba(58, 11, 26, 0.22);
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.boxHeading {
+  margin-top: 18px;
+  padding: 0 20px;
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.boxLine {
+  margin-top: 10px;
+  padding: 0 24px;
+  min-height: 68px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--hg-grey);
+}
+
+/* ---------- Send ---------- */
+
+.send {
+  margin-top: 56px;
+  padding: 48px 26px;
+  border-radius: 14px;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+  text-align: center;
+}
+
+.send .h2 {
+  font-size: 30px;
+  line-height: 1.15;
+  color: var(--hg-orange);
+}
+
+.send .lead {
+  color: rgba(255, 254, 255, 0.82);
+}
+
+.preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 346 / 300;
+  margin-top: 26px;
+  border-radius: 43.5px;
+  text-align: left;
+}
+
+.preview > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 43.5px;
+  object-fit: cover;
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  border-radius: 43.5px;
+  background: linear-gradient(
+    to top,
+    rgba(58, 11, 26, 0.94),
+    rgba(58, 11, 26, 0.45) 55%,
+    rgba(58, 11, 26, 0) 85%
+  );
+}
+
+.previewText {
+  position: absolute;
+  left: 36px;
+  right: 36px;
+  bottom: 34px;
+  color: var(--hg-on-dark);
+}
+
+.previewTag {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffb48a;
+}
+
+.previewTitle {
+  display: block;
+  margin-top: 8px;
+  font-size: 27px;
+  line-height: 1.12;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  margin-top: 26px;
+  padding: 11px 12px 11px 24px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+  font-size: 18px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.btnOff {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btnIcon {
+  width: 40px;
+  height: 40px;
+}
+
+.note {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(255, 254, 255, 0.6);
+}
+
+/* ---------- Closing ---------- */
+
+.end {
+  margin-top: 56px;
+  padding: 70px 28px 84px;
+  border-radius: 14px 14px 0 0;
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+  text-align: center;
+}
+
+.tamilLine {
+  font-family: var(--font-tamil-sans), sans-serif;
+  font-weight: 600;
+  font-size: clamp(17px, 5.6vw, 24px);
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.endEn {
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.endNote {
+  margin-top: 26px;
+  padding: 0 6px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+/* ---------- Footer ---------- */
+
+.footer {
+  position: relative;
+  margin-top: -14px;
+  padding: 60px 0 calc(56px + env(safe-area-inset-bottom));
+  border-radius: 14px 14px 0 0;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+  text-align: center;
+}
+
+.footerLogo {
+  display: block;
+  width: 210px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.socials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  margin-top: 34px;
+}
+
+.social {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--hg-on-dark);
+  text-decoration: none;
+}
+
+.tagline {
+  margin-top: 36px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hg-orange);
+}
+
+.copy {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vis img {
+    transition: none;
+  }
+}
