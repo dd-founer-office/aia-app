@@ -48,7 +48,7 @@
   position: absolute;
   inset: 0;
   background: var(--hg-maroon);
-  border-radius: 0 0 20px 20px;
+  border-radius: 0 0 6px 6px;
 }
 
 .logo {
@@ -77,14 +77,14 @@
 
 .tamilLabel {
   font-family: var(--font-tamil-sans), sans-serif;
-  font-weight: 600;
-  font-size: 20px;
+  font-weight: 400;
+  font-size: 16px;
   line-height: 1.4;
 }
 
 .heroTitle {
   margin: 14px 0;
-  font-size: 40px;
+  font-size: 48px;
   line-height: 1.1;
   color: var(--hg-orange);
 }
@@ -98,15 +98,15 @@
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 16px;
+  gap: 13px;
   margin-top: 20px;
-  padding: 8px 8px 8px 20px;
+  padding: 13px 14px;
   border: 0;
   border-radius: 6px;
   background: var(--hg-orange);
   color: var(--hg-maroon);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1;
   cursor: pointer;
   font-family: var(--hg-inter), sans-serif;
   font-weight: 500;
@@ -117,15 +117,10 @@
   display: grid;
   flex: none;
   place-items: center;
-  border-radius: 6px;
+  border-radius: 5px;
   background: var(--hg-maroon);
-  width: 32px;
-  height: 32px;
-}
-
-.pillIcon {
-  width: 32px;
-  height: 32px;
+  width: 15px;
+  height: 15px;
 }
 
 .rows {
@@ -206,7 +201,7 @@
 .band {
   margin-top: 40px;
   padding: 56px 20px;
-  border-radius: 20px;
+  border-radius: 6px;
   background: var(--hg-maroon);
 }
 
@@ -330,7 +325,7 @@
 .send {
   margin-top: 56px;
   padding: 56px 24px;
-  border-radius: 20px;
+  border-radius: 6px;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
   text-align: center;
@@ -403,19 +398,18 @@
 }
 
 .btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  width: 100%;
+  gap: 13px;
   margin-top: 24px;
-  padding: 8px 8px 8px 20px;
+  padding: 13px 14px;
   border: 0;
   border-radius: 6px;
   background: var(--hg-orange);
   color: var(--hg-maroon);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1;
   text-decoration: none;
   font-family: var(--hg-inter), sans-serif;
   font-weight: 500;
@@ -424,11 +418,6 @@
 .btnOff {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-.btnIcon {
-  width: 40px;
-  height: 40px;
 }
 
 .note {
@@ -443,7 +432,7 @@
 .end {
   margin-top: 56px;
   padding: 70px 30px 84px;
-  border-radius: 20px 20px 0 0;
+  border-radius: 6px 6px 0 0;
   background: var(--hg-orange);
   color: var(--hg-maroon);
   text-align: center;
@@ -451,8 +440,8 @@
 
 .tamilLine {
   font-family: var(--font-tamil-sans), sans-serif;
-  font-weight: 600;
-  font-size: clamp(17px, 5.6vw, 24px);
+  font-weight: 700;
+  font-size: clamp(20px, 6.4vw, 27px);
   line-height: 1.7;
   white-space: nowrap;
 }
@@ -478,7 +467,7 @@
   position: relative;
   margin-top: -14px;
   padding: 60px 0 calc(56px + env(safe-area-inset-bottom));
-  border-radius: 20px 20px 0 0;
+  border-radius: 6px 6px 0 0;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
   text-align: center;
@@ -552,4 +541,11 @@
 .tamilLabel,
 .tamilLine {
   letter-spacing: 0;
+}
+
+/* Arrow glyph sized to the button's 14px text. */
+.pillIcon svg,
+.btnIcon svg {
+  width: 9px;
+  height: 9px;
 }

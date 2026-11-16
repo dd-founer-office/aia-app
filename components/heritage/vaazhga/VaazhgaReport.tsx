@@ -135,9 +135,11 @@ export function VaazhgaReport({ report }: { report: Report }) {
         {/* ---------- Closing ---------- */}
         <section className={s.end} aria-label="Your prasadam">
           <p className={s.tamilLine} lang="ta">
-            விரைவில் அருளும்
+            விரைவில்
             <br />
-            பொருளும் இல்லம் சேரும்
+            அருளும் பொருளும்
+            <br />
+            இல்லம் சேரும்
           </p>
           <p className={s.endEn}>Soon, the grace and the offering will reach home.</p>
           <p className={s.endNote}>

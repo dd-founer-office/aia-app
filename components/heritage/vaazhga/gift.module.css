@@ -10,7 +10,7 @@
   position: relative;
   height: max(100svh, 720px);
   overflow: hidden;
-  border-radius: 0 0 20px 20px;
+  border-radius: 0 0 6px 6px;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
 }
@@ -87,8 +87,8 @@
 .cueBtn {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 0;
   border-radius: 6px;
@@ -139,7 +139,7 @@
 .tracker {
   margin-top: 56px;
   padding: 56px 24px;
-  border-radius: 20px;
+  border-radius: 6px;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
 }
@@ -229,7 +229,7 @@
 .blessing {
   margin-top: 56px;
   padding: 64px 30px 76px;
-  border-radius: 20px 20px 0 0;
+  border-radius: 6px 6px 0 0;
   background: var(--hg-orange);
   color: var(--hg-maroon);
   text-align: center;
@@ -256,7 +256,7 @@
   position: relative;
   margin-top: -14px;
   padding: 56px 20px 56px;
-  border-radius: 20px 20px 0 0;
+  border-radius: 6px 6px 0 0;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
   text-align: center;
@@ -365,13 +365,13 @@
 
 .barBtn {
   flex: 1;
-  padding: 14px 10px;
+  padding: 13px 14px;
   border: 0;
   border-radius: 6px;
   font-family: var(--hg-inter), sans-serif;
   font-size: 14px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1;
   cursor: pointer;
 }
 
