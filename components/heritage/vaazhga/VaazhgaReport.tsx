@@ -4,10 +4,12 @@ import {
   type PhotoKey,
   type VaazhgaReport as Report,
 } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
+import { buildTimeline } from "@/lib/heritage/vaazhga-timeline";
 import { Frame } from "./Frame";
 import { SendButton } from "./SendButton";
 import { SeeMoreButton } from "./SeeMoreButton";
 import { TempleCarousel } from "./TempleCarousel";
+import { Timeline } from "./Timeline";
 import { TileRows } from "./TileRows";
 import s from "./report.module.css";
 
@@ -51,6 +53,7 @@ function SocialGlyph({ glyph }: { glyph: "in" | "ig" | "f" }) {
 export function VaazhgaReport({ report }: { report: Report }) {
   const { recipient, pronouns: p, deity, lampSrc, photos, initialPhotoIndex, gift } = report;
   const paths = giftPaths(gift.slug);
+  const journey = buildTimeline(report, "booker");
   const srcByKey = new Map<PhotoKey, string>(photos.map((photo) => [photo.key, photo.src]));
 
   return (
@@ -65,7 +68,11 @@ export function VaazhgaReport({ report }: { report: Report }) {
               <p className={s.tamilLabel} lang="ta">
                 வாழ்க வாழ்த்துடன்
               </p>
-              <h1 className={`${s.cal} ${s.heroTitle}`}>Done, as promised</h1>
+              <h1 className={`${s.cal} ${s.heroTitle}`} aria-label="Done, as promised">
+                Done,
+                <br />
+                as promised
+              </h1>
               <p className={s.heroBody}>
                 You asked us to remember {recipient} before {deity}. We did, with {p.possessive}{" "}
                 name, {p.possessive} star, and your love for {p.object}. Wherever {p.subject} is
@@ -108,6 +115,17 @@ export function VaazhgaReport({ report }: { report: Report }) {
           </p>
         </section>
         <TempleCarousel photos={photos} initialIndex={initialPhotoIndex} />
+
+        {/* ---------- Prasadam journey ---------- */}
+        <section className={s.journey} aria-labelledby="journey-heading">
+          <h2 id="journey-heading" className={`${s.cal} ${s.h2}`}>
+            Where it is now
+          </h2>
+          <p className={s.lead}>
+            We update this page at every step, until the prasadam reaches {recipient}.
+          </p>
+          <Timeline steps={journey.steps} current={journey.current} />
+        </section>
 
         {/* ---------- Send ---------- */}
         <section className={s.send} aria-labelledby="send-heading">

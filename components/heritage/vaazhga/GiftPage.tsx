@@ -1,4 +1,5 @@
 import { Cake, Flame, Flower2, Gem, Sprout, Users, type LucideIcon } from "lucide-react";
+import { buildTimeline } from "@/lib/heritage/vaazhga-timeline";
 import { giftPaths, type VaazhgaReport } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
 import { Frame } from "./Frame";
 import { MessageProvider } from "./MessageContext";
@@ -6,6 +7,7 @@ import { MessageSection } from "./MessageSection";
 import { OpenerVideo } from "./OpenerVideo";
 import { PreviewBar } from "./PreviewBar";
 import { TempleCarousel } from "./TempleCarousel";
+import { Timeline } from "./Timeline";
 import g from "./gift.module.css";
 import s from "./report.module.css";
 
@@ -37,20 +39,7 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
   const sankalpam = photos.find((p) => p.key === "sankalpam")?.src ?? lampSrc;
   const giftPhotos = photos.map((p) => ({ ...p, line: p.giftLine ?? p.line }));
 
-  const steps = [
-    { name: "Blessed at the temple", date: tracker.blessedOn, note: undefined as string | undefined },
-    { name: "Packed with your sankalpam card", date: tracker.packedOn, note: undefined },
-    {
-      name: "On its way to you",
-      date: tracker.shippedOn,
-      note: tracker.shippedOn && tracker.courierRef ? `Courier reference ${tracker.courierRef}` : undefined,
-    },
-    { name: "Arrives at your door", date: tracker.deliveredOn, note: undefined },
-  ].map((step) => ({
-    ...step,
-    done: Boolean(step.date),
-    note: step.date ? (step.note ?? step.date) : "We will update this page",
-  }));
+  const journey = buildTimeline(report, "gift");
 
   return (
     <div className={s.shell}>
@@ -126,25 +115,9 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
             <p className={g.trackerLead}>
               Blessed at the temple, and soon on its way to you with your sankalpam card.
             </p>
-            <ol className={g.steps}>
-              {steps.map((step, i) => (
-                <li key={step.name} className={`${g.step} ${step.done ? "" : g.stepPending}`}>
-                  <span className={`${g.dot} ${step.done ? "" : g.dotPending}`} aria-hidden="true">
-                    {step.done ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m5 12.5 4.5 4.5L19 7" />
-                      </svg>
-                    ) : (
-                      i + 1
-                    )}
-                  </span>
-                  <span>
-                    <b className={`${s.cal} ${g.stepName}`}>{step.name}</b>
-                    <span className={g.stepNote}>{step.note}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
+            <div style={{ marginTop: 32 }}>
+              <Timeline steps={journey.steps} current={journey.current} />
+            </div>
             {tracker.trackUrl ? (
               <a className={`${s.cal} ${s.btn}`} href={tracker.trackUrl} target="_blank" rel="noopener noreferrer">
                 Track your parcel

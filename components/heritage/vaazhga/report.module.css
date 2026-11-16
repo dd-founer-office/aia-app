@@ -549,3 +549,14 @@
   width: 9px;
   height: 9px;
 }
+
+/* ---------- Prasadam journey (booker) ---------- */
+
+.journey {
+  padding: 64px 20px 0;
+  text-align: center;
+}
+
+.journey .lead {
+  margin-bottom: 32px;
+}
