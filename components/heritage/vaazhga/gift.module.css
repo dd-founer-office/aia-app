@@ -63,23 +63,18 @@
 
 .tag {
   display: block;
-  font-size: 11px;
+  font-family: var(--font-tamil-sans), sans-serif;
+  font-size: 19px;
   font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  line-height: 1.3;
   color: #ffb48a;
 }
 
-.openerTitle {
-  margin-top: 12px;
-  font-size: 38px;
-  line-height: 1.08;
-}
-
-.openerTitle em {
-  font-style: normal;
-  color: var(--hg-orange);
+.openerLogoMark {
+  display: block;
+  width: 230px;
+  height: auto;
+  margin-top: 8px;
 }
 
 .sentBy {
@@ -411,4 +406,106 @@
 }
 .openerBar .cue {
   bottom: 120px;
+}
+
+/* ---------- Personal message ---------- */
+
+.message {
+  margin: 56px 22px 0;
+  padding: 34px 26px 32px;
+  border-radius: 28px;
+  background: var(--hg-container);
+  text-align: center;
+}
+
+.messageFrom {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hg-grey);
+}
+
+.messageText {
+  margin: 16px 0 0;
+  font-size: 22px;
+  line-height: 1.35;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  color: var(--hg-maroon);
+}
+
+.messageMark {
+  display: block;
+  margin-bottom: -6px;
+  font-size: 44px;
+  line-height: 1;
+  color: var(--hg-orange);
+}
+
+.compose {
+  margin: 56px 22px 0;
+  padding: 26px 20px 22px;
+  border: 1.5px dashed rgba(58, 11, 26, 0.35);
+  border-radius: 28px;
+  background: #fffaf3;
+  text-align: center;
+}
+
+.compose label {
+  display: block;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.composeHint {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--hg-grey);
+}
+
+.compose textarea {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(58, 11, 26, 0.25);
+  border-radius: 18px;
+  background: #fff;
+  font: 400 16px/1.5 var(--hg-inter), sans-serif;
+  color: var(--hg-ink);
+  resize: vertical;
+}
+
+.compose textarea:focus {
+  outline: 2px solid var(--hg-orange);
+  outline-offset: 1px;
+}
+
+.count {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1;
+  text-align: right;
+  color: var(--hg-grey);
+}
+
+.howItLooks {
+  margin: 22px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hg-grey);
+}
+
+.composePreview {
+  margin-top: 12px;
+  padding: 26px 20px;
+  border-radius: 22px;
+  background: var(--hg-container);
 }

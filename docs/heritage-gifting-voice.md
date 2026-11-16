@@ -19,3 +19,10 @@ Applies to every Heritage Gifting page (starting with Vaazhga Vaazhthudan report
 ## Brand
 
 Maroon `#3A0B1B`, orange `#FF4E00`, ivory/white from the logo. Cal Sans headings, Inter body, Noto Sans Tamil for Tamil.
+
+## Gift page
+
+- The eyebrow above the logo is **இன்று போல் என்றும்** (Indru pol endrum), in Noto Sans Tamil.
+- The Vaazhga Vaazhthudan logo stands in for a "Happy birthday" heading.
+- The sender is named once in the opener, then again above their own message. Everything else speaks as Distant Devotion.
+- The sender's message is plain text, up to 280 characters, written in the preview before sharing. It travels in the gift link (`?m=`).

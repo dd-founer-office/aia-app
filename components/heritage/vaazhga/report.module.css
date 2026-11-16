@@ -380,19 +380,30 @@
 
 .previewTag {
   display: block;
-  font-size: 11px;
+  font-family: var(--font-tamil-sans), sans-serif;
+  font-size: 17px;
   font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  line-height: 1.3;
   color: #ffb48a;
 }
 
-.previewTitle {
+.previewLogo {
   display: block;
-  margin-top: 8px;
-  font-size: 27px;
-  line-height: 1.12;
+  width: 150px;
+  height: auto;
+  margin-top: 6px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .btn {

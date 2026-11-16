@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useMessage } from "./MessageContext";
 import g from "./gift.module.css";
 
 /**
@@ -10,10 +11,12 @@ import g from "./gift.module.css";
  */
 export function PreviewBar({ recipient, publicPath, internalPath }: { recipient: string; publicPath: string; internalPath: string }) {
   const [copied, setCopied] = useState(false);
+  const { message } = useMessage();
 
   const shareUrl = () => {
     const path = /^heritage\./i.test(window.location.hostname) ? publicPath : internalPath;
-    return `${window.location.origin}${path}`;
+    const text = message.trim();
+    return `${window.location.origin}${path}${text ? `?m=${encodeURIComponent(text)}` : ""}`;
   };
 
   const whatsapp = () => {

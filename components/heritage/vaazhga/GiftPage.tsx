@@ -1,6 +1,8 @@
 import { Cake, Flame, Flower2, Gem, Sprout, Users, type LucideIcon } from "lucide-react";
 import { giftPaths, type VaazhgaReport } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
 import { Frame } from "./Frame";
+import { MessageProvider } from "./MessageContext";
+import { MessageSection } from "./MessageSection";
 import { OpenerVideo } from "./OpenerVideo";
 import { PreviewBar } from "./PreviewBar";
 import { TempleCarousel } from "./TempleCarousel";
@@ -9,6 +11,7 @@ import s from "./report.module.css";
 
 const DD_LOGO_LIGHT = "/heritage/dd-logo-light.png";
 const DD_LOGO = "/brand/distant-devotion-logo.png";
+const VV_LOGO = "/heritage/vv-logo.png";
 const NAME_SECTION_ID = "your-name";
 
 // The six Heritage Gifting categories. Uruthiyai is spelled as on the
@@ -27,7 +30,7 @@ const CATEGORIES: { name: string; sub: string; Icon: LucideIcon; current?: boole
  * Devotion voice (docs/heritage-gifting-voice.md). The sender is named once,
  * in the opener; everything after that speaks as Distant Devotion.
  */
-export function GiftPage({ report, preview }: { report: VaazhgaReport; preview: boolean }) {
+export function GiftPage({ report, preview, message }: { report: VaazhgaReport; preview: boolean; message: string }) {
   const { recipient, deity, lampSrc, photos, initialPhotoIndex, gift } = report;
   const { tracker } = gift;
   const paths = giftPaths(gift.slug);
@@ -51,6 +54,7 @@ export function GiftPage({ report, preview }: { report: VaazhgaReport; preview: 
 
   return (
     <div className={s.shell}>
+      <MessageProvider initial={message}>
       <main className={`${s.page} ${preview ? g.withBar : ""}`} style={preview ? undefined : { background: "var(--hg-ivory)" }}>
         <div style={preview ? { background: "var(--hg-ivory)" } : undefined}>
           {/* ---------- Opener ---------- */}
@@ -60,9 +64,12 @@ export function GiftPage({ report, preview }: { report: VaazhgaReport; preview: 
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className={g.openerLogo} src={DD_LOGO_LIGHT} alt="Distant Devotion" width={122} height={54} />
             <div className={g.openerText}>
-              <span className={g.tag}>A blessing for you</span>
-              <h1 className={`${s.cal} ${g.openerTitle}`}>
-                Happy birthday, <em>{recipient}</em>
+              <span className={g.tag} lang="ta">
+                இன்று போல் என்றும்
+              </span>
+              <h1 style={{ margin: 0 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className={g.openerLogoMark} src={VV_LOGO} alt={`Vaazhga Vaazhthudan, a birthday blessing for ${recipient}`} width={230} height={139} />
               </h1>
               <p className={g.sentBy}>Sent with love by {gift.sender}</p>
             </div>
@@ -74,6 +81,9 @@ export function GiftPage({ report, preview }: { report: VaazhgaReport; preview: 
               </a>
             </div>
           </section>
+
+          {/* ---------- Personal message ---------- */}
+          <MessageSection sender={gift.sender} recipient={recipient} preview={preview} sent={message} />
 
           {/* ---------- Offered in your name ---------- */}
           <section id={NAME_SECTION_ID} className={s.lampHead}>
@@ -192,6 +202,7 @@ export function GiftPage({ report, preview }: { report: VaazhgaReport; preview: 
 
         {preview ? <PreviewBar recipient={recipient} publicPath={paths.public} internalPath={paths.internal} /> : null}
       </main>
+      </MessageProvider>
     </div>
   );
 }

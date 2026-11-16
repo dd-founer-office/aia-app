@@ -216,3 +216,20 @@ export function getVaazhgaReport(slug: string): VaazhgaReport | null {
 export function getVaazhgaReportByGiftSlug(giftSlug: string): VaazhgaReport | null {
   return Object.values(REPORTS).find((r) => r.gift.slug === giftSlug) ?? null;
 }
+
+/** Longest personal message a sender can add. */
+export const MAX_MESSAGE_LENGTH = 280;
+
+/**
+ * Cleans a personal message that arrives in a gift link: plain text only,
+ * control characters removed, blank lines collapsed, capped in length.
+ */
+export function cleanMessage(raw: string | undefined): string {
+  if (!raw) return "";
+  return raw
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, MAX_MESSAGE_LENGTH);
+}

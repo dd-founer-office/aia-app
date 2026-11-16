@@ -123,8 +123,11 @@ export function VaazhgaReport({ report }: { report: Report }) {
             <img src={lampSrc} alt="" width={989} height={989} loading="lazy" decoding="async" />
             <div className={s.shade} />
             <div className={s.previewText}>
-              <span className={s.previewTag}>A blessing for you</span>
-              <span className={`${s.cal} ${s.previewTitle}`}>Happy birthday, {recipient}</span>
+              <span className={s.previewTag} lang="ta">
+                இன்று போல் என்றும்
+              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className={s.previewLogo} src={VV_LOGO} alt={`Vaazhga Vaazhthudan, for ${recipient}`} width={150} height={91} />
             </div>
             <Frame />
           </div>
