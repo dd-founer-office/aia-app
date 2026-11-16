@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Flame, Gift, HandHeart, Package, Truck, type LucideIcon } from "lucide-react";
+import { Check, Flame, Gift, HandHeart, Package, Route, Truck, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import type { StepKey, TimelineStep } from "@/lib/heritage/vaazhga-timeline";
 import s from "./report.module.css";
@@ -11,6 +11,7 @@ const ICONS: Record<StepKey, LucideIcon> = {
   blessed: Flame,
   packed: Package,
   shipped: Truck,
+  transit: Route,
   delivered: Gift,
 };
 
@@ -19,12 +20,13 @@ const ICONS: Record<StepKey, LucideIcon> = {
  * current step is the large dark circle, the rest are plain white. Tapping a
  * circle shows that step's title and line underneath.
  */
-export function Timeline({ steps, current }: { steps: TimelineStep[]; current: number }) {
+export function Timeline({ steps, current, heading }: { steps: TimelineStep[]; current: number; heading?: string }) {
   const [selected, setSelected] = useState(current);
   const shown = steps[selected] ?? steps[current];
 
   return (
     <div className={t.box}>
+      {heading ? <h3 className={`${s.cal} ${t.heading}`}>{heading}</h3> : null}
       <ol className={t.row} aria-label="Prasadam journey">
         {steps.map((step, i) => {
           const Icon = ICONS[step.key];
@@ -48,6 +50,7 @@ export function Timeline({ steps, current }: { steps: TimelineStep[]; current: n
         <p className={`${t.status} ${shown.done ? t.statusDone : ""}`}>{shown.status}</p>
         <h3 className={`${s.cal} ${t.title}`}>{shown.title}</h3>
         <p className={t.text}>{shown.text}</p>
+        {shown.meta ? <p className={t.meta}>{shown.meta}</p> : null}
       </div>
     </div>
   );

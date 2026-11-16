@@ -1,21 +1,25 @@
+import { Fragment } from "react";
 import {
   TILE_ROWS,
   giftPaths,
   type PhotoKey,
   type VaazhgaReport as Report,
 } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
-import { buildTimeline } from "@/lib/heritage/vaazhga-timeline";
+import { reportCopy } from "@/lib/heritage/vaazhga-copy";
+import { buildBookerJourney } from "@/lib/heritage/vaazhga-timeline";
 import { Frame } from "./Frame";
 import { SendButton } from "./SendButton";
-import { SeeMoreButton } from "./SeeMoreButton";
 import { TempleCarousel } from "./TempleCarousel";
+import { TrackButton } from "./TrackButton";
 import { Timeline } from "./Timeline";
 import { TileRows } from "./TileRows";
 import s from "./report.module.css";
 
 const LAMP_SECTION_ID = "lamp";
+const JOURNEY_SECTION_ID = "journey";
 const VV_LOGO = "/heritage/vv-logo.png";
-const DD_LOGO = "/brand/distant-devotion-logo.png";
+// Transparent version, so the footer line art shows through around the lettering.
+const DD_LOGO_CLEAR = "/heritage/dd-logo-light.png";
 
 // Social links: icons only until the real account URLs are supplied.
 const SOCIALS: { label: string; href?: string; glyph: "in" | "ig" | "f" }[] = [
@@ -23,10 +27,6 @@ const SOCIALS: { label: string; href?: string; glyph: "in" | "ig" | "f" }[] = [
   { label: "Instagram", glyph: "ig" },
   { label: "Facebook", glyph: "f" },
 ];
-
-function cap(word: string) {
-  return word.charAt(0).toUpperCase() + word.slice(1);
-}
 
 function SocialGlyph({ glyph }: { glyph: "in" | "ig" | "f" }) {
   if (glyph === "ig") {
@@ -51,9 +51,12 @@ function SocialGlyph({ glyph }: { glyph: "in" | "ig" | "f" }) {
  * docs/heritage-gifting-voice.md).
  */
 export function VaazhgaReport({ report }: { report: Report }) {
-  const { recipient, pronouns: p, deity, lampSrc, photos, initialPhotoIndex, gift } = report;
+  const { recipient, lampSrc, photos, initialPhotoIndex, gift } = report;
   const paths = giftPaths(gift.slug);
-  const journey = buildTimeline(report, "booker");
+  const journey = buildBookerJourney(report);
+  const c = reportCopy(report);
+  const [heroBefore, heroAfter] = c.hero.headline.split(c.hero.highlight);
+  const packing = journey.steps[journey.current]?.key === "packed";
   const srcByKey = new Map<PhotoKey, string>(photos.map((photo) => [photo.key, photo.src]));
 
   return (
@@ -61,24 +64,27 @@ export function VaazhgaReport({ report }: { report: Report }) {
       <main className={s.page}>
         {/* ---------- Hero ---------- */}
         <div className={s.heroWrap}>
-          <section className={s.hero} aria-label="Done, as promised">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={s.logo} src={DD_LOGO} alt="Distant Devotion" width={119} height={54} />
+          <section className={s.hero} aria-label={c.hero.headline}>
             <div className={s.heroText}>
               <p className={s.tamilLabel} lang="ta">
                 வாழ்க வாழ்த்துடன்
               </p>
-              <h1 className={`${s.cal} ${s.heroTitle}`} aria-label="Done, as promised">
-                Done,
-                <br />
-                as promised
+              <h1 className={`${s.cal} ${s.heroTitle}`}>
+                {heroBefore}
+                <span className={s.heroMark}>
+                  {c.hero.highlight}
+                  <i aria-hidden="true" />
+                  <i aria-hidden="true" />
+                  <i aria-hidden="true" />
+                  <i aria-hidden="true" />
+                </span>
+                {heroAfter}
               </h1>
-              <p className={s.heroBody}>
-                You asked us to remember {recipient} before {deity}. We did, with {p.possessive}{" "}
-                name, {p.possessive} star, and your love for {p.object}. Wherever {p.subject} is
-                today, a blessing found {p.object}.
-              </p>
-              <SeeMoreButton targetId={LAMP_SECTION_ID} />
+              {c.hero.paragraphs.map((text, i) => (
+                <p key={text} className={`${s.heroBody} ${i === c.hero.paragraphs.length - 1 ? s.heroBodyAccent : ""}`}>
+                  {text}
+                </p>
+              ))}
             </div>
           </section>
 
@@ -96,8 +102,12 @@ export function VaazhgaReport({ report }: { report: Report }) {
 
         {/* ---------- Lamp ---------- */}
         <section id={LAMP_SECTION_ID} className={s.lampHead}>
-          <h2 className={`${s.cal} ${s.h2}`}>It all starts with a lamp</h2>
-          <p className={s.lead}>Every blessing begins with a flame. This one began with yours.</p>
+          <h2 className={`${s.cal} ${s.h2}`}>{c.lamp.headline}</h2>
+          {c.lamp.paragraphs.map((text) => (
+            <p key={text} className={s.lead}>
+              {text}
+            </p>
+          ))}
         </section>
         <div className={s.band}>
           <div className={s.card}>
@@ -109,22 +119,25 @@ export function VaazhgaReport({ report }: { report: Report }) {
 
         {/* ---------- Temple ---------- */}
         <section className={s.transition}>
-          <h2 className={`${s.cal} ${s.h2}`}>Then we carried it to the Lord&rsquo;s door</h2>
-          <p className={s.lead}>
-            Your blessing reached {deity} temple, and this is what happened there.
-          </p>
+          <h2 className={`${s.cal} ${s.h2}`}>{c.temple.headline}</h2>
+          {c.temple.paragraphs.map((text) => (
+            <p key={text} className={s.lead}>
+              {text}
+            </p>
+          ))}
         </section>
         <TempleCarousel photos={photos} initialIndex={initialPhotoIndex} />
 
         {/* ---------- Send ---------- */}
         <section className={s.send} aria-labelledby="send-heading">
           <h2 id="send-heading" className={`${s.cal} ${s.h2}`}>
-            Now, send it to {recipient}
+            {c.share.headline}
           </h2>
-          <p className={s.lead}>
-            {cap(p.subject)} will see a page made just for {p.object}, with the blessing, the
-            photos and {p.possessive} prasadam on its way. Add your own words when you share it.
-          </p>
+          {c.share.paragraphs.map((text) => (
+            <p key={text} className={s.lead}>
+              {text}
+            </p>
+          ))}
           <div className={s.preview}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={lampSrc} alt="" width={989} height={989} loading="lazy" decoding="async" />
@@ -135,41 +148,43 @@ export function VaazhgaReport({ report }: { report: Report }) {
             </div>
             <Frame />
           </div>
-          <SendButton label={`Send to ${recipient}`} publicPath={paths.public} internalPath={paths.internal} />
-          <p className={s.note}>You will see a preview first.</p>
+          <SendButton label={c.share.button} publicPath={paths.public} internalPath={paths.internal} />
+          <p className={s.note}>{c.share.note}</p>
         </section>
 
         {/* ---------- Prasadam journey ---------- */}
-        <section className={s.journey} aria-labelledby="journey-heading">
+        <section id={JOURNEY_SECTION_ID} className={s.journey} aria-labelledby="journey-heading">
           <h2 id="journey-heading" className={`${s.cal} ${s.h2}`}>
-            Where it is now
+            {c.status.headline}
           </h2>
-          <p className={s.lead}>
-            We update this page at every step, until the prasadam reaches {recipient}.
-          </p>
-          <Timeline steps={journey.steps} current={journey.current} />
+          {c.status.paragraphs.map((text) => (
+            <p key={text} className={s.lead}>
+              {text}
+            </p>
+          ))}
+          <Timeline steps={journey.steps} current={journey.current} heading={c.journey.heading} />
         </section>
 
         {/* ---------- Closing ---------- */}
         <section className={s.end} aria-label="Your prasadam">
           <p className={s.tamilLine} lang="ta">
-            விரைவில்
-            <br />
-            அருளும் பொருளும்
-            <br />
-            இல்லம் சேரும்
+            {c.tamil.lines.map((line, i) => (
+              <Fragment key={line}>
+                {i > 0 ? <br /> : null}
+                {line}
+              </Fragment>
+            ))}
           </p>
-          <p className={s.endEn}>Soon, the grace and the offering will reach home.</p>
-          <p className={s.endNote}>
-            {recipient}&rsquo;s prasadam is being packed with {p.possessive} sankalpam card. We will
-            update this page as soon as it is on its way.
-          </p>
+          <p className={s.endEn}>{c.tamil.english}</p>
+          {packing ? <p className={s.endNote}>{c.status.packing}</p> : null}
+          <TrackButton label={c.track.button} trackUrl={gift.tracker.trackUrl} targetId={JOURNEY_SECTION_ID} />
         </section>
 
         {/* ---------- Footer ---------- */}
-        <footer className={s.footer}>
+        <footer className={`${s.footer} ${s.footerWithArt}`}>
+          <div className={s.footerArt} aria-hidden="true" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={s.footerLogo} src={DD_LOGO} alt="Distant Devotion" width={210} height={95} loading="lazy" />
+          <img className={s.footerLogo} src={DD_LOGO_CLEAR} alt="Distant Devotion" width={210} height={93} loading="lazy" />
           <div className={s.socials}>
             {SOCIALS.map((social) =>
               social.href ? (

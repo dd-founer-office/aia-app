@@ -38,33 +38,26 @@
 
 /* ---------- Hero ---------- */
 
+/* The hero is at least one screen tall and grows with its copy; the photo
+   rows hang from its bottom edge (offsets below are measured from it). */
 .heroWrap {
   --H: max(100svh, 720px);
   position: relative;
-  height: calc(var(--H) + 39px);
+  display: flex;
+  min-height: calc(var(--H) + 39px);
 }
 
 .hero {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  display: flex;
+  flex: 1;
   background: var(--hg-maroon);
   border-radius: 0 0 6px 6px;
-}
-
-.logo {
-  position: absolute;
-  left: 20px;
-  top: 28px;
-  height: 54px;
-  width: auto;
+  padding: 24px 0 280px;
 }
 
 .heroText {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100px;
-  height: calc(var(--H) - 341px);
+  flex: 1;
   min-height: 330px;
   display: flex;
   flex-direction: column;
@@ -84,8 +77,8 @@
 
 .heroTitle {
   margin: 14px 0;
-  font-size: 48px;
-  line-height: 1.1;
+  font-size: 32px;
+  line-height: 1.25;
   color: var(--hg-orange);
 }
 
@@ -95,24 +88,52 @@
   opacity: 0.92;
 }
 
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 13px;
-  margin-top: 20px;
-  padding: 13px 14px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--hg-orange);
-  color: var(--hg-maroon);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  font-family: var(--hg-inter), sans-serif;
-  font-weight: 500;
+.heroBody + .heroBody {
+  margin-top: 12px;
 }
 
-.pillIcon,
+/* The closing line of the hero copy is set in a soft grey. */
+.heroBodyAccent {
+  color: #d5dcdc;
+  opacity: 1;
+}
+
+/* One word of the headline shown as a selected box: ivory text on a lighter
+   box, with an orange square on each corner. */
+.heroMark {
+  position: relative;
+  display: inline-block;
+  margin: 0 3px;
+  padding: 0 4px;
+  line-height: 1.1;
+  background: rgba(255, 254, 255, 0.1);
+  color: var(--hg-ivory);
+}
+
+.heroMark i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--hg-orange);
+}
+.heroMark i:nth-of-type(1) {
+  left: -4.5px;
+  top: -4.5px;
+}
+.heroMark i:nth-of-type(2) {
+  right: -4.5px;
+  top: -4.5px;
+}
+.heroMark i:nth-of-type(3) {
+  left: -4.5px;
+  bottom: -4.5px;
+}
+.heroMark i:nth-of-type(4) {
+  right: -4.5px;
+  bottom: -4.5px;
+}
+
 .btnIcon {
   display: grid;
   flex: none;
@@ -140,15 +161,15 @@
 }
 
 .row1 {
-  top: calc(var(--H) - 217px);
+  top: calc(100% - 256px);
   left: -229px;
 }
 .row2 {
-  top: calc(var(--H) - 95px);
+  top: calc(100% - 134px);
   left: -272px;
 }
 .row3 {
-  top: calc(var(--H) + 27px);
+  top: calc(100% - 12px);
   left: -279px;
 }
 
@@ -465,6 +486,7 @@
 
 .footer {
   position: relative;
+  overflow: hidden;
   margin-top: -14px;
   padding: 60px 0 calc(56px + env(safe-area-inset-bottom));
   border-radius: 6px 6px 0 0;
@@ -544,10 +566,21 @@
 }
 
 /* Arrow glyph sized to the button's 14px text. */
-.pillIcon svg,
 .btnIcon svg {
   width: 9px;
   height: 9px;
+}
+
+/* Maroon button for use on the orange block; its arrow sits in an orange square. */
+.btnDark {
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+  cursor: pointer;
+}
+
+.btnDark .btnIcon {
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
 }
 
 /* ---------- Prasadam journey (booker) ---------- */
@@ -557,6 +590,40 @@
   text-align: center;
 }
 
-.journey .lead {
+.journey .lead:last-of-type {
   margin-bottom: 32px;
+}
+
+/* Temple-corridor line art behind the footer, at 25% opacity. The footer has the
+   art's own proportions, so the picture fills it edge to edge without cropping. */
+.footerArt {
+  position: absolute;
+  inset: 0;
+  background: url("/heritage/footer-corridor.webp") center / 100% 100% no-repeat;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.footer > :not(.footerArt) {
+  position: relative;
+}
+
+/* Report footer: exactly as tall as the artwork (2100:1500) with the content
+   centred, so the art fills the whole maroon area. Grows only if the content
+   needs more room (very narrow screens). */
+.footerWithArt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 2100 / 1500;
+  padding: 32px 0 calc(32px + env(safe-area-inset-bottom));
+}
+
+.footerWithArt .socials {
+  margin-top: 24px;
+}
+
+.footerWithArt .tagline {
+  margin-top: 24px;
 }
