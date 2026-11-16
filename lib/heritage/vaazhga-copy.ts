@@ -54,6 +54,7 @@ export function reportCopy(report: VaazhgaReport) {
       /** Shown while the prasadam is being packed. */
       packing: `The blessed prasadam is being packed with ${name}'s sankalpam card. We'll let you know as soon as it is dispatched.`,
     },
+    track: { button: "Track Here" },
     tamil: {
       lines: ["விரைவில்", "அருளும் பொருளும்", "இல்லம் சேரும்"],
       english: "Soon, blessings will find their way home.",

@@ -570,6 +570,18 @@
   height: 9px;
 }
 
+/* Maroon button for use on the orange block; its arrow sits in an orange square. */
+.btnDark {
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+  cursor: pointer;
+}
+
+.btnDark .btnIcon {
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+}
+
 /* ---------- Prasadam journey (booker) ---------- */
 
 .journey {
@@ -581,15 +593,36 @@
   margin-bottom: 32px;
 }
 
-/* Temple-corridor line art behind the footer, at 25% opacity, shown whole (not cropped). */
+/* Temple-corridor line art behind the footer, at 25% opacity. The footer has the
+   art's own proportions, so the picture fills it edge to edge without cropping. */
 .footerArt {
   position: absolute;
   inset: 0;
-  background: url("/heritage/footer-corridor.webp") center / contain no-repeat;
+  background: url("/heritage/footer-corridor.webp") center / 100% 100% no-repeat;
   opacity: 0.25;
   pointer-events: none;
 }
 
 .footer > :not(.footerArt) {
   position: relative;
+}
+
+/* Report footer: exactly as tall as the artwork (2100:1500) with the content
+   centred, so the art fills the whole maroon area. Grows only if the content
+   needs more room (very narrow screens). */
+.footerWithArt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 2100 / 1500;
+  padding: 32px 0 calc(32px + env(safe-area-inset-bottom));
+}
+
+.footerWithArt .socials {
+  margin-top: 24px;
+}
+
+.footerWithArt .tagline {
+  margin-top: 24px;
 }

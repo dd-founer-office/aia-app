@@ -10,11 +10,13 @@ import { buildBookerJourney } from "@/lib/heritage/vaazhga-timeline";
 import { Frame } from "./Frame";
 import { SendButton } from "./SendButton";
 import { TempleCarousel } from "./TempleCarousel";
+import { TrackButton } from "./TrackButton";
 import { Timeline } from "./Timeline";
 import { TileRows } from "./TileRows";
 import s from "./report.module.css";
 
 const LAMP_SECTION_ID = "lamp";
+const JOURNEY_SECTION_ID = "journey";
 const VV_LOGO = "/heritage/vv-logo.png";
 // Transparent version, so the footer line art shows through around the lettering.
 const DD_LOGO_CLEAR = "/heritage/dd-logo-light.png";
@@ -151,7 +153,7 @@ export function VaazhgaReport({ report }: { report: Report }) {
         </section>
 
         {/* ---------- Prasadam journey ---------- */}
-        <section className={s.journey} aria-labelledby="journey-heading">
+        <section id={JOURNEY_SECTION_ID} className={s.journey} aria-labelledby="journey-heading">
           <h2 id="journey-heading" className={`${s.cal} ${s.h2}`}>
             {c.status.headline}
           </h2>
@@ -175,10 +177,11 @@ export function VaazhgaReport({ report }: { report: Report }) {
           </p>
           <p className={s.endEn}>{c.tamil.english}</p>
           {packing ? <p className={s.endNote}>{c.status.packing}</p> : null}
+          <TrackButton label={c.track.button} trackUrl={gift.tracker.trackUrl} targetId={JOURNEY_SECTION_ID} />
         </section>
 
         {/* ---------- Footer ---------- */}
-        <footer className={s.footer}>
+        <footer className={`${s.footer} ${s.footerWithArt}`}>
           <div className={s.footerArt} aria-hidden="true" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className={s.footerLogo} src={DD_LOGO_CLEAR} alt="Distant Devotion" width={210} height={93} loading="lazy" />
