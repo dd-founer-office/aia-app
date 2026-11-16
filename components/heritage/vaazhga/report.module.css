@@ -19,6 +19,7 @@
   background: var(--hg-ivory);
   color: var(--hg-ink);
   font-family: var(--hg-inter), -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  letter-spacing: -0.4px;
 }
 
 .page {
@@ -47,7 +48,7 @@
   position: absolute;
   inset: 0;
   background: var(--hg-maroon);
-  border-radius: 0 0 14px 14px;
+  border-radius: 0 0 20px 20px;
 }
 
 .logo {
@@ -83,30 +84,32 @@
 
 .heroTitle {
   margin: 14px 0;
-  font-size: 32px;
-  line-height: 1.12;
+  font-size: 40px;
+  line-height: 1.1;
   color: var(--hg-orange);
 }
 
 .heroBody {
   font-size: 16px;
-  line-height: 1.55;
+  line-height: 1.5;
   opacity: 0.92;
 }
 
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
-  margin-top: 22px;
-  padding: 11px 12px 11px 24px;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 8px 8px 8px 20px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 6px;
   background: var(--hg-orange);
   color: var(--hg-maroon);
-  font-size: 17px;
-  line-height: 1.1;
+  font-size: 14px;
+  line-height: 1.5;
   cursor: pointer;
+  font-family: var(--hg-inter), sans-serif;
+  font-weight: 500;
 }
 
 .pillIcon,
@@ -114,13 +117,15 @@
   display: grid;
   flex: none;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 6px;
   background: var(--hg-maroon);
+  width: 32px;
+  height: 32px;
 }
 
 .pillIcon {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
 }
 
 .rows {
@@ -157,7 +162,7 @@
   flex: none;
   width: 87px;
   height: 87px;
-  border-radius: 16px;
+  border-radius: 12px;
   object-fit: cover;
 }
 
@@ -168,7 +173,7 @@
   width: 87px;
   height: 87px;
   border: 0.5px solid var(--hg-orange);
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--hg-maroon);
 }
 
@@ -180,28 +185,28 @@
 /* ---------- Lamp ---------- */
 
 .lampHead {
-  padding: 117px 26px 0;
+  padding: 117px 24px 0;
   text-align: center;
 }
 
 .h2 {
   font-size: 32px;
-  line-height: 1.12;
+  line-height: 1.25;
   color: var(--hg-ink);
 }
 
 .lead {
   margin-top: 12px;
   padding: 0 10px;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--hg-grey);
 }
 
 .band {
   margin-top: 40px;
-  padding: 48px 22px;
-  border-radius: 14px;
+  padding: 56px 20px;
+  border-radius: 20px;
   background: var(--hg-maroon);
 }
 
@@ -209,14 +214,14 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 43.5px;
+  border-radius: 20px;
 }
 
 .card > img {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 43.5px;
+  border-radius: 20px;
   object-fit: cover;
 }
 
@@ -224,7 +229,7 @@
    (inset = 0.2929 x radius puts the frame corner exactly on the curve). */
 .frame {
   position: absolute;
-  inset: 12.7px;
+  inset: 5.9px;
   border: 1.3px solid rgba(58, 11, 26, 0.6);
   pointer-events: none;
 }
@@ -259,19 +264,19 @@
 /* ---------- Temple ---------- */
 
 .transition {
-  padding: 64px 26px 0;
+  padding: 64px 24px 0;
   text-align: center;
 }
 
 .transition .h2 {
-  font-size: 30px;
-  line-height: 1.15;
+  font-size: 32px;
+  line-height: 1.25;
 }
 
 .box {
-  margin: 36px 22px 0;
-  padding: 26px 0 30px;
-  border-radius: 28px;
+  margin: 40px 20px 0;
+  padding: 24px 0 30px;
+  border-radius: 20px;
   background: var(--hg-container);
   text-align: center;
 }
@@ -296,7 +301,7 @@
   flex: none;
   width: 150px;
   height: 170px;
-  border-radius: 18px;
+  border-radius: 12px;
   object-fit: cover;
   scroll-snap-align: center;
   box-shadow: 0 8px 20px rgba(58, 11, 26, 0.22);
@@ -307,15 +312,15 @@
 .boxHeading {
   margin-top: 18px;
   padding: 0 20px;
-  font-size: 26px;
-  line-height: 1.15;
+  font-size: 18px;
+  line-height: 1.2;
 }
 
 .boxLine {
   margin-top: 10px;
   padding: 0 24px;
   min-height: 68px;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--hg-grey);
 }
@@ -324,16 +329,16 @@
 
 .send {
   margin-top: 56px;
-  padding: 48px 26px;
-  border-radius: 14px;
+  padding: 56px 24px;
+  border-radius: 20px;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
   text-align: center;
 }
 
 .send .h2 {
-  font-size: 30px;
-  line-height: 1.15;
+  font-size: 32px;
+  line-height: 1.25;
   color: var(--hg-orange);
 }
 
@@ -345,8 +350,8 @@
   position: relative;
   width: 100%;
   aspect-ratio: 346 / 300;
-  margin-top: 26px;
-  border-radius: 43.5px;
+  margin-top: 24px;
+  border-radius: 20px;
   text-align: left;
 }
 
@@ -354,14 +359,14 @@
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 43.5px;
+  border-radius: 20px;
   object-fit: cover;
 }
 
 .shade {
   position: absolute;
   inset: 0;
-  border-radius: 43.5px;
+  border-radius: 20px;
   background: linear-gradient(
     to top,
     rgba(58, 11, 26, 0.94),
@@ -401,17 +406,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
-  margin-top: 26px;
-  padding: 11px 12px 11px 24px;
+  margin-top: 24px;
+  padding: 8px 8px 8px 20px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 6px;
   background: var(--hg-orange);
   color: var(--hg-maroon);
-  font-size: 18px;
-  line-height: 1;
+  font-size: 14px;
+  line-height: 1.5;
   text-decoration: none;
+  font-family: var(--hg-inter), sans-serif;
+  font-weight: 500;
 }
 
 .btnOff {
@@ -426,7 +433,7 @@
 
 .note {
   margin-top: 14px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.4;
   color: rgba(255, 254, 255, 0.6);
 }
@@ -435,8 +442,8 @@
 
 .end {
   margin-top: 56px;
-  padding: 70px 28px 84px;
-  border-radius: 14px 14px 0 0;
+  padding: 70px 30px 84px;
+  border-radius: 20px 20px 0 0;
   background: var(--hg-orange);
   color: var(--hg-maroon);
   text-align: center;
@@ -452,15 +459,15 @@
 
 .endEn {
   margin-top: 12px;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   opacity: 0.85;
 }
 
 .endNote {
-  margin-top: 26px;
+  margin-top: 24px;
   padding: 0 6px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.55;
 }
@@ -471,7 +478,7 @@
   position: relative;
   margin-top: -14px;
   padding: 60px 0 calc(56px + env(safe-area-inset-bottom));
-  border-radius: 14px 14px 0 0;
+  border-radius: 20px 20px 0 0;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
   text-align: center;
@@ -489,7 +496,7 @@
   align-items: center;
   justify-content: center;
   gap: 34px;
-  margin-top: 34px;
+  margin-top: 32px;
 }
 
 .social {
@@ -504,7 +511,7 @@
 }
 
 .tagline {
-  margin-top: 36px;
+  margin-top: 40px;
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
@@ -539,4 +546,10 @@
 .glowOn {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* Tamil keeps its natural spacing: negative tracking breaks its shaping. */
+.tamilLabel,
+.tamilLine {
+  letter-spacing: 0;
 }
