@@ -5,17 +5,16 @@ import { giftPaths, type VaazhgaReport } from "@/lib/heritage/vaazhga-vaazhthuda
 import { Frame } from "./Frame";
 import { MessageProvider } from "./MessageContext";
 import { MessageSection } from "./MessageSection";
-import { OpenerVideo } from "./OpenerVideo";
+import { HeroReveal } from "./HeroReveal";
 import { PreviewBar } from "./PreviewBar";
 import { TempleCarousel } from "./TempleCarousel";
 import { Timeline } from "./Timeline";
 import g from "./gift.module.css";
 import s from "./report.module.css";
 
-const DD_LOGO_LIGHT = "/heritage/dd-logo-light.png";
 const DD_LOGO = "/brand/distant-devotion-logo.png";
 const VV_LOGO = "/heritage/vv-logo.png";
-const HERO_SECTION_ID = "for-you";
+const PRAYER_SECTION_ID = "prayer";
 
 // The six Heritage Gifting categories, shown by their logos (one ivory colour
 // with orange accents). `height` evens out their optical size: Peranbu's
@@ -49,43 +48,27 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
       <MessageProvider initial={message}>
       <main className={`${s.page} ${preview ? g.withBar : ""}`} style={preview ? undefined : { background: "var(--hg-ivory)" }}>
         <div style={preview ? { background: "var(--hg-ivory)" } : undefined}>
-          {/* ---------- Opener ---------- */}
-          <section className={`${g.opener} ${preview ? g.openerBar : ""}`} aria-label={`A blessing for ${recipient}`}>
-            <OpenerVideo posterSrc={lampSrc} videoSrc={gift.videoSrc} />
-            <div className={g.openerShade} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={g.openerLogo} src={DD_LOGO_LIGHT} alt="Distant Devotion" width={122} height={54} />
-            <div className={g.openerText}>
-              <h1 style={{ margin: 0 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className={g.openerLogoMark} src={VV_LOGO} alt={`Vaazhga Vaazhthudan, a birthday blessing for ${recipient}`} width={230} height={139} />
-              </h1>
-              <p className={g.sentBy}>{c.sentBy}</p>
-            </div>
-            <div className={g.cue}>
-              <a className={g.cueBtn} href={`#${HERO_SECTION_ID}`} aria-label="Read your blessing">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3A0B1A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 4v15M5 12l7 7 7-7" />
-                </svg>
-              </a>
-            </div>
-          </section>
+          {/* ---------- Hero ---------- */}
+          <HeroReveal
+            headline={c.hero.headline}
+            highlight={c.hero.highlight}
+            paragraphs={c.hero.paragraphs}
+            heartLabel={c.heart}
+            sender={gift.sender}
+            logoSrc={VV_LOGO}
+            logoAlt={`Vaazhga Vaazhthudan, a birthday blessing for ${recipient}`}
+            posterSrc={lampSrc}
+            videoSrc={gift.videoSrc}
+            nextId={PRAYER_SECTION_ID}
+          />
 
-          {/* ---------- Hero copy ---------- */}
-          <section id={HERO_SECTION_ID} className={s.lampHead} style={{ paddingTop: 64 }}>
-            <h2 className={`${s.cal} ${s.h2}`}>{c.hero.headline}</h2>
-            {c.hero.paragraphs.map((text) => (
-              <p key={text} className={s.lead}>
-                {text}
-              </p>
-            ))}
-          </section>
-
-          {/* ---------- Personal message ---------- */}
-          <MessageSection sender={gift.sender} recipient={recipient} preview={preview} sent={message} headline={c.message.headline} text={c.message.text} />
+          {/* ---------- The booker's writing box (preview only) ---------- */}
+          {preview ? (
+            <MessageSection sender={gift.sender} recipient={recipient} preview sent={message} headline={c.message.headline} text={c.message.text} />
+          ) : null}
 
           {/* ---------- A prayer, made in your name ---------- */}
-          <section className={s.lampHead} style={{ paddingTop: 64 }}>
+          <section id={PRAYER_SECTION_ID} className={s.lampHead} style={{ paddingTop: 64 }}>
             <h2 className={`${s.cal} ${s.h2}`}>{c.offering.headline}</h2>
             {c.offering.paragraphs.map((text) => (
               <p key={text} className={s.lead}>

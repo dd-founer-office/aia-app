@@ -40,13 +40,15 @@ export function giftCopy(report: VaazhgaReport) {
   return {
     hero: {
       headline: `${name}, this blessing is for you.`,
+      highlight: name,
       paragraphs: [
         `On your birthday, someone who holds you dear wanted to seek ${deityShort}'s blessings for you.`,
         `Your name and star were offered in prayer at ${place}. These moments have been gathered here for you, along with a little something blessed in your name, making its way home.`,
         "A birthday wish, carried with love.",
       ],
     },
-    sentBy: `Sent with love by ${gift.sender}`,
+    heart: `With ❤️ ${gift.sender}`,
+    fromLabel: `A message from ${gift.sender}`,
     message: {
       headline: "A few words, just for you.",
       text: "Along with this blessing comes a message from someone who wanted to make your day a little more special.",

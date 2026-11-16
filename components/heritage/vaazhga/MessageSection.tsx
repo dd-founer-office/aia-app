@@ -5,7 +5,7 @@ import { useMessage } from "./MessageContext";
 import g from "./gift.module.css";
 import s from "./report.module.css";
 
-function Quote({ sender, text }: { sender: string; text: string }) {
+export function Quote({ sender, text }: { sender: string; text: string }) {
   return (
     <>
       <span className={g.messageFrom}>A message from {sender}</span>
