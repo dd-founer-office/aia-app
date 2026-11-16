@@ -53,6 +53,7 @@ export function VaazhgaReport({ report }: { report: Report }) {
   const paths = giftPaths(gift.slug);
   const journey = buildBookerJourney(report);
   const c = reportCopy(report);
+  const [heroBefore, heroAfter] = c.hero.headline.split(c.hero.highlight);
   const packing = journey.steps[journey.current]?.key === "packed";
   const srcByKey = new Map<PhotoKey, string>(photos.map((photo) => [photo.key, photo.src]));
 
@@ -66,9 +67,19 @@ export function VaazhgaReport({ report }: { report: Report }) {
               <p className={s.tamilLabel} lang="ta">
                 வாழ்க வாழ்த்துடன்
               </p>
-              <h1 className={`${s.cal} ${s.heroTitle}`}>{c.hero.headline}</h1>
-              {c.hero.paragraphs.map((text) => (
-                <p key={text} className={s.heroBody}>
+              <h1 className={`${s.cal} ${s.heroTitle}`}>
+                {heroBefore}
+                <span className={s.heroMark}>
+                  {c.hero.highlight}
+                  <i aria-hidden="true" />
+                  <i aria-hidden="true" />
+                  <i aria-hidden="true" />
+                  <i aria-hidden="true" />
+                </span>
+                {heroAfter}
+              </h1>
+              {c.hero.paragraphs.map((text, i) => (
+                <p key={text} className={`${s.heroBody} ${i === c.hero.paragraphs.length - 1 ? s.heroBodyAccent : ""}`}>
                   {text}
                 </p>
               ))}

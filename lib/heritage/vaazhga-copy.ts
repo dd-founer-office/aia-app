@@ -14,6 +14,8 @@ export function reportCopy(report: VaazhgaReport) {
   return {
     hero: {
       headline: "Some wishes travel farther than words.",
+      /** The word in the headline that is shown highlighted (a styling choice; the text is unchanged). */
+      highlight: "travel",
       paragraphs: [
         `You wanted ${name} to receive ${deityShort}'s blessings on ${p.possessive} birthday.`,
         `${cap(p.possessive)} name and star were offered in prayer at ${place}. The moments from the temple have been preserved here, and ${p.possessive} blessed prasadam is now being prepared for its journey home.`,

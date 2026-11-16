@@ -92,6 +92,47 @@
   margin-top: 12px;
 }
 
+/* The closing line of the hero copy is set in the accent colour. */
+.heroBodyAccent {
+  color: var(--hg-orange);
+  opacity: 1;
+}
+
+/* One word of the headline shown as a selected box: ivory text on a lighter
+   box, with an orange square on each corner. */
+.heroMark {
+  position: relative;
+  display: inline-block;
+  margin: 0 6px;
+  padding: 0 8px;
+  background: rgba(255, 254, 255, 0.1);
+  color: var(--hg-ivory);
+}
+
+.heroMark i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--hg-orange);
+}
+.heroMark i:nth-of-type(1) {
+  left: -4.5px;
+  top: -4.5px;
+}
+.heroMark i:nth-of-type(2) {
+  right: -4.5px;
+  top: -4.5px;
+}
+.heroMark i:nth-of-type(3) {
+  left: -4.5px;
+  bottom: -4.5px;
+}
+.heroMark i:nth-of-type(4) {
+  right: -4.5px;
+  bottom: -4.5px;
+}
+
 .btnIcon {
   display: grid;
   flex: none;
