@@ -92,9 +92,9 @@
   margin-top: 12px;
 }
 
-/* The closing line of the hero copy is set in the accent colour. */
+/* The closing line of the hero copy is set in a soft grey. */
 .heroBodyAccent {
-  color: var(--hg-orange);
+  color: #d5dcdc;
   opacity: 1;
 }
 
@@ -103,8 +103,9 @@
 .heroMark {
   position: relative;
   display: inline-block;
-  margin: 0 6px;
-  padding: 0 8px;
+  margin: 0 3px;
+  padding: 0 4px;
+  line-height: 1.1;
   background: rgba(255, 254, 255, 0.1);
   color: var(--hg-ivory);
 }
