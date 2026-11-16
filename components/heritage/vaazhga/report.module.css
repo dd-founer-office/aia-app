@@ -219,6 +219,11 @@
   color: var(--hg-grey);
 }
 
+.lampHead .lead:not(:last-of-type),
+.transition .lead:not(:last-of-type) {
+  color: var(--hg-ink);
+}
+
 .band {
   margin-top: 40px;
   padding: 56px 20px;
