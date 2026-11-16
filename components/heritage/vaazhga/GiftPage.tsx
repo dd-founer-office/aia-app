@@ -15,15 +15,16 @@ const DD_LOGO = "/brand/distant-devotion-logo.png";
 const VV_LOGO = "/heritage/vv-logo.png";
 const NAME_SECTION_ID = "your-name";
 
-// The six Heritage Gifting categories, shown by their logos. Peranbu has no
-// logo yet, so it shows its name in Tamil until the artwork arrives.
-const CATEGORIES: { name: string; sub: string; logo?: string; tamil?: string; current?: boolean }[] = [
-  { name: "Vaazhga Vaazhthudan", sub: "Birthday", logo: "vaazhga-vaazhthudan", current: true },
-  { name: "Thayum Seyum", sub: "New life", logo: "thayum-seyum" },
-  { name: "Inaintha Idhayangal", sub: "Marriage", logo: "inaintha-idhayangal" },
-  { name: "Uruthiyai Thunai", sub: "Get well", logo: "uruthiyai-thunai" },
-  { name: "Peranbu", sub: "Grandparents", tamil: "பேரன்பு" },
-  { name: "Ninaivin Anjali", sub: "Remembrance", logo: "ninaivin-anjali" },
+// The six Heritage Gifting categories, shown by their logos (one ivory colour
+// with orange accents). `height` evens out their optical size: Peranbu's
+// lettering is heavier than the others, so it is drawn smaller.
+const CATEGORIES: { name: string; sub: string; logo: string; height: number; current?: boolean }[] = [
+  { name: "Vaazhga Vaazhthudan", sub: "Birthday", logo: "vaazhga-vaazhthudan", height: 56, current: true },
+  { name: "Thayum Seyum", sub: "New life", logo: "thayum-seyum", height: 56 },
+  { name: "Inaintha Idhayangal", sub: "Marriage", logo: "inaintha-idhayangal", height: 56 },
+  { name: "Uruthiyai Thunai", sub: "Get well", logo: "uruthiyai-thunai", height: 56 },
+  { name: "Peranbu", sub: "Grandparents", logo: "peranbu", height: 42 },
+  { name: "Ninaivin Anjali", sub: "Remembrance", logo: "ninaivin-anjali", height: 56 },
 ];
 
 /**
@@ -146,16 +147,12 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
             </h2>
             <p className={g.catsLead}>Six moments in a life, each with a blessing from the temple.</p>
             <ul className={g.catGrid}>
-              {CATEGORIES.map(({ name, sub, logo, tamil, current }) => (
+              {CATEGORIES.map(({ name, sub, logo, height, current }) => (
                 <li key={name} className={`${g.cat} ${current ? g.catOn : ""}`}>
-                  {logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className={g.catLogo} src={`/heritage/categories/${logo}.png`} alt={name} width={120} height={64} loading="lazy" />
-                  ) : (
-                    <span className={g.catWord} lang="ta" aria-label={name}>
-                      {tamil}
-                    </span>
-                  )}
+                  <span className={g.catSlot}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className={g.catLogo} style={{ height }} src={`/heritage/categories/${logo}.png`} alt={name} width={120} height={64} loading="lazy" />
+                  </span>
                   <span className={g.catSub}>{sub}</span>
                 </li>
               ))}

@@ -116,17 +116,6 @@ export function VaazhgaReport({ report }: { report: Report }) {
         </section>
         <TempleCarousel photos={photos} initialIndex={initialPhotoIndex} />
 
-        {/* ---------- Prasadam journey ---------- */}
-        <section className={s.journey} aria-labelledby="journey-heading">
-          <h2 id="journey-heading" className={`${s.cal} ${s.h2}`}>
-            Where it is now
-          </h2>
-          <p className={s.lead}>
-            We update this page at every step, until the prasadam reaches {recipient}.
-          </p>
-          <Timeline steps={journey.steps} current={journey.current} />
-        </section>
-
         {/* ---------- Send ---------- */}
         <section className={s.send} aria-labelledby="send-heading">
           <h2 id="send-heading" className={`${s.cal} ${s.h2}`}>
@@ -148,6 +137,17 @@ export function VaazhgaReport({ report }: { report: Report }) {
           </div>
           <SendButton label={`Send to ${recipient}`} publicPath={paths.public} internalPath={paths.internal} />
           <p className={s.note}>You will see a preview first.</p>
+        </section>
+
+        {/* ---------- Prasadam journey ---------- */}
+        <section className={s.journey} aria-labelledby="journey-heading">
+          <h2 id="journey-heading" className={`${s.cal} ${s.h2}`}>
+            Where it is now
+          </h2>
+          <p className={s.lead}>
+            We update this page at every step, until the prasadam reaches {recipient}.
+          </p>
+          <Timeline steps={journey.steps} current={journey.current} />
         </section>
 
         {/* ---------- Closing ---------- */}

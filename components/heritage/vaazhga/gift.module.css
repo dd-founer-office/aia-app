@@ -232,24 +232,19 @@
   border-radius: 12px;
 }
 
+.catSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+}
+
 .catLogo {
   display: block;
   width: auto;
   max-width: 100%;
-  height: 56px;
   object-fit: contain;
-}
-
-.catWord {
-  display: grid;
-  place-items: center;
-  height: 56px;
-  font-family: var(--font-tamil-sans), sans-serif;
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1;
-  color: var(--hg-on-dark);
 }
 
 .catSub {
