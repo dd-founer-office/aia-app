@@ -1,0 +1,437 @@
+/*
+ * Heritage Gifting: the page the birthday person sees. Shares the report's
+ * palette (set on the .shell in report.module.css); only what is specific to
+ * this page lives here.
+ */
+
+/* ---------- Opener ---------- */
+
+.opener {
+  position: relative;
+  height: max(100svh, 720px);
+  overflow: hidden;
+  border-radius: 0 0 6px 6px;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+}
+
+.openerMedia {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.openerShade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top, rgba(58, 11, 26, 0.95) 0%, rgba(58, 11, 26, 0.55) 38%, rgba(58, 11, 26, 0) 62%),
+    linear-gradient(to bottom, rgba(58, 11, 26, 0.6), rgba(58, 11, 26, 0) 22%);
+}
+
+.openerLogo {
+  position: absolute;
+  left: 20px;
+  top: 28px;
+  width: auto;
+  height: 54px;
+}
+
+.sound {
+  position: absolute;
+  right: 20px;
+  top: 34px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(58, 11, 26, 0.55);
+  cursor: pointer;
+}
+
+.openerText {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 96px;
+}
+
+.openerLogoMark {
+  display: block;
+  width: 230px;
+  height: auto;
+  margin-top: 8px;
+}
+
+.sentBy {
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1.5;
+  opacity: 0.92;
+}
+
+.cue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 26px;
+  display: flex;
+  justify-content: center;
+}
+
+.cueBtn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: var(--hg-orange);
+  cursor: pointer;
+}
+
+/* ---------- Your name ---------- */
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 20px 20px 0;
+}
+
+.fact {
+  padding: 12px 6px;
+  border-radius: 12px;
+  background: var(--hg-container);
+  text-align: center;
+}
+
+.fact small {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hg-grey);
+}
+
+.fact b {
+  display: block;
+  margin-top: 7px;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.sectionHead {
+  padding: 56px 24px 0;
+  text-align: center;
+}
+
+/* ---------- Tracker ---------- */
+
+.tracker {
+  margin-top: 56px;
+  padding: 56px 24px;
+  border-radius: 6px;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+}
+
+.tracker .title {
+  font-size: 32px;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--hg-orange);
+}
+
+.trackerLead {
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: center;
+  color: rgba(255, 254, 255, 0.82);
+}
+
+/* ---------- Tamil blessing ---------- */
+
+.blessing {
+  margin-top: 56px;
+  padding: 64px 30px 76px;
+  border-radius: 6px 6px 0 0;
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+  text-align: center;
+}
+
+.blessingTamil {
+  font-family: var(--font-tamil-sans), sans-serif;
+  font-weight: 600;
+  font-size: clamp(17px, 5.6vw, 22px);
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.blessingEn {
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+/* ---------- Categories ---------- */
+
+.cats {
+  position: relative;
+  margin-top: -14px;
+  padding: 56px 20px 56px;
+  border-radius: 6px 6px 0 0;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+  text-align: center;
+}
+
+.cats .title {
+  font-size: 32px;
+  line-height: 1.25;
+  color: var(--hg-orange);
+}
+
+.catsLead {
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgba(255, 254, 255, 0.82);
+}
+
+.catGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.cat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 112px;
+  padding: 16px 12px 14px;
+  border: 1px solid rgba(255, 254, 255, 0.2);
+  border-radius: 12px;
+}
+
+.catSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+}
+
+.catLogo {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.catSub {
+  display: block;
+  font-size: 11px;
+  line-height: 1.3;
+  color: rgba(255, 254, 255, 0.65);
+}
+
+/* The page's own category (birthday) is marked with an orange outline. */
+.catOn {
+  border-color: var(--hg-orange);
+  background: rgba(255, 78, 0, 0.14);
+}
+
+.catOn .catSub {
+  color: rgba(255, 254, 255, 0.85);
+}
+
+/* ---------- Share bar (booker preview only) ---------- */
+
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+  box-shadow: 0 -10px 30px rgba(58, 11, 26, 0.35);
+}
+
+.barText {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: center;
+  color: rgba(255, 254, 255, 0.8);
+}
+
+.barRow {
+  display: flex;
+  gap: 10px;
+}
+
+.barBtn {
+  flex: 1;
+  padding: 13px 14px;
+  border: 0;
+  border-radius: 6px;
+  font-family: var(--hg-inter), sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.barPrimary {
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+}
+
+.barGhost {
+  border: 1.5px solid rgba(255, 254, 255, 0.4);
+  background: transparent;
+  color: var(--hg-on-dark);
+}
+
+.withBar {
+  padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  background: var(--hg-maroon);
+}
+
+/* With the share bar up, keep the opener's text and cue clear of it. */
+.openerBar .openerText {
+  bottom: 196px;
+}
+.openerBar .cue {
+  bottom: 120px;
+}
+
+/* ---------- Personal message ---------- */
+
+.message {
+  margin: 56px 20px 0;
+  padding: 32px 24px 32px;
+  border-radius: 20px;
+  background: var(--hg-container);
+  text-align: center;
+}
+
+.messageFrom {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hg-grey);
+}
+
+.messageText {
+  margin: 16px 0 0;
+  font-size: 20px;
+  line-height: 1.35;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  color: var(--hg-maroon);
+}
+
+.messageMark {
+  display: block;
+  margin-bottom: -6px;
+  font-size: 44px;
+  line-height: 1;
+  color: var(--hg-orange);
+}
+
+.compose {
+  margin: 56px 20px 0;
+  padding: 24px 20px 20px;
+  border: 1.5px dashed rgba(58, 11, 26, 0.35);
+  border-radius: 20px;
+  background: #fffaf3;
+  text-align: center;
+}
+
+.compose label {
+  display: block;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.composeHint {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--hg-grey);
+}
+
+.compose textarea {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(58, 11, 26, 0.25);
+  border-radius: 20px;
+  background: #fff;
+  font: 400 16px/1.5 var(--hg-inter), sans-serif;
+  color: var(--hg-ink);
+  resize: vertical;
+}
+
+.compose textarea:focus {
+  outline: 2px solid var(--hg-orange);
+  outline-offset: 1px;
+}
+
+.count {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1;
+  text-align: right;
+  color: var(--hg-grey);
+}
+
+.howItLooks {
+  margin: 20px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hg-grey);
+}
+
+.composePreview {
+  margin-top: 12px;
+  padding: 24px 20px;
+  border-radius: 20px;
+  background: var(--hg-container);
+}
+
+.blessingTamil {
+  letter-spacing: 0;
+}

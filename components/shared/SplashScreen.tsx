@@ -280,8 +280,20 @@ function AnchoredWordmark({ open }: { open: boolean }) {
   );
 }
 
+// Heritage Gifting is served at heritage.distantdevotion.com, where its public
+// paths (/vaazhga-vaazhthudan/...) overlap Aram in Action's share-page
+// prefixes. The splash is part of the server HTML, so on that host this tiny
+// script hides it before the first paint, and the layout effect below
+// unmounts it once React takes over.
+const HERITAGE_HOST = /^heritage\./i;
+const HIDE_ON_HERITAGE_HOST =
+  'if(/^heritage\\./i.test(location.hostname)){var s=document.createElement("style");s.textContent="[data-splash]{display:none!important}";document.head.appendChild(s)}';
+
 export default function SplashScreen() {
   const pathname = usePathname() ?? "";
+  // Heritage Gifting has its own identity and never shows Aram in Action's
+  // splash (app/heritage-gifting, also served at heritage.distantdevotion.com).
+  const heritage = /^\/heritage-gifting(\/|$)/.test(pathname);
   // Monthly Aram (the cause selection page) uses the same mint splash.
   const share =
     /^\/(share|vaazhga-vaazhthudan|aram)\//.test(pathname) ||
@@ -291,10 +303,14 @@ export default function SplashScreen() {
   // HTML itself — otherwise the browser paints Home first (server
   // output, pre-hydration) and only shows the splash once React
   // hydrates and this effect runs, causing a brief flash of Home.
-  const [mounted, setMounted] = useState(true);
+  const [mounted, setMounted] = useState(!heritage);
   const hasRun = useRef(false);
 
   useLayoutEffect(() => {
+    if (heritage || HERITAGE_HOST.test(window.location.hostname)) {
+      setMounted(false);
+      return;
+    }
     if (hasRun.current) return; // survives React Strict Mode's dev double-invoke
     hasRun.current = true;
 
@@ -362,7 +378,10 @@ export default function SplashScreen() {
     const half = TILE_PX / 2;
     const clipTile = `inset(calc(50% - ${half}px) calc(50% - ${half}px) calc(50% - ${half}px) calc(50% - ${half}px) round ${TILE_RADIUS_PX}px)`;
     return (
+      <>
+      <script dangerouslySetInnerHTML={{ __html: HIDE_ON_HERITAGE_HOST }} />
       <div
+        data-splash
         role="status"
         aria-label="Aram in Action"
         className="fixed inset-0 z-[100]"
@@ -387,11 +406,15 @@ export default function SplashScreen() {
           <AnchoredWordmark open={open} />
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+    <script dangerouslySetInnerHTML={{ __html: HIDE_ON_HERITAGE_HOST }} />
     <div
+      data-splash
       role="status"
       aria-label="Aram in Action"
       className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--color-background)]"
@@ -420,5 +443,6 @@ export default function SplashScreen() {
         ))}
       </div>
     </div>
+    </>
   );
 }
