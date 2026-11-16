@@ -38,17 +38,22 @@
 
 /* ---------- Hero ---------- */
 
+/* The hero is at least one screen tall and grows with its copy; the photo
+   rows hang from its bottom edge (offsets below are measured from it). */
 .heroWrap {
   --H: max(100svh, 720px);
   position: relative;
-  height: calc(var(--H) + 39px);
+  display: flex;
+  min-height: calc(var(--H) + 39px);
 }
 
 .hero {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  display: flex;
+  flex: 1;
   background: var(--hg-maroon);
   border-radius: 0 0 6px 6px;
+  padding: 100px 0 280px;
 }
 
 .logo {
@@ -60,11 +65,7 @@
 }
 
 .heroText {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100px;
-  height: calc(var(--H) - 341px);
+  flex: 1;
   min-height: 330px;
   display: flex;
   flex-direction: column;
@@ -93,6 +94,10 @@
   font-size: 16px;
   line-height: 1.5;
   opacity: 0.92;
+}
+
+.heroBody + .heroBody {
+  margin-top: 12px;
 }
 
 .pill {
@@ -140,15 +145,15 @@
 }
 
 .row1 {
-  top: calc(var(--H) - 217px);
+  top: calc(100% - 256px);
   left: -229px;
 }
 .row2 {
-  top: calc(var(--H) - 95px);
+  top: calc(100% - 134px);
   left: -272px;
 }
 .row3 {
-  top: calc(var(--H) + 27px);
+  top: calc(100% - 12px);
   left: -279px;
 }
 
@@ -557,6 +562,6 @@
   text-align: center;
 }
 
-.journey .lead {
+.journey .lead:last-of-type {
   margin-bottom: 32px;
 }

@@ -37,7 +37,7 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
   const { tracker } = gift;
   const paths = giftPaths(gift.slug);
   const sankalpam = photos.find((p) => p.key === "sankalpam")?.src ?? lampSrc;
-  const giftPhotos = photos.map((p) => ({ ...p, line: p.giftLine ?? p.line }));
+  const giftPhotos = photos.map((p) => ({ ...p, heading: p.giftHeading ?? p.heading, line: p.giftLine ?? p.line }));
 
   const journey = buildTimeline(report, "gift");
 

@@ -29,6 +29,8 @@ export type ReportPhoto = {
   src: string;
   /** Short heading shown under the swipe row while this photo is centred. */
   heading: string;
+  /** The gift page's own heading for this photo, when it differs. */
+  giftHeading?: string;
   /** One grey line under the heading, written to the person who sent it. */
   line: string;
   /** The same line written to the birthday person, when it needs to differ. */
@@ -82,6 +84,10 @@ export type VaazhgaReport = {
   pronouns: Pronouns;
   /** The deity / temple name as it reads in "before <deity>". */
   deity: string;
+  /** The deity on his own, as in "<deityShort>'s blessings". */
+  deityShort: string;
+  /** The place of the temple, as in "offered in prayer at <place>". */
+  place: string;
   /** Opening photo for the lamp section and the gift preview. */
   lampSrc: string;
   /** The swipe row, in order. */
@@ -121,6 +127,8 @@ const REPORTS: Record<string, VaazhgaReport> = {
     recipient: "Akshanth",
     pronouns: { subject: "he", object: "him", possessive: "his" },
     deity: "Swamimalai Murugan",
+    deityShort: "Murugan",
+    place: "Swamimalai",
     lampSrc: `${AKSHANTH_DIR}/lamps.jpg`,
     initialPhotoIndex: 1,
     gift: {
@@ -142,60 +150,69 @@ const REPORTS: Record<string, VaazhgaReport> = {
       {
         key: "gate",
         src: `${AKSHANTH_DIR}/gate.jpg`,
-        heading: "At the gate",
+        heading: "The beginning of the offering",
+        giftHeading: "At the gate",
         line: "We arrived with your blessing in our hands.",
         giftLine: "We arrived with a blessing sent just for you.",
       },
       {
         key: "signboard",
         src: `${AKSHANTH_DIR}/signboard.jpg`,
-        heading: "The entrance",
+        heading: "Through the temple gates",
+        giftHeading: "The entrance",
         line: "Where every visit to the Lord begins.",
       },
       {
         key: "sankalpam",
         src: `${AKSHANTH_DIR}/sankalpam.jpg`,
-        heading: "The sankalpam",
+        heading: "Akshanth, remembered in prayer",
+        giftHeading: "The sankalpam",
         line: "Akshanth's name and star, written on the card that travels with the prasadam.",
         giftLine: "Your name and star, written on the card that travels with your prasadam.",
       },
       {
         key: "lamps",
         src: `${AKSHANTH_DIR}/lamps.jpg`,
-        heading: "The lamps",
+        heading: "A flame for his well-being",
+        giftHeading: "The lamps",
         line: "Flames offered for Akshanth's long and happy life.",
         giftLine: "Flames offered for your long and happy life.",
       },
       {
         key: "offerings",
         src: `${AKSHANTH_DIR}/offerings.jpg`,
-        heading: "The offerings",
+        heading: "Flowers and offerings prepared for the Lord",
+        giftHeading: "The offerings",
         line: "Flowers, coconut and prasadam, ready to be blessed.",
         giftLine: "Flowers, coconut and prasadam, ready to be blessed for you.",
       },
       {
         key: "flowers",
         src: `${AKSHANTH_DIR}/flowers.jpg`,
-        heading: "The flowers",
+        heading: "Fresh flowers for the offering",
+        giftHeading: "The flowers",
         line: "Fresh flowers gathered for Akshanth.",
         giftLine: "Fresh flowers gathered for you.",
       },
       {
         key: "on-the-way",
         src: `${AKSHANTH_DIR}/on-the-way.jpg`,
-        heading: "On the way in",
+        heading: "Carrying your wishes inside",
+        giftHeading: "On the way in",
         line: "Past the gate, with the offerings in hand.",
       },
       {
         key: "courtyard",
         src: `${AKSHANTH_DIR}/courtyard.jpg`,
-        heading: "The courtyard",
+        heading: "Within the sacred temple grounds",
+        giftHeading: "The courtyard",
         line: "Where devotees gather before the Lord.",
       },
       {
         key: "hall",
         src: `${AKSHANTH_DIR}/hall.jpg`,
-        heading: "The pillared hall",
+        heading: "Along the path to the Lord",
+        giftHeading: "The pillared hall",
         line: "The hall that leads to the Lord.",
       },
       {

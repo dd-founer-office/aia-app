@@ -1,6 +1,7 @@
+import { reportCopy } from "./vaazhga-copy";
 import type { VaazhgaReport } from "./vaazhga-vaazhthudan-reports";
 
-export type StepKey = "received" | "blessed" | "packed" | "shipped" | "delivered";
+export type StepKey = "received" | "blessed" | "packed" | "shipped" | "transit" | "delivered";
 
 export type TimelineStep = {
   key: StepKey;
@@ -10,6 +11,8 @@ export type TimelineStep = {
   done: boolean;
   /** Small label under the circles for the selected step. */
   status: string;
+  /** Recorded details for this step (date, courier reference), shown only when they exist. */
+  meta?: string;
 };
 
 export type Audience = "booker" | "gift";
@@ -82,4 +85,42 @@ export function buildTimeline(report: VaazhgaReport, audience: Audience): { step
   const steps = all.filter((s): s is TimelineStep => s !== null);
   const firstOpen = steps.findIndex((s) => !s.done);
   return { steps, current: firstOpen === -1 ? steps.length - 1 : firstOpen };
+}
+
+/**
+ * The booker's blessing journey: five milestones with the approved wording
+ * (see vaazhga-copy.ts), driven by the same tracker dates as before. A
+ * milestone is completed only when its own date is recorded, and nothing is
+ * inferred: dispatch and delivery are never shown as done without a record.
+ * "On its way home" has no date of its own, so it completes with delivery.
+ */
+export function buildBookerJourney(report: VaazhgaReport): { steps: TimelineStep[]; current: number } {
+  const t = report.gift.tracker;
+  const { milestones, labels } = reportCopy(report).journey;
+
+  const defs: { key: StepKey; date?: string; extra?: string }[] = [
+    { key: "blessed", date: t.blessedOn },
+    { key: "packed", date: t.packedOn },
+    { key: "shipped", date: t.shippedOn, extra: t.courierRef ? `Courier reference ${t.courierRef}` : undefined },
+    { key: "transit", date: t.deliveredOn ? t.shippedOn ?? "" : undefined },
+    { key: "delivered", date: t.deliveredOn },
+  ];
+  const done = [Boolean(t.blessedOn), Boolean(t.packedOn), Boolean(t.shippedOn), Boolean(t.deliveredOn), Boolean(t.deliveredOn)];
+  const firstOpen = done.findIndex((d) => !d);
+  const current = firstOpen === -1 ? defs.length - 1 : firstOpen;
+
+  const steps = defs.map(({ key, date, extra }, i): TimelineStep => {
+    const m = milestones[key as keyof typeof milestones];
+    const inProgress = !done[i] && i === current && (key === "packed" || key === "transit");
+    const meta = key === "transit" ? undefined : [date, extra].filter(Boolean).join(" · ") || undefined;
+    return {
+      key,
+      title: m.title,
+      text: m.text,
+      done: done[i],
+      status: done[i] ? labels.done : inProgress ? labels.inProgress : labels.awaiting,
+      meta,
+    };
+  });
+  return { steps, current };
 }
