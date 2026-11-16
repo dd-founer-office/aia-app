@@ -64,9 +64,6 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className={g.openerLogo} src={DD_LOGO_LIGHT} alt="Distant Devotion" width={122} height={54} />
             <div className={g.openerText}>
-              <span className={g.tag} lang="ta">
-                இன்று போல் என்றும்
-              </span>
               <h1 style={{ margin: 0 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className={g.openerLogoMark} src={VV_LOGO} alt={`Vaazhga Vaazhthudan, a birthday blessing for ${recipient}`} width={230} height={139} />
