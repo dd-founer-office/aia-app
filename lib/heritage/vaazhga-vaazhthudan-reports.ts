@@ -29,8 +29,36 @@ export type ReportPhoto = {
   src: string;
   /** Short heading shown under the swipe row while this photo is centred. */
   heading: string;
-  /** One grey line under the heading. */
+  /** One grey line under the heading, written to the person who sent it. */
   line: string;
+  /** The same line written to the birthday person, when it needs to differ. */
+  giftLine?: string;
+};
+
+export type Tracker = {
+  /** Display dates, e.g. "27 October". A step is done once its date is set. */
+  blessedOn?: string;
+  packedOn?: string;
+  shippedOn?: string;
+  deliveredOn?: string;
+  /** Courier reference shown under "On its way". */
+  courierRef?: string;
+  /** Courier tracking page. The "Track your parcel" button needs this. */
+  trackUrl?: string;
+};
+
+export type Gift = {
+  /** `<name>-<id2>`, the last URL segment of the gift page. Own unguessable id. */
+  slug: string;
+  /** Who sent the blessing, as the birthday person sees it. */
+  sender: string;
+  birthday: string;
+  star: string;
+  /** Short temple name for the fact card. */
+  templeShort: string;
+  tracker: Tracker;
+  /** Opening clip. Until it exists the opener shows the poster photo. */
+  videoSrc?: string;
 };
 
 export type PhotoKey =
@@ -60,12 +88,17 @@ export type VaazhgaReport = {
   photos: ReportPhoto[];
   /** Index of the photo centred when the row first appears. */
   initialPhotoIndex: number;
-  /**
-   * Public path of the gift page for this blessing, once it exists. While
-   * unset, the "Send to ..." button is shown but not active.
-   */
-  giftHref?: string;
+  /** The page the recipient sees, reached from the report's send button. */
+  gift: Gift;
 };
+
+/** Internal and public (heritage host) paths of a gift page. */
+export function giftPaths(giftSlug: string) {
+  return {
+    internal: `/heritage-gifting/vaazhga-vaazhthudan/blessings/${giftSlug}`,
+    public: `/vaazhga-vaazhthudan/blessings/${giftSlug}`,
+  };
+}
 
 /**
  * The three rows of photo tiles in the hero. Entries are PhotoKeys, or
@@ -79,6 +112,7 @@ export const TILE_ROWS: (PhotoKey | "logo")[][] = [
 ];
 
 const AKSHANTH_SLUG = "akshanth-raj-k4t9wz";
+const AKSHANTH_GIFT_SLUG = "akshanth-raj-p7m3qd";
 const AKSHANTH_DIR = `/heritage/reports/${AKSHANTH_SLUG}`;
 
 const REPORTS: Record<string, VaazhgaReport> = {
@@ -89,18 +123,28 @@ const REPORTS: Record<string, VaazhgaReport> = {
     deity: "Swamimalai Murugan",
     lampSrc: `${AKSHANTH_DIR}/lamps.jpg`,
     initialPhotoIndex: 1,
+    gift: {
+      slug: AKSHANTH_GIFT_SLUG,
+      sender: "Rajesh",
+      birthday: "27 October",
+      star: "Rohini",
+      templeShort: "Swamimalai",
+      tracker: { blessedOn: "27 October" },
+    },
     photos: [
       {
         key: "gopuram",
         src: `${AKSHANTH_DIR}/gopuram.jpg`,
         heading: "The temple",
         line: "Swamimalai Murugan temple, where Akshanth's name was offered.",
+        giftLine: "Swamimalai Murugan temple, where your name was offered.",
       },
       {
         key: "gate",
         src: `${AKSHANTH_DIR}/gate.jpg`,
         heading: "At the gate",
         line: "We arrived with your blessing in our hands.",
+        giftLine: "We arrived with a blessing sent just for you.",
       },
       {
         key: "signboard",
@@ -113,24 +157,28 @@ const REPORTS: Record<string, VaazhgaReport> = {
         src: `${AKSHANTH_DIR}/sankalpam.jpg`,
         heading: "The sankalpam",
         line: "Akshanth's name and star, written on the card that travels with the prasadam.",
+        giftLine: "Your name and star, written on the card that travels with your prasadam.",
       },
       {
         key: "lamps",
         src: `${AKSHANTH_DIR}/lamps.jpg`,
         heading: "The lamps",
         line: "Flames offered for Akshanth's long and happy life.",
+        giftLine: "Flames offered for your long and happy life.",
       },
       {
         key: "offerings",
         src: `${AKSHANTH_DIR}/offerings.jpg`,
         heading: "The offerings",
         line: "Flowers, coconut and prasadam, ready to be blessed.",
+        giftLine: "Flowers, coconut and prasadam, ready to be blessed for you.",
       },
       {
         key: "flowers",
         src: `${AKSHANTH_DIR}/flowers.jpg`,
         heading: "The flowers",
         line: "Fresh flowers gathered for Akshanth.",
+        giftLine: "Fresh flowers gathered for you.",
       },
       {
         key: "on-the-way",
@@ -162,4 +210,9 @@ const REPORTS: Record<string, VaazhgaReport> = {
 
 export function getVaazhgaReport(slug: string): VaazhgaReport | null {
   return REPORTS[slug] ?? null;
+}
+
+/** Looks a report up by the id in its gift page's own link. */
+export function getVaazhgaReportByGiftSlug(giftSlug: string): VaazhgaReport | null {
+  return Object.values(REPORTS).find((r) => r.gift.slug === giftSlug) ?? null;
 }

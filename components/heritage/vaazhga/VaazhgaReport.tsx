@@ -1,8 +1,11 @@
 import {
   TILE_ROWS,
+  giftPaths,
   type PhotoKey,
   type VaazhgaReport as Report,
 } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
+import { Frame } from "./Frame";
+import { SendButton } from "./SendButton";
 import { SeeMoreButton } from "./SeeMoreButton";
 import { TempleCarousel } from "./TempleCarousel";
 import { TileRows } from "./TileRows";
@@ -21,17 +24,6 @@ const SOCIALS: { label: string; href?: string; glyph: "in" | "ig" | "f" }[] = [
 
 function cap(word: string) {
   return word.charAt(0).toUpperCase() + word.slice(1);
-}
-
-function Frame() {
-  return (
-    <div className={s.frame} aria-hidden="true">
-      <i />
-      <i />
-      <i />
-      <i />
-    </div>
-  );
 }
 
 function SocialGlyph({ glyph }: { glyph: "in" | "ig" | "f" }) {
@@ -57,7 +49,8 @@ function SocialGlyph({ glyph }: { glyph: "in" | "ig" | "f" }) {
  * docs/heritage-gifting-voice.md).
  */
 export function VaazhgaReport({ report }: { report: Report }) {
-  const { recipient, pronouns: p, deity, lampSrc, photos, initialPhotoIndex, giftHref } = report;
+  const { recipient, pronouns: p, deity, lampSrc, photos, initialPhotoIndex, gift } = report;
+  const paths = giftPaths(gift.slug);
   const srcByKey = new Map<PhotoKey, string>(photos.map((photo) => [photo.key, photo.src]));
 
   return (
@@ -135,23 +128,8 @@ export function VaazhgaReport({ report }: { report: Report }) {
             </div>
             <Frame />
           </div>
-          {giftHref ? (
-            <>
-              <a className={`${s.cal} ${s.btn}`} href={giftHref}>
-                Send to {recipient}
-                <SendIcon />
-              </a>
-              <p className={s.note}>You will see a preview first.</p>
-            </>
-          ) : (
-            <>
-              <button type="button" className={`${s.cal} ${s.btn} ${s.btnOff}`} disabled aria-disabled="true">
-                Send to {recipient}
-                <SendIcon />
-              </button>
-              <p className={s.note}>Sharing opens once the gift page is ready.</p>
-            </>
-          )}
+          <SendButton label={`Send to ${recipient}`} publicPath={paths.public} internalPath={paths.internal} />
+          <p className={s.note}>You will see a preview first.</p>
         </section>
 
         {/* ---------- Closing ---------- */}
@@ -193,12 +171,3 @@ export function VaazhgaReport({ report }: { report: Report }) {
   );
 }
 
-function SendIcon() {
-  return (
-    <span className={s.btnIcon} aria-hidden="true">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFEFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M5 19L19 5M8 5h11v11" />
-      </svg>
-    </span>
-  );
-}

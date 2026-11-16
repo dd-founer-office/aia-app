@@ -1,0 +1,414 @@
+/*
+ * Heritage Gifting: the page the birthday person sees. Shares the report's
+ * palette (set on the .shell in report.module.css); only what is specific to
+ * this page lives here.
+ */
+
+/* ---------- Opener ---------- */
+
+.opener {
+  position: relative;
+  height: max(100svh, 720px);
+  overflow: hidden;
+  border-radius: 0 0 14px 14px;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+}
+
+.openerMedia {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.openerShade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top, rgba(58, 11, 26, 0.95) 0%, rgba(58, 11, 26, 0.55) 38%, rgba(58, 11, 26, 0) 62%),
+    linear-gradient(to bottom, rgba(58, 11, 26, 0.6), rgba(58, 11, 26, 0) 22%);
+}
+
+.openerLogo {
+  position: absolute;
+  left: 20px;
+  top: 28px;
+  width: auto;
+  height: 54px;
+}
+
+.sound {
+  position: absolute;
+  right: 20px;
+  top: 34px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(58, 11, 26, 0.55);
+  cursor: pointer;
+}
+
+.openerText {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 96px;
+}
+
+.tag {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffb48a;
+}
+
+.openerTitle {
+  margin-top: 12px;
+  font-size: 38px;
+  line-height: 1.08;
+}
+
+.openerTitle em {
+  font-style: normal;
+  color: var(--hg-orange);
+}
+
+.sentBy {
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1.4;
+  opacity: 0.92;
+}
+
+.cue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 26px;
+  display: flex;
+  justify-content: center;
+}
+
+.cueBtn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--hg-orange);
+  cursor: pointer;
+}
+
+/* ---------- Your name ---------- */
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 22px 22px 0;
+}
+
+.fact {
+  padding: 12px 6px;
+  border-radius: 16px;
+  background: var(--hg-container);
+  text-align: center;
+}
+
+.fact small {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hg-grey);
+}
+
+.fact b {
+  display: block;
+  margin-top: 7px;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.sectionHead {
+  padding: 56px 26px 0;
+  text-align: center;
+}
+
+/* ---------- Tracker ---------- */
+
+.tracker {
+  margin-top: 56px;
+  padding: 48px 26px;
+  border-radius: 14px;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+}
+
+.tracker .title {
+  font-size: 30px;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--hg-orange);
+}
+
+.trackerLead {
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: center;
+  color: rgba(255, 254, 255, 0.82);
+}
+
+.steps {
+  margin: 30px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  padding-bottom: 26px;
+}
+
+.step:last-child {
+  padding-bottom: 0;
+}
+
+.step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 34px;
+  bottom: 2px;
+  width: 2px;
+  background: rgba(255, 254, 255, 0.25);
+}
+
+.dot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dotPending {
+  border: 1.5px solid rgba(255, 254, 255, 0.4);
+  background: transparent;
+  color: rgba(255, 254, 255, 0.6);
+}
+
+.stepName {
+  display: block;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.stepPending .stepName {
+  opacity: 0.6;
+}
+
+.stepNote {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(255, 254, 255, 0.65);
+}
+
+/* ---------- Tamil blessing ---------- */
+
+.blessing {
+  margin-top: 56px;
+  padding: 64px 28px 76px;
+  border-radius: 14px 14px 0 0;
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+  text-align: center;
+}
+
+.blessingTamil {
+  font-family: var(--font-tamil-sans), sans-serif;
+  font-weight: 600;
+  font-size: clamp(17px, 5.6vw, 22px);
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.blessingEn {
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+/* ---------- Categories ---------- */
+
+.cats {
+  position: relative;
+  margin-top: -14px;
+  padding: 56px 22px 48px;
+  border-radius: 14px 14px 0 0;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+  text-align: center;
+}
+
+.cats .title {
+  font-size: 28px;
+  line-height: 1.15;
+  color: var(--hg-orange);
+}
+
+.catsLead {
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(255, 254, 255, 0.82);
+}
+
+.catGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.cat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 254, 255, 0.2);
+  border-radius: 18px;
+}
+
+.catIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255, 254, 255, 0.12);
+}
+
+.catName {
+  display: block;
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.catSub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: rgba(255, 254, 255, 0.65);
+}
+
+.catOn {
+  border-color: var(--hg-orange);
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+}
+
+.catOn .catIcon {
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+}
+
+.catOn .catSub {
+  color: rgba(58, 11, 26, 0.75);
+}
+
+/* ---------- Share bar (booker preview only) ---------- */
+
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: var(--hg-maroon);
+  color: var(--hg-on-dark);
+  box-shadow: 0 -10px 30px rgba(58, 11, 26, 0.35);
+}
+
+.barText {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: center;
+  color: rgba(255, 254, 255, 0.8);
+}
+
+.barRow {
+  display: flex;
+  gap: 10px;
+}
+
+.barBtn {
+  flex: 1;
+  padding: 14px 10px;
+  border: 0;
+  border-radius: 14px;
+  font-family: var(--hg-cal), var(--hg-inter), sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.barPrimary {
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+}
+
+.barGhost {
+  border: 1.5px solid rgba(255, 254, 255, 0.4);
+  background: transparent;
+  color: var(--hg-on-dark);
+}
+
+.withBar {
+  padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  background: var(--hg-maroon);
+}
+
+/* With the share bar up, keep the opener's text and cue clear of it. */
+.openerBar .openerText {
+  bottom: 196px;
+}
+.openerBar .cue {
+  bottom: 120px;
+}
