@@ -5,6 +5,7 @@ import {
 } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
 import { SeeMoreButton } from "./SeeMoreButton";
 import { TempleCarousel } from "./TempleCarousel";
+import { TileRows } from "./TileRows";
 import s from "./report.module.css";
 
 const LAMP_SECTION_ID = "lamp";
@@ -81,32 +82,16 @@ export function VaazhgaReport({ report }: { report: Report }) {
             </div>
           </section>
 
-          <div className={s.rows} aria-hidden="true">
-            {TILE_ROWS.map((row, r) => (
-              <div key={r} className={`${s.row} ${[s.row1, s.row2, s.row3][r]}`}>
-                {row.map((tile, i) =>
-                  tile === "logo" ? (
-                    <div key={i} className={s.logoTile}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={VV_LOGO} alt="" width={70} height={42} />
-                    </div>
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={i}
-                      className={s.tile}
-                      src={srcByKey.get(tile) ?? lampSrc}
-                      alt=""
-                      width={87}
-                      height={87}
-                      loading={r === 2 ? "lazy" : "eager"}
-                      decoding="async"
-                    />
-                  ),
-                )}
-              </div>
-            ))}
-          </div>
+          <TileRows
+            rows={TILE_ROWS.map((row) =>
+              row.map((tile) =>
+                tile === "logo"
+                  ? ({ kind: "logo" } as const)
+                  : ({ kind: "photo", src: srcByKey.get(tile) ?? lampSrc } as const),
+              ),
+            )}
+            logoSrc={VV_LOGO}
+          />
         </div>
 
         {/* ---------- Lamp ---------- */}

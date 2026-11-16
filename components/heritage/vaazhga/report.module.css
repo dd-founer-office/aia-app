@@ -132,6 +132,7 @@
 
 .row {
   position: absolute;
+  will-change: transform;
   left: 0;
   display: flex;
   gap: 9px;
@@ -140,15 +141,15 @@
 
 .row1 {
   top: calc(var(--H) - 217px);
-  left: -37px;
+  left: -229px;
 }
 .row2 {
   top: calc(var(--H) - 95px);
-  left: -80px;
+  left: -272px;
 }
 .row3 {
   top: calc(var(--H) + 27px);
-  left: -87px;
+  left: -279px;
 }
 
 .tile {
