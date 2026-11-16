@@ -4,7 +4,7 @@ import type { VaazhgaReport } from "./vaazhga-vaazhthudan-reports";
  * Approved copy for the booker's Vaazhga Vaazhthudan report, word for word.
  * Recipient details (name, pronouns, deity, place) are filled in from the
  * report's own data, so nothing about the recipient is hard-coded here.
- * Straight apostrophes and the em dash are exactly as approved.
+ * Straight apostrophes are exactly as approved.
  */
 const cap = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
@@ -17,7 +17,7 @@ export function reportCopy(report: VaazhgaReport) {
       paragraphs: [
         `You wanted ${name} to receive ${deityShort}'s blessings on ${p.possessive} birthday.`,
         `${cap(p.possessive)} name and star were offered in prayer at ${place}. The moments from the temple have been preserved here, and ${p.possessive} blessed prasadam is now being prepared for its journey home.`,
-        "A birthday wish, a prayer and your love — brought a little closer, despite the distance.",
+        "A birthday wish, a prayer and your love, brought a little closer, despite the distance.",
       ],
     },
     lamp: {

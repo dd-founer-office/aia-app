@@ -9,7 +9,6 @@ import { reportCopy } from "@/lib/heritage/vaazhga-copy";
 import { buildBookerJourney } from "@/lib/heritage/vaazhga-timeline";
 import { Frame } from "./Frame";
 import { SendButton } from "./SendButton";
-import { SeeMoreButton } from "./SeeMoreButton";
 import { TempleCarousel } from "./TempleCarousel";
 import { Timeline } from "./Timeline";
 import { TileRows } from "./TileRows";
@@ -17,7 +16,8 @@ import s from "./report.module.css";
 
 const LAMP_SECTION_ID = "lamp";
 const VV_LOGO = "/heritage/vv-logo.png";
-const DD_LOGO = "/brand/distant-devotion-logo.png";
+// Transparent version, so the footer line art shows through around the lettering.
+const DD_LOGO_CLEAR = "/heritage/dd-logo-light.png";
 
 // Social links: icons only until the real account URLs are supplied.
 const SOCIALS: { label: string; href?: string; glyph: "in" | "ig" | "f" }[] = [
@@ -62,8 +62,6 @@ export function VaazhgaReport({ report }: { report: Report }) {
         {/* ---------- Hero ---------- */}
         <div className={s.heroWrap}>
           <section className={s.hero} aria-label={c.hero.headline}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={s.logo} src={DD_LOGO} alt="Distant Devotion" width={119} height={54} />
             <div className={s.heroText}>
               <p className={s.tamilLabel} lang="ta">
                 வாழ்க வாழ்த்துடன்
@@ -74,7 +72,6 @@ export function VaazhgaReport({ report }: { report: Report }) {
                   {text}
                 </p>
               ))}
-              <SeeMoreButton targetId={LAMP_SECTION_ID} />
             </div>
           </section>
 
@@ -171,8 +168,9 @@ export function VaazhgaReport({ report }: { report: Report }) {
 
         {/* ---------- Footer ---------- */}
         <footer className={s.footer}>
+          <div className={s.footerArt} aria-hidden="true" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={s.footerLogo} src={DD_LOGO} alt="Distant Devotion" width={210} height={95} loading="lazy" />
+          <img className={s.footerLogo} src={DD_LOGO_CLEAR} alt="Distant Devotion" width={210} height={93} loading="lazy" />
           <div className={s.socials}>
             {SOCIALS.map((social) =>
               social.href ? (

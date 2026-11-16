@@ -56,14 +56,6 @@
   padding: 100px 0 280px;
 }
 
-.logo {
-  position: absolute;
-  left: 20px;
-  top: 28px;
-  height: 54px;
-  width: auto;
-}
-
 .heroText {
   flex: 1;
   min-height: 330px;
@@ -100,24 +92,6 @@
   margin-top: 12px;
 }
 
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 13px;
-  margin-top: 20px;
-  padding: 13px 14px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--hg-orange);
-  color: var(--hg-maroon);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  font-family: var(--hg-inter), sans-serif;
-  font-weight: 500;
-}
-
-.pillIcon,
 .btnIcon {
   display: grid;
   flex: none;
@@ -470,6 +444,7 @@
 
 .footer {
   position: relative;
+  overflow: hidden;
   margin-top: -14px;
   padding: 60px 0 calc(56px + env(safe-area-inset-bottom));
   border-radius: 6px 6px 0 0;
@@ -549,7 +524,6 @@
 }
 
 /* Arrow glyph sized to the button's 14px text. */
-.pillIcon svg,
 .btnIcon svg {
   width: 9px;
   height: 9px;
@@ -564,4 +538,17 @@
 
 .journey .lead:last-of-type {
   margin-bottom: 32px;
+}
+
+/* Temple-corridor line art behind the footer, at 25% opacity. */
+.footerArt {
+  position: absolute;
+  inset: 0;
+  background: url("/heritage/footer-corridor.webp") center / cover no-repeat;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.footer > :not(.footerArt) {
+  position: relative;
 }
