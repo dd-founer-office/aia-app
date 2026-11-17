@@ -68,6 +68,13 @@
   color: var(--hg-on-dark);
 }
 
+.suzhi {
+  display: block;
+  width: 20px;
+  height: auto;
+  margin: 0 auto 10px;
+}
+
 .tamilLabel {
   font-family: var(--font-tamil-sans), sans-serif;
   font-weight: 400;
