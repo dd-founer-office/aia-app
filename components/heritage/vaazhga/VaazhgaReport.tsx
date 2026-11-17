@@ -45,6 +45,9 @@ export function VaazhgaReport({ report }: { report: Report }) {
         <div className={s.heroWrap}>
           <section className={s.hero} aria-label={c.hero.headline}>
             <div className={s.heroText}>
+              {/* Pillayar suzhi, as on the sankalpam card: a small mark at the very top. Ivory, with the orange dot. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className={s.suzhi} src="/heritage/pillayar-suzhi.png" alt="" aria-hidden="true" width={20} height={20} />
               <p className={s.tamilLabel} lang="ta">
                 வாழ்க வாழ்த்துடன்
               </p>
