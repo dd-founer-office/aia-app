@@ -130,6 +130,8 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
 
           {/* ---------- Track here ---------- */}
           <div className={g.trackRow}>
+            <h2 className={`${s.cal} ${s.h2}`}>{c.prasadam.status.title}</h2>
+            <p className={s.lead}>{c.prasadam.status.text}</p>
             <TrackButton label={c.prasadam.track} trackUrl={tracker.trackUrl} targetId={JOURNEY_SECTION_ID} tone="orange" />
           </div>
 
