@@ -33,6 +33,8 @@ export type ReportPhoto = {
   giftHeading?: string;
   /** One grey line under the heading, written to the person who sent it. */
   line: string;
+  /** A wide picture (such as the written half of the sankalpam card): shown wider in the row and whole in cards. */
+  wide?: boolean;
   /** The same line written to the birthday person, when it needs to differ. */
   giftLine?: string;
 };
@@ -89,7 +91,14 @@ export type PhotoKey =
   | "on-the-way"
   | "courtyard"
   | "hall"
-  | "corner";
+  | "corner"
+  /** Tile-only pictures: the deity, and the brand half of the sankalpam card. */
+  | "amman"
+  | "brand"
+  /** The blessed prasadam on its tray, in three pictures. */
+  | "prasadam"
+  | "prasadam-lotus"
+  | "prasadam-card";
 
 export type VaazhgaReport = {
   /** `<name>-<id>`, the last URL segment. The id must be unguessable. */
@@ -114,6 +123,10 @@ export type VaazhgaReport = {
   /** The page the recipient sees, reached from the report's send button. */
   gift: Gift;
   story?: Story;
+  /** This booking's own hero tile rows, when it has pictures the standard rows don't know about. */
+  tileRows?: (PhotoKey | "logo")[][];
+  /** Pictures used only as hero tiles, by key. */
+  tileSrc?: Partial<Record<PhotoKey, string>>;
 };
 
 /** Internal and public (heritage host) paths of a gift page. */
@@ -162,6 +175,17 @@ const REPORTS: Record<string, VaazhgaReport> = {
       star: "Poosam",
       templeShort: "Koothanur",
       tracker: { blessedOn: "17 November" },
+    },
+    tileRows: [
+      ["gopuram", "amman", "lamps", "logo", "brand", "offerings"],
+      ["flowers", "prasadam-lotus", "logo", "amman", "corner", "hall"],
+      ["brand", "logo", "signboard", "amman", "prasadam", "gate"],
+    ],
+    tileSrc: {
+      amman: `${ARIHANT_DIR}/amman.jpg`,
+      brand: `${ARIHANT_DIR}/card-brand.jpg`,
+      prasadam: `${ARIHANT_DIR}/prasadam-tray.jpg`,
+      "prasadam-lotus": `${ARIHANT_DIR}/prasadam-lotus.jpg`,
     },
     story: {
       reportHero: [
@@ -224,7 +248,8 @@ const REPORTS: Record<string, VaazhgaReport> = {
       },
       {
         key: "sankalpam",
-        src: `${ARIHANT_DIR}/card.jpg`,
+        src: `${ARIHANT_DIR}/card-written.jpg`,
+        wide: true,
         heading: "Arihant, remembered in prayer",
         giftHeading: "Your name and star",
         line: "His name and star, written for the offering.",
@@ -237,6 +262,27 @@ const REPORTS: Record<string, VaazhgaReport> = {
         giftHeading: "Your pen, at the Amman's feet",
         line: "Blessed with an archanai, ready for its journey to Abu Dhabi.",
         giftLine: "Blessed with an archanai, ready to travel to you in Abu Dhabi.",
+      },
+      {
+        key: "prasadam",
+        src: `${ARIHANT_DIR}/prasadam-tray.jpg`,
+        heading: "The blessed prasadam",
+        giftHeading: "Your blessed prasadam",
+        line: "Coconut, bananas and flowers from the shrine, with the pen.",
+        giftLine: "Coconut, bananas and flowers from the shrine, with your pen.",
+      },
+      {
+        key: "prasadam-lotus",
+        src: `${ARIHANT_DIR}/prasadam-lotus.jpg`,
+        heading: "An offering from the shrine",
+        line: "Coconut, bananas and a lotus, as they came from the temple.",
+      },
+      {
+        key: "prasadam-card",
+        src: `${ARIHANT_DIR}/prasadam-card.jpg`,
+        heading: "The pen, the card and the Amman",
+        giftHeading: "Your pen, your card and the Amman",
+        line: "Gathered together on one tray.",
       },
     ],
   },

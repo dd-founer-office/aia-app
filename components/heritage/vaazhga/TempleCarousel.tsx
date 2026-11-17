@@ -127,6 +127,7 @@ export function TempleCarousel({ photos, initialIndex }: Props) {
             alt={`${photo.heading}. ${photo.line}`}
             width={520}
             height={520}
+            className={photo.wide ? s.wide : undefined}
             loading={i <= initialIndex + 1 ? "eager" : "lazy"}
             decoding="async"
             draggable={false}

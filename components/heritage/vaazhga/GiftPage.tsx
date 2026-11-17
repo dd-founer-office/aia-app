@@ -42,7 +42,8 @@ export function GiftPage({ report, preview, message, senders }: { report: Vaazhg
   const { recipient, lampSrc, photos, initialPhotoIndex, gift } = report;
   const { tracker } = gift;
   const paths = giftPaths(gift.slug);
-  const sankalpam = photos.find((p) => p.key === "sankalpam")?.src ?? lampSrc;
+  const sankalpamPhoto = photos.find((p) => p.key === "sankalpam");
+  const sankalpam = sankalpamPhoto?.src ?? lampSrc;
   const giftPhotos = photos.map((p) => ({ ...p, heading: p.giftHeading ?? p.heading, line: p.giftLine ?? p.line }));
 
   const journey = buildGiftJourney(report);
@@ -86,7 +87,7 @@ export function GiftPage({ report, preview, message, senders }: { report: Vaazhg
           <div className={s.band}>
             <div className={s.card}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={sankalpam} alt="Your sankalpam card" width={520} height={520} loading="lazy" decoding="async" />
+              <img className={sankalpamPhoto?.wide ? s.cardWhole : undefined} src={sankalpam} alt="Your sankalpam card" width={520} height={520} loading="lazy" decoding="async" />
               <Frame />
             </div>
           </div>
