@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { MAX_SENDERS, signoffLines } from "@/lib/heritage/vaazhga-senders";
+import { MAX_NAME, MAX_RELATION, MAX_SENDERS, signoffLines } from "@/lib/heritage/vaazhga-senders";
 import { MAX_MESSAGE_LENGTH } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
 import { useMessage } from "./MessageContext";
 import { SenderCard } from "./SenderCard";
@@ -43,13 +43,16 @@ export function MessageSection({ recipient, preview, composeId }: { recipient: s
       </div>
 
       <p className={g.fromHead}>Who is it from?</p>
+      <p className={g.composeHint}>
+        Up to {MAX_SENDERS} names, with a short relationship such as Appa or Amma. Each shows as one line under your message.
+      </p>
       <div className={g.fromRows}>
         {senders.map((row, i) => (
           <div key={i} className={g.fromRow}>
             <input
               className={g.fromInput}
               value={row.name}
-              maxLength={40}
+              maxLength={MAX_NAME}
               placeholder="Name"
               aria-label={`Name ${i + 1}`}
               autoComplete="off"
@@ -58,8 +61,8 @@ export function MessageSection({ recipient, preview, composeId }: { recipient: s
             <input
               className={g.fromInput}
               value={row.relation}
-              maxLength={24}
-              placeholder="Relationship (Appa, Amma…)"
+              maxLength={MAX_RELATION}
+              placeholder="Relationship (Appa…)"
               aria-label={`Relationship ${i + 1}`}
               autoComplete="off"
               onChange={(e) => update(i, "relation", e.target.value)}

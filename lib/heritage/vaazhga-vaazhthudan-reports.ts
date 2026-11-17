@@ -153,7 +153,7 @@ const REPORTS: Record<string, VaazhgaReport> = {
     deityTamil: "சரஸ்வதி அம்மனின்",
     place: "Koothanur",
     lampSrc: `${ARIHANT_DIR}/plaque.jpg`,
-    initialPhotoIndex: 2,
+    initialPhotoIndex: 3,
     gift: {
       slug: ARIHANT_GIFT_SLUG,
       // The sender is chosen by the booker in the writing box and travels in the link.
@@ -181,6 +181,13 @@ const REPORTS: Record<string, VaazhgaReport> = {
         giftHeading: "Where your first letters were written",
         line: "Koothanur's Saraswathi Amman temple, where Arihant's name was offered.",
         giftLine: "Saraswathi Amman's temple at Koothanur, where your name was offered.",
+      },
+      {
+        key: "gate",
+        src: `${ARIHANT_DIR}/entrance.jpg`,
+        heading: "Through the temple gates",
+        giftHeading: "The entrance",
+        line: "Arulmigu Maha Saraswathi Amman Thirukoil, Koothanur.",
       },
       {
         key: "signboard",
