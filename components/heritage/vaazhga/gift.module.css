@@ -689,17 +689,6 @@
   font-size: 15px; /* the base; SenderCard shrinks it until everything fits */
 }
 
-.cardThoran {
-  position: absolute;
-  top: 0.4em;
-  left: 50%;
-  width: 14.3em; /* in em, so it shrinks with the card text and never reaches the quote mark */
-  max-width: 90%;
-  height: auto;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
 .paperOurs {
   position: relative;
   justify-content: center;
