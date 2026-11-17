@@ -14,6 +14,7 @@ import g from "./gift.module.css";
 import s from "./report.module.css";
 
 const DD_LOGO = "/brand/distant-devotion-logo.png";
+const DD_LOGO_LIGHT = "/heritage/dd-logo-light.png";
 const VV_LOGO = "/heritage/vv-logo.png";
 const PRAYER_SECTION_ID = "prayer";
 const JOURNEY_SECTION_ID = "journey";
@@ -57,6 +58,8 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
             paragraphs={c.hero.paragraphs}
             envelopeLabel={c.envelopeLabel}
             signoff={c.signoff}
+            tamil={c.tamil}
+            ddLogoSrc={DD_LOGO_LIGHT}
             logoSrc={VV_LOGO}
             logoAlt={`Vaazhga Vaazhthudan, a birthday blessing for ${recipient}`}
             posterSrc={lampSrc}

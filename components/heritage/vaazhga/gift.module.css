@@ -603,8 +603,8 @@
   opacity: 0.85;
 }
 
-/* The message screen: the heart widens until it fills the screen. */
-.msgScreen {
+/* The stage: a maroon screen where the envelope opens and two cards rise out. */
+.stage {
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -612,31 +612,231 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 28px 96px;
-  background: var(--hg-orange);
-  color: var(--hg-maroon);
+  gap: 12px;
+  padding: 24px 0;
+  background: var(--hg-maroon);
+  animation: stageIn 0.35s ease both;
+  overflow: hidden;
+}
+
+.scene {
+  --ch: clamp(290px, calc(100svh - 420px), 440px);
+  position: relative;
+  width: min(300px, 80vw);
+  height: calc(var(--ch) + 230px);
+  perspective: 900px;
+}
+
+.cards {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--ch);
+}
+
+.rise {
+  position: absolute;
+  inset: 0;
+  animation: cardRise 0.95s cubic-bezier(0.2, 0.9, 0.25, 1) var(--d) both;
+}
+
+.card {
+  position: absolute;
+  inset: 0;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.cardBehind {
+  transform: translateY(12px) scale(0.95) rotate(2deg);
+  cursor: pointer;
+}
+
+.cardGone {
+  transform: translateX(-130%) rotate(-14deg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.paper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  padding: 20px 22px;
+  border-radius: 12px;
   text-align: center;
-  clip-path: circle(150vmax at var(--ox) var(--oy));
-  animation: msgWiden 0.7s cubic-bezier(0.5, 0, 0.2, 1) both;
-  overflow-y: auto;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
 }
 
-.msgInner {
-  max-width: 420px;
-}
-
-.msgScreen .messageMark {
+.paperSender {
+  background: var(--hg-ivory);
   color: var(--hg-maroon);
 }
 
-.msgScreen .messageText {
-  font-size: 24px;
+.paperOurs {
+  background: #4b1427;
+  color: var(--hg-on-dark);
+  justify-content: space-between;
+}
+
+/* Empty on purpose: room for the artwork that is added later. */
+.artTop {
+  flex: none;
+  width: 100%;
+  height: 64px;
+}
+
+.artBottom {
+  flex: none;
+  width: 100%;
+  height: 44px;
+  margin-top: auto;
+}
+
+.artMid {
+  flex: none;
+  width: 100%;
+  height: 16px;
+}
+
+.cardMark {
+  display: block;
+  margin-bottom: -6px;
+  font-size: 44px;
+  line-height: 1;
+  color: var(--hg-orange);
+}
+
+.cardText {
+  margin: 8px 0 0;
+  line-height: 1.35;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  color: var(--hg-maroon);
+}
+
+.cardSign {
+  margin: 16px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--hg-maroon);
+}
+
+.cardVv {
+  flex: none;
+  width: 118px;
+  height: auto;
+}
+
+.cardTamilLabel {
+  margin: 0;
+  font-family: var(--font-tamil-sans), sans-serif;
+  font-size: 13px;
+  letter-spacing: 0;
+  opacity: 0.85;
+}
+
+.cardTamil {
+  margin: 0;
+  font-family: var(--font-tamil-sans), sans-serif;
+  font-weight: 600;
+  font-size: clamp(12px, 3.6vw, 14.5px);
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+
+.cardDd {
+  flex: none;
+  width: 92px;
+  height: auto;
+}
+
+.dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--ch) + 10px);
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  animation: fadeLate 0.4s ease 2.2s both;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(247, 241, 234, 0.35);
+  cursor: pointer;
+}
+
+.dotOn {
+  background: var(--hg-orange);
+}
+
+/* The envelope: back, flap, front pocket and the seal. The flap swings open
+   and the cards rise out from behind the front pocket. */
+.env {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 220px;
+  height: 130px;
+  transform: translateX(-50%);
+  animation: envIn 0.5s ease both;
+}
+
+.envBack,
+.envFlap,
+.envFront {
+  position: absolute;
+  inset: 0;
+}
+
+.envBack {
+  z-index: 1;
+  border-radius: 8px;
+  background: #d9cbbe;
+}
+
+.envFront {
+  z-index: 3;
+  border-radius: 8px;
+  background: var(--hg-ivory);
+  clip-path: polygon(0 0, 50% 56%, 100% 0, 100% 100%, 0 100%);
+}
+
+.envFlap {
+  z-index: 4;
+  background: #efe4da;
+  clip-path: polygon(0 0, 100% 0, 50% 56%);
+  transform-origin: 50% 0;
+  animation: flapOpen 0.6s ease 0.55s both;
+}
+
+.envSeal {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--hg-orange);
+  color: #d8101e;
+  transform: translate(-50%, -50%);
+  animation: sealOut 0.35s ease 0.45s both;
 }
 
 .msgNext {
-  position: absolute;
-  left: 50%;
-  bottom: 32px;
   display: grid;
   place-items: center;
   width: 40px;
@@ -644,10 +844,43 @@
   padding: 0;
   border: 0;
   border-radius: 6px;
-  background: var(--hg-maroon);
-  color: var(--hg-orange);
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
   cursor: pointer;
-  transform: translateX(-50%);
+  animation: fadeLate 0.4s ease 2.2s both;
+}
+
+@keyframes stageIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes envIn {
+  from { opacity: 0; transform: translate(-50%, 40px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes sealOut {
+  to { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+}
+
+@keyframes flapOpen {
+  0% { transform: rotateX(0); z-index: 4; }
+  50% { transform: rotateX(90deg); z-index: 4; }
+  51% { z-index: 0; }
+  100% { transform: rotateX(180deg); z-index: 0; }
+}
+
+@keyframes cardRise {
+  0% { opacity: 0; transform: translateY(calc(var(--ch) + 40px)) scale(0.4); }
+  15% { opacity: 1; }
+  70% { transform: translateY(-14px) scale(1.02); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes fadeLate {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .signoff {
@@ -670,8 +903,27 @@
 
 @media (prefers-reduced-motion: reduce) {
   .seal,
-  .msgScreen {
+  .stage,
+  .rise,
+  .env,
+  .envFlap,
+  .envSeal,
+  .dots,
+  .msgNext {
     animation: none;
+  }
+
+  .envFlap {
+    transform: rotateX(180deg);
+    z-index: 0;
+  }
+
+  .envSeal {
+    opacity: 0;
+  }
+
+  .card {
+    transition: none;
   }
 }
 
@@ -689,4 +941,36 @@
 /* With the share bar up, the hero stops above it so the envelope stays clear. */
 .withBar .hero {
   min-height: calc(100svh - 110px - env(safe-area-inset-bottom));
+}
+
+/* Short phones: tighten the cards so the Tamil blessing still fits. */
+@media (max-height: 700px) {
+  .paper {
+    padding: 14px 18px;
+  }
+
+  .cardVv {
+    width: 88px;
+  }
+
+  .artMid {
+    height: 2px;
+  }
+
+  .cardTamil {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .cardTamilLabel {
+    font-size: 11px;
+  }
+
+  .cardDd {
+    width: 74px;
+  }
+
+  .artTop {
+    height: 36px;
+  }
 }
