@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { giftCopy } from "@/lib/heritage/vaazhga-gift-copy";
 import { buildGiftJourney } from "@/lib/heritage/vaazhga-timeline";
 import { giftPaths, type VaazhgaReport } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
@@ -9,6 +8,7 @@ import { HeroReveal } from "./HeroReveal";
 import { PreviewBar } from "./PreviewBar";
 import { TempleCarousel } from "./TempleCarousel";
 import { Timeline } from "./Timeline";
+import { Socials } from "./Socials";
 import { TrackButton } from "./TrackButton";
 import g from "./gift.module.css";
 import s from "./report.module.css";
@@ -135,28 +135,11 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
           <div className={g.trackRow}>
             <h2 className={`${s.cal} ${s.h2}`}>{c.prasadam.status.title}</h2>
             <p className={s.lead}>{c.prasadam.status.text}</p>
-            <TrackButton label={c.prasadam.track} trackUrl={tracker.trackUrl} targetId={JOURNEY_SECTION_ID} tone="orange" />
+            <TrackButton label={c.prasadam.track} trackUrl={tracker.trackUrl} targetId={JOURNEY_SECTION_ID} />
           </div>
 
-          {/* ---------- Tamil blessing ---------- */}
-          <section className={g.blessing} aria-label="A blessing">
-            <p className={g.blessingLabel} lang="ta">
-              {c.tamil.label}
-            </p>
-            <p className={g.blessingTamil} lang="ta">
-              {c.tamil.lines.map((line, i) => (
-                <Fragment key={line}>
-                  {i > 0 ? <br /> : null}
-                  {line}
-                </Fragment>
-              ))}
-            </p>
-            <p className={`${g.blessingTamil} ${g.blessingWrap}`} lang="ta">
-              {c.tamil.deityLine}
-            </p>
-            <p className={`${g.blessingTamil} ${g.blessingWrap}`} lang="ta">
-              {c.tamil.closing}
-            </p>
+          {/* ---------- Closing ---------- */}
+          <section className={g.blessing} aria-label="Closing">
             <h2 className={`${s.cal} ${g.closingHead}`}>{c.closing.headline}</h2>
             {c.closing.paragraphs.map((text) => (
               <p key={text} className={g.closingText}>
@@ -192,6 +175,7 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
           <footer className={s.footer} style={{ marginTop: 0, borderRadius: 0 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className={s.footerLogo} src={DD_LOGO} alt="Distant Devotion" width={210} height={95} loading="lazy" />
+            <Socials />
             <p className={s.tagline}>Connecting Hearts and Roots</p>
             <p className={s.copy}>&copy; Distant Devotion</p>
           </footer>

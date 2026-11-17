@@ -9,6 +9,7 @@ import { reportCopy } from "@/lib/heritage/vaazhga-copy";
 import { buildBookerJourney } from "@/lib/heritage/vaazhga-timeline";
 import { Frame } from "./Frame";
 import { SendButton } from "./SendButton";
+import { Socials } from "./Socials";
 import { TempleCarousel } from "./TempleCarousel";
 import { TrackButton } from "./TrackButton";
 import { Timeline } from "./Timeline";
@@ -20,30 +21,6 @@ const JOURNEY_SECTION_ID = "journey";
 const VV_LOGO = "/heritage/vv-logo.png";
 // Transparent version, so the footer line art shows through around the lettering.
 const DD_LOGO_CLEAR = "/heritage/dd-logo-light.png";
-
-// Social links: icons only until the real account URLs are supplied.
-const SOCIALS: { label: string; href?: string; glyph: "in" | "ig" | "f" }[] = [
-  { label: "LinkedIn", glyph: "in" },
-  { label: "Instagram", glyph: "ig" },
-  { label: "Facebook", glyph: "f" },
-];
-
-function SocialGlyph({ glyph }: { glyph: "in" | "ig" | "f" }) {
-  if (glyph === "ig") {
-    return (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <rect x="3" y="3" width="18" height="18" rx="5.5" />
-        <circle cx="12" cy="12" r="4.2" />
-        <circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    );
-  }
-  return (
-    <span className={s.cal} aria-hidden="true">
-      {glyph}
-    </span>
-  );
-}
 
 /**
  * The report we send to the person who sent a Vaazhga Vaazhthudan blessing.
@@ -185,19 +162,7 @@ export function VaazhgaReport({ report }: { report: Report }) {
           <div className={s.footerArt} aria-hidden="true" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className={s.footerLogo} src={DD_LOGO_CLEAR} alt="Distant Devotion" width={210} height={93} loading="lazy" />
-          <div className={s.socials}>
-            {SOCIALS.map((social) =>
-              social.href ? (
-                <a key={social.label} className={s.social} href={social.href} aria-label={social.label} target="_blank" rel="noopener noreferrer">
-                  <SocialGlyph glyph={social.glyph} />
-                </a>
-              ) : (
-                <span key={social.label} className={s.social}>
-                  <SocialGlyph glyph={social.glyph} />
-                </span>
-              ),
-            )}
-          </div>
+          <Socials />
           <p className={s.tagline}>Connecting Hearts and Roots</p>
           <p className={s.copy}>&copy; Distant Devotion</p>
         </footer>

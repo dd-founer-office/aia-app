@@ -484,7 +484,7 @@
 }
 
 .closingHead {
-  margin: 56px 0 0;
+  margin: 0;
   font-size: 28px;
   line-height: 1.25;
   color: var(--hg-maroon);
