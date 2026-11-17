@@ -245,6 +245,11 @@
   border-radius: 20px;
 }
 
+/* A wide picture (the written half of the card) is shown whole, not cropped to a square. */
+.card:has(> img.cardWhole) {
+  aspect-ratio: 838 / 568;
+}
+
 .card > img {
   display: block;
   width: 100%;
@@ -335,6 +340,11 @@
   box-shadow: 0 8px 20px rgba(58, 11, 26, 0.22);
   transition: transform 0.2s;
   cursor: pointer;
+}
+
+.vis img.wide {
+  width: 250px;
+  max-width: none; /* the row's content box is only 150px wide, which would cap it */
 }
 
 .boxHeading {

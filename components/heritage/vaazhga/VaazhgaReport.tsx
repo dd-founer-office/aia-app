@@ -37,6 +37,7 @@ export function VaazhgaReport({ report }: { report: Report }) {
   const [sendBefore, sendAfter] = c.share.headline.split(recipient);
   const packing = journey.steps[journey.current]?.key === "packed";
   const srcByKey = new Map<PhotoKey, string>(photos.map((photo) => [photo.key, photo.src]));
+  for (const [key, src] of Object.entries(report.tileSrc ?? {})) srcByKey.set(key as PhotoKey, src);
 
   return (
     <div className={s.shell}>
@@ -71,7 +72,7 @@ export function VaazhgaReport({ report }: { report: Report }) {
           </section>
 
           <TileRows
-            rows={TILE_ROWS.map((row, r) =>
+            rows={(report.tileRows ?? TILE_ROWS).map((row, r) =>
               row.map((tile, c) =>
                 tile === "logo"
                   ? ({ kind: "logo" } as const)
