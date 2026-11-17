@@ -3,31 +3,10 @@ import type { VaazhgaReport } from "./vaazhga-vaazhthudan-reports";
 /**
  * Approved copy for the page the birthday person sees. Everything that
  * depends on the booking (names, deity, place) is filled in from the report.
- * The prasadam wording follows the real tracker status and never runs ahead
- * of it. Straight apostrophes throughout.
+ * The journey follows the real tracker dates and never runs ahead of them. Straight apostrophes throughout.
  */
-export type GiftStage = "preparing" | "packing" | "packed" | "shipped" | "delivered";
-
-export function giftStage(report: VaazhgaReport): GiftStage {
-  const t = report.gift.tracker;
-  if (t.deliveredOn) return "delivered";
-  if (t.shippedOn) return "shipped";
-  if (t.packedOn) return "packed";
-  if (t.blessedOn) return "packing";
-  return "preparing";
-}
-
 export function giftCopy(report: VaazhgaReport) {
   const { recipient: name, deityShort, place, gift } = report;
-  const stage = giftStage(report);
-
-  const status = {
-    preparing: { title: "Your prasadam will be prepared soon.", text: "Once your name and star have been offered, your prasadam and sankalpam card will be prepared for you." },
-    packing: { title: "Your prasadam is being packed.", text: "Your blessed prasadam and sankalpam card are being carefully packed. We'll let you know when they begin their journey to you." },
-    packed: { title: "Your prasadam is packed.", text: "Your blessed prasadam and sankalpam card are packed and ready to begin their journey to you." },
-    shipped: { title: "Your prasadam is on its way.", text: "Your blessed prasadam and sankalpam card have begun their journey to you." },
-    delivered: { title: "Your prasadam has reached you.", text: "Your blessed prasadam and sankalpam card have reached you." },
-  }[stage];
 
   return {
     hero: {
@@ -61,8 +40,7 @@ export function giftCopy(report: VaazhgaReport) {
     prasadam: {
       headline: "A blessing, making its way home to you.",
       paragraphs: [`A little from ${place}, sent with the love and wishes of someone dear to you.`],
-      status,
-      track: "Track your parcel",
+      track: "Track Here",
     },
     journey: {
       blessed: { title: "Offered in your name", text: `Your name and star were offered in prayer at ${place}.` },

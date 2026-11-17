@@ -9,12 +9,14 @@ import { HeroReveal } from "./HeroReveal";
 import { PreviewBar } from "./PreviewBar";
 import { TempleCarousel } from "./TempleCarousel";
 import { Timeline } from "./Timeline";
+import { TrackButton } from "./TrackButton";
 import g from "./gift.module.css";
 import s from "./report.module.css";
 
 const DD_LOGO = "/brand/distant-devotion-logo.png";
 const VV_LOGO = "/heritage/vv-logo.png";
 const PRAYER_SECTION_ID = "prayer";
+const JOURNEY_SECTION_ID = "journey";
 
 // The six Heritage Gifting categories, shown by their logos (one ivory colour
 // with orange accents). `height` evens out their optical size: Peranbu's
@@ -112,7 +114,7 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
           </div>
 
           {/* ---------- Prasadam ---------- */}
-          <section className={g.tracker} aria-labelledby="prasadam-heading">
+          <section id={JOURNEY_SECTION_ID} className={g.tracker} aria-labelledby="prasadam-heading">
             <h2 id="prasadam-heading" className={`${s.cal} ${g.title}`}>
               {c.prasadam.headline}
             </h2>
@@ -121,22 +123,15 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
                 {text}
               </p>
             ))}
-            <h3 className={`${s.cal} ${g.status}`}>{c.prasadam.status.title}</h3>
-            <p className={g.trackerLead}>{c.prasadam.status.text}</p>
             <div style={{ marginTop: 32 }}>
               <Timeline steps={journey.steps} current={journey.current} />
             </div>
-            {tracker.trackUrl ? (
-              <a className={`${s.cal} ${s.btn}`} href={tracker.trackUrl} target="_blank" rel="noopener noreferrer">
-                {c.prasadam.track}
-                <span className={s.btnIcon} aria-hidden="true">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFEFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 19L19 5M8 5h11v11" />
-                  </svg>
-                </span>
-              </a>
-            ) : null}
           </section>
+
+          {/* ---------- Track here ---------- */}
+          <div className={g.trackRow}>
+            <TrackButton label={c.prasadam.track} trackUrl={tracker.trackUrl} targetId={JOURNEY_SECTION_ID} tone="orange" />
+          </div>
 
           {/* ---------- Tamil blessing ---------- */}
           <section className={g.blessing} aria-label="A blessing">

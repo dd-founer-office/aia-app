@@ -162,7 +162,7 @@
 /* ---------- Tamil blessing ---------- */
 
 .blessing {
-  margin-top: 56px;
+  margin-top: 32px;
   padding: 64px 30px 76px;
   border-radius: 9px 9px 0 0;
   background: var(--hg-orange);
@@ -501,11 +501,15 @@
 
 .hero {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
 }
 
 .heroMedia {
   position: relative;
-  height: clamp(260px, 42svh, 400px);
+  flex: 1;
+  min-height: 260px;
   overflow: hidden;
   background: var(--hg-maroon);
 }
@@ -669,4 +673,19 @@
   .msgScreen {
     animation: none;
   }
+}
+
+.trackRow {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.trackRow > a,
+.trackRow > button {
+  margin-top: 0;
+}
+
+/* With the share bar up, the hero stops above it so the envelope stays clear. */
+.withBar .hero {
+  min-height: calc(100svh - 110px - env(safe-area-inset-bottom));
 }
