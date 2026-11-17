@@ -1,9 +1,16 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ReportPhoto } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
 import s from "./report.module.css";
+
+/** A tidy file name for a saved photo: "the-blessed-prasadam.jpg". */
+function fileName(heading: string, src: string) {
+  const ext = /\.(jpe?g|png|webp)$/i.exec(src)?.[1]?.toLowerCase() ?? "jpg";
+  const base = heading.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "photo";
+  return `${base}.${ext}`;
+}
 
 type Props = {
   photos: ReportPhoto[];
@@ -163,6 +170,15 @@ export function TempleCarousel({ photos, initialIndex }: Props) {
             <h3 className={s.cal}>{shown.heading}</h3>
             <p>{shown.line}</p>
           </div>
+          <a
+            className={s.lightboxDownload}
+            href={shown.src}
+            download={fileName(shown.heading, shown.src)}
+            aria-label="Download this photo"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Download size={20} strokeWidth={2.4} aria-hidden="true" />
+          </a>
           <button type="button" className={s.lightboxClose} aria-label="Close" onClick={closeFull}>
             <X size={20} strokeWidth={2.6} aria-hidden="true" />
           </button>

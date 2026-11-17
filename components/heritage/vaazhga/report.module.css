@@ -661,7 +661,7 @@
   align-items: center;
   justify-content: center;
   padding: 56px 12px 24px;
-  background: rgba(24, 5, 12, 0.985);
+  background: #18050c;
   color: var(--hg-on-dark);
   text-align: center;
   animation: lbIn 0.25s ease both;
@@ -696,6 +696,7 @@
 }
 
 .lightboxClose,
+.lightboxDownload,
 .lightboxNav {
   position: absolute;
   display: grid;
@@ -713,6 +714,13 @@
 .lightboxClose {
   top: 12px;
   right: 12px;
+}
+
+/* Sits beside the close button. */
+.lightboxDownload {
+  top: 12px;
+  right: 60px;
+  text-decoration: none;
 }
 
 .lightboxNav {
