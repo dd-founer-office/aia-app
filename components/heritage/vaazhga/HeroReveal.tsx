@@ -188,7 +188,7 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
         ))}
         <button type="button" className={g.envelope} onClick={press} aria-haspopup="dialog" aria-label={`Open the envelope from ${envelopeLabel}`}>
           <svg className={g.envelopeArt} viewBox="0 0 132 92" aria-hidden="true">
-            <rect x="1" y="1" width="130" height="90" rx="9" fill="#F7F1EA" />
+            <rect x="1" y="1" width="130" height="90" rx="4.5" fill="#F7F1EA" />
             <path d="M3 8 66 55 129 8" fill="none" stroke="#3A0B1A" strokeOpacity=".28" strokeWidth="2" strokeLinejoin="round" />
             <path d="M3 88 52 44M129 88 80 44" fill="none" stroke="#3A0B1A" strokeOpacity=".18" strokeWidth="2" strokeLinecap="round" />
           </svg>
@@ -202,12 +202,13 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
       {open ? (
         <div className={g.stage} role="dialog" aria-modal="true" aria-label={`Cards from ${envelopeLabel}`}>
           <div className={g.scene}>
+            <div className={g.settle}>
             <div className={g.cards}>
               {cards.map((kind, i) => {
                 const pos = i - cur;
                 const front = pos === 0;
                 const style: React.CSSProperties | undefined = front
-                  ? { transform: `translateX(${drag}px) rotate(${drag / 18}deg)`, transition: dragging ? "none" : "transform .3s" }
+                  ? { transform: `translateX(${drag}px) rotate(${-3 + drag / 18}deg)`, transition: dragging ? "none" : "transform .3s" }
                   : undefined;
                 return (
                   <div key={kind} className={g.rise} style={{ "--d": `${(cards.length - 1 - i) * 0.4 + 1.1}s`, zIndex: cards.length - i } as React.CSSProperties}>
@@ -234,6 +235,7 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
                 ))}
               </div>
             ) : null}
+            </div>
             <div className={g.env} aria-hidden="true">
               <div className={g.envBack} />
               <div className={g.envFlap} />
