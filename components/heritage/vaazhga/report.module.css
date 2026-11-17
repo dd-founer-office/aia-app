@@ -247,7 +247,7 @@
 
 /* A wide picture (the written half of the card) is shown whole, not cropped to a square. */
 .card:has(> img.cardWhole) {
-  aspect-ratio: 838 / 568;
+  aspect-ratio: 800 / 544;
 }
 
 .card > img {
