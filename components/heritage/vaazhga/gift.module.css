@@ -1012,3 +1012,83 @@
     height: 36px;
   }
 }
+
+/* ---------- The sender's writing box: who it is from, and the card preview ---------- */
+
+.fromHead {
+  margin: 20px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hg-grey);
+}
+
+.fromRows {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.fromRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+}
+
+.fromRow:has(.fromRemove) {
+  grid-template-columns: 1fr 1fr 36px;
+}
+
+.fromRow:not(:has(.fromRemove)) {
+  grid-template-columns: 1fr 1fr;
+}
+
+.fromInput {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(58, 11, 26, 0.25);
+  border-radius: 12px;
+  background: #fff;
+  font: 400 15px/1.3 var(--hg-inter), sans-serif;
+  color: var(--hg-ink);
+}
+
+.fromInput:focus {
+  outline: 2px solid var(--hg-orange);
+  outline-offset: 1px;
+}
+
+.fromRemove {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--hg-container);
+  color: var(--hg-maroon);
+  cursor: pointer;
+}
+
+.fromAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--hg-maroon);
+  border-radius: 6px;
+  background: none;
+  color: var(--hg-maroon);
+  font: 500 14px/1 var(--hg-inter), sans-serif;
+  cursor: pointer;
+}
+
+/* The sender's card, shown at the size it has on the stage. */
+.previewCard {
+  width: min(300px, 100%);
+  height: 380px;
+  margin: 14px auto 0;
+}

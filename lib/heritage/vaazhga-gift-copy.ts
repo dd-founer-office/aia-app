@@ -17,7 +17,7 @@ export function giftStage(report: VaazhgaReport): GiftStage {
 }
 
 export function giftCopy(report: VaazhgaReport) {
-  const { recipient: name, deityShort, place, gift } = report;
+  const { recipient: name, deityShort, place } = report;
   const stage = giftStage(report);
 
   // The prasadam status follows the real tracker dates and never runs ahead of them.
@@ -37,10 +37,6 @@ export function giftCopy(report: VaazhgaReport) {
         `On your birthday, someone who holds you dear wanted to seek ${deityShort}'s blessings for you.`,
       ],
     },
-    /** Small label under the sealed envelope. */
-    envelopeLabel: gift.relation ?? gift.sender,
-    /** Sign-off under the message, e.g. "Amma - Priya". */
-    signoff: gift.relation ? `${gift.relation} - ${gift.sender}` : gift.sender,
     message: {
       headline: "A few words, just for you.",
       text: "Along with this blessing comes a message from someone who wanted to make your day a little more special.",

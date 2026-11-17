@@ -17,12 +17,13 @@
   list-style: none;
 }
 
-/* A thick ivory line runs through the centres of the circles, from the first to the last. */
-.row::before {
+/* A thick ivory line runs through the centres of the circles. Each piece
+   leaves a circle for the next one, and turns white once that step is done. */
+.row li:not(:last-child)::before {
   content: "";
   position: absolute;
-  left: calc(50% / var(--n, 5));
-  right: calc(50% / var(--n, 5));
+  left: 50%;
+  width: 100%;
   top: 50%;
   height: 8px;
   border-radius: 4px;
@@ -30,11 +31,19 @@
   transform: translateY(-50%);
 }
 
+.row li.segDone:not(:last-child)::before {
+  background: #fff;
+}
+
 .row li {
   position: relative;
-  z-index: 1;
   display: grid;
   place-items: center;
+}
+
+.row li .dot {
+  position: relative;
+  z-index: 1;
 }
 
 .dot {
