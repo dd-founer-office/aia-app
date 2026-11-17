@@ -1,29 +1,56 @@
+"use client";
+
+import { useLayoutEffect, useRef } from "react";
 import g from "./gift.module.css";
 import s from "./report.module.css";
 
-/** Smaller type for longer messages, so the card never overflows. */
-const messageSize = (n: number) => (n <= 90 ? 22 : n <= 180 ? 18 : 15);
+/** The largest and smallest base type size (px) the card will use. */
+const MAX_SIZE = 15;
+const MIN_SIZE = 8;
 
 /**
  * The sender's card: a quote mark, their own words and a sign-off line for
- * each name. The same card is on the stage the birthday person opens and in
- * the "how it will look" box the sender sees while writing.
+ * each name. Everything is sized in em from one
+ * base size, and after every change the base is shrunk until the whole card
+ * fits, so a long message or four sign-offs never spill off the card. The
+ * same card is on the stage the birthday person opens and in the "how it
+ * will look" box the sender sees while writing.
  */
 export function SenderCard({ text, signoffs }: { text: string; signoffs: string[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const key = `${text}\n${signoffs.join("\n")}`;
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      let size = MAX_SIZE;
+      el.style.fontSize = `${size}px`;
+      while (size > MIN_SIZE && el.scrollHeight > el.clientHeight + 1) {
+        size -= 0.5;
+        el.style.fontSize = `${size}px`;
+      }
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [key]);
+
   return (
-    <div className={`${g.paper} ${g.paperSender}`}>
+    <div ref={ref} className={`${g.paper} ${g.paperSender}`}>
       <div className={g.artTop} />
       <span className={g.cardMark} aria-hidden="true">
         &ldquo;
       </span>
-      <p className={`${s.cal} ${g.cardText}`} style={{ fontSize: messageSize(text.length) }}>
-        {text}
-      </p>
-      {signoffs.map((line) => (
-        <p key={line} className={g.cardSign}>
-          {line}
-        </p>
-      ))}
+      <p className={`${s.cal} ${g.cardText}`}>{text}</p>
+      <div className={g.signs}>
+        {signoffs.map((line) => (
+          <p key={line} className={g.cardSign}>
+            {line}
+          </p>
+        ))}
+      </div>
       <div className={g.artBottom} />
     </div>
   );

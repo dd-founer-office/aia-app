@@ -9,14 +9,15 @@ import type { VaazhgaReport } from "./vaazhga-vaazhthudan-reports";
 const cap = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
 export function reportCopy(report: VaazhgaReport) {
-  const { recipient: name, pronouns: p, deity, deityShort, place } = report;
+  const { recipient: name, pronouns: p, deity, deityShort, place, story } = report;
+  const parcel = story?.parcel ?? "blessed prasadam and sankalpam card";
 
   return {
     hero: {
       headline: "Some wishes travel farther than words.",
       /** The word in the headline that is shown highlighted (a styling choice; the text is unchanged). */
       highlight: "travel",
-      paragraphs: [
+      paragraphs: story?.reportHero ?? [
         `You wanted ${name} to receive ${deityShort}'s blessings on ${p.possessive} birthday.`,
         "A birthday wish, a prayer and your love, brought a little closer, despite the distance.",
       ],
@@ -47,11 +48,15 @@ export function reportCopy(report: VaazhgaReport) {
     status: {
       headline: "A little blessing, on its way home.",
       paragraphs: [
-        `The prayer has been offered. We are now carefully preparing the blessed prasadam for its journey to ${name}.`,
+        story?.parcel
+          ? `The prayer has been offered. We are now carefully preparing the ${story.parcel} for their journey to ${name}.`
+          : `The prayer has been offered. We are now carefully preparing the blessed prasadam for its journey to ${name}.`,
         "Follow its journey here. We'll update you as it makes its way home.",
       ],
       /** Shown while the prasadam is being packed. */
-      packing: `The blessed prasadam is being packed with ${name}'s sankalpam card. We'll let you know as soon as it is dispatched.`,
+      packing: story?.parcel
+        ? `The ${story.parcel} are being packed. We'll let you know as soon as they are dispatched.`
+        : `The blessed prasadam is being packed with ${name}'s sankalpam card. We'll let you know as soon as it is dispatched.`,
     },
     track: { button: "Track Here" },
     tamil: {
@@ -67,7 +72,7 @@ export function reportCopy(report: VaazhgaReport) {
         },
         packed: {
           title: "Prasadam preparation",
-          text: `${cap(p.possessive)} blessed prasadam and sankalpam card are being carefully packed.`,
+          text: `${cap(p.possessive)} ${parcel} are being carefully packed.`,
         },
         shipped: {
           title: "Dispatched",

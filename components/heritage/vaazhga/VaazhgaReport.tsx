@@ -33,6 +33,8 @@ export function VaazhgaReport({ report }: { report: Report }) {
   const journey = buildBookerJourney(report);
   const c = reportCopy(report);
   const [heroBefore, heroAfter] = c.hero.headline.split(c.hero.highlight);
+  // The recipient's name in the send headline is shown in the same highlight box as the gift page.
+  const [sendBefore, sendAfter] = c.share.headline.split(recipient);
   const packing = journey.steps[journey.current]?.key === "packed";
   const srcByKey = new Map<PhotoKey, string>(photos.map((photo) => [photo.key, photo.src]));
 
@@ -66,11 +68,12 @@ export function VaazhgaReport({ report }: { report: Report }) {
           </section>
 
           <TileRows
-            rows={TILE_ROWS.map((row) =>
-              row.map((tile) =>
+            rows={TILE_ROWS.map((row, r) =>
+              row.map((tile, c) =>
                 tile === "logo"
                   ? ({ kind: "logo" } as const)
-                  : ({ kind: "photo", src: srcByKey.get(tile) ?? lampSrc } as const),
+                  : // A booking may not have every photo: borrow another of its own, never repeat the hero one.
+                    ({ kind: "photo", src: srcByKey.get(tile) ?? photos[(r * 3 + c) % photos.length]?.src ?? lampSrc } as const),
               ),
             )}
             logoSrc={VV_LOGO}
@@ -108,7 +111,15 @@ export function VaazhgaReport({ report }: { report: Report }) {
         {/* ---------- Send ---------- */}
         <section className={s.send} aria-labelledby="send-heading">
           <h2 id="send-heading" className={`${s.cal} ${s.h2}`}>
-            {c.share.headline}
+            {sendBefore}
+            <span className={s.heroMark}>
+              {recipient}
+              <i aria-hidden="true" />
+              <i aria-hidden="true" />
+              <i aria-hidden="true" />
+              <i aria-hidden="true" />
+            </span>
+            {sendAfter}
           </h2>
           {c.share.paragraphs.map((text) => (
             <p key={text} className={s.lead}>

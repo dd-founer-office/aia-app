@@ -8,8 +8,9 @@ import type { VaazhgaReport } from "./vaazhga-vaazhthudan-reports";
 export type Sender = { name: string; relation: string };
 
 export const MAX_SENDERS = 4;
-const MAX_NAME = 40;
-const MAX_RELATION = 24;
+/** Short enough that "Relationship - Name" stays on one line of the card. */
+export const MAX_NAME = 22;
+export const MAX_RELATION = 14;
 
 const clean = (value: string, max: number) =>
   value
@@ -20,6 +21,7 @@ const clean = (value: string, max: number) =>
 
 /** The sender the booking itself carries: used until the link names others. */
 export function defaultSenders(report: VaazhgaReport): Sender[] {
+  // A booking may leave the sender blank: the booker then names them in the writing box.
   return [{ name: report.gift.sender, relation: report.gift.relation ?? "" }];
 }
 

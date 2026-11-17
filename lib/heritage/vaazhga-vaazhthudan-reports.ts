@@ -65,6 +65,19 @@ export type Gift = {
   videoSrc?: string;
 };
 
+/**
+ * Story wording that belongs to one booking. Anything left out falls back to
+ * the standard copy, so a booking without a story reads as it always has.
+ */
+export type Story = {
+  /** Replaces the report's hero paragraphs (written to the booker). */
+  reportHero?: string[];
+  /** Replaces the gift page's hero paragraphs (written to the birthday person). */
+  giftHero?: string[];
+  /** What the parcel holds, as in "his <parcel> are being packed". Default: blessed prasadam and sankalpam card. */
+  parcel?: string;
+};
+
 export type PhotoKey =
   | "gopuram"
   | "gate"
@@ -100,6 +113,7 @@ export type VaazhgaReport = {
   initialPhotoIndex: number;
   /** The page the recipient sees, reached from the report's send button. */
   gift: Gift;
+  story?: Story;
 };
 
 /** Internal and public (heritage host) paths of a gift page. */
@@ -125,7 +139,107 @@ const AKSHANTH_SLUG = "akshanth-raj-k4t9wz";
 const AKSHANTH_GIFT_SLUG = "akshanth-raj-p7m3qd";
 const AKSHANTH_DIR = `/heritage/reports/${AKSHANTH_SLUG}`;
 
+const ARIHANT_SLUG = "arihant-9pq576mp";
+const ARIHANT_GIFT_SLUG = "arihant-xc5m7nit";
+const ARIHANT_DIR = `/heritage/reports/${ARIHANT_SLUG}`;
+
 const REPORTS: Record<string, VaazhgaReport> = {
+  [ARIHANT_SLUG]: {
+    slug: ARIHANT_SLUG,
+    recipient: "Arihant",
+    pronouns: { subject: "he", object: "him", possessive: "his" },
+    deity: "Maha Saraswathi Amman",
+    deityShort: "Saraswathi Amman",
+    deityTamil: "சரஸ்வதி அம்மனின்",
+    place: "Koothanur",
+    lampSrc: `${ARIHANT_DIR}/plaque.jpg`,
+    initialPhotoIndex: 3,
+    gift: {
+      slug: ARIHANT_GIFT_SLUG,
+      // The sender is chosen by the booker in the writing box and travels in the link.
+      sender: "",
+      birthday: "17 November",
+      star: "Poosam",
+      templeShort: "Koothanur",
+      tracker: { blessedOn: "17 November" },
+    },
+    story: {
+      reportHero: [
+        "Arihant's first letters were written at Koothanur's Saraswathi Amman temple. This year, as he prepares for his 10th public exams, you wanted that same blessing with him on his birthday.",
+        "A pen placed at the Amman's feet, with blessed prasadam, will travel to Abu Dhabi: a birthday wish, a prayer and your love, brought a little closer.",
+      ],
+      giftHero: [
+        "Your first letters were written at Saraswathi Amman's temple in Koothanur. As your 10th public exams near, someone who holds you dear wanted the Amman's blessings to reach you in Abu Dhabi: a pen placed at her feet, and blessed prasadam.",
+      ],
+      parcel: "blessed pen and prasadam",
+    },
+    photos: [
+      {
+        key: "gopuram",
+        src: `${ARIHANT_DIR}/temple.jpg`,
+        heading: "The temple",
+        giftHeading: "Where your first letters were written",
+        line: "Koothanur's Saraswathi Amman temple, where Arihant's name was offered.",
+        giftLine: "Saraswathi Amman's temple at Koothanur, where your name was offered.",
+      },
+      {
+        key: "gate",
+        src: `${ARIHANT_DIR}/entrance.jpg`,
+        heading: "Through the temple gates",
+        giftHeading: "The entrance",
+        line: "Arulmigu Maha Saraswathi Amman Thirukoil, Koothanur.",
+      },
+      {
+        key: "signboard",
+        src: `${ARIHANT_DIR}/board.jpg`,
+        heading: "The temple at Koothanur",
+        giftHeading: "Your temple at Koothanur",
+        line: "Arulmigu Maha Saraswathi Amman Thirukoil, in Thiruvarur district.",
+      },
+      {
+        key: "hall",
+        src: `${ARIHANT_DIR}/plaque.jpg`,
+        heading: "Before Saraswathi Amman",
+        line: "The Amman, garlanded in marigold, with lamps lit before her.",
+      },
+      {
+        key: "lamps",
+        src: `${ARIHANT_DIR}/flame.jpg`,
+        heading: "A flame, lit in his name",
+        giftHeading: "A flame, lit in your name",
+        line: "Clay lamps, lit at the shrine.",
+      },
+      {
+        key: "flowers",
+        src: `${ARIHANT_DIR}/lamps.jpg`,
+        heading: "Lamps before the Amman",
+        line: "Many lamps, lit by many hands.",
+      },
+      {
+        key: "corner",
+        src: `${ARIHANT_DIR}/flame-low.jpg`,
+        heading: "A quiet moment",
+        giftHeading: "A quiet moment at Koothanur",
+        line: "Flames burning low at the shrine.",
+      },
+      {
+        key: "sankalpam",
+        src: `${ARIHANT_DIR}/card.jpg`,
+        heading: "Arihant, remembered in prayer",
+        giftHeading: "Your name and star",
+        line: "His name and star, written for the offering.",
+        giftLine: "Your name and star, written for the offering.",
+      },
+      {
+        key: "offerings",
+        src: `${ARIHANT_DIR}/pen.jpg`,
+        heading: "The pen, placed at the Amman's feet",
+        giftHeading: "Your pen, at the Amman's feet",
+        line: "Blessed with an archanai, ready for its journey to Abu Dhabi.",
+        giftLine: "Blessed with an archanai, ready to travel to you in Abu Dhabi.",
+      },
+    ],
+  },
   [AKSHANTH_SLUG]: {
     slug: AKSHANTH_SLUG,
     recipient: "Akshanth",
