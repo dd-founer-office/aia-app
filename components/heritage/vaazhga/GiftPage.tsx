@@ -1,21 +1,23 @@
-import { Fragment } from "react";
 import { giftCopy } from "@/lib/heritage/vaazhga-gift-copy";
 import { buildGiftJourney } from "@/lib/heritage/vaazhga-timeline";
 import { giftPaths, type VaazhgaReport } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
 import { Frame } from "./Frame";
 import { MessageProvider } from "./MessageContext";
 import { MessageSection } from "./MessageSection";
-import { OpenerVideo } from "./OpenerVideo";
+import { HeroReveal } from "./HeroReveal";
 import { PreviewBar } from "./PreviewBar";
 import { TempleCarousel } from "./TempleCarousel";
 import { Timeline } from "./Timeline";
+import { Socials } from "./Socials";
+import { TrackButton } from "./TrackButton";
 import g from "./gift.module.css";
 import s from "./report.module.css";
 
-const DD_LOGO_LIGHT = "/heritage/dd-logo-light.png";
 const DD_LOGO = "/brand/distant-devotion-logo.png";
+const DD_LOGO_LIGHT = "/heritage/dd-logo-light.png";
 const VV_LOGO = "/heritage/vv-logo.png";
-const HERO_SECTION_ID = "for-you";
+const PRAYER_SECTION_ID = "prayer";
+const JOURNEY_SECTION_ID = "journey";
 
 // The six Heritage Gifting categories, shown by their logos (one ivory colour
 // with orange accents). `height` evens out their optical size: Peranbu's
@@ -49,43 +51,29 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
       <MessageProvider initial={message}>
       <main className={`${s.page} ${preview ? g.withBar : ""}`} style={preview ? undefined : { background: "var(--hg-ivory)" }}>
         <div style={preview ? { background: "var(--hg-ivory)" } : undefined}>
-          {/* ---------- Opener ---------- */}
-          <section className={`${g.opener} ${preview ? g.openerBar : ""}`} aria-label={`A blessing for ${recipient}`}>
-            <OpenerVideo posterSrc={lampSrc} videoSrc={gift.videoSrc} />
-            <div className={g.openerShade} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={g.openerLogo} src={DD_LOGO_LIGHT} alt="Distant Devotion" width={122} height={54} />
-            <div className={g.openerText}>
-              <h1 style={{ margin: 0 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className={g.openerLogoMark} src={VV_LOGO} alt={`Vaazhga Vaazhthudan, a birthday blessing for ${recipient}`} width={230} height={139} />
-              </h1>
-              <p className={g.sentBy}>{c.sentBy}</p>
-            </div>
-            <div className={g.cue}>
-              <a className={g.cueBtn} href={`#${HERO_SECTION_ID}`} aria-label="Read your blessing">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3A0B1A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 4v15M5 12l7 7 7-7" />
-                </svg>
-              </a>
-            </div>
-          </section>
+          {/* ---------- Hero ---------- */}
+          <HeroReveal
+            headline={c.hero.headline}
+            highlight={c.hero.highlight}
+            paragraphs={c.hero.paragraphs}
+            envelopeLabel={c.envelopeLabel}
+            signoff={c.signoff}
+            tamil={c.tamil}
+            ddLogoSrc={DD_LOGO_LIGHT}
+            logoSrc={VV_LOGO}
+            logoAlt={`Vaazhga Vaazhthudan, a birthday blessing for ${recipient}`}
+            posterSrc={lampSrc}
+            videoSrc={gift.videoSrc}
+            nextId={PRAYER_SECTION_ID}
+          />
 
-          {/* ---------- Hero copy ---------- */}
-          <section id={HERO_SECTION_ID} className={s.lampHead} style={{ paddingTop: 64 }}>
-            <h2 className={`${s.cal} ${s.h2}`}>{c.hero.headline}</h2>
-            {c.hero.paragraphs.map((text) => (
-              <p key={text} className={s.lead}>
-                {text}
-              </p>
-            ))}
-          </section>
-
-          {/* ---------- Personal message ---------- */}
-          <MessageSection sender={gift.sender} recipient={recipient} preview={preview} sent={message} headline={c.message.headline} text={c.message.text} />
+          {/* ---------- The booker's writing box (preview only) ---------- */}
+          {preview ? (
+            <MessageSection recipient={recipient} preview signoff={c.signoff} />
+          ) : null}
 
           {/* ---------- A prayer, made in your name ---------- */}
-          <section className={s.lampHead} style={{ paddingTop: 64 }}>
+          <section id={PRAYER_SECTION_ID} className={s.lampHead} style={{ paddingTop: 64 }}>
             <h2 className={`${s.cal} ${s.h2}`}>{c.offering.headline}</h2>
             {c.offering.paragraphs.map((text) => (
               <p key={text} className={s.lead}>
@@ -129,7 +117,7 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
           </div>
 
           {/* ---------- Prasadam ---------- */}
-          <section className={g.tracker} aria-labelledby="prasadam-heading">
+          <section id={JOURNEY_SECTION_ID} className={g.tracker} aria-labelledby="prasadam-heading">
             <h2 id="prasadam-heading" className={`${s.cal} ${g.title}`}>
               {c.prasadam.headline}
             </h2>
@@ -138,42 +126,20 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
                 {text}
               </p>
             ))}
-            <h3 className={`${s.cal} ${g.status}`}>{c.prasadam.status.title}</h3>
-            <p className={g.trackerLead}>{c.prasadam.status.text}</p>
             <div style={{ marginTop: 32 }}>
               <Timeline steps={journey.steps} current={journey.current} />
             </div>
-            {tracker.trackUrl ? (
-              <a className={`${s.cal} ${s.btn}`} href={tracker.trackUrl} target="_blank" rel="noopener noreferrer">
-                {c.prasadam.track}
-                <span className={s.btnIcon} aria-hidden="true">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFEFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 19L19 5M8 5h11v11" />
-                  </svg>
-                </span>
-              </a>
-            ) : null}
           </section>
 
-          {/* ---------- Tamil blessing ---------- */}
-          <section className={g.blessing} aria-label="A blessing">
-            <p className={g.blessingLabel} lang="ta">
-              {c.tamil.label}
-            </p>
-            <p className={g.blessingTamil} lang="ta">
-              {c.tamil.lines.map((line, i) => (
-                <Fragment key={line}>
-                  {i > 0 ? <br /> : null}
-                  {line}
-                </Fragment>
-              ))}
-            </p>
-            <p className={`${g.blessingTamil} ${g.blessingWrap}`} lang="ta">
-              {c.tamil.deityLine}
-            </p>
-            <p className={`${g.blessingTamil} ${g.blessingWrap}`} lang="ta">
-              {c.tamil.closing}
-            </p>
+          {/* ---------- Track here ---------- */}
+          <div className={g.trackRow}>
+            <h2 className={`${s.cal} ${s.h2}`}>{c.prasadam.status.title}</h2>
+            <p className={s.lead}>{c.prasadam.status.text}</p>
+            <TrackButton label={c.prasadam.track} trackUrl={tracker.trackUrl} targetId={JOURNEY_SECTION_ID} />
+          </div>
+
+          {/* ---------- Closing ---------- */}
+          <section className={g.blessing} aria-label="Closing">
             <h2 className={`${s.cal} ${g.closingHead}`}>{c.closing.headline}</h2>
             {c.closing.paragraphs.map((text) => (
               <p key={text} className={g.closingText}>
@@ -209,6 +175,7 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
           <footer className={s.footer} style={{ marginTop: 0, borderRadius: 0 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className={s.footerLogo} src={DD_LOGO} alt="Distant Devotion" width={210} height={95} loading="lazy" />
+            <Socials />
             <p className={s.tagline}>Connecting Hearts and Roots</p>
             <p className={s.copy}>&copy; Distant Devotion</p>
           </footer>

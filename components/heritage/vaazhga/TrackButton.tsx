@@ -7,10 +7,11 @@ import s from "./report.module.css";
  * page is on record, it opens that page. Until then there is nothing outside
  * to track, so it scrolls up to the blessing journey on this page instead.
  */
-export function TrackButton({ label, trackUrl, targetId }: { label: string; trackUrl?: string; targetId: string }) {
+export function TrackButton({ label, trackUrl, targetId, tone = "dark" }: { label: string; trackUrl?: string; targetId: string; tone?: "dark" | "orange" }) {
+  const cls = tone === "dark" ? `${s.btn} ${s.btnDark}` : s.btn;
   if (trackUrl) {
     return (
-      <a className={`${s.btn} ${s.btnDark}`} href={trackUrl} target="_blank" rel="noopener noreferrer">
+      <a className={cls} href={trackUrl} target="_blank" rel="noopener noreferrer">
         {label}
       </a>
     );
@@ -24,7 +25,7 @@ export function TrackButton({ label, trackUrl, targetId }: { label: string; trac
   };
 
   return (
-    <button type="button" className={`${s.btn} ${s.btnDark}`} onClick={onClick}>
+    <button type="button" className={cls} onClick={onClick}>
       {label}
     </button>
   );

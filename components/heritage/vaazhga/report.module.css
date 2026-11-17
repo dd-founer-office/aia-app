@@ -44,7 +44,7 @@
   --H: max(100svh, 720px);
   position: relative;
   display: flex;
-  min-height: calc(var(--H) + 39px);
+  min-height: var(--H);
 }
 
 .hero {
@@ -52,8 +52,8 @@
   display: flex;
   flex: 1;
   background: var(--hg-maroon);
-  border-radius: 0 0 6px 6px;
-  padding: 24px 0 280px;
+  border-radius: 0 0 9px 9px;
+  padding: 24px 0 306px;
 }
 
 .heroText {
@@ -161,15 +161,15 @@
 }
 
 .row1 {
-  top: calc(100% - 256px);
+  top: calc(100% - 294px);
   left: -229px;
 }
 .row2 {
-  top: calc(100% - 134px);
+  top: calc(100% - 172px);
   left: -272px;
 }
 .row3 {
-  top: calc(100% - 12px);
+  top: calc(100% - 50px);
   left: -279px;
 }
 
@@ -227,7 +227,7 @@
 .band {
   margin-top: 40px;
   padding: 56px 20px;
-  border-radius: 6px;
+  border-radius: 9px;
   background: var(--hg-maroon);
 }
 
@@ -351,7 +351,7 @@
 .send {
   margin-top: 56px;
   padding: 56px 24px;
-  border-radius: 6px;
+  border-radius: 9px;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
   text-align: center;
@@ -458,7 +458,7 @@
 .end {
   margin-top: 56px;
   padding: 70px 30px 84px;
-  border-radius: 6px 6px 0 0;
+  border-radius: 9px 9px 0 0;
   background: var(--hg-orange);
   color: var(--hg-maroon);
   text-align: center;
@@ -494,7 +494,7 @@
   overflow: hidden;
   margin-top: -14px;
   padding: 60px 0 calc(56px + env(safe-area-inset-bottom));
-  border-radius: 6px 6px 0 0;
+  border-radius: 9px 9px 0 0;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
   text-align: center;
