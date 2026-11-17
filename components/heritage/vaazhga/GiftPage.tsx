@@ -53,8 +53,8 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
             headline={c.hero.headline}
             highlight={c.hero.highlight}
             paragraphs={c.hero.paragraphs}
-            heartLabel={c.heart}
-            sender={gift.sender}
+            envelopeLabel={c.envelopeLabel}
+            signoff={c.signoff}
             logoSrc={VV_LOGO}
             logoAlt={`Vaazhga Vaazhthudan, a birthday blessing for ${recipient}`}
             posterSrc={lampSrc}
@@ -64,7 +64,7 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
 
           {/* ---------- The booker's writing box (preview only) ---------- */}
           {preview ? (
-            <MessageSection sender={gift.sender} recipient={recipient} preview sent={message} headline={c.message.headline} text={c.message.text} />
+            <MessageSection recipient={recipient} preview signoff={c.signoff} />
           ) : null}
 
           {/* ---------- A prayer, made in your name ---------- */}

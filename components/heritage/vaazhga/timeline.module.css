@@ -8,16 +8,31 @@
 }
 
 .row {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n, 5), 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* A thick ivory line runs through the centres of the circles, from the first to the last. */
+.row::before {
+  content: "";
+  position: absolute;
+  left: calc(50% / var(--n, 5));
+  right: calc(50% / var(--n, 5));
+  top: 50%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--hg-ivory);
+  transform: translateY(-50%);
+}
+
 .row li {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
 }

@@ -54,6 +54,8 @@ export type Gift = {
   slug: string;
   /** Who sent the blessing, as the birthday person sees it. */
   sender: string;
+  /** How the sender is known to the birthday person ("Amma", "Appa"). Shown with the sign-off. */
+  relation?: string;
   birthday: string;
   star: string;
   /** Short temple name for the fact card. */
@@ -136,7 +138,8 @@ const REPORTS: Record<string, VaazhgaReport> = {
     initialPhotoIndex: 1,
     gift: {
       slug: AKSHANTH_GIFT_SLUG,
-      sender: "Rajesh",
+      sender: "Anand",
+      relation: "Appa",
       birthday: "27 October",
       star: "Rohini",
       templeShort: "Swamimalai",

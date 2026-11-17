@@ -139,7 +139,7 @@
 .tracker {
   margin-top: 56px;
   padding: 56px 24px;
-  border-radius: 6px;
+  border-radius: 9px;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
 }
@@ -164,7 +164,7 @@
 .blessing {
   margin-top: 56px;
   padding: 64px 30px 76px;
-  border-radius: 6px 6px 0 0;
+  border-radius: 9px 9px 0 0;
   background: var(--hg-orange);
   color: var(--hg-maroon);
   text-align: center;
@@ -191,7 +191,7 @@
   position: relative;
   margin-top: -14px;
   padding: 56px 20px 56px;
-  border-radius: 6px 6px 0 0;
+  border-radius: 9px 9px 0 0;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
   text-align: center;
@@ -505,7 +505,7 @@
 
 .heroMedia {
   position: relative;
-  height: clamp(320px, 52svh, 480px);
+  height: clamp(260px, 42svh, 400px);
   overflow: hidden;
   background: var(--hg-maroon);
 }
@@ -531,7 +531,7 @@
   z-index: 2;
   margin-top: -14px;
   padding: 32px 24px 36px;
-  border-radius: 6px 6px 0 0;
+  border-radius: 9px 9px 0 0;
   background: var(--hg-maroon);
   color: var(--hg-on-dark);
   text-align: center;
@@ -556,47 +556,117 @@
   opacity: 1;
 }
 
-.heartBtn {
-  margin-top: 24px;
+.envelope {
+  position: relative;
+  display: block;
+  width: 132px;
+  height: 92px;
+  margin: 24px auto 0;
+  padding: 0;
   border: 0;
-  background: var(--hg-orange);
-  color: var(--hg-maroon);
+  background: none;
   cursor: pointer;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
 }
 
-.heart {
+.envelopeArt {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.seal {
+  position: absolute;
+  left: 50%;
+  top: 55px;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: var(--hg-maroon);
-  color: var(--hg-orange);
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+  transform: translate(-50%, -50%);
+  box-shadow: inset 0 0 0 3px rgba(58, 11, 26, 0.18);
   animation: heartbeat 1.8s ease-in-out infinite;
 }
 
-.heroMsg {
-  margin-top: 24px;
-  padding: 28px 22px;
-  border-radius: 20px;
-  background: var(--hg-container);
-  color: var(--hg-ink);
-  animation: heroOpen 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+.envelopeLabel {
+  display: block;
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.2;
+  opacity: 0.85;
+}
+
+/* The message screen: the heart widens until it fills the screen. */
+.msgScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 28px 96px;
+  background: var(--hg-orange);
+  color: var(--hg-maroon);
+  text-align: center;
+  clip-path: circle(150vmax at var(--ox) var(--oy));
+  animation: msgWiden 0.7s cubic-bezier(0.5, 0, 0.2, 1) both;
+  overflow-y: auto;
+}
+
+.msgInner {
+  max-width: 420px;
+}
+
+.msgScreen .messageMark {
+  color: var(--hg-maroon);
+}
+
+.msgScreen .messageText {
+  font-size: 24px;
+}
+
+.msgNext {
+  position: absolute;
+  left: 50%;
+  bottom: 32px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: var(--hg-maroon);
+  color: var(--hg-orange);
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+
+.signoff {
+  margin: 20px 0 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--hg-maroon);
+}
+
+@keyframes msgWiden {
+  from { clip-path: circle(0 at var(--ox) var(--oy)); }
+  to { clip-path: circle(150vmax at var(--ox) var(--oy)); }
 }
 
 @keyframes heartbeat {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 78, 0, 0.55); }
-  50% { transform: scale(1.12); box-shadow: 0 0 0 7px rgba(255, 78, 0, 0); }
-}
-
-@keyframes heroOpen {
-  from { opacity: 0; transform: scale(0.5); }
-  to { opacity: 1; transform: scale(1); }
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.14); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .heart,
-  .heroMsg {
+  .seal,
+  .msgScreen {
     animation: none;
   }
 }

@@ -27,7 +27,7 @@ export function Timeline({ steps, current, heading }: { steps: TimelineStep[]; c
   return (
     <div className={t.box}>
       {heading ? <h3 className={`${s.cal} ${t.heading}`}>{heading}</h3> : null}
-      <ol className={t.row} aria-label="Prasadam journey">
+      <ol className={t.row} aria-label="Prasadam journey" style={{ "--n": steps.length } as React.CSSProperties}>
         {steps.map((step, i) => {
           const Icon = ICONS[step.key];
           const state = i === current ? "current" : step.done ? "done" : "pending";

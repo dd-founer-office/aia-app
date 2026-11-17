@@ -18,7 +18,6 @@ export function reportCopy(report: VaazhgaReport) {
       highlight: "travel",
       paragraphs: [
         `You wanted ${name} to receive ${deityShort}'s blessings on ${p.possessive} birthday.`,
-        `${cap(p.possessive)} name and star were offered in prayer at ${place}. The moments from the temple have been preserved here, and ${p.possessive} blessed prasadam is now being prepared for its journey home.`,
         "A birthday wish, a prayer and your love, brought a little closer, despite the distance.",
       ],
     },
@@ -37,7 +36,7 @@ export function reportCopy(report: VaazhgaReport) {
       ],
     },
     share: {
-      headline: `Now, let ${name} be part of this moment.`,
+      headline: `Let ${name} be part of this moment.`,
       paragraphs: [
         `A page made especially for ${p.object}, with the prayer offered in ${p.possessive} name and glimpses of the temple visit.`,
         `Add your birthday wishes and share this little piece of the celebration with ${p.object}.`,
