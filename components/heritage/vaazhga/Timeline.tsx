@@ -32,7 +32,7 @@ export function Timeline({ steps, current, heading }: { steps: TimelineStep[]; c
           const Icon = ICONS[step.key];
           const state = i === current ? "current" : step.done ? "done" : "pending";
           return (
-            <li key={step.key}>
+            <li key={step.key} className={step.done ? t.segDone : undefined}>
               <button
                 type="button"
                 className={`${t.dot} ${t[state]} ${i === selected ? t.selected : ""}`}

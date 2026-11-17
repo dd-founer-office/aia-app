@@ -4,6 +4,8 @@ import { ArrowDown, Heart } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMessage } from "./MessageContext";
 import { OpenerVideo } from "./OpenerVideo";
+import { SenderCard } from "./SenderCard";
+import { senderLabel, signoffLines } from "@/lib/heritage/vaazhga-senders";
 import g from "./gift.module.css";
 import s from "./report.module.css";
 
@@ -14,9 +16,10 @@ type Props = {
   headline: string;
   highlight: string;
   paragraphs: string[];
-  /** Small label under the envelope ("Amma", "Appa", or the sender's name). */
-  envelopeLabel: string;
-  signoff: string;
+  /** On the share view the envelope leads to the writing box instead of opening. */
+  preview: boolean;
+  /** Id of the writing box (share view only). */
+  composeId: string;
   tamil: Tamil;
   logoSrc: string;
   ddLogoSrc: string;
@@ -35,9 +38,6 @@ const buzz = (pattern: number | number[]) => {
   }
 };
 
-/** Smaller type for longer messages, so the card never overflows. */
-const messageSize = (n: number) => (n <= 90 ? 22 : n <= 180 ? 18 : 15);
-
 /**
  * The gift page's first screen: the lamp photo with the Vaazhga Vaazhthudan
  * lettering, then a maroon card with the headline and a closed envelope
@@ -46,8 +46,10 @@ const messageSize = (n: number) => (n <= 90 ? 22 : n <= 180 ? 18 : 15);
  * the sender's own card first (when they wrote one), ours behind it.
  * The arrow closes the stage and carries on down the page.
  */
-export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, signoff, tamil, logoSrc, ddLogoSrc, logoAlt, posterSrc, videoSrc, nextId }: Props) {
-  const { message } = useMessage();
+export function HeroReveal({ headline, highlight, paragraphs, preview, composeId, tamil, logoSrc, ddLogoSrc, logoAlt, posterSrc, videoSrc, nextId }: Props) {
+  const { message, senders } = useMessage();
+  const envelopeLabel = senderLabel(senders);
+  const signoffs = signoffLines(senders);
   const text = message.trim();
   const [open, setOpen] = useState(false);
   const [order, setOrder] = useState<Kind[]>(["ours"]);
@@ -72,6 +74,14 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
   }, [nextId]);
 
   const press = () => {
+    if (preview) {
+      // The sender is the one looking: take them to where they write their words.
+      buzz([40, 70, 60]);
+      const box = document.getElementById(composeId);
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      box?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+      return;
+    }
     buzz([40, 70, 60]); // a heartbeat: lub-dub
     setOrder(text ? ["sender", "ours"] : ["ours"]);
     setDrag(0);
@@ -141,17 +151,7 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
 
   const face = (kind: Kind) =>
     kind === "sender" ? (
-      <div className={`${g.paper} ${g.paperSender}`}>
-        <div className={g.artTop} />
-        <span className={g.cardMark} aria-hidden="true">
-          &ldquo;
-        </span>
-        <p className={`${s.cal} ${g.cardText}`} style={{ fontSize: messageSize(text.length) }}>
-          {text}
-        </p>
-        <p className={g.cardSign}>{signoff}</p>
-        <div className={g.artBottom} />
-      </div>
+      <SenderCard text={text} signoffs={signoffs} />
     ) : (
       <div className={`${g.paper} ${g.paperOurs}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -202,7 +202,7 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
             {p}
           </p>
         ))}
-        <button type="button" className={g.envelope} onClick={press} aria-haspopup="dialog" aria-label={`Open the envelope from ${envelopeLabel}`}>
+        <button type="button" className={g.envelope} onClick={press} aria-haspopup={preview ? undefined : "dialog"} aria-label={preview ? "Write your own words" : `Open the envelope from ${envelopeLabel}`}>
           <svg className={g.envelopeArt} viewBox="0 0 132 92" aria-hidden="true">
             <rect x="1" y="1" width="130" height="90" rx="4.5" fill="#F7F1EA" />
             <path d="M3 8 66 55 129 8" fill="none" stroke="#3A0B1A" strokeOpacity=".28" strokeWidth="2" strokeLinejoin="round" />

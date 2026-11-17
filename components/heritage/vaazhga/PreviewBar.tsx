@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { senderQuery } from "@/lib/heritage/vaazhga-senders";
 import { useMessage } from "./MessageContext";
 import g from "./gift.module.css";
 
@@ -11,12 +12,13 @@ import g from "./gift.module.css";
  */
 export function PreviewBar({ recipient, publicPath, internalPath }: { recipient: string; publicPath: string; internalPath: string }) {
   const [copied, setCopied] = useState(false);
-  const { message } = useMessage();
+  const { message, senders } = useMessage();
 
   const shareUrl = () => {
     const path = /^heritage\./i.test(window.location.hostname) ? publicPath : internalPath;
     const text = message.trim();
-    return `${window.location.origin}${path}${text ? `?m=${encodeURIComponent(text)}` : ""}`;
+    const query = [text ? `m=${encodeURIComponent(text)}` : "", senderQuery(senders)].filter(Boolean).join("&");
+    return `${window.location.origin}${path}${query ? `?${query}` : ""}`;
   };
 
   const whatsapp = () => {

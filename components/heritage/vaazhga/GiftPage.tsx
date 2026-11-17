@@ -1,3 +1,4 @@
+import type { Sender } from "@/lib/heritage/vaazhga-senders";
 import { giftCopy } from "@/lib/heritage/vaazhga-gift-copy";
 import { buildGiftJourney } from "@/lib/heritage/vaazhga-timeline";
 import { giftPaths, type VaazhgaReport } from "@/lib/heritage/vaazhga-vaazhthudan-reports";
@@ -18,6 +19,7 @@ const DD_LOGO_LIGHT = "/heritage/dd-logo-light.png";
 const VV_LOGO = "/heritage/vv-logo.png";
 const PRAYER_SECTION_ID = "prayer";
 const JOURNEY_SECTION_ID = "journey";
+const COMPOSE_ID = "your-words";
 
 // The six Heritage Gifting categories, shown by their logos (one ivory colour
 // with orange accents). `height` evens out their optical size: Peranbu's
@@ -36,7 +38,7 @@ const CATEGORIES: { name: string; sub: string; logo: string; height: number; cur
  * Devotion voice (docs/heritage-gifting-voice.md). The sender is named once,
  * in the opener; everything after that speaks as Distant Devotion.
  */
-export function GiftPage({ report, preview, message }: { report: VaazhgaReport; preview: boolean; message: string }) {
+export function GiftPage({ report, preview, message, senders }: { report: VaazhgaReport; preview: boolean; message: string; senders: Sender[] }) {
   const { recipient, lampSrc, photos, initialPhotoIndex, gift } = report;
   const { tracker } = gift;
   const paths = giftPaths(gift.slug);
@@ -48,7 +50,7 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
 
   return (
     <div className={s.shell}>
-      <MessageProvider initial={message}>
+      <MessageProvider initial={message} initialSenders={senders}>
       <main className={`${s.page} ${preview ? g.withBar : ""}`} style={preview ? undefined : { background: "var(--hg-ivory)" }}>
         <div style={preview ? { background: "var(--hg-ivory)" } : undefined}>
           {/* ---------- Hero ---------- */}
@@ -56,8 +58,8 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
             headline={c.hero.headline}
             highlight={c.hero.highlight}
             paragraphs={c.hero.paragraphs}
-            envelopeLabel={c.envelopeLabel}
-            signoff={c.signoff}
+            preview={preview}
+            composeId={COMPOSE_ID}
             tamil={c.tamil}
             ddLogoSrc={DD_LOGO_LIGHT}
             logoSrc={VV_LOGO}
@@ -69,7 +71,7 @@ export function GiftPage({ report, preview, message }: { report: VaazhgaReport; 
 
           {/* ---------- The booker's writing box (preview only) ---------- */}
           {preview ? (
-            <MessageSection recipient={recipient} preview signoff={c.signoff} />
+            <MessageSection recipient={recipient} preview composeId={COMPOSE_ID} />
           ) : null}
 
           {/* ---------- A prayer, made in your name ---------- */}

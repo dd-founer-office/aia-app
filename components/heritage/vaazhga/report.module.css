@@ -632,3 +632,92 @@
 .footerWithArt .tagline {
   margin-top: 24px;
 }
+
+/* ---------- Full-screen photo viewer ---------- */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 12px 24px;
+  background: rgba(24, 5, 12, 0.985);
+  color: var(--hg-on-dark);
+  text-align: center;
+  animation: lbIn 0.25s ease both;
+}
+
+.lightboxImg {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100svh - 190px);
+  min-height: 0;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.lightboxCaption {
+  flex: none;
+  max-width: 340px;
+  margin-top: 16px;
+}
+
+.lightboxCaption h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.lightboxCaption p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+.lightboxClose,
+.lightboxNav {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(247, 241, 234, 0.14);
+  color: var(--hg-on-dark);
+  cursor: pointer;
+}
+
+.lightboxClose {
+  top: 12px;
+  right: 12px;
+}
+
+.lightboxNav {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.lightboxPrev {
+  left: 8px;
+}
+
+.lightboxNext {
+  right: 8px;
+}
+
+@keyframes lbIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lightbox {
+    animation: none;
+  }
+}
