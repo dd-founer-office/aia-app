@@ -7,7 +7,8 @@ import { OpenerVideo } from "./OpenerVideo";
 import g from "./gift.module.css";
 import s from "./report.module.css";
 
-type Tamil = { label: string; lines: string[]; deityLine: string; closing: string };
+type Tamil = { lines: string[]; deityLine: string; closing: string };
+type Kind = "sender" | "ours";
 
 type Props = {
   headline: string;
@@ -49,7 +50,8 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
   const { message } = useMessage();
   const text = message.trim();
   const [open, setOpen] = useState(false);
-  const [cur, setCur] = useState(0);
+  const [order, setOrder] = useState<Kind[]>(["ours"]);
+  const [flying, setFlying] = useState(0);
   const [drag, setDrag] = useState(0);
   const [dragging, setDragging] = useState(false);
   const start = useRef<number | null>(null);
@@ -57,7 +59,11 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
   const nextBtn = useRef<HTMLButtonElement>(null);
   const [before, after] = headline.split(highlight);
 
-  const cards: ("sender" | "ours")[] = text ? ["sender", "ours"] : ["ours"];
+  const cards: Kind[] = text ? ["sender", "ours"] : ["ours"];
+  // The deck as it stands: the first card is on top. Swiping sends the top card to the back.
+  const deck = order.filter((k) => cards.includes(k));
+  for (const k of cards) if (!deck.includes(k)) deck.push(k);
+  const top = deck[0];
 
   const goNext = useCallback(() => {
     const target = document.getElementById(nextId);
@@ -67,8 +73,9 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
 
   const press = () => {
     buzz([40, 70, 60]); // a heartbeat: lub-dub
-    setCur(0);
+    setOrder(text ? ["sender", "ours"] : ["ours"]);
     setDrag(0);
+    setFlying(0);
     setOpen(true);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => buzz(25), 2300); // the cards have landed
@@ -98,11 +105,22 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const advance = () => {
-    if (cur < cards.length - 1) {
-      buzz(10);
-      setCur(cur + 1);
-    }
+  const bringToFront = (kind: Kind) => {
+    if (kind === top) return;
+    buzz(10);
+    setOrder([kind, ...deck.filter((k) => k !== kind)]);
+  };
+
+  // Swipe the top card away: it flies off, then slips in at the back.
+  const sendToBack = (dir: number) => {
+    if (deck.length < 2 || flying) return;
+    buzz(10);
+    setFlying(dir);
+    window.setTimeout(() => {
+      setOrder([...deck.slice(1), deck[0]]);
+      setFlying(0);
+      setDrag(0);
+    }, 300);
   };
 
   const onDown = (e: React.PointerEvent) => {
@@ -115,13 +133,13 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
   };
   const onUp = () => {
     if (start.current === null) return;
-    if (Math.abs(drag) > 70) advance();
     start.current = null;
     setDragging(false);
-    setDrag(0);
+    if (Math.abs(drag) > 70) sendToBack(drag > 0 ? 1 : -1);
+    else setDrag(0);
   };
 
-  const face = (kind: "sender" | "ours") =>
+  const face = (kind: Kind) =>
     kind === "sender" ? (
       <div className={`${g.paper} ${g.paperSender}`}>
         <div className={g.artTop} />
@@ -138,24 +156,22 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
       <div className={`${g.paper} ${g.paperOurs}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className={g.cardVv} src={logoSrc} alt="Vaazhga Vaazhthudan" width={150} height={91} />
-        <div className={g.artMid} />
-        <p className={g.cardTamilLabel} lang="ta">
-          {tamil.label}
-        </p>
-        <p className={g.cardTamil} lang="ta">
-          {tamil.lines.map((line, i) => (
-            <span key={line}>
-              {i > 0 ? <br /> : null}
-              {line}
-            </span>
-          ))}
-        </p>
-        <p className={g.cardTamil} lang="ta">
-          {tamil.deityLine}
-        </p>
-        <p className={g.cardTamil} lang="ta">
-          {tamil.closing}
-        </p>
+        <div className={g.tamilBlock}>
+          <p className={g.cardTamil} lang="ta">
+            {tamil.lines.map((line, i) => (
+              <span key={line}>
+                {i > 0 ? <br /> : null}
+                {line}
+              </span>
+            ))}
+          </p>
+          <p className={g.cardTamil} lang="ta">
+            {tamil.deityLine}
+          </p>
+          <p className={g.cardTamil} lang="ta">
+            {tamil.closing}
+          </p>
+        </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className={g.cardDd} src={ddLogoSrc} alt="Distant Devotion" width={120} height={53} />
       </div>
@@ -204,23 +220,25 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
           <div className={g.scene}>
             <div className={g.settle}>
             <div className={g.cards}>
-              {cards.map((kind, i) => {
-                const pos = i - cur;
-                const front = pos === 0;
+              {(["ours", "sender"] as Kind[]).filter((k) => cards.includes(k)).map((kind) => {
+                const idx = deck.indexOf(kind);
+                const front = idx === 0;
                 const style: React.CSSProperties | undefined = front
-                  ? { transform: `translateX(${drag}px) rotate(${-3 + drag / 18}deg)`, transition: dragging ? "none" : "transform .3s" }
+                  ? flying
+                    ? { transform: `translateX(${flying * 130}%) rotate(${flying * 24}deg)`, opacity: 0 }
+                    : { transform: `translateX(${drag}px) rotate(${-3 + drag / 18}deg)`, transition: dragging ? "none" : "transform .3s" }
                   : undefined;
                 return (
-                  <div key={kind} className={g.rise} style={{ "--d": `${(cards.length - 1 - i) * 0.4 + 1.1}s`, zIndex: cards.length - i } as React.CSSProperties}>
+                  <div key={kind} className={g.rise} style={{ "--d": `${kind === "ours" ? 1.1 : 1.5}s`, zIndex: deck.length - idx } as React.CSSProperties}>
                     <div
-                      className={`${g.card} ${pos < 0 ? g.cardGone : pos > 0 ? g.cardBehind : ""}`}
+                      className={`${g.card} ${kind === "ours" ? g.cardOurs : ""} ${front ? "" : kind === "ours" ? g.behindOurs : g.behindSender}`}
                       style={style}
                       onPointerDown={front ? onDown : undefined}
                       onPointerMove={front ? onMove : undefined}
                       onPointerUp={front ? onUp : undefined}
                       onPointerCancel={front ? onUp : undefined}
-                      onClick={pos > 0 ? advance : undefined}
-                      aria-hidden={pos !== 0}
+                      onClick={front ? undefined : () => bringToFront(kind)}
+                      aria-hidden={!front}
                     >
                       {face(kind)}
                     </div>
@@ -230,8 +248,8 @@ export function HeroReveal({ headline, highlight, paragraphs, envelopeLabel, sig
             </div>
             {cards.length > 1 ? (
               <div className={g.dots}>
-                {cards.map((kind, i) => (
-                  <button key={kind} type="button" className={`${g.dot} ${i === cur ? g.dotOn : ""}`} aria-label={kind === "sender" ? "Card from the sender" : "Card from Distant Devotion"} aria-current={i === cur} onClick={() => setCur(i)} />
+                {cards.map((kind) => (
+                  <button key={kind} type="button" className={`${g.dot} ${kind === top ? g.dotOn : ""}`} aria-label={kind === "sender" ? "Card from the sender" : "Card from Distant Devotion"} aria-current={kind === top} onClick={() => bringToFront(kind)} />
                 ))}
               </div>
             ) : null}
