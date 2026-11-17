@@ -66,11 +66,12 @@ export function VaazhgaReport({ report }: { report: Report }) {
           </section>
 
           <TileRows
-            rows={TILE_ROWS.map((row) =>
-              row.map((tile) =>
+            rows={TILE_ROWS.map((row, r) =>
+              row.map((tile, c) =>
                 tile === "logo"
                   ? ({ kind: "logo" } as const)
-                  : ({ kind: "photo", src: srcByKey.get(tile) ?? lampSrc } as const),
+                  : // A booking may not have every photo: borrow another of its own, never repeat the hero one.
+                    ({ kind: "photo", src: srcByKey.get(tile) ?? photos[(r * 3 + c) % photos.length]?.src ?? lampSrc } as const),
               ),
             )}
             logoSrc={VV_LOGO}

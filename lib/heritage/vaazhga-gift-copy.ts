@@ -17,23 +17,25 @@ export function giftStage(report: VaazhgaReport): GiftStage {
 }
 
 export function giftCopy(report: VaazhgaReport) {
-  const { recipient: name, deityShort, place } = report;
+  const { recipient: name, deityShort, place, story } = report;
+  const parcel = story?.parcel ?? "blessed prasadam and sankalpam card";
+  const parcelPlain = parcel.replace(/^blessed /, "");
   const stage = giftStage(report);
 
   // The prasadam status follows the real tracker dates and never runs ahead of them.
   const status = {
-    preparing: { title: "Your prasadam will be prepared soon.", text: "Once your name and star have been offered, your prasadam and sankalpam card will be prepared for you." },
-    packing: { title: "Your prasadam is being packed.", text: "Your blessed prasadam and sankalpam card are being carefully packed. We'll let you know when they begin their journey to you." },
-    packed: { title: "Your prasadam is packed.", text: "Your blessed prasadam and sankalpam card are packed and ready to begin their journey to you." },
-    shipped: { title: "Your prasadam is on its way.", text: "Your blessed prasadam and sankalpam card have begun their journey to you." },
-    delivered: { title: "Your prasadam has reached you.", text: "Your blessed prasadam and sankalpam card have reached you." },
+    preparing: { title: "Your prasadam will be prepared soon.", text: `Once your name and star have been offered, your ${parcelPlain} will be prepared for you.` },
+    packing: { title: "Your prasadam is being packed.", text: `Your ${parcel} are being carefully packed. We'll let you know when they begin their journey to you.` },
+    packed: { title: "Your prasadam is packed.", text: `Your ${parcel} are packed and ready to begin their journey to you.` },
+    shipped: { title: "Your prasadam is on its way.", text: `Your ${parcel} have begun their journey to you.` },
+    delivered: { title: "Your prasadam has reached you.", text: `Your ${parcel} have reached you.` },
   }[stage];
 
   return {
     hero: {
       headline: `${name} this blessing is for you.`,
       highlight: name,
-      paragraphs: [
+      paragraphs: story?.giftHero ?? [
         `On your birthday, someone who holds you dear wanted to seek ${deityShort}'s blessings for you.`,
       ],
     },
@@ -62,7 +64,7 @@ export function giftCopy(report: VaazhgaReport) {
     },
     journey: {
       blessed: { title: "Offered in your name", text: `Your name and star were offered in prayer at ${place}.` },
-      packed: { title: "Being prepared for you", text: "Your blessed prasadam and sankalpam card are being carefully prepared." },
+      packed: { title: "Being prepared for you", text: `Your ${parcel} are being carefully prepared.` },
       shipped: { title: "On its way", text: "Your blessing has begun its journey home to you." },
       delivered: { title: "Reached home", text: "Your blessed offering has reached you." },
       labels: { done: "Completed", inProgress: "In progress", awaiting: "Awaiting update" },
