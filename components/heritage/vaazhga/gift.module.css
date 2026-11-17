@@ -589,7 +589,7 @@
   height: 38px;
   border-radius: 50%;
   background: var(--hg-orange);
-  color: var(--hg-maroon);
+  color: #d8101e;
   transform: translate(-50%, -50%);
   box-shadow: inset 0 0 0 3px rgba(58, 11, 26, 0.18);
   animation: heartbeat 1.8s ease-in-out infinite;
