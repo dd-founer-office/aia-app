@@ -11,6 +11,7 @@ import { TempleCarousel } from "./TempleCarousel";
 import { Timeline } from "./Timeline";
 import { Socials } from "./Socials";
 import { TrackButton } from "./TrackButton";
+import { TrackingChip } from "./TrackingChip";
 import g from "./gift.module.css";
 import s from "./report.module.css";
 
@@ -138,6 +139,7 @@ export function GiftPage({ report, preview, message, senders }: { report: Vaazhg
           <div className={g.trackRow}>
             <h2 className={`${s.cal} ${s.h2}`}>{c.prasadam.status.title}</h2>
             <p className={s.lead}>{c.prasadam.status.text}</p>
+            {tracker.courierRef ? <TrackingChip courier={tracker.courier} reference={tracker.courierRef} /> : null}
             <TrackButton label={c.prasadam.track} trackUrl={tracker.trackUrl} targetId={JOURNEY_SECTION_ID} />
           </div>
 

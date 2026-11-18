@@ -102,7 +102,7 @@ export function buildBookerJourney(report: VaazhgaReport): { steps: TimelineStep
   const defs: { key: StepKey; date?: string; extra?: string }[] = [
     { key: "blessed", date: t.blessedOn },
     { key: "packed", date: t.packedOn },
-    { key: "shipped", date: t.shippedOn, extra: t.courierRef ? `Courier reference ${t.courierRef}` : undefined },
+    { key: "shipped", date: t.shippedOn, extra: t.courierRef ? (t.courier ? `${t.courier} · ${t.courierRef}` : `Courier reference ${t.courierRef}`) : undefined },
     { key: "transit", date: t.deliveredOn ? t.shippedOn ?? "" : undefined },
     { key: "delivered", date: t.deliveredOn },
   ];
@@ -137,12 +137,15 @@ export function buildGiftJourney(report: VaazhgaReport): { steps: TimelineStep[]
   const defs: { key: "blessed" | "packed" | "shipped" | "delivered"; date?: string; extra?: string }[] = [
     { key: "blessed", date: t.blessedOn },
     { key: "packed", date: t.packedOn },
-    { key: "shipped", date: t.shippedOn, extra: t.courierRef ? `Courier reference ${t.courierRef}` : undefined },
+    { key: "shipped", date: t.shippedOn, extra: t.courierRef ? (t.courier ? `${t.courier} · ${t.courierRef}` : `Courier reference ${t.courierRef}`) : undefined },
     { key: "delivered", date: t.deliveredOn },
   ];
   const done = defs.map((d) => Boolean(d.date));
   const firstOpen = done.findIndex((d) => !d);
-  const current = firstOpen === -1 ? defs.length - 1 : firstOpen;
+  // Once it has shipped, the card opens on "On its way" rather than on "Reached home",
+  // whose wording would otherwise be shown before it has happened.
+  const shippedAt = defs.findIndex((d) => d.key === "shipped");
+  const current = firstOpen === -1 ? defs.length - 1 : defs[firstOpen].key === "delivered" && done[shippedAt] ? shippedAt : firstOpen;
   const steps = defs.map(({ key, date, extra }, i): TimelineStep => ({
     key,
     title: j[key].title,

@@ -45,6 +45,8 @@ export type Tracker = {
   packedOn?: string;
   shippedOn?: string;
   deliveredOn?: string;
+  /** The courier, shown with the reference ("India Post"). */
+  courier?: string;
   /** Courier reference shown under "On its way". */
   courierRef?: string;
   /** Courier tracking page. The "Track your parcel" button needs this. */
@@ -74,6 +76,8 @@ export type Gift = {
 export type Story = {
   /** Replaces the report's hero paragraphs (written to the booker). */
   reportHero?: string[];
+  /** The same, once the parcel has been shipped (so it never says "will travel" after it has). */
+  reportHeroShipped?: string[];
   /** Replaces the gift page's hero paragraphs (written to the birthday person). */
   giftHero?: string[];
   /** What the parcel holds, as in "his <parcel> are being packed". Default: blessed prasadam and sankalpam card. */
@@ -174,7 +178,14 @@ const REPORTS: Record<string, VaazhgaReport> = {
       birthday: "17 November",
       star: "Poosam",
       templeShort: "Koothanur",
-      tracker: { blessedOn: "17 November" },
+      tracker: {
+        blessedOn: "17 November",
+        packedOn: "18 November",
+        shippedOn: "18 November",
+        courier: "India Post",
+        courierRef: "LP989057697IN",
+        trackUrl: "https://t.17track.net/en#nums=LP989057697IN",
+      },
     },
     tileRows: [
       ["gopuram", "amman", "lamps", "logo", "brand", "offerings"],
@@ -191,6 +202,10 @@ const REPORTS: Record<string, VaazhgaReport> = {
       reportHero: [
         "Arihant's first letters were written at Koothanur's Saraswathi Amman temple. This year, as he prepares for his 10th public exams, you wanted that same blessing with him on his birthday.",
         "A pen placed at the Amman's feet, with blessed prasadam, will travel to Abu Dhabi: a birthday wish, a prayer and your love, brought a little closer.",
+      ],
+      reportHeroShipped: [
+        "Arihant's first letters were written at Koothanur's Saraswathi Amman temple. This year, as he prepares for his 10th public exams, you wanted that same blessing with him on his birthday.",
+        "A pen placed at the Amman's feet, with blessed prasadam, is on its way to Abu Dhabi: a birthday wish, a prayer and your love, brought a little closer.",
       ],
       giftHero: [
         "Your first letters were written at Saraswathi Amman's temple in Koothanur. As your 10th public exams near, someone who holds you dear wanted the Amman's blessings to reach you in Abu Dhabi: a pen placed at her feet, and blessed prasadam.",
