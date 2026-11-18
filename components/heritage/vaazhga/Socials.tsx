@@ -1,13 +1,24 @@
 import s from "./report.module.css";
 
-// Social links: icons only until the real account URLs are supplied.
-const SOCIALS: { label: string; href?: string; glyph: "in" | "ig" | "f" }[] = [
-  { label: "LinkedIn", glyph: "in" },
-  { label: "Instagram", glyph: "ig" },
-  { label: "Facebook", glyph: "f" },
+type Glyph = "in" | "ig" | "f" | "wa";
+
+// Distant Devotion's own accounts. WhatsApp opens a chat with +91 99889 21621.
+const SOCIALS: { label: string; href?: string; glyph: Glyph }[] = [
+  { label: "LinkedIn", href: "https://www.linkedin.com/company/distantdevotionofficial", glyph: "in" },
+  { label: "Instagram", href: "https://www.instagram.com/distantdevotion_official/", glyph: "ig" },
+  { label: "Facebook", href: "https://www.facebook.com/distantdevotionofficial", glyph: "f" },
+  { label: "WhatsApp", href: "https://wa.me/919988921621", glyph: "wa" },
 ];
 
-function SocialGlyph({ glyph }: { glyph: "in" | "ig" | "f" }) {
+function SocialGlyph({ glyph }: { glyph: Glyph }) {
+  if (glyph === "wa") {
+    return (
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 21l1.65-4.9A9 9 0 1 1 8 19.4L3 21z" />
+        <path d="M9 8.6c0 3.5 3 6.4 6.4 6.4l1.3-1.3c.3-.3.3-.8 0-1.1l-1.2-1c-.3-.3-.8-.2-1.1.1l-.5.5c-1.1-.4-2-1.3-2.4-2.4l.5-.5c.3-.3.4-.8.1-1.1l-1-1.2c-.3-.3-.8-.3-1.1 0L9 8.6z" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
   if (glyph === "ig") {
     return (
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -24,7 +35,7 @@ function SocialGlyph({ glyph }: { glyph: "in" | "ig" | "f" }) {
   );
 }
 
-/** The LinkedIn, Instagram and Facebook icons in the footer of both pages. */
+/** The LinkedIn, Instagram, Facebook and WhatsApp icons in the footer of both pages. */
 export function Socials() {
   return (
     <div className={s.socials}>
