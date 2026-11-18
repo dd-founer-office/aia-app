@@ -12,6 +12,7 @@ import { SendButton } from "./SendButton";
 import { Socials } from "./Socials";
 import { TempleCarousel } from "./TempleCarousel";
 import { TrackButton } from "./TrackButton";
+import { TrackingChip } from "./TrackingChip";
 import { Timeline } from "./Timeline";
 import { TileRows } from "./TileRows";
 import s from "./report.module.css";
@@ -169,6 +170,7 @@ export function VaazhgaReport({ report }: { report: Report }) {
           </p>
           <p className={s.endEn}>{c.tamil.english}</p>
           {packing ? <p className={s.endNote}>{c.status.packing}</p> : null}
+          {gift.tracker.courierRef ? <TrackingChip courier={gift.tracker.courier} reference={gift.tracker.courierRef} /> : null}
           <TrackButton label={c.track.button} trackUrl={gift.tracker.trackUrl} targetId={JOURNEY_SECTION_ID} />
         </section>
 

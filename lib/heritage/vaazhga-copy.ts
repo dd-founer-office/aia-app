@@ -11,13 +11,14 @@ const cap = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 export function reportCopy(report: VaazhgaReport) {
   const { recipient: name, pronouns: p, deity, deityShort, place, story } = report;
   const parcel = story?.parcel ?? "blessed prasadam and sankalpam card";
+  const shipped = Boolean(report.gift.tracker.shippedOn);
 
   return {
     hero: {
       headline: "Some wishes travel farther than words.",
       /** The word in the headline that is shown highlighted (a styling choice; the text is unchanged). */
       highlight: "travel",
-      paragraphs: story?.reportHero ?? [
+      paragraphs: (shipped ? story?.reportHeroShipped : undefined) ?? story?.reportHero ?? [
         `You wanted ${name} to receive ${deityShort}'s blessings on ${p.possessive} birthday.`,
         "A birthday wish, a prayer and your love, brought a little closer, despite the distance.",
       ],
@@ -48,9 +49,13 @@ export function reportCopy(report: VaazhgaReport) {
     status: {
       headline: "A little blessing, on its way home.",
       paragraphs: [
-        story?.parcel
-          ? `The prayer has been offered. We are now carefully preparing the ${story.parcel} for their journey to ${name}.`
-          : `The prayer has been offered. We are now carefully preparing the blessed prasadam for its journey to ${name}.`,
+        shipped
+          ? story?.parcel
+            ? `The prayer has been offered, and the ${story.parcel} have set out on their journey to ${name}.`
+            : `The prayer has been offered, and the blessed prasadam has set out on its journey to ${name}.`
+          : story?.parcel
+            ? `The prayer has been offered. We are now carefully preparing the ${story.parcel} for their journey to ${name}.`
+            : `The prayer has been offered. We are now carefully preparing the blessed prasadam for its journey to ${name}.`,
         "Follow its journey here. We'll update you as it makes its way home.",
       ],
       /** Shown while the prasadam is being packed. */
