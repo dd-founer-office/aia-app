@@ -122,7 +122,7 @@ function video(file: string): TestimonialContent {
     subtitle: "Hear from the parents of Roshini and Inbarasu.",
     quote: "மனமார்ந்த நன்றி",
     speaker: "Parents",
-    organization: PARTNER,
+    organization: "of Roshini and Inbarasu, Plus Two students",
   };
 }
 
