@@ -161,6 +161,24 @@ export interface CuratedEpisodeContent {
    *  prompt -- tied to a particular scene, location, and mood -- that
    *  prompt should win over the generic generated one. */
   imagePromptOverride?: string;
+  /** Optional hand-authored overrides for the Instagram caption's three
+   *  caption-only pieces (see caption-copy.ts/content-engine.ts) -- by
+   *  default these always come from the caption-only pools (opener/
+   *  closer/cta), deliberately separate writing from the slide's own
+   *  hook/tagline/cta.copy. When a source (e.g. the Notion "Instagram
+   *  Caption" column) already supplies its own specific opener/closer/cta
+   *  for an episode, these win over the pool selection, same per-field-
+   *  independent pattern as every other curated override here. Omit any
+   *  one and that piece still comes from its pool as normal. */
+  captionOpenerOverride?: string;
+  captionCloserOverride?: string;
+  captionCtaOverride?: string;
+  /** Optional hand-authored override for the caption's 3 hashtags (see
+   *  hashtags.ts) -- by default these are always exactly 3 (brand + theme
+   *  + a rotated reach tag). When a source supplies its own specific set,
+   *  this wins verbatim (not constrained to exactly 3, since an editor
+   *  deliberately chose that set). */
+  hashtagsOverride?: readonly string[];
 }
 
 /** Display labels for CuratedEpisodeContent.languageCategory, matching the
@@ -1033,48 +1051,268 @@ export const AATHICHOODI_CANON: readonly AathichoodiCanonEntry[] = [
       imagePromptOverride: "Create a natural, emotionally believable editorial lifestyle photograph for a parenting carousel, vertical 4:5. Scene: an everyday Tamil family living in Dubai at home in the early evening. A school-age child is sitting beside an unpacked school bag and a few schoolbooks, looking at the task they have been putting off. A parent is nearby, calmly encouraging the child to begin independently rather than doing it for them. Show a contemporary, lived-in Dubai apartment with subtle residential buildings visible through a window, not tourist landmarks. Authentic Tamil family appearance, natural modest home clothing, realistic details, warm natural light, candid documentary photography, gentle and encouraging expressions. No text, captions, logos, watermarks, exaggerated expressions or cultural stereotypes.",
     },
   },
-  { episodeNumber: 55, tamilText: "தக்கோன் எனத் திரி", simpleMeaning: "Conduct yourself so others recognize you as trustworthy.", transliteration: "Thakkon Enath Thiri", primaryTheme: "character", verified: true },
-  { episodeNumber: 56, tamilText: "தானமது விரும்பு", simpleMeaning: "Desire to give charity to those who deserve it.", transliteration: "Thaanamathu Virumbu", primaryTheme: "generosity", verified: true },
-  { episodeNumber: 57, tamilText: "திருமாலுக்கு அடிமை செய்", simpleMeaning: "Be devoted in service to the divine (Tirumal).", transliteration: "Thirumaalukku Adimai Sey", primaryTheme: "devotion", verified: true },
-  { episodeNumber: 58, tamilText: "தீவினை அகற்று", simpleMeaning: "Keep sinful deeds away from yourself.", transliteration: "Theevinai Agatru", primaryTheme: "character", verified: true },
-  { episodeNumber: 59, tamilText: "துன்பத்திற்கு இடம் கொடேல்", simpleMeaning: "Do not give room to hardship (do not let it stop your effort).", transliteration: "Thunbathirku Idam Kodel", primaryTheme: "self-control", verified: true,
-    // Curated: uncurated, this composes from the self-control pool's
-    // anger/screen-time angle -- the actual line is about resilience
-    // through hardship, a different idea.
+  { episodeNumber: 55, tamilText: "தக்கோன் எனத் திரி", simpleMeaning: "Live in a way that earns the respect of others as a person of good character.", transliteration: "Thakkon Enath Thiri", primaryTheme: "character", verified: true,
+    // Notion-sourced "Aathichoodi Daily – Carousel Content" row (2026-11).
+    // This batch's row also supplies its own Instagram Caption column for
+    // the first time -- mapped to captionOpenerOverride/captionCloserOverride/
+    // captionCtaOverride/hashtagsOverride (new fields, same per-field-
+    // independent override pattern as everything else here).
     curated: {
-      hookOverride: "Does your child keep going when something gets genuinely hard?",
-      understanding: "Avvaiyar's wisdom here is about resilience: don't let hardship stop your effort. A hard moment is real, but letting it be the reason you quit is a choice. And a different one is always possible.",
-      familyAngle: "Your child hits a genuinely hard moment, a tough assignment, a lost game, a friendship problem, and wants to give up on it entirely. Encouraging them to keep going, even just one more try, is exactly what this line is about.",
-      todayAction: "The next time something feels genuinely hard for your child today, ask: \"What's one more thing you could try before deciding this is impossible?\"",
-      childLesson: "Hard moments are real. Letting them stop you completely is still a choice. And not the only one.",
+      hookOverride: "Would your child choose to do the right thing even when nobody is watching?",
+      tagline: "Good character is built through the little choices we make every day.",
+      ctaLabel: "Let's help our children practise being someone others can trust.",
+      understanding: "This is about becoming worthy through one's conduct, not merely seeking praise or approval. Being a good person is not about collecting praise. It is about being honest, responsible and considerate in our everyday actions. Children learn this by watching what we practise, not only by hearing what we teach.",
+      familyAngle: "Your child notices a classmate being left out during a group activity. Nobody asks them to help. Nobody is watching closely. They have a choice: walk away or make room for the other child. The choice may seem small, but it says something about the person they are becoming.",
+      todayAction: "At dinner, ask each child what good choice they made today, starting with: \"What was one good choice you made today?\"",
+      todayActionSupport: "Let everyone share without judgement — good character is practised, not announced.",
+      childLesson: "A child who learns to be honest, responsible and considerate grows into someone others can trust.",
+      aiaConnection: "Let your actions introduce you. The character we build at home becomes the values we carry into the world.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a parent raising a child of good character.",
+      languageCategory: "practices",
+      imagePromptOverride: "A natural editorial lifestyle photograph, vertical 4:5. A contemporary Tamil family living in Dubai. Two school-age children at home with a parent nearby. One child notices their sibling sitting alone while the other children are engaged in an activity, and gently invites them to join. The parent observes with a quiet, encouraging expression. Warm lived-in Dubai apartment, subtle city view through a window, authentic candid expressions, natural daylight, realistic clothing and environment. Documentary family photography. No text, logos, watermarks or exaggerated expressions.",
+      captionOpenerOverride: "Good character is built when we do the right thing, even when nobody is watching.",
+      captionCloserOverride: "Raise children who earn respect through their actions, not just their words.",
+      captionCtaOverride: "Tag a parent who believes values begin at home.",
+      hashtagsOverride: ["#AramInAction", "#GoodCharacter", "#RaisingGoodHumans"],
     },
   },
-  { episodeNumber: 60, tamilText: "தூக்கி வினை செய்", simpleMeaning: "Weigh things carefully before you act.", transliteration: "Thooki Vinaisey", primaryTheme: "responsibility", verified: true,
-    // Curated: uncurated, this composes from the responsibility pool's
-    // "finish your chores properly" angle -- the actual line is about
-    // deliberation before acting, a different idea.
+  { episodeNumber: 56, tamilText: "தானமது விரும்பு", simpleMeaning: "Give to those who ask for help.", transliteration: "Thaanamathu Virumbu", primaryTheme: "generosity", verified: true,
+    // Notion-sourced "Aathichoodi Daily – Carousel Content" row (2026-11).
     curated: {
-      hookOverride: "Does your child stop to think before acting, especially on something big?",
-      understanding: "Avvaiyar's wisdom here is about thinking before acting. Weigh a decision properly before you act on it. Not after, when it's already too late to change your mind.",
-      familyAngle: "Your child is about to make a decision, spend their savings, say something in anger, agree to something big, without really thinking it through. Pausing to actually weigh it first is exactly what this line means.",
-      todayAction: "Before your child decides something big today, ask: \"Have you actually thought this through, or are you deciding fast because it feels good right now?\"",
-      childLesson: "A decision made in a hurry and a decision made with thought can look the same in the moment. But they rarely turn out the same.",
+      hookOverride: "What if giving became a habit, not just a response to a special occasion?",
+      tagline: "Children learn generosity when they see that what we have can also help someone else.",
+      ctaLabel: "Make giving part of growing up.",
+      understanding: "The verse encourages a willingness to give. Its focus is generosity towards people in need, not giving merely to get rid of unwanted things. In family life, children can learn to notice genuine needs, share what they can and give with dignity, without expecting praise in return.",
+      familyAngle: "Your child has outgrown clothes, books and toys that are still in good condition. They want to keep everything, even though another child could use them. This is a chance to talk about giving thoughtfully, with respect for the person receiving.",
+      todayAction: "Choose a few good-condition books, clothes or toys together, and let your child help prepare them to give respectfully.",
+      todayActionSupport: "Giving is not about clearing clutter. It is about thinking of another person's needs.",
+      childLesson: "Let our children grow up knowing that giving is a meaningful part of living together.",
+      aiaConnection: "A generous heart does not ask, \"What can I get?\" It learns to ask, \"What can I share?\"",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a family that believes in raising generous hearts.",
+      languageCategory: "practices",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A contemporary Tamil family living in Dubai at home. A parent and school-age child are carefully sorting clean, good-condition children's books, clothes and toys into a neat donation box. The child is choosing an item with a thoughtful expression while the parent explains that useful things can help another family. Warm lived-in apartment, subtle Dubai residential buildings through a window, realistic modest home clothing, candid documentary photography, natural daylight. Dignified, non-pitying mood. No text, logos, watermarks or stereotypes.",
+      captionOpenerOverride: "Generosity grows when children learn to look beyond what they own.",
+      captionCloserOverride: "Help them discover the joy of giving with care and dignity.",
+      captionCtaOverride: "Tag a family that makes giving a habit.",
+      hashtagsOverride: ["#AramInAction", "#TeachGenerosity", "#GivingWithDignity"],
     },
   },
-  { episodeNumber: 61, tamilText: "தெய்வம் இகழேல்", simpleMeaning: "Never scorn the divine.", transliteration: "Deivam Igazhel", primaryTheme: "devotion", verified: true },
-  { episodeNumber: 62, tamilText: "தேசத்தோடு ஒட்டி வாழ்", simpleMeaning: "Live in harmony with your country/community.", transliteration: "Desathodu Otti Vaazh", primaryTheme: "community", verified: true },
-  { episodeNumber: 63, tamilText: "தையல் சொல் கேளேல்", simpleMeaning: "Do not blindly trust words spoken carelessly or by the immature.", transliteration: "Thaiyalsol Kelel", primaryTheme: "family", verified: true },
-  { episodeNumber: 64, tamilText: "தொன்மை மறவேல்", simpleMeaning: "Never forget old, established bonds of friendship.", transliteration: "Thonmai Maravel", primaryTheme: "gratitude", verified: true },
-  { episodeNumber: 65, tamilText: "தோற்பன தொடரேல்", simpleMeaning: "Do not pursue things bound to fail.", transliteration: "Thorpana Thodarel", primaryTheme: "responsibility", verified: true,
-    // Curated: uncurated, this composes from the responsibility pool's
-    // "finish what you start" angle -- the actual line is about knowing
-    // when a pursuit genuinely isn't working, a different idea.
+  { episodeNumber: 57, tamilText: "திருமாலுக்கு அடிமை செய்", simpleMeaning: "Serve Narayana (Vishnu).", transliteration: "Thirumaalukku Adimai Sey", primaryTheme: "devotion", verified: true,
+    // Notion-sourced "Aathichoodi Daily – Carousel Content" row (2026-11).
+    // This is a specifically Vaishnava devotional line (Notion's own row
+    // insists it "should not be rewritten as a generic instruction that
+    // removes the deity named") -- understanding/simpleMeaning keep the
+    // Thirumal/Vishnu naming verbatim rather than generalising it.
     curated: {
-      hookOverride: "Does your child know the difference between persistence and stubbornness?",
-      understanding: "Avvaiyar's wisdom here is about knowing when to stop: don't keep chasing something that's clearly not going to work. Sticking with things matters, but so does knowing when a path genuinely isn't working anymore.",
-      familyAngle: "Your child keeps trying the exact same approach to something that clearly isn't working, a strategy in a game, a way of asking for something, instead of trying something different or letting it go.",
-      todayAction: "If your child is stuck repeating something that isn't working today, ask: \"Is this still worth trying the same way, or is it time for something different?\"",
-      childLesson: "Trying hard matters. So does noticing when the thing you're trying just isn't going to work.",
+      hookOverride: "What does devotion look like beyond prayer?",
+      tagline: "For generations, devotion has also been expressed through sincere service.",
+      ctaLabel: "Understand the verse. Live its lesson.",
+      understanding: "This is a specifically Vaishnava devotional instruction: dedicate yourself to the service of Thirumal, or Vishnu. It should not be rewritten as a generic instruction that removes the deity named in the original line. For families who practise this tradition, children can understand devotion through prayer, reverence and sincere service connected to their faith.",
+      familyAngle: "Your family is preparing for a visit to a Vishnu temple. Your child is interested in the prayers and offerings but does not understand why people also help clean, arrange or serve at the temple. It becomes an opportunity to talk about service as an expression of devotion.",
+      todayAction: "If your family visits a Vishnu temple, involve your child in a small act of service, such as arranging offerings or helping keep the space tidy.",
+      todayActionSupport: "This verse specifically speaks of service to Thirumal (Vishnu) — let the child's understanding grow through participation, not pressure.",
+      childLesson: "Help children understand the traditions of their family with respect, meaning and lived experience.",
+      aiaConnection: "Devotion is not only something we say. It is also something we practise with sincerity.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a family that passes its devotional values to the next generation.",
+      languageCategory: "beliefs",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A Tamil parent and school-age child at a South Indian Vishnu temple in Dubai or a culturally authentic temple setting. The child is helping arrange simple flower offerings or hand out water under the gentle guidance of the parent, with a Vishnu shrine softly visible in the distant background, respectful and not overly ornate. Devotional atmosphere, modest traditional clothing, natural expressions, documentary photography, warm daylight. No readable signs, text, logos, watermarks or commercial staging.",
+      captionOpenerOverride: "In this verse, Avvaiyar speaks specifically of serving Thirumal, or Vishnu.",
+      captionCloserOverride: "For families who follow this tradition, let children experience devotion through understanding and sincere service.",
+      captionCtaOverride: "Share this with someone who values living tradition.",
+      hashtagsOverride: ["#Aathichoodi", "#TamilHeritage", "#VaishnavaTradition", "#AramInAction"],
+    },
+  },
+  { episodeNumber: 58, tamilText: "தீவினை அகற்று", simpleMeaning: "Keep away from sinful or wrongful actions.", transliteration: "Theevinai Agatru", primaryTheme: "character", verified: true,
+    // Notion-sourced "Aathichoodi Daily – Carousel Content" row (2026-11).
+    curated: {
+      hookOverride: "A wrong choice does not become right just because nobody finds out.",
+      tagline: "The values we carry are revealed by the actions we choose.",
+      ctaLabel: "Choose what does no harm.",
+      understanding: "The verse instructs us to remove wrongful deeds from our conduct. It is a call to refrain from actions that are morally wrong, rather than merely avoiding being caught. In family life, this can mean teaching children honesty, fairness, accountability and care for the consequences of their actions.",
+      familyAngle: "Your child finds a small amount of money on the floor at school. No one seems to have noticed it. They wonder whether to keep it or hand it to a teacher. A small moment becomes a lesson about choosing not to do what is wrong.",
+      todayAction: "Use everyday situations to talk about right and wrong without shaming your child, starting with: \"If this belonged to someone else, what would be the fair thing to do?\"",
+      todayActionSupport: "Practise returning what is not theirs, telling the truth and taking responsibility when they make a mistake.",
+      childLesson: "Let our children learn to recognise a wrong choice and have the courage to choose differently.",
+      aiaConnection: "Doing what is right matters most when we have the freedom to choose otherwise.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a parent raising children with integrity.",
+      languageCategory: "practices",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A contemporary Tamil school-age child in a Dubai home shows a small found coin or note to a parent, asking what to do. The parent calmly explains that it should be returned to its owner or handed to a responsible adult. Warm apartment interior, school bag nearby, authentic everyday clothing, candid documentary style, gentle thoughtful expressions, soft daylight. No readable currency details, text, logos, watermarks or stereotypes.",
+      captionOpenerOverride: "Integrity is choosing what is right, even when nobody is checking.",
+      captionCloserOverride: "Help children understand that our actions matter, not just the consequences we face.",
+      captionCtaOverride: "Send this to a parent raising children with integrity.",
+      hashtagsOverride: ["#AramInAction", "#IntegrityMatters", "#RaisingGoodHumans"],
+    },
+  },
+  { episodeNumber: 59, tamilText: "துன்பத்திற்கு இடம் கொடேல்", simpleMeaning: "Do not abandon an effort out of fear of the physical discomfort that may come with trying.", transliteration: "Thunbathirku Idam Kodel", primaryTheme: "self-control", verified: true,
+    // Replaced with the Notion-sourced "Aathichoodi Daily – Carousel
+    // Content" database row for Episode 59 (2026-11), resolving the prior
+    // drift noted below (it was pulling from the wrong pool angle).
+    curated: {
+      hookOverride: "Should one difficult day be enough to make us give up?",
+      tagline: "Growth often asks us to stay with the effort, even when it feels uncomfortable.",
+      ctaLabel: "Help children keep going.",
+      understanding: "The traditional explanation speaks of not giving up an undertaking merely because effort brings bodily discomfort. It is about perseverance through the ordinary difficulty of trying, not ignoring injury, illness or genuine danger. In family life, help children distinguish between a task that is challenging and a situation that is unsafe. Encourage them to persist with support.",
+      familyAngle: "Your child is learning to ride a bicycle. After a few wobbles and failed attempts, they want to stop. You know they are frustrated, but also that learning takes effort and practice. How can you encourage them without dismissing how difficult it feels?",
+      todayAction: "When your child finds something difficult, acknowledge the feeling first, then agree on one manageable next attempt together.",
+      todayActionSupport: "Teach persistence with encouragement, patience and sensible limits. Never ask a child to ignore pain or unsafe conditions.",
+      childLesson: "Let us raise children who can meet challenges with courage, patience and good judgement.",
+      aiaConnection: "Not every difficult moment is a sign to stop. Sometimes it is a sign that we are learning.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a parent encouraging a child to keep trying.",
+      languageCategory: "practices",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A Tamil parent in a Dubai community park gently encourages their school-age child who has paused beside a small bicycle after a difficult attempt. The child looks frustrated but willing to try again; the parent offers calm support rather than pushing. Safe open cycling path, greenery and residential buildings in the background, helmets and appropriate safety gear, warm late-afternoon light, candid documentary photography. No text, logos, watermarks or exaggerated expressions.",
+      captionOpenerOverride: "A little difficulty does not always mean it is time to give up.",
+      captionCloserOverride: "Encourage persistence, while teaching children to recognise their limits and stay safe.",
+      captionCtaOverride: "Tag someone who helps children keep trying.",
+      hashtagsOverride: ["#Aathichoodi", "#KeepTrying", "#ResilientKids", "#AramInAction"],
+    },
+  },
+  { episodeNumber: 60, tamilText: "தூக்கி வினை செய்", simpleMeaning: "Begin an undertaking after understanding the means or method.", transliteration: "Thooki Vinaisey", primaryTheme: "responsibility", verified: true,
+    // Replaced with the Notion-sourced "Aathichoodi Daily – Carousel
+    // Content" database row for Episode 60 (2026-11), resolving the prior
+    // drift noted below (it was pulling from the wrong pool angle).
+    curated: {
+      hookOverride: "Before you begin, have you thought the task through?",
+      tagline: "Good decisions are rarely made by rushing in.",
+      ctaLabel: "Pause. Understand. Then act.",
+      understanding: "The traditional explanation advises understanding the appropriate method before starting an action. It encourages thought, preparation and practical judgement rather than impulsive action. In family life, children can learn to understand instructions, gather what they need and think through the steps before beginning.",
+      familyAngle: "Your child wants to start a school project immediately. They begin cutting, gluing and decorating before reading the instructions. Halfway through, they realise they have missed an important requirement. A little planning could have saved time and effort.",
+      todayAction: "Before starting a task, ask your child to explain what needs to be done, starting with: \"What needs to be done?\"",
+      todayActionSupport: "Make planning a normal part of doing things well, not a reason to overthink every small decision.",
+      childLesson: "Let us teach children that taking a moment to plan is also part of taking action.",
+      aiaConnection: "A thoughtful beginning can prevent avoidable mistakes along the way.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a parent raising thoughtful problem-solvers.",
+      languageCategory: "practices",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A Tamil parent and school-age child at a Dubai apartment dining table planning a school project before beginning. They are looking carefully at a simple instruction sheet with diagrams but no legible text, arranging paper, pencils and craft materials in order. The child is thinking through the steps while the parent guides calmly. Natural home environment, warm daylight, candid documentary photography, realistic expressions. No readable text, logos, watermarks or stereotypes.",
+      captionOpenerOverride: "Rushing to begin can sometimes mean doing the work twice.",
+      captionCloserOverride: "Teach children to understand the task, plan the steps and then get started.",
+      captionCtaOverride: "Share this with a parent raising thoughtful problem-solvers.",
+      hashtagsOverride: ["#Aathichoodi", "#ThinkBeforeYouAct", "#LifeSkillsForKids", "#AramInAction"],
+    },
+  },
+  { episodeNumber: 61, tamilText: "தெய்வம் இகழேல்", simpleMeaning: "Do not speak disparagingly of God.", transliteration: "Deivam Igazhel", primaryTheme: "devotion", verified: true,
+    // Notion-sourced "Aathichoodi Daily – Carousel Content" row (2026-11).
+    curated: {
+      hookOverride: "Can we disagree without disrespecting what others hold sacred?",
+      tagline: "Respect begins with understanding, even when beliefs differ.",
+      ctaLabel: "Speak with care.",
+      understanding: "The verse directly cautions against speaking contemptuously about the divine. It reflects the devotional outlook of the tradition in which the Aathichoodi was composed. In a family setting, this can be taught by explaining one's own faith with sincerity and modelling respectful speech about religious beliefs. The modern application should not erase the original devotional instruction.",
+      familyAngle: "A child hears someone make a dismissive comment about a religious practice during a family conversation. They are unsure how to respond. The family has an opportunity to discuss faith, respect and how to speak about beliefs without insulting others.",
+      todayAction: "When your child asks about God or a religious practice, invite the question rather than shutting it down, and explain what your family believes and why.",
+      todayActionSupport: "Teach them not to mock or insult another person's faith — respectful understanding is stronger than fear of asking.",
+      childLesson: "Let children grow in understanding without learning to ridicule what others hold sacred.",
+      aiaConnection: "A belief can be deeply personal. The words we use around it can still show care and respect.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a family that values respectful conversations about faith.",
+      languageCategory: "beliefs",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A Tamil parent and school-age child having a quiet conversation at home near a small, respectful family prayer space. The child is asking a thoughtful question and the parent listens patiently, explaining the importance of speaking respectfully about faith. Contemporary Dubai apartment, subtle traditional devotional details, warm natural light, authentic expressions, candid documentary photography. No visible deity depiction required, no text, logos, watermarks or stereotypes.",
+      captionOpenerOverride: "Faith can be personal. Respectful speech is a choice we make every day.",
+      captionCloserOverride: "Teach children to understand their tradition and speak about beliefs with care.",
+      captionCtaOverride: "Share this with a family that values respectful conversations.",
+      hashtagsOverride: ["#Aathichoodi", "#TamilTradition", "#RespectfulParenting", "#AramInAction"],
+    },
+  },
+  { episodeNumber: 62, tamilText: "தேசத்தோடு ஒட்டி வாழ்", simpleMeaning: "Live in harmony with the people of the country where you reside; do not live in enmity with them.", transliteration: "Desathodu Otti Vaazh", primaryTheme: "community", verified: true,
+    // Notion-sourced "Aathichoodi Daily – Carousel Content" row (2026-11).
+    curated: {
+      hookOverride: "A place becomes home when we learn to live well with the people around us.",
+      tagline: "Belonging is built through respect, participation and understanding.",
+      ctaLabel: "Be part of the community.",
+      understanding: "The traditional explanation emphasises living without hostility alongside the people of one's country. It is a call to peaceful coexistence and social harmony. For Tamil families living in Dubai, the practical application is to respect the local community, understand shared expectations and contribute positively while retaining one's own cultural identity.",
+      familyAngle: "Your child notices that neighbours in your building celebrate different festivals, speak different languages and follow different customs. They ask why everyone does things differently. It is a chance to explain how people from different backgrounds can live together with mutual respect.",
+      todayAction: "Choose one small way to participate in your community together, such as greeting a neighbour or keeping shared spaces clean.",
+      todayActionSupport: "Talk with your child about how everyone's small actions help people live together peacefully.",
+      childLesson: "Let our children learn to respect the people and communities they are part of.",
+      aiaConnection: "We do not have to be the same to live well together.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a family raising children across cultures.",
+      languageCategory: "practices",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A Tamil family living in Dubai participating in a friendly residential community gathering with neighbours from different cultural backgrounds. Children share a simple activity at a communal table while adults greet one another warmly. Contemporary apartment community courtyard, subtle Dubai residential setting, inclusive everyday clothing, authentic candid expressions, natural daylight, documentary photography. No flags, readable signage, text, logos, watermarks or staged stereotypes.",
+      captionOpenerOverride: "Belonging grows when we learn to live respectfully with the people around us.",
+      captionCloserOverride: "Help children value their roots while becoming thoughtful members of the community they live in.",
+      captionCtaOverride: "Share this with a family raising children across cultures.",
+      hashtagsOverride: ["#Aathichoodi", "#TamilDiaspora", "#CommunityLiving", "#AramInAction"],
+    },
+  },
+  { episodeNumber: 63, tamilText: "தையல் சொல் கேளேல்", simpleMeaning: "Do not act without examining matters simply by following your wife's words.", transliteration: "Thaiyalsol Kelel", primaryTheme: "family", verified: true,
+    // Notion-sourced "Aathichoodi Daily – Carousel Content" row (2026-11).
+    // Notion's own row is explicit that the original line's gender
+    // assumption (acting on "your wife's words" without investigation)
+    // reflects its historical social context and should not be silently
+    // rewritten as though it addressed everyone equally -- simpleMeaning/
+    // understanding keep that specific wording rather than generalising
+    // it; the contemporary family application (listen, verify, decide --
+    // regardless of who the advice comes from) is in understanding/
+    // todayAction, same as Notion's own row frames it.
+    curated: {
+      hookOverride: "Should we accept advice without thinking it through?",
+      tagline: "Good judgement means listening carefully, then considering what is wise.",
+      ctaLabel: "Think before you follow.",
+      understanding: "The traditional commentary specifically cautions against acting without investigation merely on a wife's advice. This reflects the gender assumptions of its historical social context and should not be silently rewritten as though the original line addressed everyone equally. For a contemporary family application, we can preserve the underlying caution against unexamined advice: listen respectfully to others, consider the facts and consequences, and make a thoughtful decision. Good judgement applies regardless of gender.",
+      familyAngle: "Your child hears two different suggestions about how to handle a disagreement with a friend. One suggestion sounds exciting, but could make the situation worse. You help your child pause, consider the consequences and decide what is fair.",
+      todayAction: "When your child receives advice, ask them to think it through, starting with: \"Does this make sense?\"",
+      todayActionSupport: "Explain that advice should be considered thoughtfully, whoever gives it — listening does not mean obeying without judgement.",
+      childLesson: "Let us raise children who respect advice without surrendering their judgement.",
+      aiaConnection: "Listening is important. Thinking for ourselves is important too.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a parent teaching thoughtful decision-making.",
+      languageCategory: "practices",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A Tamil parent and school-age child sit together at a dining table in a Dubai apartment, discussing a small disagreement with a friend. The child is considering two simple options represented by blank cards or drawings with no readable text. The parent listens and encourages thoughtful judgement rather than dictating the answer. Warm contemporary home, candid documentary photography, natural expressions, soft daylight. No text, logos, watermarks or stereotypes.",
+      captionOpenerOverride: "Good advice deserves attention. Every decision still deserves thought.",
+      captionCloserOverride: "Teach children to listen respectfully, examine the facts and think through the consequences.",
+      captionCtaOverride: "Share this with a parent raising thoughtful decision-makers.",
+      hashtagsOverride: ["#Aathichoodi", "#CriticalThinking", "#ThoughtfulParenting", "#AramInAction"],
+    },
+  },
+  { episodeNumber: 64, tamilText: "தொன்மை மறவேல்", simpleMeaning: "Do not forget the old ways or heritage.", transliteration: "Thonmai Maravel", primaryTheme: "gratitude", verified: true,
+    // Notion-sourced "Aathichoodi Daily – Carousel Content" row (2026-11).
+    curated: {
+      hookOverride: "What do our children carry from the generations before them?",
+      tagline: "A language, a story, a practice. Heritage lives when we remember and understand it.",
+      ctaLabel: "Keep the roots alive.",
+      understanding: "The verse reminds us not to forget what has come from the past. Its meaning is a call to remember inherited traditions and ways of life. For families living away from their ancestral home, this can mean keeping Tamil language, family stories and meaningful cultural practices alive, while helping children understand their significance rather than following them without question.",
+      familyAngle: "Your child asks why the family still speaks Tamil at home, celebrates a traditional festival or follows a custom that their friends may not know. Instead of saying \"because this is how we do it\", you share the story behind the practice.",
+      todayAction: "Choose one family custom, festival memory or Tamil expression, and tell your child where it came from and what it means to your family.",
+      todayActionSupport: "Invite grandparents to share their memories when possible — help children inherit understanding, not just instructions.",
+      childLesson: "Let our children know not only where they come from, but the stories that make those roots meaningful.",
+      aiaConnection: "A tradition stays alive when someone takes the time to pass its meaning on.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with someone preserving family heritage for the next generation.",
+      languageCategory: "practices",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A Tamil grandparent and school-age grandchild in a contemporary Dubai home looking together at an old family photograph album and a small traditional household object. A parent sits nearby, listening as the grandparent shares a memory. Warm intergenerational connection, authentic Tamil family appearance, lived-in apartment, soft natural daylight, candid documentary photography. No readable text, logos, watermarks, staged nostalgia or stereotypes.",
+      captionOpenerOverride: "Heritage is more than what we inherit. It is what we take the time to understand and pass on.",
+      captionCloserOverride: "Share a Tamil word, family story or tradition with your child today.",
+      captionCtaOverride: "Send this to someone keeping their roots alive across generations.",
+      hashtagsOverride: ["#TamilHeritage", "#TamilAtHome", "#IntergenerationalLearning", "#AramInAction"],
+    },
+  },
+  { episodeNumber: 65, tamilText: "தோற்பன தொடரேல்", simpleMeaning: "Do not pursue an undertaking when you know it will end in failure.", transliteration: "Thorpana Thodarel", primaryTheme: "responsibility", verified: true,
+    // Replaced with the Notion-sourced "Aathichoodi Daily – Carousel
+    // Content" database row for Episode 65 (2026-11), resolving the prior
+    // drift noted below (it was pulling from the wrong pool angle).
+    curated: {
+      hookOverride: "Is persistence always the right choice?",
+      tagline: "Wisdom is knowing when to continue and when a plan needs to change.",
+      ctaLabel: "Choose your efforts wisely.",
+      understanding: "The traditional explanation advises against beginning or continuing an undertaking when its failure is already known. It is a reminder to use judgement before investing effort in a course that cannot succeed. In family life, children can learn to assess a plan, recognise when it is not working and choose a wiser course. This is not an instruction to quit every difficult task; it is about avoiding knowingly futile efforts.",
+      familyAngle: "Your child keeps trying the same approach to solve a difficult puzzle, but it is not working. They are becoming frustrated and refusing to try another way. You help them recognise that changing strategy is not the same as giving up.",
+      todayAction: "When your child gets stuck, ask them to reflect, starting with: \"Is this approach working?\"",
+      todayActionSupport: "Praise the ability to reflect and adapt — help children understand the difference between wisely changing direction and giving up.",
+      childLesson: "Let us help children combine perseverance with good judgement.",
+      aiaConnection: "Courage is not only about carrying on. Sometimes wisdom is choosing a better way forward.",
+      recommendedCta: "SHARE",
+      recommendedCtaCopy: "Share this with a parent teaching children to make thoughtful choices.",
+      languageCategory: "practices",
+      imagePromptOverride: "Create a natural editorial lifestyle photograph, vertical 4:5. A Tamil parent and school-age child at a Dubai apartment table working on a challenging jigsaw puzzle or simple construction activity. The child pauses, looks thoughtfully at the pieces, and the parent gently suggests trying a different approach. The mood is calm and encouraging, showing problem-solving rather than failure. Contemporary lived-in home, natural daylight, candid documentary photography, authentic expressions. No text, logos, watermarks or exaggerated expressions.",
+      captionOpenerOverride: "Persistence matters. So does knowing when a plan will not work.",
+      captionCloserOverride: "Help children learn to pause, assess and choose a wiser way forward.",
+      captionCtaOverride: "Share this with a parent teaching thoughtful problem-solving.",
+      hashtagsOverride: ["#Aathichoodi", "#WiseChoices", "#ProblemSolvingKids", "#AramInAction"],
     },
   },
   { episodeNumber: 66, tamilText: "நன்மை கடைப்பிடி", simpleMeaning: "Hold on firmly to doing good.", transliteration: "Nanmai Kadaipidi", primaryTheme: "character", verified: true },

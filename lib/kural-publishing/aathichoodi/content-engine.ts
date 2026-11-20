@@ -149,7 +149,9 @@ export function composeEpisode(
   const tagline = curated?.tagline
     ? { id: "curated", text: curated.tagline, ctaLabel: curated.ctaLabel ?? "See How" }
     : selectTagline(theme, episodeNumber, history.recentTaglineIds);
-  const hashtags = selectHashtags(theme, episodeNumber, history.recentReachHashtagIds);
+  const hashtags = curated?.hashtagsOverride
+    ? { id: "curated", tags: [...curated.hashtagsOverride] }
+    : selectHashtags(theme, episodeNumber, history.recentReachHashtagIds);
 
   const scenario = curated?.familyAngle
     ? { id: "curated", text: curated.familyAngle }
@@ -188,9 +190,15 @@ export function composeEpisode(
   // Caption-only copy -- deliberately its own writing (caption-copy.ts),
   // never the slide's own hook/tagline/cta.copy above, so the caption
   // reads as a separate piece rather than a copy of the graphic.
-  const captionOpener = selectCaptionOpener(theme, episodeNumber, history.recentCaptionOpenerIds);
-  const captionCloser = selectCaptionCloser(theme, episodeNumber, history.recentCaptionCloserIds);
-  const captionCta = selectCaptionCta(cta.type, episodeNumber, history.recentCaptionCtaIds);
+  const captionOpener = curated?.captionOpenerOverride
+    ? { id: "curated", text: curated.captionOpenerOverride }
+    : selectCaptionOpener(theme, episodeNumber, history.recentCaptionOpenerIds);
+  const captionCloser = curated?.captionCloserOverride
+    ? { id: "curated", text: curated.captionCloserOverride }
+    : selectCaptionCloser(theme, episodeNumber, history.recentCaptionCloserIds);
+  const captionCta = curated?.captionCtaOverride
+    ? { id: "curated", text: curated.captionCtaOverride }
+    : selectCaptionCta(cta.type, episodeNumber, history.recentCaptionCtaIds);
 
   const episode: ComposedEpisode = {
     episodeNumber: entry.episodeNumber,
