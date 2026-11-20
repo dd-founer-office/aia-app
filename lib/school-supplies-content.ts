@@ -6,7 +6,7 @@ import type { TestimonialContent } from "@/components/acts/ActTestimonial";
 
 /**
  * Two private pages for the same act: a full school year of supplies (books,
- * notebooks, bags, uniform, footwear, stationery) for two Plus Two students,
+ * notebooks, bags, uniform, footwear, stationery) for two +2 students,
  * Roshini and Inbarasu, handed over at Rainbow Public Welfare Trust,
  * Koneripatti, Rasipuram, on 17 November 2026. One page for each contributor,
  * Marimuthu and Vinothkumar (whose page is dedicated to his children
@@ -122,7 +122,7 @@ function video(file: string): TestimonialContent {
     subtitle: "Hear from the parents of Roshini and Inbarasu.",
     quote: "மனமார்ந்த நன்றி",
     speaker: "Parents",
-    organization: PARTNER,
+    organization: "of Roshini and Inbarasu, +2 students",
   };
 }
 
@@ -188,7 +188,7 @@ export const MARIMUTHU_SCHOOL_PARTNER = PARTNER;
 export const MARIMUTHU_SCHOOL_HERO = {
   title: "A Whole School Year Packed in One Bag",
   description:
-    "Marimuthu, you gave Roshini and Inbarasu everything for their Plus Two year: books, notebooks, a bag, uniform, footwear and stationery.",
+    "Marimuthu, you gave Roshini and Inbarasu everything for their +2 year: books, notebooks, a bag, uniform, footwear and stationery.",
   heroImageUrl: `${IMG}/p1.jpg`,
   imageObjectPosition: "45% 35%",
   highlightWord: "Year",
@@ -196,7 +196,7 @@ export const MARIMUTHU_SCHOOL_HERO = {
 export const MARIMUTHU_SCHOOL_SNAPSHOT = SNAPSHOT;
 export const MARIMUTHU_SCHOOL_VIDEO = video("marimuthu");
 export const MARIMUTHU_SCHOOL_ACT = act(
-  "Books, notebooks, bags, uniform, footwear and stationery, handed to two students for their whole Plus Two year, because you thought of them.",
+  "Books, notebooks, bags, uniform, footwear and stationery, handed to two students for their whole +2 year, because you thought of them.",
 );
 export const MARIMUTHU_SCHOOL_EVIDENCE = evidence(
   "marimuthu-school",
@@ -210,7 +210,7 @@ export const VINOTHKUMAR_SCHOOL_PARTNER = PARTNER;
 export const VINOTHKUMAR_SCHOOL_HERO = {
   title: "A School Year Given in Two Names",
   description:
-    "Vinothkumar, you gave Roshini and Inbarasu a full Plus Two year of supplies, dedicated to your children, Vetrivendhan and Keerthanya.",
+    "Vinothkumar, you gave Roshini and Inbarasu a full +2 year of supplies, dedicated to your children, Vetrivendhan and Keerthanya.",
   heroImageUrl: `${IMG}/p2.jpg`,
   imageObjectPosition: "50% 30%",
   highlightWord: "Names",
@@ -218,7 +218,7 @@ export const VINOTHKUMAR_SCHOOL_HERO = {
 export const VINOTHKUMAR_SCHOOL_SNAPSHOT = SNAPSHOT;
 export const VINOTHKUMAR_SCHOOL_VIDEO = video("vinothkumar");
 export const VINOTHKUMAR_SCHOOL_ACT = act(
-  "Dedicated to Vetrivendhan and Keerthanya: books, notebooks, bags, uniform, footwear and stationery for two students for their whole Plus Two year.",
+  "Dedicated to Vetrivendhan and Keerthanya: books, notebooks, bags, uniform, footwear and stationery for two students for their whole +2 year.",
 );
 export const VINOTHKUMAR_SCHOOL_EVIDENCE = evidence(
   "vinothkumar-school",
