@@ -8,6 +8,7 @@ import {
   MapPin,
   BadgeCheck,
   Play,
+  BookOpen,
   Sprout,
   UtensilsCrossed,
 } from "lucide-react";
@@ -554,7 +555,7 @@ export interface SnapshotContent {
   keySub: string;
   partnerLines: string[];
   // A key, not a component: this object is passed from a server page.
-  icon: "food" | "tree";
+  icon: "food" | "tree" | "education";
 }
 
 const ELDERS_SNAPSHOT: SnapshotContent = {
@@ -837,7 +838,13 @@ export function ActSnapshot({
           swapAt={6400}
           exitOrder={3}
           enter={{ kind: "grow", at: 850 }}
-          icon={content.icon === "food" ? UtensilsCrossed : Sprout}
+          icon={
+            content.icon === "food"
+              ? UtensilsCrossed
+              : content.icon === "education"
+                ? BookOpen
+                : Sprout
+          }
         />
 
         {/* Verified Partner */}
